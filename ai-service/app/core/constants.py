@@ -1,0 +1,4 @@
+APP_NAME = "DevPrep.AiService"
+DEFAULT_HOST = "0.0.0.0"
+DEFAULT_PORT = 8000
+HEALTH_PATH = "/health"

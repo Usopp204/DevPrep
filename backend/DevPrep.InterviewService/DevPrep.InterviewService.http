@@ -1,0 +1,6 @@
+@DevPrep.InterviewService_HostAddress = http://localhost:5269
+
+GET {{DevPrep.InterviewService_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

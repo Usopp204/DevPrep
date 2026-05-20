@@ -1,0 +1,6 @@
+@DevPrep.AuthService_HostAddress = http://localhost:5273
+
+GET {{DevPrep.AuthService_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

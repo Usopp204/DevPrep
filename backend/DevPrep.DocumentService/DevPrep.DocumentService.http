@@ -1,0 +1,6 @@
+@DevPrep.DocumentService_HostAddress = http://localhost:5261
+
+GET {{DevPrep.DocumentService_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
