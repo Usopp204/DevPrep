@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "devprep/contracts/interview/score-v2.schema.json",
+  "title": "InterviewScoreV2",
+  "type": "object",
+  "required": ["sessionId", "scoringVersion", "theoryScore", "speedScore", "baseScore", "finalScore"],
+  "properties": {
+    "sessionId": { "type": "string", "format": "uuid" },
+    "scoringVersion": { "type": "string" },
+    "theoryScore": { "type": "number" },
+    "speedScore": { "type": "number" },
+    "baseScore": { "type": "number" },
+    "earlyBonusEligible": { "type": "boolean" },
+    "earlyBonusScore": { "type": "number" },
+    "finalScore": { "type": "number" },
+    "finishedReason": { "type": "string" }
+  },
+  "additionalProperties": false
+}

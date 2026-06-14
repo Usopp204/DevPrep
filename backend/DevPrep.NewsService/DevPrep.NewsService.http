@@ -1,0 +1,4 @@
+@DevPrep.NewsService_HostAddress = http://localhost:7009
+
+GET {{DevPrep.NewsService_HostAddress}}/health/
+Accept: application/json

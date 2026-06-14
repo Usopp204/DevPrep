@@ -1,0 +1,4 @@
+@DevPrep.UserProfileService_HostAddress = http://localhost:7002
+
+GET {{DevPrep.UserProfileService_HostAddress}}/health/
+Accept: application/json

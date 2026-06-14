@@ -1,6 +1,4 @@
-@DevPrep.AuthService_HostAddress = http://localhost:5273
+@DevPrep.AuthService_HostAddress = http://localhost:7001
 
-GET {{DevPrep.AuthService_HostAddress}}/weatherforecast/
+GET {{DevPrep.AuthService_HostAddress}}/health/
 Accept: application/json
-
-###

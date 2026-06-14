@@ -1,6 +1,4 @@
-@DevPrep.InterviewService_HostAddress = http://localhost:5269
+@DevPrep.InterviewService_HostAddress = http://localhost:7005
 
-GET {{DevPrep.InterviewService_HostAddress}}/weatherforecast/
+GET {{DevPrep.InterviewService_HostAddress}}/health/
 Accept: application/json
-
-###

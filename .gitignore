@@ -4,11 +4,12 @@
 # AI Agent & OpenCode Session Cache
 .hive/
 
-# Local contracts
-contracts/
-
 # Local infra
 infra/
+
+# IDE metadata
+.vs/
+backend/.vs/
 
 # .NET
 bin/

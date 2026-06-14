@@ -1,5 +1,5 @@
 using DotNetEnv;
-using DevPrep.AdminService.Data;
+using DevPrep.FeedbackService.Data;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
 
@@ -7,20 +7,21 @@ Env.TraversePath().Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+var servicePort = builder.Configuration.GetValue<int>("FEEDBACK_API_PORT", 7007);
+builder.WebHost.UseUrls($"http://0.0.0.0:{servicePort}");
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-var connectionString = builder.Configuration.GetValue<string>("ADMIN_DB_CONNECTION_STRING");
+var connectionString = builder.Configuration.GetValue<string>("FEEDBACK_DB_CONNECTION_STRING");
 if (string.IsNullOrWhiteSpace(connectionString))
 {
-    throw new InvalidOperationException("ADMIN_DB_CONNECTION_STRING is missing.");
+    throw new InvalidOperationException("FEEDBACK_DB_CONNECTION_STRING is missing.");
 }
 
-builder.Services.AddDbContext<AdminDbContext>(options =>
+builder.Services.AddDbContext<FeedbackDbContext>(options =>
     options.UseSqlServer(connectionString));
 
-// MassTransit + RabbitMQ
 var rabbitHost = builder.Configuration.GetValue<string>("GLOBAL_RABBITMQ_HOST", "localhost");
 var rabbitUser = builder.Configuration.GetValue<string>("GLOBAL_RABBITMQ_USER", "guest");
 var rabbitPass = builder.Configuration.GetValue<string>("GLOBAL_RABBITMQ_PASS", "guest");
@@ -60,38 +61,18 @@ builder.Services.AddMassTransit(x =>
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
-
-var summaries = new[]
+app.MapGet("/health", () => Results.Ok(new
 {
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast = Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast")
+    service = "Feedback",
+    status = "ok"
+}))
+.WithName("GetHealth")
 .WithOpenApi();
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}

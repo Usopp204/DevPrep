@@ -1,6 +1,4 @@
-@DevPrep.EvaluationService_HostAddress = http://localhost:5004
+@DevPrep.EvaluationService_HostAddress = http://localhost:7006
 
-GET {{DevPrep.EvaluationService_HostAddress}}/weatherforecast/
+GET {{DevPrep.EvaluationService_HostAddress}}/health/
 Accept: application/json
-
-###

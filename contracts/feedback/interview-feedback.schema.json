@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "devprep/contracts/feedback/interview-feedback.schema.json",
+  "title": "InterviewFeedback",
+  "type": "object",
+  "required": [
+    "questionQualityRating",
+    "accuracyRating",
+    "jobRelevanceRating",
+    "cvAlignmentRating",
+    "scoringFairnessRating"
+  ],
+  "properties": {
+    "questionQualityRating": { "type": "integer", "minimum": 1, "maximum": 5 },
+    "accuracyRating": { "type": "integer", "minimum": 1, "maximum": 5 },
+    "jobRelevanceRating": { "type": "integer", "minimum": 1, "maximum": 5 },
+    "cvAlignmentRating": { "type": "integer", "minimum": 1, "maximum": 5 },
+    "scoringFairnessRating": { "type": "integer", "minimum": 1, "maximum": 5 },
+    "comment": { "type": "string" }
+  },
+  "additionalProperties": false
+}

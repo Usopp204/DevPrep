@@ -1,0 +1,4 @@
+@DevPrep.QuestionBankService_HostAddress = http://localhost:7004
+
+GET {{DevPrep.QuestionBankService_HostAddress}}/health/
+Accept: application/json
