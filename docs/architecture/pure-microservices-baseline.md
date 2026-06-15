@@ -6,18 +6,18 @@ This document records the confirmed backend source-base architecture for DevPrep
 
 `backend/DevPrep.sln` contains exactly 12 API projects:
 
-1. `DevPrep.ApiGateway`
-2. `DevPrep.AuthService`
-3. `DevPrep.UserProfileService`
-4. `DevPrep.DocumentService`
-5. `DevPrep.QuestionBankService`
-6. `DevPrep.InterviewService`
-7. `DevPrep.EvaluationService`
-8. `DevPrep.FeedbackService`
-9. `DevPrep.PaymentService`
-10. `DevPrep.NewsService`
-11. `DevPrep.NotificationService`
-12. `DevPrep.StatisticsService`
+1. `ApiGateway`
+2. `AuthAPI`
+3. `UserAPI`
+4. `CvJdAPI`
+5. `QuestionAPI`
+6. `InterviewAPI`
+7. `EvaluationAPI`
+8. `FeedbackAPI`
+9. `PaymentAPI`
+10. `NewsAPI`
+11. `NotificationAPI`
+12. `StatisticsAPI`
 
 Admin and Manager are implemented as roles and route namespaces. Manager access is read-only through `/api/admin/manager/*` routes where needed.
 
@@ -25,25 +25,25 @@ Admin and Manager are implemented as roles and route namespaces. Manager access 
 
 | Route namespace | Downstream service |
 | --- | --- |
-| `/api/auth/*` | `DevPrep.AuthService` |
-| `/api/users/*` | `DevPrep.UserProfileService` |
-| `/api/document/*` | `DevPrep.DocumentService` |
-| `/api/questions/*` | `DevPrep.QuestionBankService` |
-| `/api/interview/*` | `DevPrep.InterviewService` |
-| `/api/evaluation/*` | `DevPrep.EvaluationService` |
-| `/api/feedback/*` | `DevPrep.FeedbackService` |
-| `/api/payment/*` | `DevPrep.PaymentService` |
-| `/api/news/*` | `DevPrep.NewsService` |
-| `/api/notifications/*` | `DevPrep.NotificationService` |
-| `/api/statistics/*` | `DevPrep.StatisticsService` |
+| `/api/auth/*` | `AuthAPI` |
+| `/api/users/*` | `UserAPI` |
+| `/api/document/*` | `CvJdAPI` |
+| `/api/questions/*` | `QuestionAPI` |
+| `/api/interview/*` | `InterviewAPI` |
+| `/api/evaluation/*` | `EvaluationAPI` |
+| `/api/feedback/*` | `FeedbackAPI` |
+| `/api/payment/*` | `PaymentAPI` |
+| `/api/news/*` | `NewsAPI` |
+| `/api/notifications/*` | `NotificationAPI` |
+| `/api/statistics/*` | `StatisticsAPI` |
 
 Admin route namespaces are routed to domain services, for example:
 
-- `/api/admin/questions/*` and `/api/admin/manager/questions/*` -> QuestionBankService
-- `/api/admin/feedbacks/*` and `/api/admin/manager/feedbacks/*` -> FeedbackService
-- `/api/admin/news/*` and `/api/admin/manager/news/*` -> NewsService
-- `/api/admin/payments/*` and `/api/admin/manager/payments/*` -> PaymentService
-- `/api/admin/statistics/*` and `/api/admin/manager/statistics/*` -> StatisticsService
+- `/api/admin/questions/*` and `/api/admin/manager/questions/*` -> QuestionAPI
+- `/api/admin/feedbacks/*` and `/api/admin/manager/feedbacks/*` -> FeedbackAPI
+- `/api/admin/news/*` and `/api/admin/manager/news/*` -> NewsAPI
+- `/api/admin/payments/*` and `/api/admin/manager/payments/*` -> PaymentAPI
+- `/api/admin/statistics/*` and `/api/admin/manager/statistics/*` -> StatisticsAPI
 
 Gateway routes should apply prefix removal consistently so downstream services expose clean internal routes.
 
@@ -51,17 +51,17 @@ Gateway routes should apply prefix removal consistently so downstream services e
 
 | Database | Service |
 | --- | --- |
-| `DevPrep_Auth` | AuthService |
-| `DevPrep_User` | UserProfileService |
-| `DevPrep_CvJd` | DocumentService |
-| `DevPrep_Question` | QuestionBankService |
-| `DevPrep_Interview` | InterviewService |
-| `DevPrep_Evaluation` | EvaluationService |
-| `DevPrep_Feedback` | FeedbackService |
-| `DevPrep_Payment` | PaymentService |
-| `DevPrep_News` | NewsService |
-| `DevPrep_Notification` | NotificationService |
-| `DevPrep_Statistics` | StatisticsService |
+| `DevPrep_Auth` | AuthAPI |
+| `DevPrep_User` | UserAPI |
+| `DevPrep_CvJd` | CvJdAPI |
+| `DevPrep_Question` | QuestionAPI |
+| `DevPrep_Interview` | InterviewAPI |
+| `DevPrep_Evaluation` | EvaluationAPI |
+| `DevPrep_Feedback` | FeedbackAPI |
+| `DevPrep_Payment` | PaymentAPI |
+| `DevPrep_News` | NewsAPI |
+| `DevPrep_Notification` | NotificationAPI |
+| `DevPrep_Statistics` | StatisticsAPI |
 
 Each business service owns its local `DbContext` and reads its own `*_DB_CONNECTION_STRING` and `*_API_PORT` from environment configuration.
 
@@ -72,3 +72,4 @@ The FastAPI AI service is internal-only. Do not document or expose public fronte
 ## Current Source Status
 
 This source base is scaffold/stabilization level. Service projects, local `DbContext` placeholders, health endpoints, environment keys, and gateway routes are aligned. Business entities, migrations, JWT enforcement, real business endpoints, event consumers, and AI workflows remain intentionally unimplemented.
+

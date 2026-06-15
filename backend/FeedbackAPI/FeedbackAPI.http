@@ -1,0 +1,5 @@
+@FeedbackAPI_HostAddress = http://localhost:7007
+
+GET {{FeedbackAPI_HostAddress}}/health/
+Accept: application/json
+

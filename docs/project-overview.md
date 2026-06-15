@@ -21,18 +21,18 @@ The intended product supports interview preparation flows such as account/profil
 
 Backend uses Pure Microservices. The solution contains one gateway and 11 business services:
 
-- `DevPrep.ApiGateway`
-- `DevPrep.AuthService`
-- `DevPrep.UserProfileService`
-- `DevPrep.DocumentService`
-- `DevPrep.QuestionBankService`
-- `DevPrep.InterviewService`
-- `DevPrep.EvaluationService`
-- `DevPrep.FeedbackService`
-- `DevPrep.PaymentService`
-- `DevPrep.NewsService`
-- `DevPrep.NotificationService`
-- `DevPrep.StatisticsService`
+- `ApiGateway`
+- `AuthAPI`
+- `UserAPI`
+- `CvJdAPI`
+- `QuestionAPI`
+- `InterviewAPI`
+- `EvaluationAPI`
+- `FeedbackAPI`
+- `PaymentAPI`
+- `NewsAPI`
+- `NotificationAPI`
+- `StatisticsAPI`
 
 Admin and Manager are implemented as roles and route namespaces. Manager access is read-only through `/api/admin/manager/*` routes where needed.
 
@@ -40,17 +40,17 @@ Admin and Manager are implemented as roles and route namespaces. Manager access 
 
 | Capability | Service |
 | --- | --- |
-| Authentication and token-related behavior | AuthService |
-| User profile data | UserProfileService |
-| CV/JD upload, parsing metadata, matching inputs | DocumentService |
-| Question bank management/read models | QuestionBankService |
-| Interview/session orchestration | InterviewService |
-| Scoring and reports | EvaluationService |
-| System/interview feedback | FeedbackService |
-| Credits, plans, payment records | PaymentService |
-| News/articles | NewsService |
-| Email templates, logs, notifications | NotificationService |
-| Metrics and dashboard statistics | StatisticsService |
+| Authentication and token-related behavior | AuthAPI |
+| User profile data | UserAPI |
+| CV/JD upload, parsing metadata, matching inputs | CvJdAPI |
+| Question bank management/read models | QuestionAPI |
+| Interview/session orchestration | InterviewAPI |
+| Scoring and reports | EvaluationAPI |
+| System/interview feedback | FeedbackAPI |
+| Credits, plans, payment records | PaymentAPI |
+| News/articles | NewsAPI |
+| Email templates, logs, notifications | NotificationAPI |
+| Metrics and dashboard statistics | StatisticsAPI |
 
 ## Current Implementation Status
 
@@ -59,3 +59,4 @@ This is source-base stabilization. Infrastructure shape is aligned, but business
 ## Contracts
 
 `contracts/` is tracked by Git and is the source-of-truth for cross-service schemas. Update contracts and docs when route ownership or request/response shapes change.
+

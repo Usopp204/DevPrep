@@ -10,18 +10,18 @@ The current backend is scaffold/stabilization level. Service projects, ports, ga
 
 `backend/DevPrep.sln` contains exactly 12 API projects:
 
-1. `DevPrep.ApiGateway`
-2. `DevPrep.AuthService`
-3. `DevPrep.UserProfileService`
-4. `DevPrep.DocumentService`
-5. `DevPrep.QuestionBankService`
-6. `DevPrep.InterviewService`
-7. `DevPrep.EvaluationService`
-8. `DevPrep.FeedbackService`
-9. `DevPrep.PaymentService`
-10. `DevPrep.NewsService`
-11. `DevPrep.NotificationService`
-12. `DevPrep.StatisticsService`
+1. `ApiGateway`
+2. `AuthAPI`
+3. `UserAPI`
+4. `CvJdAPI`
+5. `QuestionAPI`
+6. `InterviewAPI`
+7. `EvaluationAPI`
+8. `FeedbackAPI`
+9. `PaymentAPI`
+10. `NewsAPI`
+11. `NotificationAPI`
+12. `StatisticsAPI`
 
 Admin and Manager are implemented as roles and route namespaces. Manager access is read-only through `/api/admin/manager/*` routes where needed.
 
@@ -36,15 +36,15 @@ dotnet build backend\DevPrep.sln
 Run the API Gateway:
 
 ```powershell
-dotnet run --project backend\DevPrep.ApiGateway\DevPrep.ApiGateway.csproj
+dotnet run --project backend\ApiGateway\ApiGateway.csproj
 ```
 
 Run an individual service:
 
 ```powershell
-dotnet run --project backend\DevPrep.AuthService\DevPrep.AuthService.csproj
-dotnet run --project backend\DevPrep.UserProfileService\DevPrep.UserProfileService.csproj
-dotnet run --project backend\DevPrep.QuestionBankService\DevPrep.QuestionBankService.csproj
+dotnet run --project backend\AuthAPI\AuthAPI.csproj
+dotnet run --project backend\UserAPI\UserAPI.csproj
+dotnet run --project backend\QuestionAPI\QuestionAPI.csproj
 ```
 
 Service ports are configured through `.env` using each service's `*_API_PORT` key. `.env.example` is the shared template; `.env` is local-only and must not be committed.
@@ -72,37 +72,38 @@ Each downstream service exposes a scaffold health endpoint at `/health` on its o
 
 | Public route | Downstream service |
 | --- | --- |
-| `/api/auth/*` | AuthService |
-| `/api/users/*` | UserProfileService |
-| `/api/document/*` | DocumentService |
-| `/api/questions/*` | QuestionBankService |
-| `/api/interview/*` | InterviewService |
-| `/api/evaluation/*` | EvaluationService |
-| `/api/feedback/*` | FeedbackService |
-| `/api/payment/*` | PaymentService |
-| `/api/news/*` | NewsService |
-| `/api/notifications/*` | NotificationService |
-| `/api/statistics/*` | StatisticsService |
+| `/api/auth/*` | AuthAPI |
+| `/api/users/*` | UserAPI |
+| `/api/document/*` | CvJdAPI |
+| `/api/questions/*` | QuestionAPI |
+| `/api/interview/*` | InterviewAPI |
+| `/api/evaluation/*` | EvaluationAPI |
+| `/api/feedback/*` | FeedbackAPI |
+| `/api/payment/*` | PaymentAPI |
+| `/api/news/*` | NewsAPI |
+| `/api/notifications/*` | NotificationAPI |
+| `/api/statistics/*` | StatisticsAPI |
 
-Admin and Manager namespaces route to domain services. For example, `/api/admin/questions/*` and `/api/admin/manager/questions/*` route to QuestionBankService.
+Admin and Manager namespaces route to domain services. For example, `/api/admin/questions/*` and `/api/admin/manager/questions/*` route to QuestionAPI.
 
 ## Structure
 
 ```text
 backend/
 |-- DevPrep.sln
-|-- DevPrep.ApiGateway/
-|-- DevPrep.AuthService/
-|-- DevPrep.UserProfileService/
-|-- DevPrep.DocumentService/
-|-- DevPrep.QuestionBankService/
-|-- DevPrep.InterviewService/
-|-- DevPrep.EvaluationService/
-|-- DevPrep.FeedbackService/
-|-- DevPrep.PaymentService/
-|-- DevPrep.NewsService/
-|-- DevPrep.NotificationService/
-`-- DevPrep.StatisticsService/
+|-- ApiGateway/
+|-- AuthAPI/
+|-- UserAPI/
+|-- CvJdAPI/
+|-- QuestionAPI/
+|-- InterviewAPI/
+|-- EvaluationAPI/
+|-- FeedbackAPI/
+|-- PaymentAPI/
+|-- NewsAPI/
+|-- NotificationAPI/
+`-- StatisticsAPI/
 ```
 
 Each business service owns its own data model and `DbContext`. Do not add shared backend class libraries without explicit approval.
+

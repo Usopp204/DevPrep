@@ -1,4 +1,0 @@
-@DevPrep.EvaluationService_HostAddress = http://localhost:7006
-
-GET {{DevPrep.EvaluationService_HostAddress}}/health/
-Accept: application/json

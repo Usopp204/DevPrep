@@ -13,17 +13,17 @@ Each backend service reads `GLOBAL_` values plus its own prefix:
 | Service | Prefix |
 | --- | --- |
 | ApiGateway | `GLOBAL_` |
-| AuthService | `AUTH_` |
-| UserProfileService | `USER_` |
-| DocumentService | `DOC_` |
-| QuestionBankService | `QUESTION_` |
-| InterviewService | `INTERVIEW_` |
-| EvaluationService | `EVALUATION_` |
-| FeedbackService | `FEEDBACK_` |
-| PaymentService | `PAYMENT_` |
-| NewsService | `NEWS_` |
-| NotificationService | `NOTIFICATION_` |
-| StatisticsService | `STATISTICS_` |
+| AuthAPI | `AUTH_` |
+| UserAPI | `USER_` |
+| CvJdAPI | `DOC_` |
+| QuestionAPI | `QUESTION_` |
+| InterviewAPI | `INTERVIEW_` |
+| EvaluationAPI | `EVALUATION_` |
+| FeedbackAPI | `FEEDBACK_` |
+| PaymentAPI | `PAYMENT_` |
+| NewsAPI | `NEWS_` |
+| NotificationAPI | `NOTIFICATION_` |
+| StatisticsAPI | `STATISTICS_` |
 
 Each business service must read its own `*_API_PORT` and `*_DB_CONNECTION_STRING`.
 
@@ -46,3 +46,4 @@ Each business service must read its own `*_API_PORT` and `*_DB_CONNECTION_STRING
 - Use environment variables for runtime configuration.
 - Keep `/health` available.
 - Do not hard-code model/provider secrets.
+

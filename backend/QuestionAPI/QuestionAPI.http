@@ -1,0 +1,5 @@
+@QuestionAPI_HostAddress = http://localhost:7004
+
+GET {{QuestionAPI_HostAddress}}/health/
+Accept: application/json
+

@@ -1,4 +1,4 @@
-# DevPrep
+﻿# DevPrep
 
 DevPrep is an AI-powered mock interview simulator and IT competency evaluation system built as a Pure Microservices monorepo. The current source base is in infrastructure/scaffold stabilization: service projects, routing, environment layout, and contracts are aligned, while business entities, migrations, authentication enforcement, and real business endpoints are intentionally not implemented yet.
 
@@ -19,38 +19,38 @@ DevPrep/
 
 Backend uses Pure Microservices. `backend/DevPrep.sln` contains exactly 12 API projects:
 
-1. `DevPrep.ApiGateway`
-2. `DevPrep.AuthService`
-3. `DevPrep.UserProfileService`
-4. `DevPrep.DocumentService`
-5. `DevPrep.QuestionBankService`
-6. `DevPrep.InterviewService`
-7. `DevPrep.EvaluationService`
-8. `DevPrep.FeedbackService`
-9. `DevPrep.PaymentService`
-10. `DevPrep.NewsService`
-11. `DevPrep.NotificationService`
-12. `DevPrep.StatisticsService`
+1. `ApiGateway`
+2. `AuthAPI`
+3. `UserAPI`
+4. `CvJdAPI`
+5. `QuestionAPI`
+6. `InterviewAPI`
+7. `EvaluationAPI`
+8. `FeedbackAPI`
+9. `PaymentAPI`
+10. `NewsAPI`
+11. `NotificationAPI`
+12. `StatisticsAPI`
 
 Admin and Manager are implemented as roles and route namespaces. Manager access is read-only through `/api/admin/manager/*` routes where needed.
 
 ## Gateway Route Ownership
 
-Frontend calls go through `DevPrep.ApiGateway`; browser clients must not call downstream services directly.
+Frontend calls go through `ApiGateway`; browser clients must not call downstream services directly.
 
 | Public route | Downstream service |
 | --- | --- |
-| `/api/auth/*` | `DevPrep.AuthService` |
-| `/api/users/*` | `DevPrep.UserProfileService` |
-| `/api/document/*` | `DevPrep.DocumentService` |
-| `/api/questions/*` | `DevPrep.QuestionBankService` |
-| `/api/interview/*` | `DevPrep.InterviewService` |
-| `/api/evaluation/*` | `DevPrep.EvaluationService` |
-| `/api/feedback/*` | `DevPrep.FeedbackService` |
-| `/api/payment/*` | `DevPrep.PaymentService` |
-| `/api/news/*` | `DevPrep.NewsService` |
-| `/api/notifications/*` | `DevPrep.NotificationService` |
-| `/api/statistics/*` | `DevPrep.StatisticsService` |
+| `/api/auth/*` | `AuthAPI` |
+| `/api/users/*` | `UserAPI` |
+| `/api/document/*` | `CvJdAPI` |
+| `/api/questions/*` | `QuestionAPI` |
+| `/api/interview/*` | `InterviewAPI` |
+| `/api/evaluation/*` | `EvaluationAPI` |
+| `/api/feedback/*` | `FeedbackAPI` |
+| `/api/payment/*` | `PaymentAPI` |
+| `/api/news/*` | `NewsAPI` |
+| `/api/notifications/*` | `NotificationAPI` |
+| `/api/statistics/*` | `StatisticsAPI` |
 
 Admin routes such as `/api/admin/questions/*`, `/api/admin/feedbacks/*`, `/api/admin/news/*`, `/api/admin/payments/*`, and `/api/admin/statistics/*` are routed to the appropriate domain service. Manager routes such as `/api/admin/manager/questions/*` follow the same domain-service routing model.
 
@@ -68,13 +68,13 @@ dotnet build backend\DevPrep.sln
 3. Run the gateway:
 
 ```powershell
-dotnet run --project backend\DevPrep.ApiGateway\DevPrep.ApiGateway.csproj
+dotnet run --project backend\ApiGateway\ApiGateway.csproj
 ```
 
 4. Run an individual service when needed:
 
 ```powershell
-dotnet run --project backend\DevPrep.AuthService\DevPrep.AuthService.csproj
+dotnet run --project backend\AuthAPI\AuthAPI.csproj
 ```
 
 5. Run frontend:
@@ -101,3 +101,4 @@ python -m uvicorn app.main:app --reload
 - Gateway routing is aligned to the current service boundaries.
 - Contracts are tracked under `contracts/`.
 - Real business endpoints, persistence models, migrations, JWT enforcement, and cross-service workflows remain TODO.
+

@@ -1,0 +1,5 @@
+@PaymentAPI_HostAddress = http://localhost:7008
+
+GET {{PaymentAPI_HostAddress}}/health/
+Accept: application/json
+

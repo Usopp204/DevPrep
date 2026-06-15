@@ -1,4 +1,0 @@
-@DevPrep.DocumentService_HostAddress = http://localhost:7003
-
-GET {{DevPrep.DocumentService_HostAddress}}/health/
-Accept: application/json

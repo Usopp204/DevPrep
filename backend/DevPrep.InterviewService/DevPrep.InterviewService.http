@@ -1,4 +1,0 @@
-@DevPrep.InterviewService_HostAddress = http://localhost:7005
-
-GET {{DevPrep.InterviewService_HostAddress}}/health/
-Accept: application/json

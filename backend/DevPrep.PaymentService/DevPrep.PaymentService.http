@@ -1,4 +1,0 @@
-@DevPrep.PaymentService_HostAddress = http://localhost:7008
-
-GET {{DevPrep.PaymentService_HostAddress}}/health/
-Accept: application/json

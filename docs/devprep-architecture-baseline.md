@@ -14,18 +14,18 @@ DevPrep is an AI-powered mock interview simulator and IT competency evaluation s
 
 `backend/DevPrep.sln` contains exactly 12 API projects:
 
-1. `DevPrep.ApiGateway`
-2. `DevPrep.AuthService`
-3. `DevPrep.UserProfileService`
-4. `DevPrep.DocumentService`
-5. `DevPrep.QuestionBankService`
-6. `DevPrep.InterviewService`
-7. `DevPrep.EvaluationService`
-8. `DevPrep.FeedbackService`
-9. `DevPrep.PaymentService`
-10. `DevPrep.NewsService`
-11. `DevPrep.NotificationService`
-12. `DevPrep.StatisticsService`
+1. `ApiGateway`
+2. `AuthAPI`
+3. `UserAPI`
+4. `CvJdAPI`
+5. `QuestionAPI`
+6. `InterviewAPI`
+7. `EvaluationAPI`
+8. `FeedbackAPI`
+9. `PaymentAPI`
+10. `NewsAPI`
+11. `NotificationAPI`
+12. `StatisticsAPI`
 
 Admin and Manager are implemented as roles and route namespaces. Manager access is read-only through `/api/admin/manager/*` routes where needed.
 
@@ -33,17 +33,17 @@ Admin and Manager are implemented as roles and route namespaces. Manager access 
 
 The gateway owns public route namespaces and forwards requests to domain services:
 
-- `/api/auth/*` -> AuthService
-- `/api/users/*` -> UserProfileService
-- `/api/document/*` -> DocumentService
-- `/api/questions/*` -> QuestionBankService
-- `/api/interview/*` -> InterviewService
-- `/api/evaluation/*` -> EvaluationService
-- `/api/feedback/*` -> FeedbackService
-- `/api/payment/*` -> PaymentService
-- `/api/news/*` -> NewsService
-- `/api/notifications/*` -> NotificationService
-- `/api/statistics/*` -> StatisticsService
+- `/api/auth/*` -> AuthAPI
+- `/api/users/*` -> UserAPI
+- `/api/document/*` -> CvJdAPI
+- `/api/questions/*` -> QuestionAPI
+- `/api/interview/*` -> InterviewAPI
+- `/api/evaluation/*` -> EvaluationAPI
+- `/api/feedback/*` -> FeedbackAPI
+- `/api/payment/*` -> PaymentAPI
+- `/api/news/*` -> NewsAPI
+- `/api/notifications/*` -> NotificationAPI
+- `/api/statistics/*` -> StatisticsAPI
 
 Admin and Manager namespaces route to the correct domain service rather than to a separate admin or manager service.
 
@@ -67,5 +67,6 @@ dotnet build backend\DevPrep.sln
 Run the gateway:
 
 ```powershell
-dotnet run --project backend\DevPrep.ApiGateway\DevPrep.ApiGateway.csproj
+dotnet run --project backend\ApiGateway\ApiGateway.csproj
 ```
+
