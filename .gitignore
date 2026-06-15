@@ -20,6 +20,14 @@ obj/
 *.userosscache
 *.sln.docstates
 
+# Uploaded avatars (du lieu nguoi dung, khong commit anh; giu thu muc bang .gitkeep)
+backend/UserAPI/wwwroot/avatars/*
+!backend/UserAPI/wwwroot/avatars/.gitkeep
+
+# Cong cu test local (khong can len repo)
+backend/sso-test.html
+backend/serve.ps1
+
 # Node
 node_modules/
 dist/
