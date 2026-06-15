@@ -2,41 +2,47 @@
 
 ## Goals
 
-- Eliminate hardcoded values across all Microservices.
-- Centralize configuration via environment variables.
-- Ensure strict configuration isolation for each independent service.
+- Keep runtime values out of source code.
+- Use `.env.example` as the shared template and `.env` as local-only configuration.
+- Keep configuration ownership clear per service.
 
-## Rules
+## Environment Prefixes
 
-1. **Isolated Configurations:** Each microservice MUST have its own independent configuration section. An environment variable for `PaymentService` must not bleed into `AuthService`.
-2. **No hardcoded values** (ports, URLs, feature flags, routing paths, thresholds).
-3. **Secrets must live in `.env` or environment variables**.
-4. **Config binding** should happen at startup only.
-5. **Root .env + Prefix Policy (Locked):** Use a single `.env` at repo root with explicit prefixes: `GLOBAL_`, `AUTH_`, `DOC_`, `INTERVIEW_`, `EVALUATION_`, `PAYMENT_`, `ADMIN_`. Each service may read only `GLOBAL_` and its own prefix.
+Each backend service reads `GLOBAL_` values plus its own prefix:
 
-## Backend (.NET Microservices)
+| Service | Prefix |
+| --- | --- |
+| ApiGateway | `GLOBAL_` |
+| AuthService | `AUTH_` |
+| UserProfileService | `USER_` |
+| DocumentService | `DOC_` |
+| QuestionBankService | `QUESTION_` |
+| InterviewService | `INTERVIEW_` |
+| EvaluationService | `EVALUATION_` |
+| FeedbackService | `FEEDBACK_` |
+| PaymentService | `PAYMENT_` |
+| NewsService | `NEWS_` |
+| NotificationService | `NOTIFICATION_` |
+| StatisticsService | `STATISTICS_` |
 
-- **No Global Shared Libraries:** Do not create a global `DevPrep.Shared` project or `BuildingBlocks` folder.
-- **Constants:** Must be defined locally within each specific microservice folder (e.g., `backend/DevPrep.AuthService/Constants/`, `backend/DevPrep.InterviewService/Constants/`).
-- **Config objects:** Create configuration models locally inside each service, e.g., `backend/DevPrep.EvaluationService/Configuration/`.
-- Environment bindings via `IOptions<T>` pattern during service registration.
+Each business service must read its own `*_API_PORT` and `*_DB_CONNECTION_STRING`.
 
-## AI Service (Python)
+## Backend Rules
 
-- Constants: `ai-service/app/core/constants.py`
-- Env settings: `ai-service/app/core/config.py` (using Pydantic BaseSettings)
+- Do not hard-code ports, connection strings, secrets, provider keys, scoring thresholds, or service URLs.
+- Do not create `DevPrep.Shared`, `BuildingBlocks`, `Common`, `SharedKernel`, or a shared backend class library unless explicitly approved.
+- Keep constants and configuration models service-local.
+- Do not query another service's database directly.
+- Prefer async I/O for HTTP, DB, and AI calls.
 
-## Frontend (React)
+## Frontend Rules
 
-- Constants: `frontend/src/constants/`
-- Env wrapper: `frontend/src/config/env.ts`
+- Keep API client/config logic centralized.
+- Use one gateway base URL value.
+- Do not call downstream services or the internal AI service directly from the browser.
 
-## Cross-Service Communication Notes
+## AI Service Rules
 
-- RabbitMQ queue names must be defined in the constants of the specific services that publish or consume them.
-- External Service URLs (used for HTTPClient sync calls) must be injected via `.env`, allowing the API Gateway and downstream services to communicate dynamically regardless of environment.
-
-## Performance Note
-
-- Avoid synchronous/blocking calls in request handlers.
-- Use async IO for HTTP, DB, and AI service calls.
+- Use environment variables for runtime configuration.
+- Keep `/health` available.
+- Do not hard-code model/provider secrets.
