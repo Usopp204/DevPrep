@@ -1,4 +1,4 @@
-using DotNetEnv;
+﻿using DotNetEnv;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using NotificationAPI.Consumers;
@@ -8,7 +8,8 @@ using NotificationAPI.Repositories.Interfaces;
 using NotificationAPI.Services;
 using NotificationAPI.Services.Interfaces;
 
-Env.TraversePath().Load();
+try { Env.TraversePath().Load(".env.example"); } catch { }
+try { Env.TraversePath().Load(); } catch { }
 
 var builder = WebApplication.CreateBuilder(args);
 

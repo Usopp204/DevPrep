@@ -13,7 +13,8 @@ using UserAPI.Services;
 using UserAPI.Services.Interfaces;
 
 // Nạp biến môi trường từ backend/.env (RabbitMQ...). Không bắt buộc khi đã có env hệ thống.
-try { Env.TraversePath().Load(); } catch { /* .env không bắt buộc */ }
+try { Env.TraversePath().Load(".env.example"); } catch { }
+try { Env.TraversePath().Load(); } catch { }
 
 var builder = WebApplication.CreateBuilder(args);
 

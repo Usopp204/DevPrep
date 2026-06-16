@@ -1,7 +1,8 @@
-using DotNetEnv;
+﻿using DotNetEnv;
 using Microsoft.AspNetCore.Http.Timeouts;
 
-Env.TraversePath().Load();
+try { Env.TraversePath().Load(".env.example"); } catch { }
+try { Env.TraversePath().Load(); } catch { }
 
 var builder = WebApplication.CreateBuilder(args);
 

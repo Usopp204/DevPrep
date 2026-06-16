@@ -1,9 +1,10 @@
-using DotNetEnv;
+﻿using DotNetEnv;
 using InterviewAPI.Data;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
 
-Env.TraversePath().Load();
+try { Env.TraversePath().Load(".env.example"); } catch { }
+try { Env.TraversePath().Load(); } catch { }
 
 var builder = WebApplication.CreateBuilder(args);
 
