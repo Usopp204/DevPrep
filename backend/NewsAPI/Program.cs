@@ -1,7 +1,10 @@
-﻿using DotNetEnv;
-using NewsAPI.Data;
-using MassTransit;
+using DotNetEnv;
 using Microsoft.EntityFrameworkCore;
+using NewsAPI.Models;
+using NewsAPI.Repositories;
+using NewsAPI.Repositories.Interfaces;
+using NewsAPI.Services;
+using NewsAPI.Services.Interfaces;
 
 try { Env.TraversePath().Load(".env.example"); } catch { }
 try { Env.TraversePath().Load(); } catch { }
@@ -11,54 +14,32 @@ var builder = WebApplication.CreateBuilder(args);
 var servicePort = builder.Configuration.GetValue<int>("NEWS_API_PORT", 7009);
 builder.WebHost.UseUrls($"http://0.0.0.0:{servicePort}");
 
+// DbContext: connection string lấy từ appsettings (ConnectionStrings:DefaultConnection).
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection is missing.");
+builder.Services.AddDbContext<NewsDbContext>(options => options.UseSqlServer(connectionString));
+
+// Repositories + Services.
+builder.Services.AddScoped<INewsRepository, NewsRepository>();
+builder.Services.AddScoped<INewsService, NewsService>();
+
+builder.Services.AddControllers();
+
+// CORS cho frontend (dev). Tin tức là công khai nên không cần xác thực.
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("FrontendDev", policy => policy
+        .WithOrigins(
+            "http://localhost:5173",
+            "http://localhost:3000",
+            "http://localhost:4200",
+            "http://localhost:5500")
+        .AllowAnyHeader()
+        .AllowAnyMethod());
+});
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-
-var connectionString = builder.Configuration.GetValue<string>("NEWS_DB_CONNECTION_STRING");
-if (string.IsNullOrWhiteSpace(connectionString))
-{
-    throw new InvalidOperationException("NEWS_DB_CONNECTION_STRING is missing.");
-}
-
-builder.Services.AddDbContext<NewsDbContext>(options =>
-    options.UseSqlServer(connectionString));
-
-var rabbitHost = builder.Configuration.GetValue<string>("GLOBAL_RABBITMQ_HOST", "localhost");
-var rabbitUser = builder.Configuration.GetValue<string>("GLOBAL_RABBITMQ_USER", "guest");
-var rabbitPass = builder.Configuration.GetValue<string>("GLOBAL_RABBITMQ_PASS", "guest");
-var useRabbitMq = builder.Configuration.GetValue<bool>("USE_RABBITMQ", false);
-
-if (string.IsNullOrWhiteSpace(rabbitHost) || string.IsNullOrWhiteSpace(rabbitUser) || string.IsNullOrWhiteSpace(rabbitPass))
-{
-    throw new InvalidOperationException("RabbitMQ config is missing or invalid.");
-}
-
-builder.Services.AddMassTransit(x =>
-{
-    x.SetKebabCaseEndpointNameFormatter();
-
-    if (useRabbitMq)
-    {
-        x.UsingRabbitMq((context, cfg) =>
-        {
-            cfg.Host(rabbitHost, "/", h =>
-            {
-                h.Username(rabbitUser);
-                h.Password(rabbitPass);
-            });
-
-            cfg.UseMessageRetry(r => r.Interval(3, TimeSpan.FromSeconds(2)));
-            cfg.ConfigureEndpoints(context);
-        });
-    }
-    else
-    {
-        x.UsingInMemory((context, cfg) =>
-        {
-            cfg.ConfigureEndpoints(context);
-        });
-    }
-});
 
 var app = builder.Build();
 
@@ -67,6 +48,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseCors("FrontendDev");
+
+app.MapControllers();
 
 app.MapGet("/health", () => Results.Ok(new
 {
@@ -77,4 +62,3 @@ app.MapGet("/health", () => Results.Ok(new
 .WithOpenApi();
 
 app.Run();
-

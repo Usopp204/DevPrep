@@ -5,7 +5,6 @@ using AuthAPI.Repositories.Interfaces;
 using AuthAPI.Services;
 using AuthAPI.Services.Interfaces;
 using DotNetEnv;
-using MassTransit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -39,34 +38,32 @@ builder.Services.AddScoped<IGoogleTokenValidator, GoogleTokenValidator>();
 builder.Services.AddHttpClient<IGitHubOAuthClient, GitHubOAuthClient>();
 builder.Services.AddHttpContextAccessor();
 
-// MassTransit: AuthAPI chỉ publish event (EmailVerificationRequested) tới message bus.
-var useRabbitMq = builder.Configuration.GetValue<bool>("USE_RABBITMQ", false);
-var rabbitHost = builder.Configuration.GetValue<string>("GLOBAL_RABBITMQ_HOST", "localhost");
-var rabbitUser = builder.Configuration.GetValue<string>("GLOBAL_RABBITMQ_USER", "guest");
-var rabbitPass = builder.Configuration.GetValue<string>("GLOBAL_RABBITMQ_PASS", "guest");
+// Giao tiếp liên service qua HTTP (thay cho message bus RabbitMQ):
+//   - NotificationAPI: gửi email OTP / đặt lại mật khẩu.
+//   - UserAPI: tạo hồ sơ khi có tài khoản mới.
+// BaseAddress + header khoá nội bộ (X-Internal-Api-Key) cấu hình một lần ở đây.
+var internalApiKey = builder.Configuration.GetValue<string>("INTERNAL_API_KEY", string.Empty);
+var notificationBaseUrl = builder.Configuration.GetValue<string>("NOTIFICATION_API_BASEURL", "http://localhost:7010");
+var userBaseUrl = builder.Configuration.GetValue<string>("USER_API_BASEURL", "http://localhost:7002");
 
-builder.Services.AddMassTransit(x =>
+// UseProxy=false: gọi nội bộ tới localhost, KHÔNG đi qua proxy hệ thống (proxy có thể chặn localhost).
+builder.Services.AddHttpClient<INotificationApiClient, NotificationApiClient>(client =>
 {
-    x.SetKebabCaseEndpointNameFormatter();
+    client.BaseAddress = new Uri(notificationBaseUrl!);
+    client.Timeout = TimeSpan.FromSeconds(15);
+    if (!string.IsNullOrEmpty(internalApiKey))
+        client.DefaultRequestHeaders.Add("X-Internal-Api-Key", internalApiKey);
+})
+.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { UseProxy = false });
 
-    if (useRabbitMq)
-    {
-        x.UsingRabbitMq((context, cfg) =>
-        {
-            cfg.Host(rabbitHost, "/", h =>
-            {
-                h.Username(rabbitUser);
-                h.Password(rabbitPass);
-            });
-            cfg.ConfigureEndpoints(context);
-        });
-    }
-    else
-    {
-        // Fallback khi chưa bật RabbitMQ: transport in-memory (chỉ trong cùng tiến trình).
-        x.UsingInMemory((context, cfg) => cfg.ConfigureEndpoints(context));
-    }
-});
+builder.Services.AddHttpClient<IUserApiClient, UserApiClient>(client =>
+{
+    client.BaseAddress = new Uri(userBaseUrl!);
+    client.Timeout = TimeSpan.FromSeconds(15);
+    if (!string.IsNullOrEmpty(internalApiKey))
+        client.DefaultRequestHeaders.Add("X-Internal-Api-Key", internalApiKey);
+})
+.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { UseProxy = false });
 
 // JWT Authentication: xác thực access token cho các endpoint cần [Authorize] sau này.
 var jwtKey = builder.Configuration["Jwt:Key"]

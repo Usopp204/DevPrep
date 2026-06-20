@@ -6,7 +6,6 @@ using AuthAPI.Models;
 using AuthAPI.Repositories.Interfaces;
 using AuthAPI.Services.Interfaces;
 using DevPrep.Contracts;
-using MassTransit;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
@@ -39,7 +38,8 @@ public class AuthService : IAuthService
     private readonly ITokenService _tokenService;
     private readonly IGoogleTokenValidator _googleTokenValidator;
     private readonly IGitHubOAuthClient _gitHubOAuthClient;
-    private readonly IPublishEndpoint _publishEndpoint;
+    private readonly INotificationApiClient _notificationApiClient;
+    private readonly IUserApiClient _userApiClient;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IConfiguration _configuration;
     private readonly ILogger<AuthService> _logger;
@@ -55,7 +55,8 @@ public class AuthService : IAuthService
         ITokenService tokenService,
         IGoogleTokenValidator googleTokenValidator,
         IGitHubOAuthClient gitHubOAuthClient,
-        IPublishEndpoint publishEndpoint,
+        INotificationApiClient notificationApiClient,
+        IUserApiClient userApiClient,
         IHttpContextAccessor httpContextAccessor,
         IConfiguration configuration,
         ILogger<AuthService> logger)
@@ -70,7 +71,8 @@ public class AuthService : IAuthService
         _tokenService = tokenService;
         _googleTokenValidator = googleTokenValidator;
         _gitHubOAuthClient = gitHubOAuthClient;
-        _publishEndpoint = publishEndpoint;
+        _notificationApiClient = notificationApiClient;
+        _userApiClient = userApiClient;
         _httpContextAccessor = httpContextAccessor;
         _configuration = configuration;
         _logger = logger;
@@ -629,7 +631,7 @@ public class AuthService : IAuthService
 
         try
         {
-            await _publishEndpoint.Publish(new EmailVerificationRequested
+            await _notificationApiClient.SendEmailVerificationAsync(new EmailVerificationRequested
             {
                 AccountId = accountId,
                 Email = email,
@@ -639,7 +641,7 @@ public class AuthService : IAuthService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to publish EmailVerificationRequested for {Email}.", email);
+            _logger.LogWarning(ex, "Failed to call NotificationAPI (email verification) for {Email}.", email);
         }
     }
 
@@ -662,7 +664,7 @@ public class AuthService : IAuthService
 
         try
         {
-            await _publishEndpoint.Publish(new PasswordResetRequested
+            await _notificationApiClient.SendPasswordResetAsync(new PasswordResetRequested
             {
                 AccountId = accountId,
                 Email = email,
@@ -672,7 +674,7 @@ public class AuthService : IAuthService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to publish PasswordResetRequested for {Email}.", email);
+            _logger.LogWarning(ex, "Failed to call NotificationAPI (password reset) for {Email}.", email);
         }
     }
 
@@ -684,7 +686,7 @@ public class AuthService : IAuthService
     {
         try
         {
-            await _publishEndpoint.Publish(new AccountRegistered
+            await _userApiClient.CreateProfileAsync(new AccountRegistered
             {
                 AccountId = accountId,
                 Email = email,
@@ -693,7 +695,7 @@ public class AuthService : IAuthService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to publish AccountRegistered for {Email}.", email);
+            _logger.LogWarning(ex, "Failed to call UserAPI (create profile) for {Email}.", email);
         }
     }
 

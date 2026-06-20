@@ -1,11 +1,10 @@
 using System.Text;
+using DevPrep.Contracts;
 using DotNetEnv;
-using MassTransit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using UserAPI.Consumers;
 using UserAPI.Models;
 using UserAPI.Repositories;
 using UserAPI.Repositories.Interfaces;
@@ -94,37 +93,8 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-var rabbitHost = builder.Configuration.GetValue<string>("GLOBAL_RABBITMQ_HOST", "localhost");
-var rabbitUser = builder.Configuration.GetValue<string>("GLOBAL_RABBITMQ_USER", "guest");
-var rabbitPass = builder.Configuration.GetValue<string>("GLOBAL_RABBITMQ_PASS", "guest");
-var useRabbitMq = builder.Configuration.GetValue<bool>("USE_RABBITMQ", false);
-
-builder.Services.AddMassTransit(x =>
-{
-    x.SetKebabCaseEndpointNameFormatter();
-
-    // Consumer tạo hồ sơ khi có tài khoản mới (event AccountRegistered từ AuthAPI).
-    x.AddConsumer<AccountRegisteredConsumer>();
-
-    if (useRabbitMq)
-    {
-        x.UsingRabbitMq((context, cfg) =>
-        {
-            cfg.Host(rabbitHost, "/", h =>
-            {
-                h.Username(rabbitUser);
-                h.Password(rabbitPass);
-            });
-
-            cfg.UseMessageRetry(r => r.Interval(3, TimeSpan.FromSeconds(2)));
-            cfg.ConfigureEndpoints(context);
-        });
-    }
-    else
-    {
-        x.UsingInMemory((context, cfg) => cfg.ConfigureEndpoints(context));
-    }
-});
+// Khoá nội bộ: chỉ service nào gửi kèm header X-Internal-Api-Key đúng mới gọi được /internal/*.
+var internalApiKey = builder.Configuration.GetValue<string>("INTERNAL_API_KEY", string.Empty);
 
 var app = builder.Build();
 
@@ -152,4 +122,23 @@ app.MapGet("/health", () => Results.Ok(new
 .WithName("GetHealth")
 .WithOpenApi();
 
+// ── Internal endpoint (thay cho consumer RabbitMQ) — AuthAPI gọi khi có tài khoản mới ──
+// Idempotent: bỏ qua nếu hồ sơ đã tồn tại.
+app.MapPost("/internal/profiles",
+    async (AccountRegistered message, HttpRequest request, IUserProfileService service) =>
+    {
+        if (!IsInternalCallAuthorized(request, internalApiKey)) return Results.Unauthorized();
+        await service.CreateProfileIfNotExistsAsync(message.AccountId, message.FullName);
+        return Results.Ok();
+    })
+    .ExcludeFromDescription();
+
 app.Run();
+
+// So khớp header X-Internal-Api-Key với khoá cấu hình. Chưa cấu hình khoá -> cho qua (tiện chạy dev).
+static bool IsInternalCallAuthorized(HttpRequest request, string? configuredKey)
+{
+    if (string.IsNullOrEmpty(configuredKey)) return true;
+    return request.Headers.TryGetValue("X-Internal-Api-Key", out var provided)
+        && string.Equals(provided.ToString(), configuredKey, StringComparison.Ordinal);
+}

@@ -1,7 +1,6 @@
-﻿using DotNetEnv;
-using MassTransit;
+﻿using DevPrep.Contracts;
+using DotNetEnv;
 using Microsoft.EntityFrameworkCore;
-using NotificationAPI.Consumers;
 using NotificationAPI.Models;
 using NotificationAPI.Repositories;
 using NotificationAPI.Repositories.Interfaces;
@@ -36,46 +35,8 @@ builder.Services.AddScoped<IEmailLogRepository, EmailLogRepository>();
 builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 
-var rabbitHost = builder.Configuration.GetValue<string>("GLOBAL_RABBITMQ_HOST", "localhost");
-var rabbitUser = builder.Configuration.GetValue<string>("GLOBAL_RABBITMQ_USER", "guest");
-var rabbitPass = builder.Configuration.GetValue<string>("GLOBAL_RABBITMQ_PASS", "guest");
-var useRabbitMq = builder.Configuration.GetValue<bool>("USE_RABBITMQ", false);
-
-if (string.IsNullOrWhiteSpace(rabbitHost) || string.IsNullOrWhiteSpace(rabbitUser) || string.IsNullOrWhiteSpace(rabbitPass))
-{
-    throw new InvalidOperationException("RabbitMQ config is missing or invalid.");
-}
-
-builder.Services.AddMassTransit(x =>
-{
-    x.SetKebabCaseEndpointNameFormatter();
-
-    // Consumer lắng nghe event EmailVerificationRequested + PasswordResetRequested từ AuthAPI.
-    x.AddConsumer<EmailVerificationRequestedConsumer>();
-    x.AddConsumer<PasswordResetRequestedConsumer>();
-
-    if (useRabbitMq)
-    {
-        x.UsingRabbitMq((context, cfg) =>
-        {
-            cfg.Host(rabbitHost, "/", h =>
-            {
-                h.Username(rabbitUser);
-                h.Password(rabbitPass);
-            });
-
-            cfg.UseMessageRetry(r => r.Interval(3, TimeSpan.FromSeconds(2)));
-            cfg.ConfigureEndpoints(context);
-        });
-    }
-    else
-    {
-        x.UsingInMemory((context, cfg) =>
-        {
-            cfg.ConfigureEndpoints(context);
-        });
-    }
-});
+// Khoá nội bộ: chỉ service nào gửi kèm header X-Internal-Api-Key đúng mới gọi được /internal/*.
+var internalApiKey = builder.Configuration.GetValue<string>("INTERNAL_API_KEY", string.Empty);
 
 var app = builder.Build();
 
@@ -96,7 +57,34 @@ app.MapGet("/health", () => Results.Ok(new
 .WithName("GetHealth")
 .WithOpenApi();
 
+// ── Internal endpoints (thay cho consumer RabbitMQ) — AuthAPI gọi qua HTTP ──
+app.MapPost("/internal/notifications/email-verification",
+    async (EmailVerificationRequested message, HttpRequest request, INotificationService service, CancellationToken ct) =>
+    {
+        if (!IsInternalCallAuthorized(request, internalApiKey)) return Results.Unauthorized();
+        await service.SendEmailVerificationAsync(message, ct);
+        return Results.Ok();
+    })
+    .ExcludeFromDescription();
+
+app.MapPost("/internal/notifications/password-reset",
+    async (PasswordResetRequested message, HttpRequest request, INotificationService service, CancellationToken ct) =>
+    {
+        if (!IsInternalCallAuthorized(request, internalApiKey)) return Results.Unauthorized();
+        await service.SendPasswordResetAsync(message, ct);
+        return Results.Ok();
+    })
+    .ExcludeFromDescription();
+
 app.Run();
+
+// So khớp header X-Internal-Api-Key với khoá cấu hình. Chưa cấu hình khoá -> cho qua (tiện chạy dev).
+static bool IsInternalCallAuthorized(HttpRequest request, string? configuredKey)
+{
+    if (string.IsNullOrEmpty(configuredKey)) return true;
+    return request.Headers.TryGetValue("X-Internal-Api-Key", out var provided)
+        && string.Equals(provided.ToString(), configuredKey, StringComparison.Ordinal);
+}
 
 static async Task SeedEmailTemplatesAsync(WebApplication app)
 {
