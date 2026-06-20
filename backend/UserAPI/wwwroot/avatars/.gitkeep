@@ -1,0 +1,2 @@
+# Thư mục lưu ảnh đại diện người dùng (được phục vụ qua static files tại /avatars/...).
+# Giữ file này để thư mục tồn tại trong git.

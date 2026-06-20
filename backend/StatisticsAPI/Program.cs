@@ -1,9 +1,9 @@
-using DotNetEnv;
+﻿using DotNetEnv;
 using StatisticsAPI.Data;
-using MassTransit;
 using Microsoft.EntityFrameworkCore;
 
-Env.TraversePath().Load();
+try { Env.TraversePath().Load(".env.example"); } catch { }
+try { Env.TraversePath().Load(); } catch { }
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,43 +21,6 @@ if (string.IsNullOrWhiteSpace(connectionString))
 
 builder.Services.AddDbContext<StatisticsDbContext>(options =>
     options.UseSqlServer(connectionString));
-
-var rabbitHost = builder.Configuration.GetValue<string>("GLOBAL_RABBITMQ_HOST", "localhost");
-var rabbitUser = builder.Configuration.GetValue<string>("GLOBAL_RABBITMQ_USER", "guest");
-var rabbitPass = builder.Configuration.GetValue<string>("GLOBAL_RABBITMQ_PASS", "guest");
-var useRabbitMq = builder.Configuration.GetValue<bool>("USE_RABBITMQ", false);
-
-if (string.IsNullOrWhiteSpace(rabbitHost) || string.IsNullOrWhiteSpace(rabbitUser) || string.IsNullOrWhiteSpace(rabbitPass))
-{
-    throw new InvalidOperationException("RabbitMQ config is missing or invalid.");
-}
-
-builder.Services.AddMassTransit(x =>
-{
-    x.SetKebabCaseEndpointNameFormatter();
-
-    if (useRabbitMq)
-    {
-        x.UsingRabbitMq((context, cfg) =>
-        {
-            cfg.Host(rabbitHost, "/", h =>
-            {
-                h.Username(rabbitUser);
-                h.Password(rabbitPass);
-            });
-
-            cfg.UseMessageRetry(r => r.Interval(3, TimeSpan.FromSeconds(2)));
-            cfg.ConfigureEndpoints(context);
-        });
-    }
-    else
-    {
-        x.UsingInMemory((context, cfg) =>
-        {
-            cfg.ConfigureEndpoints(context);
-        });
-    }
-});
 
 var app = builder.Build();
 
