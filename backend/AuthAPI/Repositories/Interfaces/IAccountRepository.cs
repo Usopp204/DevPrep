@@ -10,6 +10,9 @@ public interface IAccountRepository
 
     Task<Account?> GetByIdAsync(Guid accountId);
 
+    /// <summary>Lấy nhiều tài khoản theo danh sách Id (phục vụ resolve email cho service khác).</summary>
+    Task<List<Account>> GetByIdsAsync(IReadOnlyCollection<Guid> accountIds);
+
     Task AddAsync(Account account);
 
     /// <summary>

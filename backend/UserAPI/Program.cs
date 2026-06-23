@@ -133,6 +133,23 @@ app.MapPost("/internal/profiles",
     })
     .ExcludeFromDescription();
 
+// Resolve FullName theo danh sách AccountId (InterviewAPI/admin gọi để hiển thị tên người dùng).
+app.MapPost("/internal/profiles/lookup",
+    async (UserAPI.DTOs.ProfileLookupRequest body, HttpRequest request, IUserProfileRepository repository) =>
+    {
+        if (!IsInternalCallAuthorized(request, internalApiKey)) return Results.Unauthorized();
+        if (body.AccountIds is null || body.AccountIds.Count == 0)
+            return Results.Ok(Array.Empty<UserAPI.DTOs.ProfileLookupItem>());
+
+        var ids = body.AccountIds.Distinct().ToList();
+        var profiles = await repository.GetByAccountIdsAsync(ids);
+        var result = profiles
+            .Select(p => new UserAPI.DTOs.ProfileLookupItem(p.AccountId, p.FullName))
+            .ToList();
+        return Results.Ok(result);
+    })
+    .ExcludeFromDescription();
+
 app.Run();
 
 // So khớp header X-Internal-Api-Key với khoá cấu hình. Chưa cấu hình khoá -> cho qua (tiện chạy dev).

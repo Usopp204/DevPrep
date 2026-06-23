@@ -22,6 +22,12 @@ public class UserProfileRepository : IUserProfileRepository
         _context.UserProfiles
             .FirstOrDefaultAsync(p => p.AccountId == accountId);
 
+    public Task<List<UserProfile>> GetByAccountIdsAsync(IReadOnlyCollection<Guid> accountIds) =>
+        _context.UserProfiles
+            .AsNoTracking()
+            .Where(p => accountIds.Contains(p.AccountId))
+            .ToListAsync();
+
     public Task<bool> ExistsByAccountIdAsync(Guid accountId) =>
         _context.UserProfiles.AnyAsync(p => p.AccountId == accountId);
 

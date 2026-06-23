@@ -154,4 +154,28 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+// ── Internal endpoint: resolve email theo danh sách AccountId (InterviewAPI/admin gọi) ──
+// Bảo vệ bằng header X-Internal-Api-Key (khoá rỗng = bỏ qua kiểm tra, tiện chạy dev).
+app.MapPost("/internal/accounts/lookup",
+    async (AuthAPI.DTOs.AccountLookupRequest body, HttpRequest request, IAccountRepository accounts) =>
+    {
+        if (!IsInternalCallAuthorized(request, internalApiKey)) return Results.Unauthorized();
+        if (body.AccountIds is null || body.AccountIds.Count == 0)
+            return Results.Ok(Array.Empty<AuthAPI.DTOs.AccountLookupItem>());
+
+        var ids = body.AccountIds.Distinct().ToList();
+        var list = await accounts.GetByIdsAsync(ids);
+        var result = list.Select(a => new AuthAPI.DTOs.AccountLookupItem(a.AccountId, a.Email)).ToList();
+        return Results.Ok(result);
+    })
+    .ExcludeFromDescription();
+
 app.Run();
+
+// So khớp header X-Internal-Api-Key với khoá cấu hình. Chưa cấu hình khoá -> cho qua (tiện chạy dev).
+static bool IsInternalCallAuthorized(HttpRequest request, string? configuredKey)
+{
+    if (string.IsNullOrEmpty(configuredKey)) return true;
+    return request.Headers.TryGetValue("X-Internal-Api-Key", out var provided)
+        && string.Equals(provided.ToString(), configuredKey, StringComparison.Ordinal);
+}

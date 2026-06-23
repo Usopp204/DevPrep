@@ -1,0 +1,41 @@
+using FeedbackAPI.DTOs;
+using FeedbackAPI.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace FeedbackAPI.Controllers;
+
+/// <summary>
+/// Quản lý AI Feedback (đánh giá buổi phỏng vấn AI) cho Admin/Manager.
+/// Đọc (View/Search/Detail): Admin + Manager. Ghi (Delete): Admin.
+/// </summary>
+[ApiController]
+[Route("api/admin/feedbacks/ai")]
+[Authorize(Roles = "Admin,Manager")]
+public class AdminAiFeedbackController : ControllerBase
+{
+    private readonly IAiFeedbackService _service;
+
+    public AdminAiFeedbackController(IAiFeedbackService service)
+    {
+        _service = service;
+    }
+
+    /// <summary>View + Search AI feedback (danh sách đầy đủ). Tất cả tham số lọc đều tuỳ chọn. Sắp xếp mới nhất trước.</summary>
+    [HttpGet]
+    public async Task<IActionResult> GetList([FromQuery] AiFeedbackQuery query)
+    {
+        var result = await _service.GetListAsync(query);
+        return Ok(ApiResponse<PagedResult<AiFeedbackListItemDto>>.Ok(result));
+    }
+
+    /// <summary>Xoá mềm một AI feedback. Chỉ Admin.</summary>
+    [HttpDelete("{id:guid}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        var ok = await _service.SoftDeleteAsync(id);
+        if (!ok) return NotFound(ApiResponse<object>.Fail("AI feedback not found or already deleted."));
+        return Ok(ApiResponse<object>.Ok(new { id }, "AI feedback deleted (soft) successfully."));
+    }
+}
