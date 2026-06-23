@@ -25,9 +25,11 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
     ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection is missing.");
 builder.Services.AddDbContext<FeedbackDbContext>(options => options.UseSqlServer(connectionString));
 
-// Repositories + Services (kiến trúc phân lớp).
-builder.Services.AddScoped<IFeedbackRepository, FeedbackRepository>();
-builder.Services.AddScoped<IFeedbackService, FeedbackService>();
+// Repositories + Services (kiến trúc phân lớp). Tách riêng AI feedback và System feedback.
+builder.Services.AddScoped<IAiFeedbackRepository, AiFeedbackRepository>();
+builder.Services.AddScoped<ISystemFeedbackRepository, SystemFeedbackRepository>();
+builder.Services.AddScoped<IAiFeedbackService, AiFeedbackService>();
+builder.Services.AddScoped<ISystemFeedbackService, SystemFeedbackService>();
 
 // JWT: dùng chung Issuer/Audience/Key với AuthAPI để verify token Auth phát ra.
 var jwtKey = builder.Configuration["Jwt:Key"]

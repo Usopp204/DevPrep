@@ -10,6 +10,9 @@ public interface IUserProfileRepository
     /// <summary>Lấy hồ sơ có theo dõi thay đổi (tracking) để cập nhật.</summary>
     Task<UserProfile?> GetTrackedByAccountIdAsync(Guid accountId);
 
+    /// <summary>Lấy nhiều hồ sơ theo danh sách AccountId (phục vụ resolve FullName cho service khác).</summary>
+    Task<List<UserProfile>> GetByAccountIdsAsync(IReadOnlyCollection<Guid> accountIds);
+
     /// <summary>Kiểm tra đã có hồ sơ cho AccountId hay chưa (để tạo idempotent).</summary>
     Task<bool> ExistsByAccountIdAsync(Guid accountId);
 

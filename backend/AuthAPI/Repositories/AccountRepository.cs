@@ -22,6 +22,12 @@ public class AccountRepository : IAccountRepository
     public Task<Account?> GetByIdAsync(Guid accountId) =>
         _context.Accounts.FirstOrDefaultAsync(a => a.AccountId == accountId);
 
+    public Task<List<Account>> GetByIdsAsync(IReadOnlyCollection<Guid> accountIds) =>
+        _context.Accounts
+            .AsNoTracking()
+            .Where(a => accountIds.Contains(a.AccountId))
+            .ToListAsync();
+
     public async Task AddAsync(Account account) =>
         await _context.Accounts.AddAsync(account);
 
