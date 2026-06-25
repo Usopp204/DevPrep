@@ -22,6 +22,12 @@ public interface IAuthService
     /// <summary>Đăng nhập bằng GitHub (authorization code từ frontend).</summary>
     Task<LoginResponse> GitHubLoginAsync(GitHubLoginRequest request);
 
+    /// <summary>
+    /// Đăng nhập SSO theo Firebase (dùng chung cho Google lẫn GitHub). FE gửi Firebase ID token;
+    /// backend verify token (chữ ký Google + issuer/audience/hết hạn) rồi rút định danh từ claim đã xác minh.
+    /// </summary>
+    Task<LoginResponse> FirebaseLoginAsync(FirebaseLoginRequest request);
+
     /// <summary>Yêu cầu đặt lại mật khẩu: gửi link reset qua email (nếu tài khoản tồn tại).</summary>
     Task<ForgotPasswordResponse> ForgotPasswordAsync(ForgotPasswordRequest request);
 
