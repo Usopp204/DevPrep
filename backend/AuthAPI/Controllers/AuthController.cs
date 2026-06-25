@@ -119,6 +119,22 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
+    /// Đăng nhập/đăng ký bằng Firebase (dùng chung cho Google lẫn GitHub). FE gửi Firebase ID token
+    /// (lấy từ user.getIdToken()). Backend VERIFY token (chữ ký RS256 bằng khóa công khai của Google,
+    /// kiểm issuer/audience/hết hạn) rồi tự rút uid/email/name/provider từ claim đã xác minh —
+    /// KHÔNG tin thông tin định danh do client tự gửi.
+    /// </summary>
+    [HttpPost("sso/firebase")]
+    [ProducesResponseType(typeof(ApiResponse<LoginResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> FirebaseSso([FromBody] FirebaseLoginRequest request)
+    {
+        var result = await _authService.FirebaseLoginAsync(request);
+        return Ok(ApiResponse<LoginResponse>.Ok(result, "Login successful."));
+    }
+
+    /// <summary>
     /// Quên mật khẩu: gửi link đặt lại mật khẩu qua email. Luôn trả về cùng một
     /// thông báo dù email có tồn tại hay không (chống dò tài khoản).
     /// </summary>

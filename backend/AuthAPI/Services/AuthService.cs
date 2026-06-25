@@ -38,6 +38,7 @@ public class AuthService : IAuthService
     private readonly ITokenService _tokenService;
     private readonly IGoogleTokenValidator _googleTokenValidator;
     private readonly IGitHubOAuthClient _gitHubOAuthClient;
+    private readonly IFirebaseTokenValidator _firebaseTokenValidator;
     private readonly INotificationApiClient _notificationApiClient;
     private readonly IUserApiClient _userApiClient;
     private readonly IHttpContextAccessor _httpContextAccessor;
@@ -55,6 +56,7 @@ public class AuthService : IAuthService
         ITokenService tokenService,
         IGoogleTokenValidator googleTokenValidator,
         IGitHubOAuthClient gitHubOAuthClient,
+        IFirebaseTokenValidator firebaseTokenValidator,
         INotificationApiClient notificationApiClient,
         IUserApiClient userApiClient,
         IHttpContextAccessor httpContextAccessor,
@@ -71,6 +73,7 @@ public class AuthService : IAuthService
         _tokenService = tokenService;
         _googleTokenValidator = googleTokenValidator;
         _gitHubOAuthClient = gitHubOAuthClient;
+        _firebaseTokenValidator = firebaseTokenValidator;
         _notificationApiClient = notificationApiClient;
         _userApiClient = userApiClient;
         _httpContextAccessor = httpContextAccessor;
@@ -302,6 +305,14 @@ public class AuthService : IAuthService
     public async Task<LoginResponse> GitHubLoginAsync(GitHubLoginRequest request)
     {
         var info = await _gitHubOAuthClient.GetUserAsync(request.Code, request.RedirectUri);
+        return await ExternalLoginAsync(info);
+    }
+
+    public async Task<LoginResponse> FirebaseLoginAsync(FirebaseLoginRequest request)
+    {
+        // Verify Firebase ID token (chữ ký Google + issuer/audience/hết hạn) rồi rút thông tin đã xác minh.
+        // Dùng chung cho cả Google lẫn GitHub (Firebase cấp cùng kiểu ID token).
+        var info = await _firebaseTokenValidator.ValidateAsync(request.IdToken);
         return await ExternalLoginAsync(info);
     }
 

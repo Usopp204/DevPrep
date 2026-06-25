@@ -36,6 +36,8 @@ builder.Services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();
 builder.Services.AddSingleton<ITokenService, TokenService>();
 builder.Services.AddScoped<IGoogleTokenValidator, GoogleTokenValidator>();
 builder.Services.AddHttpClient<IGitHubOAuthClient, GitHubOAuthClient>();
+// Verify Firebase ID token: gọi internet lấy khóa công khai của Google nên KHÔNG tắt proxy.
+builder.Services.AddHttpClient<IFirebaseTokenValidator, FirebaseTokenValidator>();
 builder.Services.AddHttpContextAccessor();
 
 // Giao tiếp liên service qua HTTP (thay cho message bus RabbitMQ):
