@@ -1,0 +1,21 @@
+/* FOOTER */
+
+.footer{
+  max-width:1400px;
+  /* margin:auto; */
+  padding:60px;
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-end;
+}
+
+.footer p{
+  color:#8d94a8;
+  margin-top:10px;
+}
+
+.footer-links{
+  display:flex;
+  gap:30px;
+  color:#9ca3af;
+}
