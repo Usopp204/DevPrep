@@ -1,0 +1,80 @@
+[
+  {
+    "id": 1,
+    "name": "Alex Rivers",
+    "date": "Oct 24, 2024",
+    "role": "FRONTEND ENGINEER",
+    "level": "Senior Level",
+    "score": "92%",
+    "scoreType": "high",
+    "avatar": "https://i.pravatar.cc/150?img=11",
+    "ratings": { "technical": 5, "communication": 4, "realism": 5 },
+    "comment": "The AI Interviewer felt surprisingly human. It picked up on my specific mentions of React Concurrent Mode and pushed me to explain the trade-offs in detail. Excellent prep for a FAANG-level loop.",
+    "sessionId": "#SES-49281-AX"
+  },
+  {
+    "id": 2,
+    "name": "Sarah Chen",
+    "date": "Oct 22, 2024",
+    "role": "BACKEND ENGINEER",
+    "level": "Mid-Level",
+    "score": "88%",
+    "scoreType": "high",
+    "avatar": "https://i.pravatar.cc/150?img=47",
+    "ratings": { "technical": 5, "communication": 5, "realism": 5 },
+    "comment": "System design questions were quite challenging. The AI asked me to scale a real-time messaging app and caught my logic flaw in the database sharding strategy. Very helpful feedback after the session.",
+    "sessionId": "#SES-12883-SC"
+  },
+  {
+    "id": 3,
+    "name": "Marcus Thorne",
+    "date": "Oct 20, 2024",
+    "role": "FULLSTACK ENGINEER",
+    "level": "Junior Level",
+    "score": "74%",
+    "scoreType": "low",
+    "avatar": "https://i.pravatar.cc/150?img=12",
+    "ratings": { "technical": 4, "communication": 4, "realism": 5 },
+    "comment": "Tough but fair. I realized my understanding of GraphQL resolvers needs more work. The post-interview breakdown pinpointed exactly which resources I should study next. A wake-up call I needed.",
+    "sessionId": "#SES-98214-MT"
+  },
+  {
+    "id": 4,
+    "name": "Jasmine Wu",
+    "date": "Oct 19, 2024",
+    "role": "DATA SCIENTIST",
+    "level": "Senior Level",
+    "score": "95%",
+    "scoreType": "high",
+    "avatar": "https://i.pravatar.cc/150?img=44",
+    "ratings": { "technical": 5, "communication": 5, "realism": 5 },
+    "comment": "I used the custom 'Machine Learning' module. The AI probed my knowledge of gradient vanishing problems and suggested improvements to my explanation of LSTM architectures. Superb tool.",
+    "sessionId": "#SES-55321-JW"
+  },
+  {
+    "id": 5,
+    "name": "David Miller",
+    "date": "Oct 18, 2024",
+    "role": "FRONTEND ENGINEER",
+    "level": "Mid-Level",
+    "score": "81%",
+    "scoreType": "high",
+    "avatar": "https://i.pravatar.cc/150?img=33",
+    "ratings": { "technical": 4, "communication": 4, "realism": 5 },
+    "comment": "The coding playground integration worked flawlessly. I wrote my solution in the browser, and the AI reviewed my time complexity live. Really helped me build confidence for technical screens.",
+    "sessionId": "#SES-33109-DM"
+  },
+  {
+    "id": 6,
+    "name": "Elena Rodriguez",
+    "date": "Oct 17, 2024",
+    "role": "BACKEND ENGINEER",
+    "level": "Principal Level",
+    "score": "98%",
+    "scoreType": "high",
+    "avatar": "https://i.pravatar.cc/150?img=49",
+    "ratings": { "technical": 5, "communication": 5, "realism": 5 },
+    "comment": "Used it to practice behavioral questions for a leadership role. The AI was surprisingly good at asking follow-ups using the STAR method. Best mock interview platform I've used so far.",
+    "sessionId": "#SES-88200-ER"
+  }
+]
