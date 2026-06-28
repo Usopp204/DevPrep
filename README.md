@@ -1,4 +1,4 @@
-﻿# DevPrep
+# DevPrep
 
 DevPrep is an AI-powered mock interview simulator and IT competency evaluation system built as a Pure Microservices monorepo. The current source base is in infrastructure/scaffold stabilization: service projects, routing, environment layout, and contracts are aligned, while business entities, migrations, authentication enforcement, and real business endpoints are intentionally not implemented yet.
 
@@ -6,8 +6,7 @@ DevPrep is an AI-powered mock interview simulator and IT competency evaluation s
 
 ```text
 DevPrep/
-|-- backend/       # ASP.NET Core Pure Microservices + YARP API Gateway
-|-- frontend/      # Vite React application
+|-- source/        # ASP.NET Core APIs, YARP API Gateway, and MVC WebClient
 |-- ai-service/    # FastAPI AI service, internal-only
 |-- contracts/     # Source-of-truth API/data contracts tracked by Git
 |-- docs/          # Architecture and engineering documentation
@@ -17,7 +16,7 @@ DevPrep/
 
 ## Backend Architecture
 
-Backend uses Pure Microservices. `backend/DevPrep.sln` contains exactly 12 API projects:
+Source uses Pure Microservices for APIs. `source/DevPrep.sln` contains 12 API/Gateway projects plus `WebClient`:
 
 1. `ApiGateway`
 2. `AuthAPI`
@@ -31,12 +30,13 @@ Backend uses Pure Microservices. `backend/DevPrep.sln` contains exactly 12 API p
 10. `NewsAPI`
 11. `NotificationAPI`
 12. `StatisticsAPI`
+13. `WebClient`
 
 Admin and Manager are implemented as roles and route namespaces. Manager access is read-only through `/api/admin/manager/*` routes where needed.
 
 ## Gateway Route Ownership
 
-Frontend calls go through `ApiGateway`; browser clients must not call downstream services directly.
+WebClient calls go through `ApiGateway`; browser clients must not call downstream services directly.
 
 | Public route | Downstream service |
 | --- | --- |
@@ -54,7 +54,7 @@ Frontend calls go through `ApiGateway`; browser clients must not call downstream
 
 Admin routes such as `/api/admin/questions/*`, `/api/admin/feedbacks/*`, `/api/admin/news/*`, `/api/admin/payments/*`, and `/api/admin/statistics/*` are routed to the appropriate domain service. Manager routes such as `/api/admin/manager/questions/*` follow the same domain-service routing model.
 
-The AI service is internal-only. Do not document or expose public frontend-facing AI gateway endpoints.
+The AI service is internal-only. Do not document or expose public WebClient-facing AI gateway endpoints.
 
 ## Local Setup
 
@@ -62,27 +62,25 @@ The AI service is internal-only. Do not document or expose public frontend-facin
 2. Build backend:
 
 ```powershell
-dotnet build backend\DevPrep.sln
+dotnet build source\DevPrep.sln
 ```
 
 3. Run the gateway:
 
 ```powershell
-dotnet run --project backend\ApiGateway\ApiGateway.csproj
+dotnet run --project source\ApiGateway\ApiGateway.csproj
 ```
 
 4. Run an individual service when needed:
 
 ```powershell
-dotnet run --project backend\AuthAPI\AuthAPI.csproj
+dotnet run --project source\AuthAPI\AuthAPI.csproj
 ```
 
-5. Run frontend:
+5. Run WebClient:
 
 ```powershell
-cd frontend
-npm install
-npm run dev
+dotnet run --project source\WebClient\WebClient.csproj
 ```
 
 6. Run AI service for internal backend integration work:
@@ -101,4 +99,5 @@ python -m uvicorn app.main:app --reload
 - Gateway routing is aligned to the current service boundaries.
 - Contracts are tracked under `contracts/`.
 - Real business endpoints, persistence models, migrations, JWT enforcement, and cross-service workflows remain TODO.
+
 

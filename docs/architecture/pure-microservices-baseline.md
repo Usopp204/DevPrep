@@ -4,7 +4,7 @@ This document records the confirmed backend source-base architecture for DevPrep
 
 ## Backend Projects
 
-`backend/DevPrep.sln` contains exactly 12 API projects:
+`source/DevPrep.sln` contains 12 API/Gateway projects plus `WebClient`:
 
 1. `ApiGateway`
 2. `AuthAPI`
@@ -18,6 +18,7 @@ This document records the confirmed backend source-base architecture for DevPrep
 10. `NewsAPI`
 11. `NotificationAPI`
 12. `StatisticsAPI`
+13. `WebClient`
 
 Admin and Manager are implemented as roles and route namespaces. Manager access is read-only through `/api/admin/manager/*` routes where needed.
 
@@ -67,9 +68,10 @@ Each business service owns its local `DbContext` and reads its own `*_DB_CONNECT
 
 ## AI Service
 
-The FastAPI AI service is internal-only. Do not document or expose public frontend-facing AI API routes through the gateway.
+The FastAPI AI service is internal-only. Do not document or expose public WebClient-facing AI API routes through the gateway.
 
 ## Current Source Status
 
 This source base is scaffold/stabilization level. Service projects, local `DbContext` placeholders, health endpoints, environment keys, and gateway routes are aligned. Business entities, migrations, JWT enforcement, real business endpoints, event consumers, and AI workflows remain intentionally unimplemented.
+
 

@@ -10,7 +10,7 @@ public record PasswordResetRequested
 
     public string Email { get; init; } = null!;
 
-    /// <summary>Liên kết đặt lại mật khẩu đầy đủ (đã kèm token) trỏ về trang frontend.</summary>
+    /// <summary>Liên kết đặt lại mật khẩu đầy đủ (đã kèm token) trỏ về trang WebClient.</summary>
     public string ResetUrl { get; init; } = null!;
 
     public DateTime ExpiresAt { get; init; }

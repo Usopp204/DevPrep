@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Python FastAPI service for future NLP/RAG/question/evaluation support. The AI service is internal-only and is not a public frontend-facing API surface.
+Python FastAPI service for future NLP/RAG/question/evaluation support. The AI service is internal-only and is not a public WebClient-facing API surface.
 
 Current implementation is scaffold-level and exposes only `/health`.
 
