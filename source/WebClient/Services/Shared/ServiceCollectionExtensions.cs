@@ -25,7 +25,9 @@ public static class ServiceCollectionExtensions
             {
                 client.BaseAddress = baseUri;
             }
-        });
+        })
+        // Gọi tới API Gateway ở localhost: KHÔNG đi qua proxy hệ thống (proxy có thể chặn localhost -> timeout).
+        .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { UseProxy = false });
 
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IProfileService, ProfileService>();
