@@ -1,0 +1,49 @@
+@*
+    Footer dùng chung.
+    Cách include ở bất kỳ view nào:  @await Html.PartialAsync("_Footer")
+    Lưu ý: trang include cần nạp ~/css/home.css để có style.
+*@
+<footer class="hm-footer">
+    <div class="hm-footer-grid">
+        <div>
+            <div class="hm-footer-brand">DevPrep AI</div>
+            <p class="hm-footer-about">Nâng tầm kỹ năng phỏng vấn của kỹ sư Việt bằng sức mạnh của AI thế hệ mới.</p>
+            <div class="hm-footer-social">
+                <a href="#"><span class="material-symbols-outlined">public</span></a>
+                <a href="#"><span class="material-symbols-outlined">alternate_email</span></a>
+            </div>
+        </div>
+
+        <div class="hm-footer-cols">
+            <div class="hm-footer-col">
+                <span class="hm-col-title">PRODUCT</span>
+                <a href="#">Tính năng</a>
+                <a href="#">Bảng giá</a>
+                <a href="#">Lộ trình</a>
+            </div>
+            <div class="hm-footer-col">
+                <span class="hm-col-title">RESOURCES</span>
+                <a href="#">Blog</a>
+                <a href="#">Tài liệu</a>
+                <a href="#">Cộng đồng</a>
+            </div>
+        </div>
+
+        <div class="hm-newsletter">
+            <span class="hm-col-title">NEWSLETTER</span>
+            <p>Nhận tin tức mới nhất về phỏng vấn kỹ thuật.</p>
+            <form class="hm-newsletter-form" onsubmit="event.preventDefault();">
+                <input type="email" placeholder="Email của bạn" />
+                <button type="submit">Gửi</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="hm-footer-bottom">
+        <span>© 2024 DevPrep AI. All rights reserved.</span>
+        <div class="hm-footer-legal">
+            <a href="#">Privacy Policy</a>
+            <a href="#">Terms of Service</a>
+        </div>
+    </div>
+</footer>
