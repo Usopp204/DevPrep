@@ -279,6 +279,52 @@ body.pf-page {
 .pf-btn-ghost:hover { background: rgba(255, 255, 255, .1); color: #fff; }
 .pf-btn-block { width: 100%; justify-content: center; }
 
+/* ---------------- Password field + eye toggle ---------------- */
+.pf-input-wrap { position: relative; }
+.pf-input-wrap .pf-input { padding-right: 44px; }
+.pf-eye-btn {
+    position: absolute;
+    top: 50%; right: 8px;
+    transform: translateY(-50%);
+    background: none; border: none;
+    color: var(--pf-muted);
+    cursor: pointer;
+    display: inline-flex;
+    padding: 4px;
+    border-radius: 6px;
+    transition: color .15s;
+}
+.pf-eye-btn:hover { color: #fff; }
+.pf-eye-btn .material-symbols-outlined { font-size: 20px; }
+
+/* ---------------- Password requirements checklist (giống Register) ---------------- */
+.pw-reqs {
+    display: none;
+    margin-top: 10px;
+    padding: 12px 14px;
+    background: rgba(11, 19, 38, .6);
+    border: 1px solid rgba(255, 255, 255, .08);
+    border-radius: 8px;
+}
+.pw-reqs.show { display: block; }
+.pw-reqs-title {
+    margin: 0 0 8px;
+    font-size: 11px;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: var(--pf-muted);
+}
+.pw-reqs-list { list-style: none; margin: 0; padding: 0; }
+.pw-req {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; line-height: 20px;
+    color: var(--pf-muted);
+    transition: color .2s;
+}
+.pw-req + .pw-req { margin-top: 6px; }
+.pw-req .pw-req-icon { font-size: 16px; }
+.pw-req.met { color: var(--pf-success); }
+
 /* Alerts */
 .pf-alert {
     display: flex; align-items: center; gap: 10px;

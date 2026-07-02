@@ -11,10 +11,13 @@ public record ProfileResult(bool Success, bool Unauthorized, ProfileViewModel? P
 
 public record ProfileUpdateResult(bool Success, bool Unauthorized, string Message);
 
+public record ChangePasswordResult(bool Success, bool Unauthorized, string Message);
+
 public interface IProfileService
 {
     Task<ProfileResult> GetMyProfileAsync();
     Task<ProfileUpdateResult> UpdateMyProfileAsync(EditProfileViewModel model);
+    Task<ChangePasswordResult> ChangePasswordAsync(ChangePasswordViewModel model);
 }
 
 public sealed class ProfileService(IApiClient apiClient, IHttpContextAccessor httpContextAccessor) : IProfileService
@@ -107,6 +110,50 @@ public sealed class ProfileService(IApiClient apiClient, IHttpContextAccessor ht
         catch (Exception)
         {
             return new ProfileUpdateResult(false, false, CannotReach);
+        }
+    }
+
+    public async Task<ChangePasswordResult> ChangePasswordAsync(ChangePasswordViewModel model)
+    {
+        var token = GetAccessToken();
+        if (string.IsNullOrEmpty(token))
+        {
+            return new ChangePasswordResult(false, true, "Not authenticated.");
+        }
+
+        var payload = new
+        {
+            currentPassword = model.CurrentPassword,
+            newPassword = model.NewPassword,
+            confirmPassword = model.ConfirmPassword
+        };
+
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, "api/auth/change-password")
+            {
+                Content = JsonContent.Create(payload)
+            };
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            using var response = await apiClient.HttpClient.SendAsync(request);
+
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                return new ChangePasswordResult(false, true, "Session expired. Please log in again.");
+            }
+
+            var body = await ReadBodyAsync<object>(response);
+            if (response.IsSuccessStatusCode && body?.Success == true)
+            {
+                return new ChangePasswordResult(true, false, body.Message ?? "Password changed successfully.");
+            }
+
+            return new ChangePasswordResult(false, false,
+                body?.Message ?? $"Change password failed (HTTP {(int)response.StatusCode}).");
+        }
+        catch (Exception)
+        {
+            return new ChangePasswordResult(false, false, CannotReach);
         }
     }
 
