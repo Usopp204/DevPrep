@@ -1,0 +1,86 @@
+@*
+    Thanh điều hướng dùng chung.
+    Cách include ở bất kỳ view nào:  @await Html.PartialAsync("_Navbar")
+    Lưu ý: trang include cần nạp ~/css/home.css để có style.
+    Đã đăng nhập (có cookie access_token) -> hiện avatar + dropdown (View Profile / Logout);
+    chưa đăng nhập -> hiện nút Login / Register.
+*@
+@{
+    var navEmail = Context.Request.Cookies["user_email"];
+    var navLoggedIn = !string.IsNullOrEmpty(Context.Request.Cookies["access_token"]);
+    var navInitial = string.IsNullOrWhiteSpace(navEmail) ? "U" : navEmail.Trim().Substring(0, 1).ToUpper();
+}
+<nav class="hm-navbar" id="hm-navbar">
+    <div class="hm-navbar-inner">
+        <a class="hm-brand" asp-controller="Home" asp-action="Index">DevPrep AI</a>
+
+        <div class="hm-nav-links">
+            <a href="#">Features</a>
+            <a href="#">Pricing</a>
+            <a href="#">About</a>
+        </div>
+
+        <div class="hm-nav-actions">
+            @if (navLoggedIn)
+            {
+                <div class="hm-user-menu" id="hm-user-menu">
+                    <button class="hm-avatar" id="hm-avatar-btn" type="button" aria-haspopup="true" aria-expanded="false" title="@navEmail">@navInitial</button>
+                    <div class="hm-dropdown" id="hm-dropdown" role="menu">
+                        <div class="hm-dropdown-head">
+                            <span class="hm-dropdown-avatar">@navInitial</span>
+                            <span class="hm-dropdown-email">@navEmail</span>
+                        </div>
+                        <a class="hm-dropdown-item" asp-controller="Profile" asp-action="Index" role="menuitem">
+                            <span class="material-symbols-outlined">person</span> View Profile
+                        </a>
+                        <form asp-controller="Auth" asp-action="Logout" method="post" class="m-0">
+                            <button type="submit" class="hm-dropdown-item hm-dropdown-logout" role="menuitem">
+                                <span class="material-symbols-outlined">logout</span> Logout
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <a class="hm-btn-login" asp-controller="Auth" asp-action="Login">Login</a>
+                <a class="hm-btn-register primary-btn-gradient" asp-controller="Auth" asp-action="Register">Register</a>
+            }
+        </div>
+    </div>
+</nav>
+
+<script>
+    (function () {
+        // Hiệu ứng đổi nền navbar khi scroll
+        const nav = document.getElementById('hm-navbar');
+        if (nav) {
+            window.addEventListener('scroll', function () {
+                if (window.scrollY > 50) {
+                    nav.style.backgroundColor = 'rgba(14, 19, 35, 0.9)';
+                    nav.style.boxShadow = '0 20px 25px -5px rgba(0,0,0,0.35)';
+                } else {
+                    nav.style.backgroundColor = 'rgba(17, 24, 39, 0.6)';
+                    nav.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.2)';
+                }
+            });
+        }
+
+        // Dropdown avatar
+        const btn = document.getElementById('hm-avatar-btn');
+        const menu = document.getElementById('hm-user-menu');
+        if (btn && menu) {
+            btn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                const open = menu.classList.toggle('open');
+                btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+            });
+            document.addEventListener('click', function (e) {
+                if (!menu.contains(e.target)) { menu.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); }
+            });
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') { menu.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); }
+            });
+        }
+    })();
+</script>

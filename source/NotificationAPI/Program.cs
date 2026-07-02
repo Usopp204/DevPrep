@@ -18,10 +18,10 @@ builder.WebHost.UseUrls($"http://0.0.0.0:{servicePort}");
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-var connectionString = builder.Configuration.GetValue<string>("NOTIFICATION_DB_CONNECTION_STRING");
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 if (string.IsNullOrWhiteSpace(connectionString))
 {
-    throw new InvalidOperationException("NOTIFICATION_DB_CONNECTION_STRING is missing.");
+    throw new InvalidOperationException("ConnectionStrings:DefaultConnection is missing.");
 }
 
 builder.Services.AddDbContext<NotificationDbContext>(options =>
