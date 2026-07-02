@@ -192,7 +192,8 @@ public class AuthController(IAuthService authService) : Controller
     // Admin -> thẳng Admin Dashboard; còn lại -> Home.
     private IActionResult RedirectAfterLogin(string? role)
     {
-        if (string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase) || 
+            string.Equals(role, "Manager", StringComparison.OrdinalIgnoreCase))
         {
             return RedirectToAction("Index", "Admin");
         }
