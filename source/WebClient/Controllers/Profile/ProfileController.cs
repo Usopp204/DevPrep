@@ -1,10 +1,13 @@
 using Microsoft.AspNetCore.Mvc;
 using WebClient.Models.Profile;
+using WebClient.Services.Payment;
 using WebClient.Services.Profile;
 
 namespace WebClient.Controllers.Profile;
 
-public class ProfileController(IProfileService profileService) : Controller
+public class ProfileController(
+    IProfileService profileService,
+    IPaymentService paymentService) : Controller
 {
     // ============================ View Profile ============================
     [HttpGet]
@@ -108,6 +111,25 @@ public class ProfileController(IProfileService profileService) : Controller
         }
 
         ModelState.AddModelError(string.Empty, result.Message);
+        return View(model);
+    }
+
+    // ============================ Transaction History ============================
+    public async Task<IActionResult> TransactionHistory(int page = 1, CancellationToken ct = default)
+    {
+        if (string.IsNullOrEmpty(Request.Cookies["access_token"]))
+            return RedirectToAction("Login", "Auth");
+
+        var txRole = Request.Cookies["user_role"] ?? string.Empty;
+        if (string.Equals(txRole, "Admin", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(txRole, "Manager", StringComparison.OrdinalIgnoreCase))
+            return RedirectToAction("Index", "Admin");
+
+        var userIdStr = Request.Cookies["user_id"];
+        if (!Guid.TryParse(userIdStr, out var userId))
+            return RedirectToAction("Login", "Auth");
+
+        var model = await paymentService.GetTransactionHistoryAsync(userId, page, ct: ct);
         return View(model);
     }
 }
