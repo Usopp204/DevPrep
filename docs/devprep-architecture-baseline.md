@@ -1,18 +1,18 @@
-﻿# DevPrep Architecture Baseline
+# DevPrep Architecture Baseline
 
 DevPrep is an AI-powered mock interview simulator and IT competency evaluation system built as a Pure Microservices monorepo.
 
 ## Current Architecture
 
 - Backend: Pure Microservices using ASP.NET Core and YARP.
-- Frontend: ASP.NET Core MVC WebClient.
+- Frontend: React + Vite.
 - AI service: FastAPI, internal-only.
 - Contracts: JSON/schema source-of-truth tracked in `contracts/`.
 - Configuration: `.env.example` is the shared template; `.env` is local-only and must not be committed.
 
 ## Backend Solution
 
-`source/DevPrep.sln` contains 12 API/Gateway projects plus `WebClient`:
+`backend/DevPrep.sln` contains exactly 12 API projects:
 
 1. `ApiGateway`
 2. `AuthAPI`
@@ -26,7 +26,6 @@ DevPrep is an AI-powered mock interview simulator and IT competency evaluation s
 10. `NewsAPI`
 11. `NotificationAPI`
 12. `StatisticsAPI`
-13. `WebClient`
 
 Admin and Manager are implemented as roles and route namespaces. Manager access is read-only through `/api/admin/manager/*` routes where needed.
 
@@ -62,13 +61,12 @@ The repository is currently stabilized at scaffold level. Do not describe busine
 ## Build
 
 ```powershell
-dotnet build source\DevPrep.sln
+dotnet build backend\DevPrep.sln
 ```
 
 Run the gateway:
 
 ```powershell
-dotnet run --project source\ApiGateway\ApiGateway.csproj
+dotnet run --project backend\ApiGateway\ApiGateway.csproj
 ```
-
 

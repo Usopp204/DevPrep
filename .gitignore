@@ -1,6 +1,5 @@
 # Environment
 .env
-.env.example
 
 # AI Agent & OpenCode Session Cache
 .hive/
@@ -10,7 +9,7 @@ infra/
 
 # IDE metadata
 .vs/
-source/.vs/
+backend/.vs/
 
 # .NET
 bin/
@@ -20,19 +19,6 @@ obj/
 *.cache
 *.userosscache
 *.sln.docstates
-
-# User secrets and local app settings
-secrets.json
-*.secrets.json
-appsettings.*.local.json
-
-# Uploaded avatars (du lieu nguoi dung, khong commit anh; giu thu muc bang .gitkeep)
-source/UserAPI/wwwroot/avatars/*
-!source/UserAPI/wwwroot/avatars/.gitkeep
-
-# Cong cu test local (khong can len repo)
-source/sso-test.html
-source/serve.ps1
 
 # Node
 node_modules/

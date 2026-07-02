@@ -1,4 +1,4 @@
-﻿# DevPrep Project Overview
+# DevPrep Project Overview
 
 DevPrep is an AI-powered mock interview simulator and IT competency evaluation system built as a Pure Microservices monorepo. This document describes the current confirmed source-base architecture and scaffold status.
 
@@ -6,7 +6,8 @@ DevPrep is an AI-powered mock interview simulator and IT competency evaluation s
 
 ```text
 DevPrep/
-|-- source/
+|-- backend/
+|-- frontend/
 |-- ai-service/
 |-- contracts/
 `-- docs/
@@ -16,9 +17,9 @@ DevPrep/
 
 The intended product supports interview preparation flows such as account/profile setup, CV/JD input, interview sessions, evaluation, feedback, payments, news, notifications, and statistics. These flows are not yet fully implemented in code.
 
-## Current Source Architecture
+## Current Backend Architecture
 
-Source uses Pure Microservices for APIs and an ASP.NET Core MVC WebClient. The solution contains one gateway, 11 business services, and WebClient:
+Backend uses Pure Microservices. The solution contains one gateway and 11 business services:
 
 - `ApiGateway`
 - `AuthAPI`
@@ -32,7 +33,6 @@ Source uses Pure Microservices for APIs and an ASP.NET Core MVC WebClient. The s
 - `NewsAPI`
 - `NotificationAPI`
 - `StatisticsAPI`
-- `WebClient`
 
 Admin and Manager are implemented as roles and route namespaces. Manager access is read-only through `/api/admin/manager/*` routes where needed.
 
@@ -59,6 +59,4 @@ This is source-base stabilization. Infrastructure shape is aligned, but business
 ## Contracts
 
 `contracts/` is tracked by Git and is the source-of-truth for cross-service schemas. Update contracts and docs when route ownership or request/response shapes change.
-
-
 
