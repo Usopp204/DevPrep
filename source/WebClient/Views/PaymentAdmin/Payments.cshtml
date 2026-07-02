@@ -1,0 +1,243 @@
+@model WebClient.Models.Admin.AdminPaymentsViewModel
+@{
+    ViewData["Title"] = "Transaction Audit";
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Transaction Audit – DevPrep Admin</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+    <style>
+        /* ── Page-specific only — structural layout handled by admin.css ── */
+        :root {
+            --border-m: rgba(255,255,255,.04);
+            --primary:  #818cf8; --primary-dim:  rgba(129,140,248,.12);
+            --success:  #10B981; --success-dim:  rgba(16,185,129,.12);
+            --error:    #f87171; --error-dim:    rgba(248,113,113,.12);
+            --warning:  #fbbf24; --warning-dim:  rgba(251,191,36,.12);
+            --text:     #e5e1e7; --text-muted:   #9ca3af; --text-dim: #6b7280;
+            --r-sm: 8px; --r-md: 12px; --r-lg: 16px;
+        }
+        .page-head  { margin-bottom: 28px; }
+        .page-label { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600;
+                      letter-spacing: .12em; text-transform: uppercase; color: var(--primary); margin-bottom: 6px; }
+
+        /* Card (renamed to avoid Bootstrap .card conflict) */
+        .data-card      { background: rgba(17,24,39,.4); backdrop-filter: blur(12px);
+                          border-top: 1px solid rgba(255,255,255,.1); border-left: 1px solid rgba(255,255,255,.1);
+                          border-right: .5px solid rgba(255,255,255,.05); border-bottom: .5px solid rgba(255,255,255,.05);
+                          border-radius: var(--r-lg); overflow: hidden; }
+        .data-card-head { display: flex; align-items: center; justify-content: space-between;
+                          padding: 16px 20px; border-bottom: 1px solid var(--ad-border); }
+        .data-card-title { font-size: 15px; font-weight: 600; color: var(--text); }
+
+        /* Status badges */
+        .badge-pill { display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px;
+                      border-radius: 20px; font-family: 'JetBrains Mono', monospace;
+                      font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+        .badge-pill .material-symbols-outlined { font-size: 13px; }
+        .badge-paid    { background: var(--success-dim); color: var(--success); }
+        .badge-failed  { background: var(--error-dim);   color: var(--error); }
+        .badge-pending { background: var(--warning-dim); color: var(--warning); }
+
+        /* Table */
+        .tx-table { width: 100%; border-collapse: collapse; }
+        .tx-table th { text-align: left; padding: 12px 18px;
+                       font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600;
+                       letter-spacing: .1em; text-transform: uppercase;
+                       color: var(--text-dim); border-bottom: 1px solid var(--ad-border); }
+        .tx-table td { padding: 15px 18px; border-bottom: 1px solid var(--border-m);
+                       font-size: 14px; vertical-align: middle; color: var(--text); }
+        .tx-table tbody tr:hover { background: rgba(255,255,255,.03); }
+        .tx-table tbody tr:last-child td { border-bottom: none; }
+        .mono  { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+        .muted { color: var(--text-muted); }
+        .order-code { display: inline-block; max-width: 180px; overflow: hidden;
+                      text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; }
+
+        /* Pagination */
+        .pager      { display: flex; align-items: center; justify-content: space-between;
+                      padding: 14px 20px; border-top: 1px solid var(--ad-border); }
+        .pager-info { font-size: 13px; color: var(--text-muted); }
+        .pager-nav  { display: flex; gap: 5px; }
+        .pager-btn  { display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px;
+                      border-radius: var(--r-sm); border: 1px solid var(--ad-border);
+                      background: rgba(255,255,255,.03); color: var(--text-muted);
+                      font-size: 13px; font-weight: 600; text-decoration: none;
+                      transition: background .15s, color .15s; }
+        .pager-btn:hover { background: rgba(255,255,255,.06); color: var(--text); }
+        .pager-btn.now   { background: var(--primary-dim); color: var(--primary);
+                           border-color: rgba(129,140,248,.25); }
+        .pager-btn .material-symbols-outlined { font-size: 13px; }
+
+        .empty-msg { text-align: center; padding: 48px; color: var(--text-muted); font-size: 14px; }
+        .err-box   { margin-bottom: 20px; background: var(--error-dim);
+                     border: 1px solid rgba(248,113,113,.2); border-radius: var(--r-md);
+                     padding: 14px 18px; font-size: 14px; color: var(--error); }
+    </style>
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+</head>
+<body class="admin-page">
+@await Html.PartialAsync("_AdminTopbar")
+@await Html.PartialAsync("_AdminSidebar")
+
+<main class="ad-main">
+    <header class="page-head">
+        <div>
+            <p class="page-label">Payment Admin</p>
+            <h1 class="ad-page-title">Transaction Audit</h1>
+        </div>
+    </header>
+
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="err-box">@Model.ErrorMessage</div>
+    }
+    else
+    {
+        var paidCount    = Model.Items.Count(x => x.Status == "Paid");
+        var failedCount  = Model.Items.Count(x => x.Status == "Failed");
+        var pendingCount = Model.Items.Count(x => x.Status == "Pending");
+
+        <!-- Stat bar — same glass-card ad-stat structure as Dashboard -->
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4 mb-4">
+            <div class="col">
+                <div class="glass-card ad-stat">
+                    <div class="ad-stat-top">
+                        <span class="ad-stat-label">Total Transactions</span>
+                        <span class="material-symbols-outlined" style="color:var(--ad-primary);opacity:.6;font-variation-settings:'FILL' 1;">receipt_long</span>
+                    </div>
+                    <div><div class="ad-stat-value">@Model.TotalCount</div></div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="glass-card ad-stat">
+                    <div class="ad-stat-top">
+                        <span class="ad-stat-label">Paid (this page)</span>
+                        <span class="material-symbols-outlined" style="color:var(--ad-success);opacity:.6;font-variation-settings:'FILL' 1;">check_circle</span>
+                    </div>
+                    <div><div class="ad-stat-value" style="color:var(--ad-success);">@paidCount</div></div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="glass-card ad-stat">
+                    <div class="ad-stat-top">
+                        <span class="ad-stat-label">Failed (this page)</span>
+                        <span class="material-symbols-outlined" style="color:var(--ad-error);opacity:.6;font-variation-settings:'FILL' 1;">cancel</span>
+                    </div>
+                    <div><div class="ad-stat-value" style="color:var(--ad-error);">@failedCount</div></div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="glass-card ad-stat">
+                    <div class="ad-stat-top">
+                        <span class="ad-stat-label">Pending (this page)</span>
+                        <span class="material-symbols-outlined" style="color:var(--ad-warning);opacity:.6;font-variation-settings:'FILL' 1;">schedule</span>
+                    </div>
+                    <div><div class="ad-stat-value" style="color:var(--ad-warning);">@pendingCount</div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Transactions table -->
+        <div class="data-card">
+            <div class="data-card-head">
+                <span class="data-card-title">All Transactions</span>
+                <span style="font-size:13px;color:var(--text-muted);">Page @Model.Page of @Model.TotalPages · @Model.TotalCount total</span>
+            </div>
+
+            @if (Model.Items.Count == 0)
+            {
+                <div class="empty-msg">No transactions yet.</div>
+            }
+            else
+            {
+                <div style="overflow-x:auto;">
+                    <table class="tx-table">
+                        <colgroup>
+                            <col style="width:200px;" />
+                            <col style="width:120px;" />
+                            <col style="width:90px;" />
+                            <col style="width:150px;" />
+                            <col style="width:90px;" />
+                            <col style="width:130px;" />
+                            <col style="width:100px;" />
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th>Order Code</th>
+                                <th>User ID</th>
+                                <th style="text-align:right;">Credits</th>
+                                <th style="text-align:right;">Amount</th>
+                                <th>Method</th>
+                                <th>Date</th>
+                                <th style="text-align:center;">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var o in Model.Items)
+                            {
+                                var badgeCls  = o.Status == "Paid" ? "badge-paid" : (o.Status == "Failed" ? "badge-failed" : "badge-pending");
+                                var badgeIcon = o.Status == "Paid" ? "check_circle" : (o.Status == "Failed" ? "cancel" : "schedule");
+                                var txDate    = (o.PaidAt ?? o.CreatedAt);
+                                <tr>
+                                    <td><span class="mono order-code" title="@o.OrderCode">@o.OrderCode</span></td>
+                                    <td><span class="mono muted">@o.UserId.ToString()[..8]…</span></td>
+                                    <td style="text-align:right;"><strong>@o.Credits</strong></td>
+                                    <td style="text-align:right;">
+                                        <span class="mono">@o.Amount.ToString("N0")</span>
+                                        <span class="muted" style="font-size:11px;"> @o.Currency</span>
+                                    </td>
+                                    <td class="muted">@o.PaymentMethod</td>
+                                    <td><span class="mono muted">@txDate.ToString("dd/MM/yy HH:mm")</span></td>
+                                    <td style="text-align:center;">
+                                        <span class="badge-pill @badgeCls">
+                                            <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">@badgeIcon</span>
+                                            @o.Status
+                                        </span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                @if (Model.TotalPages > 1)
+                {
+                    <div class="pager">
+                        <span class="pager-info">
+                            @((Model.Page - 1) * Model.PageSize + 1)–@(Math.Min(Model.Page * Model.PageSize, Model.TotalCount)) of @Model.TotalCount
+                        </span>
+                        <nav class="pager-nav">
+                            @if (Model.Page > 1)
+                            {
+                                <a asp-controller="PaymentAdmin" asp-action="Payments" asp-route-page="@(Model.Page - 1)" class="pager-btn">
+                                    <span class="material-symbols-outlined">chevron_left</span>
+                                </a>
+                            }
+                            @for (int p = Math.Max(1, Model.Page - 2); p <= Math.Min(Model.TotalPages, Model.Page + 2); p++)
+                            {
+                                <a asp-controller="PaymentAdmin" asp-action="Payments" asp-route-page="@p" class="pager-btn @(p == Model.Page ? "now" : "")">@p</a>
+                            }
+                            @if (Model.Page < Model.TotalPages)
+                            {
+                                <a asp-controller="PaymentAdmin" asp-action="Payments" asp-route-page="@(Model.Page + 1)" class="pager-btn">
+                                    <span class="material-symbols-outlined">chevron_right</span>
+                                </a>
+                            }
+                        </nav>
+                    </div>
+                }
+            }
+        </div>
+    }
+</main>
+</body>
+</html>
