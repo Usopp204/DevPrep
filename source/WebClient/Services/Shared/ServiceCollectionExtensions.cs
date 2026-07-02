@@ -17,6 +17,9 @@ public static class ServiceCollectionExtensions
     {
         services.Configure<ApiGatewayOptions>(configuration.GetSection("ApiGateway"));
 
+        // Cho ProfileService đọc cookie access_token để gắn Bearer khi gọi API.
+        services.AddHttpContextAccessor();
+
         services.AddHttpClient<IApiClient, ApiClient>((provider, client) =>
         {
             var options = provider.GetRequiredService<IOptions<ApiGatewayOptions>>().Value;
