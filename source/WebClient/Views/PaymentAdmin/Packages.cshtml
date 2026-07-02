@@ -1,0 +1,412 @@
+@model WebClient.Models.Admin.CreditPackagesAdminViewModel
+@{
+    ViewData["Title"] = "Credit Package Management";
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Credit Packages – DevPrep Admin</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+    <style>
+        /* ── Page-specific only — structural layout handled by admin.css ── */
+        :root {
+            --bg-alt:       #0e1323;
+            --surface-h:    rgba(255,255,255,.05);
+            --border:       rgba(255,255,255,.08);
+            --border-m:     rgba(255,255,255,.04);
+            --primary:      #818cf8; --primary-dim:  rgba(129,140,248,.12);
+            --success:      #10B981; --success-dim:  rgba(16,185,129,.12);
+            --error:        #f87171; --error-dim:    rgba(248,113,113,.12);
+            --warning:      #fbbf24; --warning-dim:  rgba(251,191,36,.12);
+            --text:         #e5e1e7; --text-muted:   #9ca3af; --text-dim: #6b7280;
+            --r-sm: 8px; --r-md: 12px; --r-lg: 16px;
+        }
+
+        .page-head       { display: flex; align-items: center; justify-content: space-between;
+                           margin-bottom: 28px; flex-wrap: wrap; gap: 12px; }
+        .page-label      { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600;
+                           letter-spacing: .12em; text-transform: uppercase; color: var(--primary); margin-bottom: 6px; }
+
+        /* Alert banners */
+        .alert-banner { display: flex; align-items: center; gap: 10px; padding: 12px 16px;
+                        border-radius: var(--r-md); margin-bottom: 20px; font-size: 14px; font-weight: 500; }
+        .alert-banner .material-symbols-outlined { font-size: 18px; flex-shrink: 0; }
+        .alert-success { background: var(--success-dim); border: 1px solid rgba(16,185,129,.2);  color: var(--success); }
+        .alert-error   { background: var(--error-dim);   border: 1px solid rgba(248,113,113,.2); color: var(--error); }
+
+        /* Data card (renamed from .card to avoid Bootstrap conflict) */
+        .data-card      { background: rgba(17,24,39,.4); backdrop-filter: blur(12px);
+                          border-top: 1px solid rgba(255,255,255,.1); border-left: 1px solid rgba(255,255,255,.1);
+                          border-right: .5px solid rgba(255,255,255,.05); border-bottom: .5px solid rgba(255,255,255,.05);
+                          border-radius: var(--r-lg); overflow: hidden; }
+        .data-card-head { display: flex; align-items: center; justify-content: space-between;
+                          padding: 16px 20px; border-bottom: 1px solid var(--border); gap: 12px; flex-wrap: wrap; }
+        .data-card-title { font-size: 15px; font-weight: 600; color: var(--text); }
+
+        /* Buttons (override Bootstrap .btn) */
+        .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px;
+               border-radius: var(--r-sm); font-family: 'Inter', sans-serif;
+               font-size: 13px; font-weight: 600; cursor: pointer; border: none;
+               text-decoration: none; transition: opacity .15s, background .15s; }
+        .btn .material-symbols-outlined { font-size: 16px; }
+        .btn-primary { background: linear-gradient(135deg, #6366f1, #a855f7); color: #fff; }
+        .btn-primary:hover { opacity: .88; color: #fff; }
+        .btn-ghost   { background: var(--surface-h); border: 1px solid var(--border); color: var(--text-muted); }
+        .btn-ghost:hover { color: var(--text); background: var(--border); }
+        .btn-sm  { padding: 5px 12px; font-size: 12px; }
+        .btn-success { background: var(--success-dim); border: 1px solid rgba(16,185,129,.2); color: var(--success); }
+        .btn-success:hover { background: rgba(16,185,129,.2); color: var(--success); }
+        .btn-danger  { background: var(--error-dim);   border: 1px solid rgba(248,113,113,.2); color: var(--error); }
+        .btn-danger:hover  { background: rgba(248,113,113,.2); color: var(--error); }
+
+        /* Table */
+        .pkg-table { width: 100%; border-collapse: collapse; }
+        .pkg-table th { text-align: left; padding: 13px 20px; font-family: 'JetBrains Mono', monospace;
+                        font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+                        color: var(--text-dim); border-bottom: 1px solid var(--border); white-space: nowrap; }
+        .pkg-table td { padding: 16px 20px; border-bottom: 1px solid var(--border-m); font-size: 14px; vertical-align: middle; }
+        .pkg-table tbody tr:hover { background: var(--surface-h); }
+        .pkg-table tbody tr:last-child td { border-bottom: none; }
+        .pkg-table .th-r { text-align: right; }
+        .pkg-table .td-r { text-align: right; }
+        .pkg-name          { font-weight: 600; color: var(--text); }
+        .pkg-desc          { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+        .pkg-credits-total { font-size: 15px; font-weight: 700; color: var(--primary); }
+        .pkg-credits-break { font-size: 12px; color: var(--text-dim); margin-top: 1px; }
+        .pkg-price    { font-weight: 600; color: var(--text); }
+        .pkg-currency { font-size: 12px; color: var(--text-dim); }
+        .pkg-sort     { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--text-muted); }
+
+        /* Status badges */
+        .badge-active   { display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px;
+                          border-radius: 20px; font-family: 'JetBrains Mono', monospace;
+                          font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+                          background: var(--success-dim); color: var(--success); }
+        .badge-inactive { display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px;
+                          border-radius: 20px; font-family: 'JetBrains Mono', monospace;
+                          font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+                          background: rgba(107,114,128,.15); color: var(--text-dim); }
+        .badge-active .material-symbols-outlined,
+        .badge-inactive .material-symbols-outlined { font-size: 13px; }
+
+        .action-btns { display: flex; align-items: center; gap: 6px; }
+
+        /* Empty state */
+        .table-empty { text-align: center; padding: 48px 24px; color: var(--text-muted); }
+        .table-empty .material-symbols-outlined { font-size: 40px; opacity: .2; display: block; margin-bottom: 10px; }
+
+        /* ── Modals ─────────────────────────────────────────── */
+        .modal-overlay { display: none; position: fixed; inset: 0; z-index: 500;
+                         background: rgba(0,0,0,.7); backdrop-filter: blur(4px);
+                         align-items: center; justify-content: center; padding: 20px; }
+        .modal-overlay.open { display: flex; }
+        .modal { background: #0e1323; border: 1px solid var(--border); border-radius: var(--r-lg);
+                 padding: 28px; width: 100%; max-width: 500px;
+                 max-height: 90vh; overflow-y: auto; box-shadow: 0 24px 64px rgba(0,0,0,.5); }
+        .modal-title  { font-size: 18px; font-weight: 700; margin-bottom: 20px; color: var(--text); }
+        .form-row     { margin-bottom: 16px; }
+        .form-row label { display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; }
+        .form-ctrl { width: 100%; background: rgba(255,255,255,.04); border: 1px solid var(--border);
+                     border-radius: var(--r-sm); color: var(--text); font-family: 'Inter', sans-serif;
+                     font-size: 13px; padding: 9px 12px; outline: none; transition: border-color .15s; }
+        .form-ctrl::placeholder { color: var(--text-dim); }
+        .form-ctrl:focus { border-color: rgba(129,140,248,.5); }
+        textarea.form-ctrl { resize: vertical; min-height: 70px; }
+        .form-grid    { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+
+        /* Delete confirm modal */
+        .del-modal { text-align: center; }
+        .del-modal .del-icon  { font-size: 40px; color: var(--error); margin-bottom: 12px; }
+        .del-modal .del-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; color: var(--text); }
+        .del-modal .del-desc  { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
+    </style>
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+</head>
+<body class="admin-page">
+
+@await Html.PartialAsync("_AdminTopbar")
+@await Html.PartialAsync("_AdminSidebar")
+
+<main class="ad-main">
+    <div class="page-head">
+        <div>
+            <p class="page-label">Payment Admin</p>
+            <h1 class="ad-page-title">Credit Package Management</h1>
+        </div>
+        <button class="btn btn-primary" onclick="openCreateModal()">
+            <span class="material-symbols-outlined">add</span>
+            New Package
+        </button>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+    {
+        <div class="alert-banner alert-success">
+            <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">check_circle</span>
+            @Model.SuccessMessage
+        </div>
+    }
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert-banner alert-error">
+            <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">error</span>
+            @Model.ErrorMessage
+        </div>
+    }
+
+    @{
+        var allPkg    = Model.Packages;
+        var activePkg = allPkg.Count(p => p.IsActive);
+        var inactPkg  = allPkg.Count(p => !p.IsActive);
+    }
+
+    <!-- Stat bar — same glass-card ad-stat structure as Dashboard -->
+    <div class="row row-cols-1 row-cols-md-3 g-4 mb-4">
+        <div class="col">
+            <div class="glass-card ad-stat">
+                <div class="ad-stat-top">
+                    <span class="ad-stat-label">Total Packages</span>
+                    <span class="material-symbols-outlined" style="color:var(--ad-primary);opacity:.6;font-variation-settings:'FILL' 1;">package_2</span>
+                </div>
+                <div><div class="ad-stat-value">@allPkg.Count</div></div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="glass-card ad-stat">
+                <div class="ad-stat-top">
+                    <span class="ad-stat-label">Active</span>
+                    <span class="material-symbols-outlined" style="color:var(--ad-success);opacity:.6;font-variation-settings:'FILL' 1;">check_circle</span>
+                </div>
+                <div><div class="ad-stat-value" style="color:var(--ad-success);">@activePkg</div></div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="glass-card ad-stat">
+                <div class="ad-stat-top">
+                    <span class="ad-stat-label">Deactivated</span>
+                    <span class="material-symbols-outlined" style="color:var(--ad-warning);opacity:.6;font-variation-settings:'FILL' 1;">cancel</span>
+                </div>
+                <div><div class="ad-stat-value" style="color:var(--ad-warning);">@inactPkg</div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table card -->
+    <div class="data-card">
+        <div class="data-card-head">
+            <span class="data-card-title">All Packages</span>
+            <span style="font-size:13px;color:var(--text-muted);">Sorted by display order · Includes deactivated</span>
+        </div>
+
+        @if (allPkg.Count == 0)
+        {
+            <div class="table-empty">
+                <span class="material-symbols-outlined">package_2</span>
+                <p>No packages yet. Create the first one.</p>
+            </div>
+        }
+        else
+        {
+            <div style="overflow-x:auto;">
+                <table class="pkg-table">
+                    <thead>
+                        <tr>
+                            <th>Package</th>
+                            <th class="th-r">Credits</th>
+                            <th class="th-r">Price</th>
+                            <th style="text-align:center;">Status</th>
+                            <th style="text-align:center;">Order</th>
+                            <th style="text-align:right;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var pkg in allPkg)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="pkg-name">@pkg.Name</div>
+                                    @if (!string.IsNullOrEmpty(pkg.Description))
+                                    {
+                                        <div class="pkg-desc">@pkg.Description</div>
+                                    }
+                                </td>
+                                <td class="td-r">
+                                    <div class="pkg-credits-total">@pkg.TotalCredits CR</div>
+                                    @if (pkg.BonusCredits > 0)
+                                    {
+                                        <div class="pkg-credits-break">@pkg.Credits + @pkg.BonusCredits bonus</div>
+                                    }
+                                </td>
+                                <td class="td-r">
+                                    <div class="pkg-price">@pkg.Price.ToString("N0")</div>
+                                    <div class="pkg-currency">@pkg.Currency</div>
+                                </td>
+                                <td style="text-align:center;">
+                                    @if (pkg.IsActive)
+                                    {
+                                        <span class="badge-active">
+                                            <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">circle</span>
+                                            Active
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge-inactive">
+                                            <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">circle</span>
+                                            Inactive
+                                        </span>
+                                    }
+                                </td>
+                                <td style="text-align:center;">
+                                    <span class="pkg-sort">@pkg.SortOrder</span>
+                                </td>
+                                <td>
+                                    <div class="action-btns" style="justify-content:flex-end;">
+                                        <button class="btn btn-sm btn-success"
+                                                onclick='openEditModal(@Json.Serialize(pkg))'>
+                                            <span class="material-symbols-outlined">edit</span>
+                                            Edit
+                                        </button>
+                                        @if (pkg.IsActive)
+                                        {
+                                            <button class="btn btn-sm btn-danger"
+                                                    onclick='openDeleteModal("@pkg.PackageId","@pkg.Name")'>
+                                                <span class="material-symbols-outlined">delete</span>
+                                                Deactivate
+                                            </button>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</main>
+
+<!-- ── Create / Edit Modal ────────────────────────────────── -->
+<div class="modal-overlay" id="pkgModal">
+    <div class="modal">
+        <h2 class="modal-title" id="modalTitle">New Package</h2>
+        <form method="post" id="pkgForm">
+            @Html.AntiForgeryToken()
+            <div class="form-row">
+                <label>Package Name *</label>
+                <input type="text" name="name" id="f-name" class="form-ctrl" required placeholder="e.g. Starter Pack" maxlength="100" />
+            </div>
+            <div class="form-row">
+                <label>Description</label>
+                <textarea name="description" id="f-desc" class="form-ctrl" placeholder="Short description (optional)"></textarea>
+            </div>
+            <div class="form-grid">
+                <div class="form-row">
+                    <label>Base Credits *</label>
+                    <input type="number" name="credits" id="f-credits" class="form-ctrl" required min="1" placeholder="10" />
+                </div>
+                <div class="form-row">
+                    <label>Bonus Credits</label>
+                    <input type="number" name="bonusCredits" id="f-bonus" class="form-ctrl" min="0" value="0" placeholder="0" />
+                </div>
+            </div>
+            <div class="form-grid">
+                <div class="form-row">
+                    <label>Price (VND) *</label>
+                    <input type="number" name="price" id="f-price" class="form-ctrl" required min="0" step="1000" placeholder="50000" />
+                </div>
+                <div class="form-row">
+                    <label>Sort Order</label>
+                    <input type="number" name="sortOrder" id="f-sort" class="form-ctrl" min="0" value="0" placeholder="0" />
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-ghost" onclick="closeModal('pkgModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary" id="pkgSubmitBtn">
+                    <span class="material-symbols-outlined">save</span>
+                    Save Package
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ── Delete Confirm Modal ───────────────────────────────── -->
+<div class="modal-overlay" id="delModal">
+    <div class="modal del-modal">
+        <span class="material-symbols-outlined del-icon" style="font-variation-settings:'FILL' 1;">warning</span>
+        <p class="del-title">Deactivate Package?</p>
+        <p class="del-desc">
+            Package <strong id="delPkgName"></strong> will be hidden from users but existing transactions are preserved.
+        </p>
+        <form method="post" id="delForm">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="name" id="delPkgNameHidden" />
+            <div class="modal-footer" style="justify-content:center;">
+                <button type="button" class="btn btn-ghost" onclick="closeModal('delModal')">Cancel</button>
+                <button type="submit" class="btn btn-danger">
+                    <span class="material-symbols-outlined">delete</span>
+                    Deactivate
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openCreateModal() {
+        document.getElementById('modalTitle').textContent = 'New Package';
+        document.getElementById('pkgForm').action = '/Admin/Payment/Packages/Create';
+        document.getElementById('f-name').value    = '';
+        document.getElementById('f-desc').value    = '';
+        document.getElementById('f-credits').value = '';
+        document.getElementById('f-bonus').value   = '0';
+        document.getElementById('f-price').value   = '';
+        document.getElementById('f-sort').value    = '0';
+        document.getElementById('pkgModal').classList.add('open');
+    }
+
+    function openEditModal(pkg) {
+        document.getElementById('modalTitle').textContent = 'Edit Package';
+        document.getElementById('pkgForm').action = '/Admin/Payment/Packages/Edit/' + pkg.packageId;
+        document.getElementById('f-name').value    = pkg.name;
+        document.getElementById('f-desc').value    = pkg.description || '';
+        document.getElementById('f-credits').value = pkg.credits;
+        document.getElementById('f-bonus').value   = pkg.bonusCredits;
+        document.getElementById('f-price').value   = pkg.price;
+        document.getElementById('f-sort').value    = pkg.sortOrder;
+        document.getElementById('pkgModal').classList.add('open');
+    }
+
+    function openDeleteModal(id, name) {
+        document.getElementById('delPkgName').textContent = name;
+        document.getElementById('delPkgNameHidden').value = name;
+        document.getElementById('delForm').action = '/Admin/Payment/Packages/Delete/' + id;
+        document.getElementById('delModal').classList.add('open');
+    }
+
+    function closeModal(id) {
+        document.getElementById(id).classList.remove('open');
+    }
+
+    document.querySelectorAll('.modal-overlay').forEach(el => {
+        el.addEventListener('click', e => { if (e.target === el) closeModal(el.id); });
+    });
+
+    document.querySelectorAll('.alert-banner').forEach(el => {
+        setTimeout(() => el.style.transition = 'opacity .5s', 4500);
+        setTimeout(() => el.style.opacity = '0', 5000);
+        setTimeout(() => el.remove(), 5500);
+    });
+</script>
+
+</body>
+</html>
