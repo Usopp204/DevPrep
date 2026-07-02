@@ -1,11 +1,91 @@
-﻿@model WebClient.Models.Profile.ProfileViewModel
-
+@model WebClient.Models.Profile.ProfileViewModel
 @{
-    ViewData["Title"] = Model.ModuleName;
+    Layout = null;
+    ViewData["ProfileActive"] = "information";
+    var successMessage = TempData["Message"] as string;
+    var errorMessage = TempData["Error"] as string;
 }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Profile | DevPrep AI</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@@300;400;500;600;700&family=Inter:wght@@100..900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="~/css/profile.css" asp-append-version="true" />
+</head>
+<body class="pf-page">
+    @await Html.PartialAsync("_ProfileTopbar")
 
-<section class="module-page">
-    <h1>@Model.ModuleName</h1>
-    <p>@Model.Epic</p>
-    <p>@Model.Summary</p>
-</section>
+    <div class="pf-shell">
+        @await Html.PartialAsync("_ProfileSidebar")
+
+        <main class="pf-main">
+            <div class="pf-glow"></div>
+            <div class="pf-content">
+                <h1 class="pf-page-title">Profile Information</h1>
+
+                @if (!string.IsNullOrEmpty(successMessage))
+                {
+                    <div class="pf-alert pf-alert-success">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+                        <span>@successMessage</span>
+                    </div>
+                }
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="pf-alert pf-alert-error">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+                        <span>@errorMessage</span>
+                    </div>
+                }
+
+                <div class="pf-grid">
+                    <!-- Cột trái: card tóm tắt -->
+                    <div class="pf-card pf-card-pad pf-summary">
+                        <div class="pf-avatar-lg">
+                            @if (Model.HasAvatar)
+                            {
+                                <img src="@Model.AvatarUrl" alt="@Model.DisplayName" />
+                            }
+                            else
+                            {
+                                <span>@Model.Initial</span>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Cột phải: chi tiết -->
+                    <div class="pf-card">
+                        <div class="pf-card-topborder"></div>
+                        <div class="pf-card-header">
+                            <h2 class="pf-card-title">Personal Details</h2>
+                        </div>
+                        <div class="pf-card-pad">
+                            <div class="pf-form-grid">
+                                <div class="pf-field">
+                                    <span class="pf-label">Full Name</span>
+                                    <div class="pf-value">@(string.IsNullOrWhiteSpace(Model.FullName) ? "—" : Model.FullName)</div>
+                                </div>
+                                <div class="pf-field">
+                                    <span class="pf-label">Email</span>
+                                    <div class="pf-value">@Model.Email</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="pf-card-actions">
+                            <a class="pf-btn pf-btn-primary" asp-controller="Profile" asp-action="Edit">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+                                Edit
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>
