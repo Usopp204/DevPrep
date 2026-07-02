@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -33,7 +33,7 @@ public partial class Account
 
     public DateTime? LastLoginAt { get; set; }
 
-    public byte FailedLoginCount { get; set; }
+    public int FailedLoginCount { get; set; }
 
     public DateTime? LockedUntil { get; set; }
 
