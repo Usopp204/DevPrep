@@ -4,7 +4,7 @@ namespace WebClient.Models.Shared;
 
 public class PagedResult<T>
 {
-    [JsonPropertyName("page")]
+    [JsonPropertyName("pageIndex")]
     public int PageIndex { get; set; }
     public int PageSize { get; set; }
     public int TotalCount { get; set; }

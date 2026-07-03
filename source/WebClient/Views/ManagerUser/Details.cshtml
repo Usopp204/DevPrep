@@ -381,7 +381,7 @@
                             <div class="drawer-list-item">
                                 <div>
                                     <h5 class="drawer-list-title">@tx.EntryType</h5>
-                                    <p class="drawer-list-date">@tx.CreatedAt.ToString("dd MMM yyyy, HH:mm") • Bal: @tx.BalanceAfter</p>
+                                    <p class="drawer-list-date">@tx.CreatedAt.ToString("dd MMM yyyy, HH:mm") - Bal: @tx.BalanceAfter</p>
                                 </div>
                                 <span class="drawer-list-amount @(tx.CreditChange >= 0 ? "pos" : "neg")">
                                     @(tx.CreditChange >= 0 ? "+" : "")@tx.CreditChange
@@ -405,7 +405,7 @@
                     </span>
                     <div>
                         <p class="drawer-notice-title">@(isActive ? "Account Active" : "Account Suspended")</p>
-                        <p class="drawer-notice-desc">System Managed • Compliance Verified</p>
+                        <p class="drawer-notice-desc">System Managed - Compliance Verified</p>
                     </div>
                 </div>
             </div>

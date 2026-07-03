@@ -15,7 +15,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
     <style>
-        /* ── User Overview page styles ── */
+        /* User Overview page styles */
         .uo-header {
             display: flex;
             justify-content: space-between;
@@ -387,29 +387,36 @@
             <div class="uo-pagination">
                 <span class="uo-pg-text">
                     @{
-                        int displayFrom = Model.TotalCount == 0 ? 0 : (Model.PageIndex - 1) * Model.PageSize + 1;
-                        int displayTo   = Math.Min(Model.PageIndex * Model.PageSize, Model.TotalCount);
-                        if (displayFrom < 0) displayFrom = 0;
+                        int currentPage = Model.PageIndex < 1 ? 1 : Model.PageIndex;
+                        int currentPageSize = Model.PageSize < 1 ? 10 : Model.PageSize;
+                        if (Model.TotalPages > 0 && currentPage > Model.TotalPages)
+                        {
+                            currentPage = Model.TotalPages;
+                        }
+
+                        int itemCount = Model.Items?.Count ?? 0;
+                        int displayFrom = Model.TotalCount == 0 || itemCount == 0 ? 0 : (currentPage - 1) * currentPageSize + 1;
+                        int displayTo = Model.TotalCount == 0 || itemCount == 0 ? 0 : Math.Min(displayFrom + itemCount - 1, Model.TotalCount);
                     }
-                    Showing @displayFrom–@displayTo of @Model.TotalCount users
+                    Showing @displayFrom-@displayTo of @Model.TotalCount users
                 </span>
                 @if (Model.TotalPages > 1)
                 {
                     <div class="uo-pg-btns">
-                        @if (Model.PageIndex > 1)
+                        @if (currentPage > 1)
                         {
-                            <a href="?page=@(Model.PageIndex - 1)&keyword=@ViewBag.Keyword&status=@ViewBag.Status&role=@ViewBag.Role" class="uo-pg-btn">
+                            <a href="?page=@(currentPage - 1)&keyword=@ViewBag.Keyword&status=@ViewBag.Status&role=@ViewBag.Role" class="uo-pg-btn">
                                 <span class="material-symbols-outlined" style="font-size:17px;">chevron_left</span>
                             </a>
                         }
-                        @for (int p = Math.Max(1, Model.PageIndex - 1); p <= Math.Min(Model.TotalPages, Model.PageIndex + 1); p++)
+                        @for (int p = Math.Max(1, currentPage - 1); p <= Math.Min(Model.TotalPages, currentPage + 1); p++)
                         {
                             <a href="?page=@p&keyword=@ViewBag.Keyword&status=@ViewBag.Status&role=@ViewBag.Role"
-                               class="uo-pg-btn @(p == Model.PageIndex ? "cur" : "")">@p</a>
+                               class="uo-pg-btn @(p == currentPage ? "cur" : "")">@p</a>
                         }
-                        @if (Model.PageIndex < Model.TotalPages)
+                        @if (currentPage < Model.TotalPages)
                         {
-                            <a href="?page=@(Model.PageIndex + 1)&keyword=@ViewBag.Keyword&status=@ViewBag.Status&role=@ViewBag.Role" class="uo-pg-btn">
+                            <a href="?page=@(currentPage + 1)&keyword=@ViewBag.Keyword&status=@ViewBag.Status&role=@ViewBag.Role" class="uo-pg-btn">
                                 <span class="material-symbols-outlined" style="font-size:17px;">chevron_right</span>
                             </a>
                         }
