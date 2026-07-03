@@ -127,6 +127,8 @@ app.MapPost("/vnpay/order", async (HttpContext ctx, IVnPayService vnPay) =>
     catch { return Results.BadRequest("Invalid request body."); }
     if (body == null) return Results.BadRequest("Invalid request body.");
 
+    var log = ctx.RequestServices.GetRequiredService<ILogger<Program>>();
+    log.LogInformation("CreateOrder: userId={UserId} packageId={PackageId}", userId, body.PackageId);
     try
     {
         var ipAddr = ctx.Connection.RemoteIpAddress?.MapToIPv4().ToString() ?? "127.0.0.1";
@@ -135,7 +137,13 @@ app.MapPost("/vnpay/order", async (HttpContext ctx, IVnPayService vnPay) =>
     }
     catch (InvalidOperationException ex)
     {
+        log.LogWarning("CreateOrder 404: {Message}", ex.Message);
         return Results.NotFound(ex.Message);
+    }
+    catch (Exception ex)
+    {
+        log.LogError(ex, "CreateOrder failed for user {UserId} package {PackageId}", userId, body.PackageId);
+        return Results.Problem(ex.Message);
     }
 });
 
