@@ -73,41 +73,4 @@ public class ProfileController(IProfileService profileService) : Controller
         ModelState.AddModelError(string.Empty, result.Message);
         return View(model);
     }
-
-    // ============================ Change Password ============================
-    [HttpGet]
-    public IActionResult ChangePassword()
-    {
-        if (string.IsNullOrEmpty(Request.Cookies["access_token"]))
-        {
-            return RedirectToAction("Login", "Auth");
-        }
-
-        return View(new ChangePasswordViewModel());
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ChangePassword(ChangePasswordViewModel model)
-    {
-        if (!ModelState.IsValid)
-        {
-            return View(model);
-        }
-
-        var result = await profileService.ChangePasswordAsync(model);
-        if (result.Unauthorized)
-        {
-            return RedirectToAction("Login", "Auth");
-        }
-
-        if (result.Success)
-        {
-            TempData["Message"] = result.Message;
-            return RedirectToAction(nameof(ChangePassword));
-        }
-
-        ModelState.AddModelError(string.Empty, result.Message);
-        return View(model);
-    }
 }
