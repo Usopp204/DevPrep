@@ -53,7 +53,8 @@ public class ManagerUsersController : ControllerBase
             using (var cmd = new SqlCommand(countQuery, conn))
             {
                 cmd.Parameters.AddWithValue("@Keyword", (object?)searchPattern ?? DBNull.Value);
-                totalCount = (int)await cmd.ExecuteScalarAsync();
+                var countResult = await cmd.ExecuteScalarAsync();
+                totalCount = countResult == null || countResult == DBNull.Value ? 0 : Convert.ToInt32(countResult);
             }
 
             // Paginated List Query
