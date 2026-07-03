@@ -15,6 +15,14 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddWebClientServices(this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddAuthentication(Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationDefaults.AuthenticationScheme)
+            .AddCookie(options =>
+            {
+                options.LoginPath = "/Auth/Login";
+                options.AccessDeniedPath = "/Auth/Login";
+                options.Cookie.Name = "WebClient_Auth";
+            });
+
         services.Configure<ApiGatewayOptions>(configuration.GetSection("ApiGateway"));
         services.AddHttpContextAccessor();
         services.AddTransient<JwtDelegatingHandler>();
@@ -44,6 +52,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAdminService, AdminService>();
         services.AddScoped<IManagerService, ManagerService>();
         services.AddScoped<IManagerQuestionService, ManagerQuestionService>();
+        services.AddScoped<IManagerUserService, ManagerUserService>();
         services.AddScoped<INewsService, NewsService>();
 
         return services;
