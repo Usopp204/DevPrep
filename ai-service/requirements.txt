@@ -1,4 +1,14 @@
 fastapi
 uvicorn
+python-multipart
 pydantic-settings
 python-dotenv
+pymupdf
+python-docx
+pdf2image
+pytesseract
+transformers>=4.51.0
+accelerate
+bitsandbytes
+huggingface_hub
+torch

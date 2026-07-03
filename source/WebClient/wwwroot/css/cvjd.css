@@ -1,0 +1,193 @@
+/* ============================================================
+   CvJd.cshtml — page-specific styles
+   Loaded after profile.css; supplements the shared pf-* theme.
+   ============================================================ */
+
+/* ── Page layout ── */
+.cvjd-grid { display: grid; grid-template-columns: 7fr 5fr; gap: 20px; }
+@media (max-width: 900px) { .cvjd-grid { grid-template-columns: 1fr; } }
+
+.section-label {
+    font-size: .68rem; font-weight: 700; letter-spacing: .1em;
+    color: var(--pf-indigo); text-transform: uppercase; margin-bottom: 10px;
+}
+
+/* ── Compact inputs (denser than profile.css .pf-input for this page) ── */
+.cvjd-input {
+    width: 100%;
+    background: rgba(11, 19, 38, .8);
+    border: 1px solid rgba(255, 255, 255, .1);
+    border-radius: 8px;
+    color: var(--pf-text);
+    padding: 8px 11px;
+    font-family: inherit;
+    font-size: .85rem;
+    outline: none;
+    transition: border-color .15s, box-shadow .15s;
+}
+.cvjd-input:focus { border-color: var(--pf-indigo); box-shadow: 0 0 0 1px var(--pf-indigo); }
+.cvjd-input::placeholder { color: var(--pf-muted); }
+
+.cvjd-textarea {
+    width: 100%;
+    min-height: 130px;
+    resize: vertical;
+    background: rgba(11, 19, 38, .8);
+    border: 1px solid rgba(255, 255, 255, .1);
+    border-radius: 8px;
+    color: var(--pf-text);
+    padding: 10px 11px;
+    font-family: inherit;
+    font-size: .85rem;
+    outline: none;
+    transition: border-color .15s, box-shadow .15s;
+}
+.cvjd-textarea:focus { border-color: var(--pf-indigo); box-shadow: 0 0 0 1px var(--pf-indigo); }
+.cvjd-textarea::placeholder { color: var(--pf-muted); }
+
+.cvjd-label { font-size: .72rem; color: var(--pf-muted); display: block; margin-bottom: 4px; }
+
+/* ── Button variants ── */
+.cvjd-btn-sm { font-size: .8rem; padding: 7px 14px; width: 100%; }
+.cvjd-btn-secondary {
+    background: rgba(255, 255, 255, .05);
+    border-color: rgba(255, 255, 255, .1);
+    color: var(--pf-text);
+}
+.cvjd-btn-secondary:hover { background: rgba(255, 255, 255, .09); }
+
+/* ── Drop zone ── */
+.drop-zone {
+    display: block;
+    border: 2px dashed rgba(99, 102, 241, .35);
+    border-radius: 10px;
+    padding: 24px 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+}
+.drop-zone:hover,
+.drop-zone.drag-over { border-color: var(--pf-indigo); background: rgba(99, 102, 241, .06); }
+.drop-zone input[type=file] { display: none; }
+.drop-zone svg { color: var(--pf-indigo); }
+.fname { font-size: .8rem; color: var(--pf-teal); margin-top: 6px; word-break: break-all; }
+
+/* ── Inline status bar (JS-toggled, lighter than pf-alert) ── */
+.sb { padding: 7px 12px; border-radius: 7px; font-size: .8rem; display: none; margin-bottom: 10px; }
+.sb.info { background: rgba(99, 102, 241, .12); color: var(--pf-indigo); display: block; }
+.sb.ok   { background: rgba(16, 185, 129, .10); color: #34d399;           display: block; }
+.sb.err  { background: rgba(239, 68, 68, .10);  color: #f87171;           display: block; }
+
+/* ── Skill tags ── */
+.tag-list { display: flex; flex-wrap: wrap; gap: 5px; }
+.tag {
+    font-size: .7rem; font-weight: 600; padding: 3px 9px; border-radius: 20px;
+    background: rgba(99, 102, 241, .12); color: var(--pf-indigo);
+    border: 1px solid rgba(99, 102, 241, .25); cursor: default;
+}
+.tag.rm { cursor: pointer; }
+.tag.rm:hover { background: rgba(239, 68, 68, .12); color: #f87171; border-color: rgba(239, 68, 68, .3); }
+.tag.matched { background: rgba(16, 185, 129, .10); color: #34d399; border-color: rgba(16, 185, 129, .3); }
+.tag.missing { background: rgba(239, 68, 68, .10);  color: #f87171; border-color: rgba(239, 68, 68, .3); }
+.tag.req-skill  { background: rgba(245, 158, 11, .10); color: #f59e0b; border-color: rgba(245, 158, 11, .3); }
+.tag.nice-skill { background: rgba(20, 184, 166, .08); color: #2dd4bf; border-color: rgba(20, 184, 166, .3); }
+
+/* ── CV parsed sections ── */
+.cv-section { margin-top: 12px; }
+.cv-section-head {
+    font-size: .72rem; font-weight: 700; letter-spacing: .08em;
+    color: var(--pf-purple); text-transform: uppercase;
+    padding: 6px 0; border-bottom: 1px solid var(--pf-border); margin-bottom: 8px;
+}
+.exp-card {
+    background: rgba(255, 255, 255, .025); border: 1px solid var(--pf-border);
+    border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; font-size: .82rem;
+}
+.exp-title { font-weight: 600; color: var(--pf-text); }
+.exp-sub   { color: var(--pf-muted); font-size: .75rem; }
+.add-skill-row { display: flex; gap: 6px; margin-top: 8px; }
+.add-skill-row input  { flex: 1; }
+.add-skill-row button { padding: 4px 12px; font-size: .78rem; }
+
+/* ── Match score circle ── */
+.score-circle { position: relative; width: 130px; height: 130px; margin: 0 auto; }
+.score-circle svg { transform: rotate(-90deg); }
+.score-circle circle.bg { fill: none; stroke: rgba(255, 255, 255, .06); stroke-width: 10; }
+.score-circle circle.fg { fill: none; stroke-width: 10; stroke-linecap: round; transition: stroke-dashoffset .8s ease, stroke .4s; }
+.score-num { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 2rem; font-weight: 700; color: #fff; }
+.score-num small { font-size: .65rem; color: var(--pf-muted); font-weight: 400; }
+
+/* ── Suggestions ── */
+.sug-item { display: flex; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--pf-border); font-size: .82rem; }
+.sug-item:last-child { border: none; }
+.sug-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--pf-purple); flex-shrink: 0; margin-top: 7px; }
+
+/* ── JD input tabs ── */
+.jd-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+.jd-tab {
+    flex: 1; padding: 7px; border-radius: 7px;
+    border: 1px solid var(--pf-border); background: transparent;
+    color: var(--pf-muted); font-size: .78rem; cursor: pointer; transition: all .15s;
+}
+.jd-tab.active { border-color: var(--pf-indigo); background: rgba(99, 102, 241, .1); color: var(--pf-indigo); font-weight: 600; }
+
+/* ── Parse mode button pair ── */
+.parse-btn-wrap  { display: flex; gap: 8px; margin-top: 10px; }
+.parse-btn-group { flex: 1; }
+.parse-btn-desc  { font-size: .68rem; color: var(--pf-muted); margin-top: 3px; text-align: center; line-height: 1.3; }
+
+/* ── Spinner (inline, small) ── */
+.spinner {
+    display: inline-block; width: 13px; height: 13px;
+    border: 2px solid rgba(255, 255, 255, .25); border-top-color: #fff;
+    border-radius: 50%; animation: cvjd-spin .7s linear infinite;
+    vertical-align: middle; margin-right: 4px;
+}
+@keyframes cvjd-spin { to { transform: rotate(360deg); } }
+
+/* ── Upload / parse loading overlay ── */
+.upload-loading {
+    display: none;
+    flex-direction: column; align-items: center; gap: 10px;
+    padding: 24px 16px; border-radius: 10px;
+    border: 1px solid rgba(99, 102, 241, .25);
+    background: rgba(99, 102, 241, .05);
+    text-align: center; margin-top: 10px;
+}
+.spinner-xl {
+    width: 52px; height: 52px;
+    border: 4px solid rgba(99, 102, 241, .2); border-top-color: var(--pf-indigo);
+    border-radius: 50%; animation: cvjd-spin .9s linear infinite;
+}
+.elapsed-num { font-size: 1.5rem; font-weight: 700; color: #fff; line-height: 1; }
+.elapsed-sub { font-size: .75rem; color: var(--pf-muted); line-height: 1.4; max-width: 240px; }
+.progress-bar-wrap { width: 100%; max-width: 220px; height: 4px; background: rgba(255, 255, 255, .07); border-radius: 2px; overflow: hidden; }
+.progress-bar-fill { height: 100%; background: linear-gradient(90deg, var(--pf-indigo), var(--pf-purple)); border-radius: 2px; animation: cvjd-progress 2s ease-in-out infinite; }
+@keyframes cvjd-progress { 0% { width: 10%; } 50% { width: 85%; } 100% { width: 10%; } }
+
+/* ── JD parsed result card ── */
+.jd-result-card { background: rgba(255, 255, 255, .025); border: 1px solid rgba(99, 102, 241, .2); border-radius: 10px; overflow: hidden; margin-top: 12px; }
+.jd-result-header {
+    background: rgba(99, 102, 241, .08); padding: 12px 14px;
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
+    border-bottom: 1px solid rgba(99, 102, 241, .15);
+}
+.jd-pos-name { font-size: .92rem; font-weight: 700; color: var(--pf-indigo); }
+.jd-co-name  { font-size: .74rem; color: var(--pf-muted); margin-top: 3px; }
+.change-jd-btn {
+    background: transparent; border: 1px solid var(--pf-border);
+    color: var(--pf-muted); font-size: .7rem; padding: 4px 10px;
+    border-radius: 5px; cursor: pointer; white-space: nowrap;
+    flex-shrink: 0; transition: all .15s;
+}
+.change-jd-btn:hover { border-color: var(--pf-indigo); color: var(--pf-indigo); }
+.jd-result-body { padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+.jd-skill-group-label {
+    font-size: .65rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    margin-bottom: 6px; display: flex; align-items: center; gap: 5px;
+}
+.jd-skill-group-label.req  { color: #f59e0b; }
+.jd-skill-group-label.nice { color: var(--pf-teal); }
+.jd-skill-group-label::before { content: ''; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.jd-skill-group-label.req::before  { background: #f59e0b; }
+.jd-skill-group-label.nice::before { background: var(--pf-teal); }

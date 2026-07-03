@@ -110,4 +110,15 @@ public class ProfileController(IProfileService profileService) : Controller
         ModelState.AddModelError(string.Empty, result.Message);
         return View(model);
     }
+
+    // ============================ CV & JD ============================
+    [HttpGet]
+    public IActionResult CvJd()
+    {
+        if (string.IsNullOrEmpty(Request.Cookies["access_token"]))
+            return RedirectToAction("Login", "Auth");
+
+        ViewData["ProfileActive"] = "cvjd";
+        return View();
+    }
 }
