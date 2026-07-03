@@ -1,4 +1,4 @@
-﻿using WebClient.Services.Shared;
+using WebClient.Services.Shared;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,6 +18,7 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllerRoute(
