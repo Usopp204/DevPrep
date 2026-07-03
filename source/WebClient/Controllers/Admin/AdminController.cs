@@ -12,8 +12,8 @@ public class AdminController(IAdminService adminService) : Controller
 
     public IActionResult Index()
     {
-        // Chỉ tài khoản Admin hoặc Manager mới vào được dashboard.
-        if (!IsAdminOrManager())
+        // Admin and Manager accounts can access the dashboard shell.
+        if (!IsAdminAreaRole())
         {
             TempData["Error"] = "You must sign in with an Admin or Manager account to access the dashboard.";
             return RedirectToAction("Login", "Auth");
@@ -24,9 +24,9 @@ public class AdminController(IAdminService adminService) : Controller
 
     /// <summary>
     /// Đọc role từ access_token (JWT trong cookie HttpOnly) và kiểm tra hết hạn.
-    /// Đây là cổng chặn ở tầng UI; các API admin phía backend vẫn tự kiểm [Authorize(Roles=Admin)].
+    /// Đây là cổng chặn ở tầng UI; các API admin phía backend vẫn tự kiểm quyền theo từng endpoint.
     /// </summary>
-    private bool IsAdminOrManager()
+    private bool IsAdminAreaRole()
     {
         var token = Request.Cookies["access_token"];
         if (string.IsNullOrWhiteSpace(token)) return false;
@@ -58,8 +58,8 @@ public class AdminController(IAdminService adminService) : Controller
             if (root.TryGetProperty(RoleClaim, out var r)) role = r.GetString();
             else if (root.TryGetProperty("role", out var r2)) role = r2.GetString();
 
-            return string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase) || 
-                   string.Equals(role, "Manager", StringComparison.OrdinalIgnoreCase);
+            return string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(role, "Manager", StringComparison.OrdinalIgnoreCase);
         }
         catch
         {
