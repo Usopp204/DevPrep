@@ -189,16 +189,21 @@ public class AuthController(IAuthService authService) : Controller
     }
 
     // ============================ helpers ============================
-    // Admin -> thẳng Admin Dashboard; còn lại -> Home.
+    // Admin/Manager -> Admin Dashboard; other roles -> Home.
     private IActionResult RedirectAfterLogin(string? role)
     {
-        if (string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase) || 
-            string.Equals(role, "Manager", StringComparison.OrdinalIgnoreCase))
+        if (IsAdminAreaRole(role))
         {
             return RedirectToAction("Index", "Admin");
         }
 
         return RedirectToAction("Index", "Home");
+    }
+
+    private static bool IsAdminAreaRole(string? role)
+    {
+        return string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(role, "Manager", StringComparison.OrdinalIgnoreCase);
     }
 
     private void StoreAuthCookies(LoginResponseData data)
