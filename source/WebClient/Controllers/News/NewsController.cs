@@ -13,4 +13,11 @@ public class NewsController(INewsService newsService) : Controller
         var model = await newsService.GetListAsync(page, PageSize);
         return View(model);
     }
+
+    // /News/Detail/{id} — public. Backend tự tăng ViewCount mỗi lần xem.
+    public async Task<IActionResult> Detail(Guid id)
+    {
+        var model = await newsService.GetDetailAsync(id);
+        return View(model);
+    }
 }
