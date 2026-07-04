@@ -1,0 +1,887 @@
+﻿@model WebClient.Models.Admin.AdminQuestionViewModel
+
+@{
+    Layout = null;
+    ViewData["Title"] = "Question Repository";
+
+    var query = ViewBag.CurrentQuery as WebClient.Models.Admin.AdminQuestionQueryDto
+        ?? new WebClient.Models.Admin.AdminQuestionQueryDto();
+
+    var pageSize = Model.PagedResult.PageSize > 0 ? Model.PagedResult.PageSize : query.PageSize;
+    if (pageSize <= 0)
+    {
+        pageSize = 10;
+    }
+
+    int totalPages = (int)Math.Ceiling((double)Model.PagedResult.TotalRecords / pageSize);
+    if (totalPages <= 0)
+    {
+        totalPages = 1;
+    }
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - DevPrep AI Admin Dashboard</title>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@@100..900&family=JetBrains+Mono:wght@@500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+
+    <style>
+        body {
+            background-color: #0b0c10;
+            color: #f1f2f4;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        .admin-main-content {
+            margin-left: 260px;
+            padding-top: 70px;
+            min-height: 100vh;
+            transition: all 0.3s ease;
+        }
+
+        .custom-dark-alert {
+            background-color: #1a1517 !important;
+            border: 1px solid #5c2626 !important;
+            color: #fca5a5 !important;
+            border-radius: 8px;
+            padding: 14px 20px;
+            font-weight: 500;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .search-box {
+            background-color: #11121a !important;
+            border: 1px solid #292c3d !important;
+            color: #fff !important;
+            border-radius: 8px;
+        }
+
+            .search-box::placeholder {
+                color: #64748b !important;
+            }
+
+            .search-box:focus {
+                background-color: #161824 !important;
+                border-color: #6366f1 !important;
+                color: #fff !important;
+                box-shadow: none !important;
+            }
+
+        .filter-badge {
+            background-color: #11121a;
+            border: 1px solid #292c3d;
+            color: #cbd5e1;
+            font-size: 13px;
+            padding: 6px 14px;
+            border-radius: 6px;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+            .filter-badge:hover,
+            .filter-badge.active {
+                background-color: #1e1b4b !important;
+                border-color: #6366f1 !important;
+                color: #a5b4fc !important;
+            }
+
+        .custom-table-wrapper {
+            background-color: #11121a !important;
+            border-radius: 12px;
+            border: 1px solid #242636;
+            overflow: hidden;
+            padding: 8px;
+        }
+
+        .custom-table {
+            background-color: transparent !important;
+            margin-bottom: 0 !important;
+        }
+
+            .custom-table th,
+            .custom-table td {
+                background-color: transparent !important;
+                color: #cbd5e1 !important;
+                border-bottom: 1px solid #1e202e !important;
+                padding: 16px 12px !important;
+                font-size: 14px;
+            }
+
+            .custom-table th {
+                background-color: #161722 !important;
+                color: #94a3b8 !important;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.7px;
+                font-weight: 600;
+                border-bottom: 2px solid #242636 !important;
+            }
+
+            .custom-table tbody tr {
+                transition: background-color 0.2s ease;
+            }
+
+                .custom-table tbody tr:hover {
+                    background-color: #171926 !important;
+                }
+
+        .question-text-highlight {
+            color: #ffffff !important;
+            font-weight: 600;
+            max-width: 420px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .deleted-row {
+            opacity: 0.72;
+        }
+
+            .deleted-row .question-text-highlight {
+                color: #94a3b8 !important;
+                text-decoration: line-through;
+            }
+
+        .form-check-input-custom {
+            background-color: #1b1c26 !important;
+            border: 1px solid #475569 !important;
+            width: 17px;
+            height: 17px;
+            cursor: pointer;
+        }
+
+            .form-check-input-custom:checked {
+                background-color: #6366f1 !important;
+                border-color: #6366f1 !important;
+            }
+
+        .badge-easy {
+            background-color: #064e3b !important;
+            color: #34d399 !important;
+            border: 1px solid #059669 !important;
+            font-weight: 600;
+        }
+
+        .badge-medium {
+            background-color: #7c2d12 !important;
+            color: #fb923c !important;
+            border: 1px solid #ea580c !important;
+            font-weight: 600;
+        }
+
+        .badge-hard {
+            background-color: #7f1d1d !important;
+            color: #f87171 !important;
+            border: 1px solid #dc2626 !important;
+            font-weight: 600;
+        }
+
+        .tech-tag {
+            background-color: #1e2030 !important;
+            border: 1px solid #33364f !important;
+            color: #cbd5e1 !important;
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-weight: 500;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .status-active-dot {
+            background-color: #10b981;
+        }
+
+        .status-draft-dot {
+            background-color: #94a3b8;
+        }
+
+        .status-inactive-dot {
+            background-color: #ef4444;
+        }
+
+        .btn-add {
+            background-color: #6366f1 !important;
+            color: white !important;
+            border-radius: 8px;
+            font-weight: 600;
+            padding: 9px 18px;
+            text-decoration: none;
+            transition: all 0.2s;
+            border: none;
+        }
+
+            .btn-add:hover {
+                background-color: #4f46e5 !important;
+                box-shadow: 0 0 12px rgba(99, 102, 241, 0.4);
+            }
+
+        .btn-bulk-delete {
+            background-color: #7f1d1d !important;
+            color: #f87171 !important;
+            border: 1px solid #dc2626 !important;
+            border-radius: 8px;
+            font-weight: 600;
+            padding: 9px 18px;
+            transition: all 0.2s;
+            display: none;
+        }
+
+            .btn-bulk-delete:hover {
+                background-color: #dc2626 !important;
+                color: white !important;
+            }
+
+        .page-link-dark {
+            background-color: #11121a !important;
+            border: 1px solid #242636 !important;
+            color: #94a3b8 !important;
+            margin: 0 3px;
+            border-radius: 6px !important;
+        }
+
+            .page-link-dark:hover {
+                background-color: #1c1d29 !important;
+                color: #fff !important;
+            }
+
+        .page-item.active .page-link-dark {
+            background-color: #6366f1 !important;
+            border-color: #6366f1 !important;
+            color: #fff !important;
+        }
+
+        .page-item.disabled .page-link-dark {
+            background-color: #0b0c10 !important;
+            border-color: #161722 !important;
+            color: #475569 !important;
+        }
+
+        .action-icon {
+            color: #94a3b8 !important;
+            font-size: 16px;
+            transition: color 0.15s;
+            cursor: pointer;
+        }
+
+            .action-icon:hover {
+                color: #ffffff !important;
+            }
+
+        .action-delete {
+            color: #fb7185 !important;
+        }
+
+            .action-delete:hover {
+                color: #ef4444 !important;
+            }
+
+        .action-restore {
+            color: #34d399 !important;
+        }
+
+            .action-restore:hover {
+                color: #10b981 !important;
+            }
+
+        .clear-filter-link {
+            color: #94a3b8 !important;
+            transition: color 0.2s ease;
+        }
+
+            .clear-filter-link:hover {
+                color: #ffffff !important;
+                text-decoration: underline !important;
+            }
+
+        @@media (max-width: 991.98px) {
+            .admin-main-content {
+                margin-left: 0;
+                padding-top: 80px;
+            }
+        }
+    </style>
+</head>
+
+<body class="admin-page">
+    @await Html.PartialAsync("_AdminTopbar")
+    @await Html.PartialAsync("_AdminSidebar")
+
+    <div class="admin-main-content">
+        <div class="container-fluid px-4 py-3">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="fw-bold mb-1" style="color: #fff;">Question Repository</h2>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="button" id="btnBulkDelete" class="btn btn-bulk-delete">
+                        <i class="fa-solid fa-trash-can me-2"></i>
+                        Delete Selected (<span id="selectedCount">0</span>)
+                    </button>
+
+                    <a href="/admin/questions/create" class="btn btn-add">
+                        <i class="fa-solid fa-plus me-2"></i>
+                        New Question
+                    </a>
+                </div>
+            </div>
+
+            @if (ViewBag.ErrorMessage != null)
+            {
+                <div class="custom-dark-alert mb-4">
+                    <i class="fa-solid fa-circle-exclamation fs-5"></i>
+                    <span>@ViewBag.ErrorMessage</span>
+                </div>
+            }
+
+            <form method="GET" action="/admin/questions" id="adminFilterForm" class="mb-4">
+                <input type="hidden" name="PageIndex" id="pageIdxInput" value="@query.PageIndex" />
+                <input type="hidden" name="QuestionType" id="typeInput" value="@query.QuestionType" />
+                <input type="hidden" name="Level" id="levelInput" value="@query.Level" />
+                <input type="hidden" name="Difficulty" id="difficultyInput" value="@query.Difficulty" />
+                <input type="hidden" name="CategoryId" id="categoryInput" value="@(query.CategoryId?.ToString() ?? "")" />
+                <input type="hidden" name="Status" id="statusInput" value="@query.Status" />
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <span class="input-group-text search-box border-end-0">
+                                <i class="fa-solid fa-magnifying-glass text-muted"></i>
+                            </span>
+
+                            <input type="text"
+                                   name="Keyword"
+                                   class="form-control search-box border-start-0"
+                                   placeholder="Search questions by ID, text, or tags..."
+                                   value="@query.Keyword"
+                                   onkeypress="if(event.key === 'Enter') { event.preventDefault(); submitWithResetPage(); }" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 w-100">
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <span class="text-white small fw-bold text-uppercase me-2">
+                            <i class="fa-solid fa-sliders me-1 text-indigo"></i>
+                            Quick Filters:
+                        </span>
+
+                        <div class="dropdown">
+                            @{
+                                string selectedCatName = "All";
+                                bool isCatActive = query.CategoryId.HasValue;
+
+                                if (query.CategoryId.HasValue && Model.Categories != null)
+                                {
+                                    var matched = Model.Categories.FirstOrDefault(c => c.CategoryId == query.CategoryId.Value);
+
+                                    if (matched != null)
+                                    {
+                                        selectedCatName = matched.Name;
+                                    }
+                                }
+                            }
+
+                            <button class="filter-badge dropdown-toggle @(isCatActive ? "active" : "")" type="button" data-bs-toggle="dropdown">
+                                Category: @selectedCatName
+                            </button>
+
+                            <ul class="dropdown-menu dropdown-menu-dark">
+                                <li>
+                                    <a class="dropdown-item" href="javascript:void(0);" onclick="applyQuickFilter('category', '')">All</a>
+                                </li>
+
+                                @if (Model.Categories != null)
+                                {
+                                    foreach (var cat in Model.Categories)
+                                    {
+                                        <li>
+                                            <a class="dropdown-item" href="javascript:void(0);" onclick="applyQuickFilter('category', '@cat.CategoryId')">@cat.Name</a>
+                                        </li>
+                                    }
+                                }
+                            </ul>
+                        </div>
+
+                        <div class="dropdown">
+                            @{
+                                bool isTypeActive = !string.IsNullOrEmpty(query.QuestionType);
+                            }
+
+                            <button class="filter-badge dropdown-toggle @(isTypeActive ? "active" : "")" type="button" data-bs-toggle="dropdown">
+                                Type: @(isTypeActive ? query.QuestionType : "All")
+                            </button>
+
+                            <ul class="dropdown-menu dropdown-menu-dark">
+                                <li><a class="dropdown-item" href="javascript:void(0);" onclick="applyQuickFilter('type', '')">All</a></li>
+                                <li><a class="dropdown-item" href="javascript:void(0);" onclick="applyQuickFilter('type', 'Theory')">Theory</a></li>
+                                <li><a class="dropdown-item" href="javascript:void(0);" onclick="applyQuickFilter('type', 'Coding')">Coding</a></li>
+                                <li><a class="dropdown-item" href="javascript:void(0);" onclick="applyQuickFilter('type', 'Situational')">Situational</a></li>
+                                <li><a class="dropdown-item" href="javascript:void(0);" onclick="applyQuickFilter('type', 'Behavioral')">Behavioral</a></li>
+                            </ul>
+                        </div>
+
+                        <div class="dropdown">
+                            @{
+                                bool isLevelActive = !string.IsNullOrEmpty(query.Level);
+                            }
+
+                            <button class="filter-badge dropdown-toggle @(isLevelActive ? "active" : "")" type="button" data-bs-toggle="dropdown">
+                                Level: @(isLevelActive ? query.Level : "All")
+                            </button>
+
+                            <ul class="dropdown-menu dropdown-menu-dark">
+                                <li><a class="dropdown-item" href="javascript:void(0);" onclick="applyQuickFilter('level', '')">All</a></li>
+                                <li><a class="dropdown-item" href="javascript:void(0);" onclick="applyQuickFilter('level', 'Intern')">Intern</a></li>
+                                <li><a class="dropdown-item" href="javascript:void(0);" onclick="applyQuickFilter('level', 'Junior')">Junior</a></li>
+                                <li><a class="dropdown-item" href="javascript:void(0);" onclick="applyQuickFilter('level', 'Middle')">Middle</a></li>
+                                <li><a class="dropdown-item" href="javascript:void(0);" onclick="applyQuickFilter('level', 'Senior')">Senior</a></li>
+                            </ul>
+                        </div>
+
+                        <div class="dropdown">
+                            @{
+                                bool isDiffActive = !string.IsNullOrEmpty(query.Difficulty);
+                            }
+
+                            <button class="filter-badge dropdown-toggle @(isDiffActive ? "active" : "")" type="button" data-bs-toggle="dropdown">
+                                Difficulty: @(isDiffActive ? query.Difficulty : "All")
+                            </button>
+
+                            <ul class="dropdown-menu dropdown-menu-dark">
+                                <li><a class="dropdown-item" href="javascript:void(0);" onclick="applyQuickFilter('difficulty', '')">All</a></li>
+                                <li><a class="dropdown-item" href="javascript:void(0);" onclick="applyQuickFilter('difficulty', 'Easy')">Easy</a></li>
+                                <li><a class="dropdown-item" href="javascript:void(0);" onclick="applyQuickFilter('difficulty', 'Medium')">Medium</a></li>
+                                <li><a class="dropdown-item" href="javascript:void(0);" onclick="applyQuickFilter('difficulty', 'Hard')">Hard</a></li>
+                            </ul>
+                        </div>
+
+                        <div class="dropdown">
+                            @{
+                                bool isStatusActive = !string.IsNullOrEmpty(query.Status);
+                            }
+
+                            <button class="filter-badge dropdown-toggle @(isStatusActive ? "active" : "")" type="button" data-bs-toggle="dropdown">
+                                Status: @(isStatusActive ? query.Status : "All")
+                            </button>
+
+                            <ul class="dropdown-menu dropdown-menu-dark">
+                                <li><a class="dropdown-item" href="javascript:void(0);" onclick="applyQuickFilter('status', '')">All</a></li>
+                                <li><a class="dropdown-item" href="javascript:void(0);" onclick="applyQuickFilter('status', 'Active')">Active</a></li>
+                                <li><a class="dropdown-item" href="javascript:void(0);" onclick="applyQuickFilter('status', 'Draft')">Draft</a></li>
+                                <li><a class="dropdown-item" href="javascript:void(0);" onclick="applyQuickFilter('status', 'Archived')">Archived</a></li>
+                                <li><a class="dropdown-item" href="javascript:void(0);" onclick="applyQuickFilter('status', 'Deleted')">Deleted</a></li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div>
+                        <a href="/admin/questions" class="text-decoration-none small clear-filter-link">
+                            <i class="fa-solid fa-filter-circle-xmark me-1"></i>
+                            Clear all filters
+                        </a>
+                    </div>
+                </div>
+            </form>
+
+            <div class="custom-table-wrapper table-responsive mb-4">
+                <table class="table custom-table align-middle">
+                    <thead>
+                        <tr>
+                            <th style="width: 4%; text-align: center;">
+                                <input class="form-check-input form-check-input-custom" type="checkbox" id="selectAllCheckbox">
+                            </th>
+                            <th style="width: 36%;">Question Text</th>
+                            <th style="width: 10%;">Type</th>
+                            <th style="width: 10%;">Level</th>
+                            <th style="width: 10%;">Difficulty</th>
+                            <th style="width: 12%;">Tags</th>
+                            <th style="width: 10%;">Status</th>
+                            <th style="width: 8%;" class="text-end px-3">Actions</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @if (Model.PagedResult.Items != null && Model.PagedResult.Items.Any())
+                        {
+                            foreach (var item in Model.PagedResult.Items)
+                            {
+                                var isSoftDeleted = item.IsDeleted;
+
+                                <tr id="row-@item.QuestionId" class="@(isSoftDeleted ? "deleted-row" : "")">
+                                    <td style="text-align: center;">
+                                        @if (!isSoftDeleted)
+                                        {
+                                            <input class="form-check-input form-check-input-custom question-checkbox"
+                                                   type="checkbox"
+                                                   value="@item.QuestionId">
+                                        }
+                                    </td>
+
+                                    <td>
+                                        <div class="question-text-highlight mb-1" title="@item.Content">
+                                            @item.Content
+                                        </div>
+
+                                        <span style="color: #64748b; font-size: 11px; font-weight: 500;">
+                                            ID: @(item.QuestionId.ToString().Length > 8 ? "Q-" + item.QuestionId.ToString().Substring(0, 5).ToUpper() : item.QuestionId.ToString())
+                                        </span>
+                                    </td>
+
+                                    <td><span>@item.QuestionType</span></td>
+
+                                    <td><span>@item.Level</span></td>
+
+                                    <td>
+                                        @{
+                                            var diff = item.Difficulty?.ToLower();
+                                            var cls = diff == "hard" ? "badge-hard" : (diff == "medium" ? "badge-medium" : "badge-easy");
+                                        }
+
+                                        <span class="badge @cls px-2 py-1" style="font-size: 11px; border-radius: 4px;">
+                                            @item.Difficulty
+                                        </span>
+                                    </td>
+
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(item.TechStack))
+                                        {
+                                            <span class="tech-tag">@item.TechStack</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="tech-tag">N/A</span>
+                                        }
+                                    </td>
+
+                                    <td>
+                                        @if (item.IsDeleted)
+                                        {
+                                            <span class="small d-flex align-items-center gap-2" style="color: #ef4444; font-weight: 600;">
+                                                <span class="status-dot status-inactive-dot"></span>
+                                                Deleted
+                                            </span>
+                                        }
+                                        else if (string.Equals(item.Status, "Active", StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            <span class="small d-flex align-items-center gap-2" style="color: #10b981; font-weight: 500;">
+                                                <span class="status-dot status-active-dot"></span>
+                                                Active
+                                            </span>
+                                        }
+                                        else if (string.Equals(item.Status, "Draft", StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            <span class="small d-flex align-items-center gap-2" style="color: #cbd5e1; font-weight: 500;">
+                                                <span class="status-dot status-draft-dot"></span>
+                                                Draft
+                                            </span>
+                                        }
+                                        else if (string.Equals(item.Status, "Archived", StringComparison.OrdinalIgnoreCase) ||
+                                        string.Equals(item.Status, "Inactive", StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            <span class="small d-flex align-items-center gap-2" style="color: #ef4444; font-weight: 500;">
+                                                <span class="status-dot status-inactive-dot"></span>
+                                                Archived
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="small text-muted">@item.Status</span>
+                                        }
+                                    </td>
+
+                                    <td class="text-end px-3">
+                                        <div class="d-flex justify-content-end gap-3">
+                                            <a href="/admin/questions/detail/@item.QuestionId"
+                                               class="action-icon"
+                                               title="View">
+                                                <i class="fa-regular fa-eye"></i>
+                                            </a>
+
+                                            @if (!item.IsDeleted)
+                                            {
+                                                <a href="/admin/questions/edit/@item.QuestionId"
+                                                   class="action-icon"
+                                                   title="Edit">
+                                                    <i class="fa-regular fa-pen-to-square"></i>
+                                                </a>
+                                            }
+
+                                            @if (item.IsDeleted)
+                                            {
+                                                <a href="javascript:void(0);"
+                                                   onclick="restoreQuestion('@item.QuestionId')"
+                                                   class="action-icon action-restore"
+                                                   title="Restore">
+                                                    <i class="fa-solid fa-trash-arrow-up"></i>
+                                                </a>
+                                            }
+                                            else
+                                            {
+                                                <a href="javascript:void(0);"
+                                                   onclick="deleteQuestion('@item.QuestionId')"
+                                                   class="action-icon action-delete"
+                                                   title="Delete">
+                                                    <i class="fa-regular fa-trash-can"></i>
+                                                </a>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="8" class="text-center text-muted py-5" style="background-color: transparent !important;">
+                                    No questions match your criteria.
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (totalPages > 1)
+            {
+                <div class="d-flex justify-content-center mt-3">
+                    <nav>
+                        <ul class="pagination">
+                            <li class="page-item @(query.PageIndex == 1 ? "disabled" : "")">
+                                <a class="page-link page-link-dark" href="javascript:void(0);" onclick="changePage(@(query.PageIndex - 1))">&laquo;</a>
+                            </li>
+
+                            @for (int i = 1; i <= totalPages; i++)
+                            {
+                                <li class="page-item @(query.PageIndex == i ? "active" : "")">
+                                    <a class="page-link page-link-dark" href="javascript:void(0);" onclick="changePage(@i)">@i</a>
+                                </li>
+                            }
+
+                            <li class="page-item @(query.PageIndex == totalPages ? "disabled" : "")">
+                                <a class="page-link page-link-dark" href="javascript:void(0);" onclick="changePage(@(query.PageIndex + 1))">&raquo;</a>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+            }
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@@11"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        function submitWithResetPage() {
+            document.getElementById('pageIdxInput').value = 1;
+            document.getElementById('adminFilterForm').submit();
+        }
+
+        function applyQuickFilter(type, value) {
+            if (type === 'category') document.getElementById('categoryInput').value = value;
+            if (type === 'type') document.getElementById('typeInput').value = value;
+            if (type === 'level') document.getElementById('levelInput').value = value;
+            if (type === 'difficulty') document.getElementById('difficultyInput').value = value;
+            if (type === 'status') document.getElementById('statusInput').value = value;
+
+            submitWithResetPage();
+        }
+
+        function changePage(page) {
+            document.getElementById('pageIdxInput').value = page;
+            document.getElementById('adminFilterForm').submit();
+        }
+
+        $(document).ready(function () {
+            $('#selectAllCheckbox').on('change', function () {
+                $('.question-checkbox').prop('checked', this.checked);
+                toggleBulkDeleteButton();
+            });
+
+            $(document).on('change', '.question-checkbox', function () {
+                if (!this.checked) {
+                    $('#selectAllCheckbox').prop('checked', false);
+                } else if ($('.question-checkbox:checked').length === $('.question-checkbox').length) {
+                    $('#selectAllCheckbox').prop('checked', true);
+                }
+
+                toggleBulkDeleteButton();
+            });
+
+            function toggleBulkDeleteButton() {
+                var selectedChecked = $('.question-checkbox:checked').length;
+                $('#selectedCount').text(selectedChecked);
+
+                if (selectedChecked > 0) {
+                    $('#btnBulkDelete').fadeIn(200);
+                } else {
+                    $('#btnBulkDelete').fadeOut(200);
+                }
+            }
+
+            $('#btnBulkDelete').on('click', function () {
+                var selectedIds = [];
+
+                $('.question-checkbox:checked').each(function () {
+                    selectedIds.push($(this).val());
+                });
+
+                if (selectedIds.length === 0) return;
+
+                Swal.fire({
+                    title: 'Are you sure?',
+                    text: `You are about to delete ${selectedIds.length} selected questions.`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    background: '#11121a',
+                    color: '#fff',
+                    confirmButtonColor: '#ef4444',
+                    cancelButtonColor: '#475569',
+                    confirmButtonText: 'Yes, delete them!'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: '/admin/questions/bulk-delete',
+                            type: 'POST',
+                            contentType: 'application/json',
+                            data: JSON.stringify(selectedIds),
+                            success: function (response) {
+                                Swal.fire({
+                                    title: 'Deleted!',
+                                    text: response.message || 'Selected questions have been deleted.',
+                                    icon: 'success',
+                                    background: '#11121a',
+                                    color: '#fff'
+                                }).then(() => {
+                                    location.reload();
+                                });
+                            },
+                            error: function (xhr) {
+                                var errMsg = xhr.responseJSON ? xhr.responseJSON.message : "An error occurred during mass deletion.";
+
+                                Swal.fire({
+                                    title: 'Error!',
+                                    text: errMsg,
+                                    icon: 'error',
+                                    background: '#11121a',
+                                    color: '#fff'
+                                });
+                            }
+                        });
+                    }
+                });
+            });
+        });
+
+        function deleteQuestion(id) {
+            Swal.fire({
+                title: 'Are you sure?',
+                text: "Do you really want to delete this question?",
+                icon: 'warning',
+                showCancelButton: true,
+                background: '#11121a',
+                color: '#fff',
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#475569',
+                confirmButtonText: 'Yes, delete it!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: '/admin/questions/delete/' + id,
+                        type: 'POST',
+                        success: function (response) {
+                            Swal.fire({
+                                title: 'Deleted!',
+                                text: response.message || 'The question has been deleted successfully.',
+                                icon: 'success',
+                                background: '#11121a',
+                                color: '#fff'
+                            }).then(() => {
+                                location.reload();
+                            });
+                        },
+                        error: function (xhr) {
+                            var errMsg = xhr.responseJSON ? xhr.responseJSON.message : "Could not delete this question.";
+
+                            Swal.fire({
+                                title: 'Error!',
+                                text: errMsg,
+                                icon: 'error',
+                                background: '#11121a',
+                                color: '#fff'
+                            });
+                        }
+                    });
+                }
+            });
+        }
+
+        function restoreQuestion(id) {
+            Swal.fire({
+                title: 'Confirm Restore?',
+                text: 'Do you want to restore this question?',
+                icon: 'question',
+                showCancelButton: true,
+                background: '#11121a',
+                color: '#fff',
+                confirmButtonColor: '#10b981',
+                cancelButtonColor: '#475569',
+                confirmButtonText: 'Restore Now'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: '/admin/questions/restore/' + id,
+                        type: 'POST',
+                        success: function (response) {
+                            Swal.fire({
+                                title: 'Restored!',
+                                text: response.message || 'The question has been restored successfully.',
+                                icon: 'success',
+                                background: '#11121a',
+                                color: '#fff',
+                                confirmButtonColor: '#10b981'
+                            }).then(() => {
+                                location.reload();
+                            });
+                        },
+                        error: function (xhr) {
+                            var errMsg = xhr.responseJSON ? xhr.responseJSON.message : "Could not restore this question.";
+
+                            Swal.fire({
+                                title: 'Error!',
+                                text: errMsg,
+                                icon: 'error',
+                                background: '#11121a',
+                                color: '#fff'
+                            });
+                        }
+                    });
+                }
+            });
+        }
+    </script>
+</body>
+</html>
