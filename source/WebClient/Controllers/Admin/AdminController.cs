@@ -34,6 +34,18 @@ public class AdminController(IAdminService adminService) : Controller
         return View();
     }
 
+    // Trang quản lý System Feedback (list + reply). Guard UI: chỉ Admin/Manager; backend tự chặn quyền.
+    public IActionResult SystemFeedback()
+    {
+        if (!IsAdminAreaRole())
+        {
+            TempData["Error"] = "You must sign in with an Admin or Manager account to access the dashboard.";
+            return RedirectToAction("Login", "Auth");
+        }
+
+        return View();
+    }
+
     /// <summary>
     /// Đọc role từ access_token (JWT trong cookie HttpOnly) và kiểm tra hết hạn.
     /// Đây là cổng chặn ở tầng UI; các API admin phía backend vẫn tự kiểm quyền theo từng endpoint.

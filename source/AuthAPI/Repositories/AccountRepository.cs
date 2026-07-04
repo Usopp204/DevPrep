@@ -28,6 +28,13 @@ public class AccountRepository : IAccountRepository
             .Where(a => accountIds.Contains(a.AccountId))
             .ToListAsync();
 
+    public Task<List<Guid>> SearchAccountIdsByEmailAsync(string keyword) =>
+        _context.Accounts
+            .AsNoTracking()
+            .Where(a => a.Email.Contains(keyword))
+            .Select(a => a.AccountId)
+            .ToListAsync();
+
     public async Task AddAsync(Account account) =>
         await _context.Accounts.AddAsync(account);
 
