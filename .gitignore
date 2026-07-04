@@ -72,3 +72,6 @@ source/ui_mockup/
 # Generated model weights / vector index (not source code, rebuildable)
 ai-service/models/
 ai-service/chroma_data/
+
+# Uploaded files (user data, not committed)
+/source/WebClient/wwwroot/uploads/

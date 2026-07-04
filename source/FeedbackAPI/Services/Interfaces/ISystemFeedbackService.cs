@@ -22,4 +22,7 @@ public interface ISystemFeedbackService
 
     /// <summary>Xoá hẳn một trả lời. Trả false nếu feedback/reply không tồn tại (hoặc feedback đã xoá).</summary>
     Task<bool> DeleteReplyAsync(Guid feedbackId, Guid replyId);
+
+    /// <summary>Lấy chi tiết một System feedback (kèm replies).</summary>
+    Task<SystemFeedbackListItemDto?> GetDetailAsync(Guid id);
 }

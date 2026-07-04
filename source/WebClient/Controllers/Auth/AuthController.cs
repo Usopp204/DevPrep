@@ -1,3 +1,6 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
 using WebClient.Models.Auth;
 using WebClient.Services.Auth;
@@ -25,7 +28,7 @@ public class AuthController(IAuthService authService) : Controller
         var result = await authService.LoginAsync(model);
         if (result.Success && result.Data is not null)
         {
-            StoreAuthCookies(result.Data);
+            await StoreAuthCookies(result.Data);
             return RedirectAfterLogin(result.Data.Role);
         }
 
@@ -48,7 +51,7 @@ public class AuthController(IAuthService authService) : Controller
         var result = await authService.SsoFirebaseAsync(idToken);
         if (result.Success && result.Data is not null)
         {
-            StoreAuthCookies(result.Data);
+            await StoreAuthCookies(result.Data);
             return RedirectAfterLogin(result.Data.Role);
         }
 
@@ -72,6 +75,8 @@ public class AuthController(IAuthService authService) : Controller
         {
             Response.Cookies.Delete(name);
         }
+
+        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 
         return RedirectToAction("Index", "Home");
     }
@@ -189,10 +194,10 @@ public class AuthController(IAuthService authService) : Controller
     }
 
     // ============================ helpers ============================
-    // Admin -> thẳng Admin Dashboard; còn lại -> Home.
+    // Admin/Manager -> Admin Dashboard; other roles -> Home.
     private IActionResult RedirectAfterLogin(string? role)
     {
-        if (string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase))
+        if (IsAdminAreaRole(role))
         {
             return RedirectToAction("Index", "Admin");
         }
@@ -200,7 +205,13 @@ public class AuthController(IAuthService authService) : Controller
         return RedirectToAction("Index", "Home");
     }
 
-    private void StoreAuthCookies(LoginResponseData data)
+    private static bool IsAdminAreaRole(string? role)
+    {
+        return string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(role, "Manager", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task StoreAuthCookies(LoginResponseData data)
     {
         var secureOpts = new CookieOptions
         {
@@ -222,5 +233,16 @@ public class AuthController(IAuthService authService) : Controller
 
         Response.Cookies.Append("user_email", data.Email ?? string.Empty, readableOpts);
         Response.Cookies.Append("user_role", data.Role ?? string.Empty, readableOpts);
+
+        var claims = new List<Claim>();
+        if (!string.IsNullOrEmpty(data.Email))
+            claims.Add(new Claim(ClaimTypes.Email, data.Email));
+        if (!string.IsNullOrEmpty(data.Role))
+            claims.Add(new Claim(ClaimTypes.Role, data.Role));
+
+        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        var principal = new ClaimsPrincipal(identity);
+
+        await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
     }
 }

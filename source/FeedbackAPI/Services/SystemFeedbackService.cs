@@ -164,4 +164,29 @@ public class SystemFeedbackService : ISystemFeedbackService
         ReplyContent = r.ReplyContent,
         CreatedAt = r.CreatedAt
     };
+
+    public async Task<SystemFeedbackListItemDto?> GetDetailAsync(Guid id)
+    {
+        var f = await _repository.GetByIdAsync(id, includeReplies: true, tracking: false);
+        if (f is null) return null;
+
+        return new SystemFeedbackListItemDto
+        {
+            Id = f.FeedbackId,
+            UserId = f.UserId,
+            Category = f.Category,
+            Subject = f.Subject,
+            Content = f.Content,
+            Rating = f.Rating,
+            Status = f.Status,
+            ReplyCount = f.FeedbackReplies.Count,
+            IsDeleted = f.IsDeleted,
+            CreatedAt = f.CreatedAt,
+            UpdatedAt = f.UpdatedAt,
+            Replies = f.FeedbackReplies
+                .OrderBy(r => r.CreatedAt)
+                .Select(MapReply)
+                .ToList()
+        };
+    }
 }

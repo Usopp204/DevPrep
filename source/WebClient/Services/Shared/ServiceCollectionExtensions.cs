@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Options;
 using WebClient.Services.Admin;
 using WebClient.Services.Auth;
 using WebClient.Services.CvJd;
@@ -15,11 +15,20 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddWebClientServices(this IServiceCollection services, IConfiguration configuration)
     {
-        services.Configure<ApiGatewayOptions>(configuration.GetSection("ApiGateway"));
+        services.AddAuthentication(Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationDefaults.AuthenticationScheme)
+            .AddCookie(options =>
+            {
+                options.LoginPath = "/Auth/Login";
+                options.AccessDeniedPath = "/Auth/Login";
+                options.Cookie.Name = "WebClient_Auth";
+            });
 
-        // Needed by AuthTokenHandler to read the JWT cookie from the current request.
+        services.Configure<ApiGatewayOptions>(configuration.GetSection("ApiGateway"));
         services.AddHttpContextAccessor();
-        services.AddTransient<AuthTokenHandler>();
+        services.AddTransient<JwtDelegatingHandler>();
+
+        // Cho ProfileService đọc cookie access_token để gắn Bearer khi gọi API.
+        services.AddHttpContextAccessor();
 
         services.AddHttpClient<IApiClient, ApiClient>((provider, client) =>
         {
@@ -30,9 +39,8 @@ public static class ServiceCollectionExtensions
                 client.BaseAddress = baseUri;
             }
         })
-        .AddHttpMessageHandler<AuthTokenHandler>()
-        // Calls to the localhost API Gateway must NOT go through the system proxy (a proxy can
-        // block localhost and cause timeouts).
+        .AddHttpMessageHandler<JwtDelegatingHandler>()
+        // Gọi tới API Gateway ở localhost: KHÔNG đi qua proxy hệ thống (proxy có thể chặn localhost -> timeout).
         .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { UseProxy = false });
 
         services.AddScoped<IAuthService, AuthService>();
@@ -43,8 +51,12 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<IAdminService, AdminService>();
         services.AddScoped<IManagerService, ManagerService>();
+        services.AddScoped<IManagerQuestionService, ManagerQuestionService>();
+        services.AddScoped<IManagerUserService, ManagerUserService>();
+        services.AddScoped<IManagerNewsService, ManagerNewsService>();
         services.AddScoped<INewsService, NewsService>();
-
+        services.AddScoped<IAdminNewsService, AdminNewsService>();
+        services.AddScoped<IAdminQuestionService, AdminQuestionService>();
         return services;
     }
 }
