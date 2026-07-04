@@ -1,0 +1,438 @@
+﻿@model WebClient.Models.News.AdminNewsDetailDto
+
+@{
+    Layout = null;
+
+    var status = Model.Status ?? "";
+    var isPublished = string.Equals(status, "Published", StringComparison.OrdinalIgnoreCase);
+    var isDraft = string.Equals(status, "Draft", StringComparison.OrdinalIgnoreCase);
+
+    var publishedAtText = Model.PublishedAt.HasValue
+        ? Model.PublishedAt.Value.ToString("dd/MM/yyyy HH:mm")
+        : "Not published";
+
+    var thumbnailUrl = Model.ThumbnailUrl ?? "";
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Article Detail - DevPrep AI Admin Dashboard</title>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@@100..900&family=JetBrains+Mono:wght@@500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+
+    <style>
+        body.admin-page {
+            background-color: #0f0e17;
+            color: #fffffe;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .admin-main-content {
+            margin-left: 260px;
+            padding: 40px;
+        }
+
+        .breadcrumb-custom {
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 24px;
+        }
+
+        .text-muted-custom {
+            color: #94a3b8 !important;
+        }
+
+        .content-title {
+            font-size: 2.35rem;
+            line-height: 1.15;
+            font-weight: 800;
+            color: #ffffff;
+            margin-bottom: 18px;
+        }
+
+        .article-meta {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 18px;
+            align-items: center;
+        }
+
+            .article-meta span {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+            }
+
+        .detail-card {
+            background-color: #161426;
+            border: 1px solid #232038;
+            border-radius: 12px;
+        }
+
+        .thumbnail-box {
+            width: 100%;
+            min-height: 360px;
+            background: linear-gradient(135deg, #1e1b2e, #11101d);
+            border: 1px solid #232038;
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+            .thumbnail-box img {
+                width: 100%;
+                height: 100%;
+                max-height: 430px;
+                object-fit: cover;
+                display: block;
+            }
+
+        .thumbnail-placeholder {
+            color: #6366f1;
+            text-align: center;
+        }
+
+            .thumbnail-placeholder .material-symbols-outlined {
+                font-size: 5rem;
+                opacity: 0.8;
+            }
+
+        .article-content {
+            margin-top: 28px;
+            color: #e2e8f0;
+            line-height: 1.8;
+            font-size: 0.98rem;
+            white-space: pre-line;
+        }
+
+        .side-card {
+            background-color: #161426;
+            border: 1px solid #232038;
+            border-radius: 12px;
+            padding: 22px;
+            margin-bottom: 18px;
+        }
+
+        .side-title {
+            color: #94a3b8;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 16px;
+        }
+
+        .metric-value {
+            color: #ffffff;
+            font-size: 1.65rem;
+            font-weight: 800;
+        }
+
+        .summary-text {
+            color: #cbd5e1;
+            font-size: 0.9rem;
+            line-height: 1.65;
+        }
+
+        .meta-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 10px 0;
+            border-bottom: 1px solid #232038;
+            font-size: 0.88rem;
+        }
+
+            .meta-row:last-child {
+                border-bottom: none;
+            }
+
+        .meta-label {
+            color: #94a3b8;
+            font-weight: 600;
+        }
+
+        .meta-value {
+            color: #e2e8f0;
+            text-align: right;
+            word-break: break-word;
+        }
+
+        .badge-published,
+        .badge-draft,
+        .badge-archived {
+            font-weight: 700;
+            font-size: 0.72rem;
+            padding: 5px 10px;
+            border-radius: 6px;
+            display: inline-block;
+            white-space: nowrap;
+        }
+
+        .badge-published {
+            background-color: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+        }
+
+        .badge-draft {
+            background-color: rgba(245, 158, 11, 0.15);
+            color: #f59e0b;
+        }
+
+        .badge-archived {
+            background-color: rgba(148, 163, 184, 0.15);
+            color: #94a3b8;
+        }
+
+        .btn-main {
+            background-color: #c4b5fd;
+            color: #11101d;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 24px;
+            font-weight: 700;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+            .btn-main:hover {
+                background-color: #a78bfa;
+                color: #11101d;
+            }
+
+        .btn-outline-custom {
+            background-color: transparent;
+            color: #ffffff;
+            border: 1px solid #232038;
+            border-radius: 8px;
+            padding: 12px 24px;
+            font-weight: 700;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+            .btn-outline-custom:hover {
+                border-color: #6366f1;
+                color: #ffffff;
+            }
+
+        .slug-box {
+            background-color: #1e1b2e;
+            border: 1px solid #2e2a47;
+            color: #cbd5e1;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+            display: inline-block;
+            max-width: 100%;
+            word-break: break-word;
+        }
+
+        @@media (max-width: 992px) {
+            .admin-main-content {
+                margin-left: 0;
+                padding: 24px;
+            }
+
+            .content-title {
+                font-size: 1.8rem;
+            }
+        }
+    </style>
+</head>
+
+<body class="admin-page">
+
+    @await Html.PartialAsync("_AdminTopbar")
+    @await Html.PartialAsync("_AdminSidebar")
+
+    <main class="admin-main-content">
+        <div class="container-fluid">
+
+            <div class="breadcrumb-custom">
+                <span class="text-muted-custom">Admin</span>
+                <span class="text-muted-custom mx-2">&gt;</span>
+                <a href="/admin/news" class="text-decoration-none" style="color:#94a3b8;">News</a>
+                <span class="text-muted-custom mx-2">&gt;</span>
+                <span style="color:#6366f1;">Article Detail</span>
+            </div>
+
+            <div class="row g-4">
+                <div class="col-lg-8">
+
+                    <div class="mb-3 d-flex align-items-center gap-2 flex-wrap">
+                        @if (isPublished)
+                        {
+                            <span class="badge-published">Published</span>
+                        }
+                        else if (isDraft)
+                        {
+                            <span class="badge-draft">Draft</span>
+                        }
+                        else
+                        {
+                            <span class="badge-archived">@status</span>
+                        }
+
+                        @if (Model.CategoryId.HasValue)
+                        {
+                            <span class="small" style="color:#a5b4fc;">Category: @Model.CategoryId</span>
+                        }
+                    </div>
+
+                    <h1 class="content-title">@Model.Title</h1>
+
+                    <div class="article-meta mb-4">
+                        <span>
+                            <span class="material-symbols-outlined fs-6">person</span>
+                            Admin Team
+                        </span>
+
+                        <span>
+                            <span class="material-symbols-outlined fs-6">calendar_month</span>
+                            @Model.CreatedAt.ToString("dd/MM/yyyy HH:mm")
+                        </span>
+
+                        <span>
+                            <span class="material-symbols-outlined fs-6">visibility</span>
+                            @Model.ViewCount views
+                        </span>
+                    </div>
+
+                    <div class="thumbnail-box">
+                        @if (!string.IsNullOrWhiteSpace(thumbnailUrl))
+                        {
+                            <img src="@thumbnailUrl" alt="@Model.Title" />
+                        }
+                        else
+                        {
+                            <div class="thumbnail-placeholder">
+                                <span class="material-symbols-outlined">image</span>
+                                <div>No thumbnail available</div>
+                            </div>
+                        }
+                    </div>
+
+                    <div class="article-content">
+                        @Model.Content
+                    </div>
+
+                    <div class="d-flex gap-3 mt-5 flex-wrap">
+                        <a href="/admin/news/edit/@Model.NewsId" class="btn-main">
+                            <span class="material-symbols-outlined fs-5">edit</span>
+                            Edit Post
+                        </a>
+
+                        <a href="/admin/news" class="btn-outline-custom">
+                            <span class="material-symbols-outlined fs-5">arrow_back</span>
+                            Back to List
+                        </a>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+
+                    <div class="side-card">
+                        <div class="side-title">Performance Metrics</div>
+
+                        <div class="text-muted-custom small mb-1">Views</div>
+                        <div class="metric-value">
+                            @Model.ViewCount.ToString("N0")
+                        </div>
+                    </div>
+
+                    <div class="side-card">
+                        <div class="side-title">Article Summary</div>
+
+                        <div class="summary-text">
+                            @(string.IsNullOrWhiteSpace(Model.Summary) ? "No summary provided." : Model.Summary)
+                        </div>
+                    </div>
+
+                    <div class="side-card">
+                        <div class="side-title">Article Metadata</div>
+
+                        <div class="meta-row">
+                            <div class="meta-label">Status</div>
+                            <div class="meta-value">
+                                @if (isPublished)
+                                {
+                                    <span class="badge-published">Published</span>
+                                }
+                                else if (isDraft)
+                                {
+                                    <span class="badge-draft">Draft</span>
+                                }
+                                else
+                                {
+                                    <span class="badge-archived">@status</span>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="meta-row">
+                            <div class="meta-label">Slug</div>
+                            <div class="meta-value">
+                                <span class="slug-box">@Model.Slug</span>
+                            </div>
+                        </div>
+
+                        <div class="meta-row">
+                            <div class="meta-label">News ID</div>
+                            <div class="meta-value">@Model.NewsId</div>
+                        </div>
+
+                        <div class="meta-row">
+                            <div class="meta-label">Category ID</div>
+                            <div class="meta-value">
+                                @(Model.CategoryId.HasValue ? Model.CategoryId.Value.ToString() : "None")
+                            </div>
+                        </div>
+
+                        <div class="meta-row">
+                            <div class="meta-label">Published At</div>
+                            <div class="meta-value">@publishedAtText</div>
+                        </div>
+
+                        <div class="meta-row">
+                            <div class="meta-label">Created At</div>
+                            <div class="meta-value">@Model.CreatedAt.ToString("dd/MM/yyyy HH:mm")</div>
+                        </div>
+
+                        <div class="meta-row">
+                            <div class="meta-label">Updated At</div>
+                            <div class="meta-value">@Model.UpdatedAt.ToString("dd/MM/yyyy HH:mm")</div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

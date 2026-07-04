@@ -1,0 +1,784 @@
+﻿@model WebClient.Models.News.AdminNewsViewModel
+
+@{
+    Layout = null;
+
+    var currentKeyword = Model.CurrentKeyword ?? "";
+    var currentStatus = Model.CurrentStatus ?? "";
+    var currentCategoryId = Model.CurrentCategoryId;
+    var currentPageSize = Model.CurrentPageSize <= 0 ? 10 : Model.CurrentPageSize;
+
+    string BuildPageUrl(int page)
+    {
+        var query = new List<string>
+        {
+            $"PageIndex={page}",
+            $"PageSize={currentPageSize}"
+        };
+
+        if (!string.IsNullOrWhiteSpace(currentKeyword))
+        {
+            query.Add($"Keyword={Uri.EscapeDataString(currentKeyword)}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(currentStatus))
+        {
+            query.Add($"Status={Uri.EscapeDataString(currentStatus)}");
+        }
+
+        if (currentCategoryId.HasValue)
+        {
+            query.Add($"CategoryId={currentCategoryId.Value}");
+        }
+
+        return "/Admin/News?" + string.Join("&", query);
+    }
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>News Management - DevPrep AI Admin Dashboard</title>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@@100..900&family=JetBrains+Mono:wght@@500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+
+    <style>
+        body.admin-page {
+            background-color: #0b0c10;
+            color: #f8fafc;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        .admin-main-content {
+            margin-left: 260px;
+            padding-top: 70px;
+            min-height: 100vh;
+            transition: all 0.3s ease;
+        }
+
+        .page-container {
+            padding: 24px 28px 48px;
+        }
+
+        .content-title {
+            font-size: 2rem;
+            font-weight: 800;
+            color: #ffffff;
+            letter-spacing: -0.04em;
+        }
+
+        .content-subtitle {
+            color: #93c5fd;
+            font-size: 15px;
+        }
+
+        .btn-add {
+            background-color: #6366f1 !important;
+            color: white !important;
+            border-radius: 8px;
+            font-weight: 700;
+            padding: 10px 18px;
+            text-decoration: none;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+            .btn-add:hover {
+                background-color: #4f46e5 !important;
+                color: #ffffff !important;
+                box-shadow: 0 0 16px rgba(99, 102, 241, 0.35);
+            }
+
+        .filter-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #93c5fd;
+            font-weight: 800;
+            margin-bottom: 8px;
+        }
+
+        .form-control-custom,
+        .form-select-custom {
+            background-color: #11121a !important;
+            border: 1px solid #292c3d !important;
+            color: #ffffff !important;
+            border-radius: 8px;
+            padding: 10px 12px;
+            height: 42px;
+            box-shadow: none !important;
+        }
+
+            .form-control-custom::placeholder {
+                color: #475569 !important;
+            }
+
+            .form-control-custom:focus,
+            .form-select-custom:focus {
+                background-color: #161824 !important;
+                border-color: #6366f1 !important;
+                color: #ffffff !important;
+                box-shadow: none !important;
+            }
+
+            .form-select-custom option {
+                background-color: #11121a;
+                color: #ffffff;
+            }
+
+        .btn-filter {
+            height: 42px;
+            background-color: #2e2a47 !important;
+            border: none !important;
+            color: #ffffff !important;
+            border-radius: 8px;
+            font-weight: 800;
+        }
+
+            .btn-filter:hover {
+                background-color: #3b3659 !important;
+            }
+
+        .inventory-card {
+            background-color: #11121a !important;
+            border: 1px solid #242636 !important;
+            border-radius: 12px;
+            overflow: hidden;
+            padding: 8px;
+        }
+
+        .table-custom {
+            --bs-table-bg: transparent;
+            --bs-table-color: #cbd5e1;
+            --bs-table-border-color: #1e202e;
+            color: #cbd5e1 !important;
+            background-color: transparent !important;
+            margin-bottom: 0 !important;
+        }
+
+            .table-custom thead th {
+                background-color: #161722 !important;
+                color: #94a3b8 !important;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.07em;
+                font-weight: 800;
+                border-bottom: 1px solid #242636 !important;
+                padding: 16px 14px !important;
+                white-space: nowrap;
+            }
+
+            .table-custom tbody tr {
+                background-color: transparent !important;
+                transition: background-color 0.2s ease;
+            }
+
+                .table-custom tbody tr:hover {
+                    background-color: #171926 !important;
+                }
+
+            .table-custom tbody td {
+                background-color: transparent !important;
+                color: #cbd5e1 !important;
+                border-bottom: 1px solid #1e202e !important;
+                padding: 18px 14px !important;
+                vertical-align: middle;
+                font-size: 14px;
+            }
+
+            .table-custom tbody tr:last-child td {
+                border-bottom: none !important;
+            }
+
+        .deleted-row {
+            opacity: 0.72;
+        }
+
+            .deleted-row .title-text {
+                color: #94a3b8 !important;
+                text-decoration: line-through;
+            }
+
+        .title-text {
+            color: #ffffff !important;
+            font-weight: 700;
+            max-width: 360px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .slug-text,
+        .summary-text,
+        .date-text {
+            color: #94a3b8 !important;
+        }
+
+        .summary-text {
+            max-width: 380px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .status-badge {
+            font-weight: 800;
+            font-size: 11px;
+            padding: 6px 10px;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            white-space: nowrap;
+        }
+
+        .status-published {
+            background-color: rgba(16, 185, 129, 0.14);
+            color: #10b981;
+        }
+
+        .status-draft {
+            background-color: rgba(245, 158, 11, 0.14);
+            color: #f59e0b;
+        }
+
+        .status-archived {
+            background-color: rgba(239, 68, 68, 0.14);
+            color: #f87171;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 999px;
+            display: inline-block;
+            background-color: currentColor;
+        }
+
+        .action-group {
+            display: inline-flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .btn-action {
+            color: #94a3b8 !important;
+            background: none;
+            border: none;
+            padding: 0;
+            line-height: 1;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            cursor: pointer;
+        }
+
+            .btn-action:hover {
+                color: #ffffff !important;
+            }
+
+        .btn-delete {
+            color: #fb7185 !important;
+        }
+
+            .btn-delete:hover {
+                color: #ef4444 !important;
+            }
+
+        .btn-restore {
+            color: #34d399 !important;
+        }
+
+            .btn-restore:hover {
+                color: #10b981 !important;
+            }
+
+        .empty-row {
+            color: #94a3b8 !important;
+            padding: 44px 0 !important;
+        }
+
+        .page-footer {
+            background-color: #11121a;
+            border-top: 1px solid #242636;
+            padding: 18px;
+        }
+
+        .page-link-custom {
+            background-color: #11121a !important;
+            border: 1px solid #242636 !important;
+            color: #94a3b8 !important;
+            padding: 8px 13px;
+            border-radius: 6px;
+            text-decoration: none;
+            min-width: 38px;
+            text-align: center;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            font-size: 14px;
+        }
+
+            .page-link-custom:hover {
+                background-color: #1c1d29 !important;
+                color: #ffffff !important;
+            }
+
+            .page-link-custom.active {
+                background-color: #6366f1 !important;
+                border-color: #6366f1 !important;
+                color: #ffffff !important;
+            }
+
+            .page-link-custom.disabled {
+                background-color: #0b0c10 !important;
+                border-color: #161722 !important;
+                color: #475569 !important;
+                pointer-events: none;
+            }
+
+        .alert-custom {
+            background-color: #1a1517 !important;
+            border: 1px solid #5c2626 !important;
+            color: #fca5a5 !important;
+            border-radius: 8px;
+            padding: 14px 20px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .swal2-popup.dark-popup {
+            background-color: #11121a !important;
+            color: #ffffff !important;
+            border-radius: 8px !important;
+        }
+
+        .swal2-title,
+        .swal2-html-container {
+            color: #ffffff !important;
+        }
+
+        @@media (max-width: 991.98px) {
+            .admin-main-content {
+                margin-left: 0;
+                padding-top: 80px;
+            }
+
+            .page-container {
+                padding: 18px;
+            }
+        }
+    </style>
+</head>
+
+<body class="admin-page">
+    @await Html.PartialAsync("_AdminTopbar")
+    @await Html.PartialAsync("_AdminSidebar")
+
+    <main class="admin-main-content">
+        <div class="container-fluid page-container">
+
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="content-title m-0">Content Inventory</h1>
+                    <div class="content-subtitle mt-2">
+                        Manage news articles, status, categories and content visibility.
+                    </div>
+                </div>
+
+                <a href="/Admin/News/create" class="btn-add">
+                    <span class="material-symbols-outlined fs-5">add</span>
+                    Add News
+                </a>
+            </div>
+
+            @if (ViewBag.ErrorMessage != null)
+            {
+                <div class="alert-custom mb-4">
+                    @ViewBag.ErrorMessage
+                </div>
+            }
+
+            @if (ViewBag.CategoryError != null)
+            {
+                <div class="alert-custom mb-4">
+                    @ViewBag.CategoryError
+                </div>
+            }
+
+            <form method="get" action="/Admin/News" id="filterForm" class="row g-3 align-items-end mb-4">
+                <input type="hidden" name="PageIndex" value="1" />
+                <input type="hidden" name="PageSize" value="@currentPageSize" />
+
+                <div class="col-md-4">
+                    <div class="filter-label">Search</div>
+                    <input type="text"
+                           name="Keyword"
+                           class="form-control form-control-custom w-100"
+                           placeholder="Search news articles, slugs..."
+                           value="@currentKeyword" />
+                </div>
+
+                <div class="col-md-3">
+                    <div class="filter-label">Status</div>
+
+                    <select name="Status" class="form-select form-select-custom">
+                        <option value="" selected="@string.IsNullOrWhiteSpace(currentStatus)">All Statuses</option>
+                        <option value="Published" selected="@string.Equals(currentStatus, "Published", StringComparison.OrdinalIgnoreCase)">Published</option>
+                        <option value="Draft" selected="@string.Equals(currentStatus, "Draft", StringComparison.OrdinalIgnoreCase)">Draft</option>
+                        <option value="Archived" selected="@string.Equals(currentStatus, "Archived", StringComparison.OrdinalIgnoreCase)">Archived</option>
+                        <option value="Deleted" selected="@string.Equals(currentStatus, "Deleted", StringComparison.OrdinalIgnoreCase)">Deleted</option>
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="filter-label">Category</div>
+
+                    <select name="CategoryId" class="form-select form-select-custom">
+                        <option value="" selected="@(currentCategoryId == null)">All Categories</option>
+
+                        @if (Model.Categories != null && Model.Categories.Any())
+                        {
+                            foreach (var cat in Model.Categories)
+                            {
+                                <option value="@cat.CategoryId" selected="@(currentCategoryId == cat.CategoryId)">
+                                    @cat.Name
+                                </option>
+                            }
+                        }
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-filter w-100">
+                        Apply Filter
+                    </button>
+                </div>
+            </form>
+
+            <div class="inventory-card">
+                <div class="table-responsive">
+                    <table class="table table-custom align-middle">
+                        <thead>
+                            <tr>
+                                <th style="width: 28%;">Title & Slug</th>
+                                <th style="width: 28%;">Summary</th>
+                                <th style="width: 12%;">Status</th>
+                                <th style="width: 8%;">Views</th>
+                                <th style="width: 14%;">Created At</th>
+                                <th style="width: 10%;" class="text-end pe-4">Actions</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            @if (Model.PagedNews?.Items == null || !Model.PagedNews.Items.Any())
+                            {
+                                <tr>
+                                    <td colspan="6" class="text-center empty-row">
+                                        <span class="material-symbols-outlined fs-1 d-block mb-2">article</span>
+                                        No articles found matching your criteria.
+                                    </td>
+                                </tr>
+                            }
+                            else
+                            {
+                                foreach (var item in Model.PagedNews.Items)
+                                {
+                                    var isSoftDeleted = item.IsDeleted;
+
+                                    <tr class="@(isSoftDeleted ? "deleted-row" : "")">
+                                        <td>
+                                            <div class="title-text mb-1" title="@item.Title">
+                                                @item.Title
+                                            </div>
+                                            <div class="small slug-text">
+                                                @item.Slug
+                                            </div>
+                                        </td>
+
+                                        <td>
+                                            <div class="summary-text small" title="@item.Summary">
+                                                @(string.IsNullOrWhiteSpace(item.Summary) ? "No summary provided." : item.Summary)
+                                            </div>
+                                        </td>
+
+                                        <td>
+                                            @if (item.IsDeleted)
+                                            {
+                                                <span class="status-badge status-archived">
+                                                    <span class="status-dot"></span> DELETED
+                                                </span>
+                                            }
+                                            else if (string.Equals(item.Status, "Published", StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                <span class="status-badge status-published">
+                                                    <span class="status-dot"></span> PUBLISHED
+                                                </span>
+                                            }
+                                            else if (string.Equals(item.Status, "Draft", StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                <span class="status-badge status-draft">
+                                                    <span class="status-dot"></span> DRAFT
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="status-badge status-archived">
+                                                    <span class="status-dot"></span> @(item.Status?.ToUpper() ?? "ARCHIVED")
+                                                </span>
+                                            }
+                                        </td>
+
+                                        <td class="fw-bold text-white">
+                                            @if (item.ViewCount >= 1000)
+                                            {
+                                                @((item.ViewCount / 1000.0).ToString("0.0") + "k")
+                                            }
+                                            else
+                                            {
+                                                @item.ViewCount
+                                            }
+                                        </td>
+
+                                        <td class="small date-text">
+                                            @item.CreatedAt.ToString("dd/MM/yyyy HH:mm")
+                                        </td>
+
+                                        <td class="text-end pe-4">
+                                            <div class="action-group">
+                                                <a href="/Admin/News/detail/@item.NewsId"
+                                                   class="btn-action"
+                                                   title="View details">
+                                                    <span class="material-symbols-outlined fs-5">visibility</span>
+                                                </a>
+
+                                                @if (!item.IsDeleted)
+                                                {
+                                                    <a href="/Admin/News/edit/@item.NewsId"
+                                                       class="btn-action"
+                                                       title="Edit article">
+                                                        <span class="material-symbols-outlined fs-5">edit</span>
+                                                    </a>
+                                                }
+
+                                                @if (isSoftDeleted)
+                                                {
+                                                    <button type="button"
+                                                            onclick="restoreArticle('@item.NewsId')"
+                                                            class="btn-action btn-restore"
+                                                            title="Restore">
+                                                        <span class="material-symbols-outlined fs-5">settings_backup_restore</span>
+                                                    </button>
+                                                }
+                                                else
+                                                {
+                                                    <button type="button"
+                                                            onclick="deleteArticle('@item.NewsId')"
+                                                            class="btn-action btn-delete"
+                                                            title="Delete">
+                                                        <span class="material-symbols-outlined fs-5">delete</span>
+                                                    </button>
+                                                }
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                @if (Model.PagedNews != null && Model.PagedNews.TotalPages > 1)
+                {
+                    var currentPage = Model.PagedNews.Page <= 0 ? 1 : Model.PagedNews.Page;
+                    var totalPages = Model.PagedNews.TotalPages;
+
+                    <div class="page-footer d-flex justify-content-between align-items-center">
+                        <a href="@BuildPageUrl(currentPage - 1)"
+                           class="page-link-custom @(currentPage == 1 ? "disabled" : "")">
+                            <span class="material-symbols-outlined fs-5">chevron_left</span>
+                            Previous
+                        </a>
+
+                        <div class="d-flex gap-2 flex-wrap justify-content-center">
+                            @for (int i = 1; i <= totalPages; i++)
+                            {
+                                <a href="@BuildPageUrl(i)"
+                                   class="page-link-custom @(currentPage == i ? "active" : "")">
+                                    @i
+                                </a>
+                            }
+                        </div>
+
+                        <a href="@BuildPageUrl(currentPage + 1)"
+                           class="page-link-custom @(currentPage == totalPages ? "disabled" : "")">
+                            Next
+                            <span class="material-symbols-outlined fs-5">chevron_right</span>
+                        </a>
+                    </div>
+                }
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        async function deleteArticle(id) {
+            const result = await Swal.fire({
+                title: 'Are you sure?',
+                text: 'Do you really want to delete this news article?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, delete it!',
+                cancelButtonText: 'Cancel',
+                customClass: {
+                    popup: 'dark-popup'
+                },
+                background: '#11121a',
+                color: '#ffffff',
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#475569'
+            });
+
+            if (!result.isConfirmed) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/Admin/News/delete/${id}`, {
+                    method: 'POST'
+                });
+
+                let message = 'News article has been deleted.';
+
+                try {
+                    const data = await response.json();
+                    if (data && data.message) {
+                        message = data.message;
+                    }
+                } catch (e) {
+                }
+
+                if (response.ok) {
+                    await Swal.fire({
+                        title: 'Deleted!',
+                        text: message,
+                        icon: 'success',
+                        background: '#11121a',
+                        color: '#ffffff',
+                        confirmButtonColor: '#6366f1'
+                    });
+
+                    location.reload();
+                    return;
+                }
+
+                await Swal.fire({
+                    title: 'Error!',
+                    text: message,
+                    icon: 'error',
+                    background: '#11121a',
+                    color: '#ffffff',
+                    confirmButtonColor: '#6366f1'
+                });
+            } catch (e) {
+                await Swal.fire({
+                    title: 'Error!',
+                    text: 'An error occurred while deleting.',
+                    icon: 'error',
+                    background: '#11121a',
+                    color: '#ffffff',
+                    confirmButtonColor: '#6366f1'
+                });
+            }
+        }
+
+        async function restoreArticle(id) {
+            const result = await Swal.fire({
+                title: 'Confirm Restore?',
+                text: 'Do you want to restore this news article to Draft status?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Restore Now',
+                cancelButtonText: 'Cancel',
+                customClass: {
+                    popup: 'dark-popup'
+                },
+                background: '#11121a',
+                color: '#ffffff',
+                confirmButtonColor: '#10b981',
+                cancelButtonColor: '#475569'
+            });
+
+            if (!result.isConfirmed) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/Admin/News/restore/${id}`, {
+                    method: 'POST'
+                });
+
+                let message = 'News article has been restored.';
+
+                try {
+                    const data = await response.json();
+                    if (data && data.message) {
+                        message = data.message;
+                    }
+                } catch (e) {
+                }
+
+                if (response.ok) {
+                    await Swal.fire({
+                        title: 'Restored!',
+                        text: message,
+                        icon: 'success',
+                        background: '#11121a',
+                        color: '#ffffff',
+                        confirmButtonColor: '#10b981'
+                    });
+
+                    location.reload();
+                    return;
+                }
+
+                await Swal.fire({
+                    title: 'Error!',
+                    text: message,
+                    icon: 'error',
+                    background: '#11121a',
+                    color: '#ffffff',
+                    confirmButtonColor: '#6366f1'
+                });
+            } catch (e) {
+                await Swal.fire({
+                    title: 'Error!',
+                    text: 'An error occurred while restoring.',
+                    icon: 'error',
+                    background: '#11121a',
+                    color: '#ffffff',
+                    confirmButtonColor: '#6366f1'
+                });
+            }
+        }
+    </script>
+</body>
+</html>

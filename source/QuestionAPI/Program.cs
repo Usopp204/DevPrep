@@ -5,7 +5,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using QuestionAPI.Data;
+using QuestionAPI.Repositories.Interfaces;
+using QuestionAPI.Repositories;
 using QuestionAPI.Services;
+using QuestionAPI.Services.Interfaces;
 
 try { Env.TraversePath().Load(".env.example"); } catch { }
 try { Env.TraversePath().Load(); } catch { }
@@ -50,6 +53,9 @@ builder.Services.AddAuthorization();
 
 // ── Services ──────────────────────────────────────────────────────────────────
 builder.Services.AddScoped<IQuestionService, QuestionService>();
+
+builder.Services.AddScoped<IAdminQuestionRepository, AdminQuestionRepository>();
+builder.Services.AddScoped<IAdminQuestionService, AdminQuestionService>();
 
 // ── Controllers & Swagger ─────────────────────────────────────────────────────
 builder.Services.AddControllers();
