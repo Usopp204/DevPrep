@@ -8,6 +8,7 @@ using PaymentAPI.Models;
 using PaymentAPI.Repositories;
 using PaymentAPI.Services;
 using System.Net;
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 
@@ -47,6 +48,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidIssuer              = jwtIssuer,
             ValidAudience            = jwtAud,
             IssuerSigningKey         = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            RoleClaimType            = ClaimTypes.Role
         };
     });
 

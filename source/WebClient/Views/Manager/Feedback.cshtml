@@ -1,5 +1,8 @@
-﻿@{
+@{
     var token = Context.Request.Cookies["access_token"];
+    var feedbackTitle = ViewData["FeedbackTitle"] as string ?? "System Feedback";
+    var feedbackKind = ViewData["FeedbackKind"] as string ?? "system";
+    var feedbackApiBase = ViewData["FeedbackApiBase"] as string ?? "http://localhost:7007/api/admin/manager/feedbacks";
     Layout = null;
 }
 <!DOCTYPE html>
@@ -7,7 +10,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Manager Feedback - DevPrep AI</title>
+    <title>@feedbackTitle - DevPrep AI</title>
 
     <!-- Include admin.css for Topbar and Sidebar -->
     <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
@@ -16,7 +19,7 @@
 
 <meta charset="utf-8">
 <meta content="width=device-width, initial-scale=1.0" name="viewport">
-<title>DevPrep AI | Admin Feedback Management</title>
+<title>DevPrep AI | @feedbackTitle</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
@@ -137,9 +140,9 @@
         .ad-topbar { box-sizing: border-box; }
         .ad-avatar { padding: 0; }
 
-        /* Adjust layout to accommodate _AdminTopbar and _AdminSidebar */
-        /* _AdminSidebar is 250px wide and fixed */
-        /* _AdminTopbar is 60px tall and fixed */
+        /* Adjust layout to accommodate _ManagerTopbar and _ManagerSidebar */
+        /* _ManagerSidebar is 250px wide and fixed */
+        /* _ManagerTopbar is 60px tall and fixed */
         body { background-color: #0e1323; color: #e5e1e7; }
 
         .fb-main {
@@ -153,13 +156,13 @@
     </style>
 </head>
 <body class="font-body-md overflow-x-hidden">
-    @await Html.PartialAsync("_AdminTopbar")
-    @await Html.PartialAsync("_AdminSidebar")
+    @await Html.PartialAsync("_ManagerTopbar")
+    @await Html.PartialAsync("_ManagerSidebar")
 
     <main class="fb-main">
         <!-- Title and Search moved from header -->
         <div class="flex items-center gap-lg flex-1 mb-6">
-            <h1 class="font-display-lg text-[24px] font-bold text-primary tracking-tight">Feedback Management</h1>
+            <h1 class="font-display-lg text-[24px] font-bold text-primary tracking-tight">@feedbackTitle</h1>
             <div class="relative w-64">
                 <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
                 <input class="w-full bg-surface-container border-none rounded-full pl-10 pr-4 py-1.5 font-body-sm text-on-surface placeholder:text-on-surface-variant focus:ring-1 focus:ring-primary" placeholder="Quick find feedback..." type="text">
@@ -172,31 +175,30 @@
 <section class="glass-card rounded-2xl p-md mb-lg flex flex-wrap items-center gap-lg">
 <div class="flex items-center gap-sm">
 <span class="font-code-label text-[11px] uppercase text-on-surface-variant">Rating</span>
-<select class="bg-surface-container-highest border-none rounded-xl px-md py-xs font-body-sm text-on-surface focus:ring-1 focus:ring-primary-container min-w-[100px]">
-<option>All Stars</option>
-<option>5 Stars</option>
-<option>4 Stars</option>
-<option>3 Stars</option>
-<option>2 Stars</option>
-<option>1 Star</option>
+<select id="feedback-rating" class="bg-surface-container-highest border-none rounded-xl px-md py-xs font-body-sm text-on-surface focus:ring-1 focus:ring-primary-container min-w-[100px]">
+<option value="">All Stars</option>
+<option value="5">5 Stars</option>
+<option value="4">4 Stars</option>
+<option value="3">3 Stars</option>
+<option value="2">2 Stars</option>
+<option value="1">1 Star</option>
 </select>
 </div>
 <div class="flex items-center gap-sm">
-<span class="font-code-label text-[11px] uppercase text-on-surface-variant">Type</span>
-<div class="flex gap-xs">
-<button class="px-md py-1 rounded-full bg-primary-container/10 border border-primary-container text-primary-container font-code-label text-[10px] uppercase">All</button>
-<button class="px-md py-1 rounded-full bg-tertiary-container/10 border border-tertiary-container text-tertiary text-[10px] uppercase font-code-label hover:bg-tertiary-container/20 transition-all">System</button>
-<button class="px-md py-1 rounded-full bg-secondary-container/10 border border-secondary-container text-secondary text-[10px] uppercase font-code-label hover:bg-secondary-container/20 transition-all">Interview</button>
+<span class="font-code-label text-[11px] uppercase text-on-surface-variant">Scope</span>
+<span class="px-md py-1 rounded-full bg-primary-container/10 border border-primary-container text-primary-container font-code-label text-[10px] uppercase">@feedbackTitle</span>
 </div>
-</div>
+@if (feedbackKind == "system")
+{
 <div class="flex items-center gap-sm">
 <span class="font-code-label text-[11px] uppercase text-on-surface-variant">Status</span>
 <div class="flex gap-xs">
-<button class="px-md py-1 rounded-full bg-warning/10 border border-warning/40 text-warning text-[10px] uppercase font-code-label hover:bg-warning/20 transition-all">Pending</button>
-<button class="px-md py-1 rounded-full bg-success/10 border border-success/40 text-success text-[10px] uppercase font-code-label hover:bg-success/20 transition-all">Resolved</button>
-<button class="px-md py-1 rounded-full bg-success/10 border border-success/40 text-success text-[10px] uppercase font-code-label hover:bg-success/20 transition-all">Replied</button>
+<button class="feedback-status-filter px-md py-1 rounded-full bg-primary-container/10 border border-primary-container text-primary-container text-[10px] uppercase font-code-label hover:bg-primary-container/20 transition-all" type="button" data-status="">All</button>
+<button class="feedback-status-filter px-md py-1 rounded-full bg-warning/10 border border-warning/40 text-warning text-[10px] uppercase font-code-label hover:bg-warning/20 transition-all" type="button" data-status="New">New</button>
+<button class="feedback-status-filter px-md py-1 rounded-full bg-success/10 border border-success/40 text-success text-[10px] uppercase font-code-label hover:bg-success/20 transition-all" type="button" data-status="Replied">Replied</button>
 </div>
 </div>
+}
 <div class="ml-auto relative min-w-[300px]">
 <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
 <input id="feedback-search" class="w-full bg-surface-container border-border-subtle border rounded-xl pl-4 pr-10 py-1.5 font-body-sm focus:ring-1 focus:ring-primary-container" placeholder="Search comments or users..." type="text">
@@ -222,10 +224,10 @@
 </table>
 <div class="px-lg py-md flex items-center justify-between border-t border-border-subtle bg-surface-container/20">
 <p id="feedback-summary" class="font-code-label text-[11px] text-on-surface-variant uppercase">Loading feedback entries...</p>
-<div class="flex gap-xs">
-<button id="feedback-prev" class="p-1 rounded bg-surface-container border border-border-subtle text-on-surface-variant hover:text-primary transition-colors" type="button"><span class="material-symbols-outlined">chevron_left</span></button>
-<span id="feedback-page" class="px-3 py-1 rounded bg-primary-container text-on-primary-container font-code-label text-[11px] font-bold">1</span>
-<button id="feedback-next" class="p-1 rounded bg-surface-container border border-border-subtle text-on-surface-variant hover:text-primary transition-colors" type="button"><span class="material-symbols-outlined">chevron_right</span></button>
+<div class="flex items-center gap-xs">
+<button id="feedback-prev" class="w-9 h-9 inline-flex items-center justify-center rounded-lg bg-surface-container border border-border-subtle text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors disabled:opacity-40 disabled:pointer-events-none" type="button"><span class="material-symbols-outlined text-[18px]">chevron_left</span></button>
+<span id="feedback-page" class="w-9 h-9 inline-flex items-center justify-center rounded-lg bg-primary-container text-on-primary-container font-code-label text-[11px] font-bold">1</span>
+<button id="feedback-next" class="w-9 h-9 inline-flex items-center justify-center rounded-lg bg-surface-container border border-border-subtle text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors disabled:opacity-40 disabled:pointer-events-none" type="button"><span class="material-symbols-outlined text-[18px]">chevron_right</span></button>
 </div>
 </div>
 </section>
@@ -276,27 +278,9 @@
         </p>
     </div>
 </div>
-<!-- Status Update -->
 <div class="space-y-sm">
-    <span class="font-code-label text-[11px] uppercase text-on-surface-variant">Manage Status</span>
-    <div class="flex gap-sm">
-        <select id="drawer-status" class="flex-1 bg-surface-container border-border-subtle rounded-xl px-md py-sm font-body-sm focus:ring-1 focus:ring-primary-container">
-            <option value="Pending">Pending</option>
-            <option value="Resolved">Resolved</option>
-            <option value="Replied">Replied</option>
-            <option value="Flagged">Flagged</option>
-        </select>
-        <button class="px-lg py-sm rounded-xl border border-primary text-primary font-bold hover:bg-primary/10 transition-colors">Update Status</button>
-    </div>
-</div>
-<!-- Reply Section -->
-<div class="space-y-sm pt-4 border-t border-border-subtle">
-    <span class="font-code-label text-[11px] uppercase text-on-surface-variant">Compose Reply</span>
-    <textarea class="w-full bg-surface-container border-border-subtle rounded-xl p-md font-body-sm focus:ring-1 focus:ring-primary-container text-on-surface" placeholder="Write a professional reply..." rows="4"></textarea>
-    <div class="flex items-center justify-between gap-sm">
-        <p class="text-[10px] text-on-surface-variant font-body-sm italic">User will receive an email notification.</p>
-        <button class="primary-btn px-xl py-sm rounded-xl font-bold text-on-primary">Send Reply</button>
-    </div>
+    <span class="font-code-label text-[11px] uppercase text-on-surface-variant">Status</span>
+    <div id="drawer-status-label"></div>
 </div>
 
 </div>
@@ -304,13 +288,16 @@
 
 
     <script>
-        const API_BASE = 'http://localhost:7007/api/admin/manager/feedbacks';
+        const API_BASE = '@feedbackApiBase';
+        const FEEDBACK_KIND = '@feedbackKind';
         const token = '@token';
 
         let currentPage = 1;
         let pageSize = 10;
         let totalPages = 1;
         let searchTimer = null;
+        let lastItems = [];
+        let currentStatus = '';
 
         document.addEventListener("DOMContentLoaded", () => {
             document.getElementById('feedback-prev').addEventListener('click', () => {
@@ -335,6 +322,21 @@
                 }, 300);
             });
 
+            document.getElementById('feedback-rating').addEventListener('change', () => {
+                currentPage = 1;
+                fetchFeedbackList();
+            });
+
+            document.querySelectorAll('.feedback-status-filter').forEach(button => {
+                button.addEventListener('click', () => {
+                    currentStatus = button.dataset.status || '';
+                    currentPage = 1;
+                    updateStatusFilters();
+                    fetchFeedbackList();
+                });
+            });
+            updateStatusFilters();
+
             fetchFeedbackList();
         });
 
@@ -346,6 +348,9 @@
                     pageSize: pageSize
                 });
                 if (keyword) query.set('keyword', keyword);
+                const rating = document.getElementById('feedback-rating').value;
+                if (rating) query.set('rating', rating);
+                if (FEEDBACK_KIND === 'system' && currentStatus) query.set('status', currentStatus);
 
                 const res = await fetch(`${API_BASE}?${query}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
@@ -358,17 +363,23 @@
                 const json = await res.json();
 
                 if (json.success) {
-                    renderTable(json.data.items || []);
+                    lastItems = json.data.items || [];
+                    renderTable(lastItems);
                     renderPagination(json.data);
                 } else {
-                    document.getElementById('feedback-table-body').innerHTML = `<tr><td colspan="7" class="text-center py-4 text-error">Failed to load: ${json.message}</td></tr>`;
+                    console.warn('Feedback list request was not successful:', json.message);
+                    renderFeedbackUnavailable();
                     renderPagination({ page: currentPage, pageSize, totalItems: 0, totalPages: 1 });
                 }
             } catch (err) {
                 console.error(err);
-                document.getElementById('feedback-table-body').innerHTML = `<tr><td colspan="7" class="text-center py-4 text-error">Error loading feedback data. Please sign in again or check FeedbackAPI.</td></tr>`;
+                renderFeedbackUnavailable();
                 renderPagination({ page: currentPage, pageSize, totalItems: 0, totalPages: 1 });
             }
+        }
+
+        function renderFeedbackUnavailable() {
+            document.getElementById('feedback-table-body').innerHTML = `<tr><td colspan="7" class="text-center py-4 text-on-surface-variant">Feedback is temporarily unavailable.</td></tr>`;
         }
 
         function renderTable(items) {
@@ -389,7 +400,7 @@
                         </div>
                     </td>
                     <td class="px-lg py-lg">
-                        ${getTypeBadge(item.category)}
+                        ${getTypeBadge(getFeedbackType(item))}
                     </td>
                     <td class="px-lg py-lg">
                         <div class="flex text-warning">
@@ -398,7 +409,7 @@
                         </div>
                     </td>
                     <td class="px-lg py-lg max-w-xs">
-                        <p class="truncate opacity-80 italic text-on-surface">"${escapeHtml(item.subject || item.content || '')}"</p>
+                        <p class="truncate opacity-80 italic text-on-surface">"${escapeHtml(fixText(item.content || item.subject || ''))}"</p>
                     </td>
                     <td class="px-lg py-lg font-code-label text-on-surface-variant">${formatDate(item.createdAt)}</td>
                     <td class="px-lg py-lg">
@@ -418,25 +429,39 @@
             document.getElementById('drawer-comment').innerText = 'Loading...';
 
             try {
+                if (FEEDBACK_KIND === 'ai') {
+                    const item = lastItems.find(x => String(x.id).toLowerCase() === String(id).toLowerCase());
+                    if (item) renderDrawer(item);
+                    return;
+                }
+
                 const res = await fetch(`${API_BASE}/${id}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 const json = await res.json();
                 if (json.success && json.data) {
-                    const item = json.data;
-                    document.getElementById('drawer-name').innerText = getUserLabel(item.userId);
-                    document.getElementById('drawer-avatar').innerText = 'U';
-                    document.getElementById('drawer-email').innerText = item.userId || 'Unknown user';
-                    document.getElementById('drawer-type').innerText = item.category || 'System';
-                    document.getElementById('drawer-date').innerText = formatDate(item.createdAt);
-                    document.getElementById('drawer-rating').innerHTML = getStars(item.rating || 0);
-                    document.getElementById('drawer-comment').innerText = `"${item.content || ''}"`;
-                    document.getElementById('drawer-status').value = normalizeStatus(item.status);
+                    renderDrawer(json.data);
                 }
             } catch(e) {
                 console.error(e);
                 document.getElementById('drawer-comment').innerText = 'Failed to load details.';
             }
+        }
+
+        function renderDrawer(item) {
+            document.getElementById('drawer-name').innerText = getUserLabel(item.userId);
+            document.getElementById('drawer-avatar').innerText = 'U';
+            document.getElementById('drawer-email').innerText = item.userId || 'Unknown user';
+            document.getElementById('drawer-type').innerText = getFeedbackType(item);
+            document.getElementById('drawer-date').innerText = formatDate(item.createdAt);
+            document.getElementById('drawer-rating').innerHTML = getStars(item.rating || 0);
+            document.getElementById('drawer-comment').innerText = `"${fixText(item.content || item.subject || '')}"`;
+            document.getElementById('drawer-status-label').innerHTML = getStatusBadge(item.status);
+        }
+
+        function getFeedbackType(item) {
+            if (FEEDBACK_KIND === 'ai') return 'AI';
+            return item.category || 'System';
         }
 
         function getTypeBadge(type) {
@@ -451,17 +476,55 @@
             const s = normalizeStatus(status).toLowerCase();
             if (s === 'resolved') return `<span class="px-xs py-1 rounded-full bg-success/10 border border-success/30 text-success text-[10px] font-bold uppercase tracking-tighter">Resolved</span>`;
             if (s === 'replied') return `<span class="px-xs py-1 rounded-full bg-success/10 border border-success/30 text-success text-[10px] font-bold uppercase tracking-tighter">Replied</span>`;
-            return `<span class="px-xs py-1 rounded-full bg-warning/10 border border-warning/30 text-warning text-[10px] font-bold uppercase tracking-tighter">Pending</span>`;
+            return `<span class="px-xs py-1 rounded-full bg-warning/10 border border-warning/30 text-warning text-[10px] font-bold uppercase tracking-tighter">New</span>`;
         }
 
         function normalizeStatus(status) {
-            if (!status || status.toLowerCase() === 'new' || status.toLowerCase() === 'inreview') return 'Pending';
+            if (!status || status.toLowerCase() === 'new' || status.toLowerCase() === 'inreview') return 'New';
             return status;
+        }
+
+        function updateStatusFilters() {
+            document.querySelectorAll('.feedback-status-filter').forEach(button => {
+                const isActive = (button.dataset.status || '') === currentStatus;
+                button.classList.toggle('ring-1', isActive);
+                button.classList.toggle('ring-primary-container', isActive);
+                button.classList.toggle('brightness-125', isActive);
+            });
         }
 
         function getUserLabel(userId) {
             if (!userId) return 'Unknown user';
             return `User ${String(userId).substring(0, 5)}`;
+        }
+
+        function fixText(value) {
+            const text = String(value || '');
+            const looksMojibake = [...text].some(ch => {
+                const code = ch.charCodeAt(0);
+                return code >= 0x00C0 && code <= 0x00FF;
+            });
+
+            if (!looksMojibake) return text;
+
+            try {
+                const windows1252 = {
+                    0x20AC: 0x80, 0x201A: 0x82, 0x0192: 0x83, 0x201E: 0x84,
+                    0x2026: 0x85, 0x2020: 0x86, 0x2021: 0x87, 0x02C6: 0x88,
+                    0x2030: 0x89, 0x0160: 0x8A, 0x2039: 0x8B, 0x0152: 0x8C,
+                    0x017D: 0x8E, 0x2018: 0x91, 0x2019: 0x92, 0x201C: 0x93,
+                    0x201D: 0x94, 0x2022: 0x95, 0x2013: 0x96, 0x2014: 0x97,
+                    0x02DC: 0x98, 0x2122: 0x99, 0x0161: 0x9A, 0x203A: 0x9B,
+                    0x0153: 0x9C, 0x017E: 0x9E, 0x0178: 0x9F
+                };
+                const bytes = Uint8Array.from([...text].map(ch => {
+                    const code = ch.charCodeAt(0);
+                    return windows1252[code] || (code & 255);
+                }));
+                return new TextDecoder('utf-8').decode(bytes);
+            } catch {
+                return text;
+            }
         }
 
         function renderPagination(data) {
@@ -473,7 +536,7 @@
             const end = Math.min(page * size, totalItems);
 
             document.getElementById('feedback-summary').innerText = `Showing ${start}-${end} of ${totalItems} feedback entries`;
-            document.getElementById('feedback-page').innerText = `${page} / ${totalPages}`;
+            document.getElementById('feedback-page').innerText = `${page}`;
             document.getElementById('feedback-prev').disabled = page <= 1;
             document.getElementById('feedback-next').disabled = page >= totalPages;
         }
