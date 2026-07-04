@@ -4,4 +4,7 @@ namespace InterviewAPI.Clients;
 public interface IUserApiClient
 {
     Task<IReadOnlyDictionary<Guid, string?>> GetFullNamesAsync(IReadOnlyCollection<Guid> accountIds, CancellationToken cancellationToken = default);
+
+    /// <summary>Tìm AccountId có FullName chứa keyword (search phiên theo tên). Lỗi -> rỗng.</summary>
+    Task<IReadOnlyList<Guid>> SearchIdsByNameAsync(string keyword, CancellationToken cancellationToken = default);
 }
