@@ -18,46 +18,39 @@ var builder = WebApplication.CreateBuilder(args);
 var servicePort = builder.Configuration.GetValue<int>("NEWS_API_PORT", 7009);
 builder.WebHost.UseUrls($"http://0.0.0.0:{servicePort}");
 
-// DbContext: connection string lấy từ appsettings (ConnectionStrings:DefaultConnection).
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection is missing.");
 builder.Services.AddDbContext<NewsDbContext>(options => options.UseSqlServer(connectionString));
-Console.WriteLine(connectionString);
-// --- CẤU HÌNH AUTHENTICATION JWT CHO NEWS_API ---
+
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "dev-only-change-me-please-use-a-long-random-secret-key-32+chars";
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "DevPrep.AuthAPI";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "DevPrep.Client";
 
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    options.TokenValidationParameters = new TokenValidationParameters
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
     {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = jwtIssuer,
-        ValidAudience = jwtAudience,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
-        ClockSkew = TimeSpan.Zero
-    };
-});
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtIssuer,
+            ValidAudience = jwtAudience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            ClockSkew = TimeSpan.Zero
+        };
+    });
 
-// Repositories + Services.
+builder.Services.AddAuthorization();
+
 builder.Services.AddScoped<INewsRepository, NewsRepository>();
 builder.Services.AddScoped<INewsService, NewsService>();
-// Đăng ký cho cấu trúc Admin News mới tạo
 builder.Services.AddScoped<IAdminNewsRepository, AdminNewsRepository>();
 builder.Services.AddScoped<IAdminNewsService, AdminNewsService>();
 
 builder.Services.AddControllers();
 
-// CORS cho WebClient (dev). Tin tức là công khai nên không cần xác thực.
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("WebClientDev", policy => policy
@@ -73,7 +66,7 @@ builder.Services.AddCors(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "QuestionAPI", Version = "v1" });
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "NewsAPI", Version = "v1" });
 
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
@@ -82,7 +75,7 @@ builder.Services.AddSwaggerGen(c =>
         Scheme = "Bearer",
         BearerFormat = "JWT",
         In = ParameterLocation.Header,
-        Description = "Nhập Token theo định dạng: Bearer {token}"
+        Description = "Enter JWT token as: Bearer {token}"
     });
 
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
@@ -96,7 +89,7 @@ builder.Services.AddSwaggerGen(c =>
                     Id = "Bearer"
                 }
             },
-            new string[] {}
+            Array.Empty<string>()
         }
     });
 });
@@ -110,6 +103,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("WebClientDev");
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 

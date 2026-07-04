@@ -14,7 +14,7 @@ namespace NewsAPI.Controllers
     {
         private readonly IAdminNewsService _service;
 
-        public AdminNewsController(IAdminNewsService service) 
+        public AdminNewsController(IAdminNewsService service)
         {
             _service = service;
         }
