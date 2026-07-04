@@ -26,7 +26,7 @@ public sealed class NewsService(IApiClient apiClient) : INewsService
         try
         {
             var body = await apiClient.HttpClient
-                .GetFromJsonAsync<BackendResponse<PagedResult<NewsListItem>>>(url);
+                .GetFromJsonAsync<BackendResponse<WebClient.Models.Shared.PagedResult<NewsListItem>>>(url);
 
             if (body?.Success == true && body.Data is not null)
             {
