@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] – DevPrep AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg:             #0e1323;
+            --surface:        rgba(17, 24, 39, 0.6);
+            --surface-low:    #0e0e11;
+            --surface-mid:    #1a1f30;
+            --border:         rgba(255, 255, 255, 0.08);
+            --primary:        #e2dfff;
+            --secondary:      #4cd7f6;
+            --on-surface:     #e5e1e7;
+            --on-surface-var: #c8c5d0;
+            --topbar-h:       64px;
+            --subnav-h:       48px;
+            --max-w:          1200px;
+            --px:             24px;
+        }
+
+        html, body {
+            min-height: 100%;
+            background: var(--bg);
+            color: var(--on-surface);
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            line-height: 20px;
+        }
+
+        a { text-decoration: none; }
+
+        /* ── TopNavBar ────────────────────────────────────────── */
+        .dp-topbar {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: var(--topbar-h);
+            background: var(--surface);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            box-shadow: 0 1px 0 rgba(255,255,255,0.04);
+            z-index: 50;
+        }
+        .dp-topbar-inner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: var(--topbar-h);
+            max-width: var(--max-w);
+            margin: 0 auto;
+            padding: 0 var(--px);
+        }
+        .dp-brand {
+            font-family: 'Inter', sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            line-height: 32px;
+            letter-spacing: -0.01em;
+            color: var(--primary);
+        }
+        .dp-brand:hover { opacity: 0.88; }
+        .dp-topbar-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .dp-nav-login {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--on-surface-var);
+            transition: opacity 0.2s;
+        }
+        .dp-nav-login:hover { opacity: 0.8; }
+        .dp-nav-cta {
+            display: inline-flex;
+            align-items: center;
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.2);
+            color: #fff;
+            font-size: 14px;
+            font-weight: 700;
+            padding: 8px 16px;
+            border-radius: 8px;
+            transition: opacity 0.2s;
+        }
+        .dp-nav-cta:hover { opacity: 0.85; }
+
+        /* ── Auth avatar dropdown ─────────────────────────────── */
+        .dp-user-menu { position: relative; }
+        .dp-avatar {
+            width: 40px; height: 40px; border-radius: 9999px;
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            border: 1px solid rgba(255,255,255,0.15);
+            color: #fff; font-weight: 700; font-size: 16px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: box-shadow 0.2s;
+        }
+        .dp-avatar:hover { box-shadow: 0 0 0 3px rgba(79,70,229,0.35); }
+        .dp-dropdown {
+            display: none; position: absolute; top: calc(100% + 10px); right: 0;
+            min-width: 220px; background: #1a1f30;
+            border: 1px solid rgba(255,255,255,0.1); border-radius: 12px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.6);
+            overflow: hidden; z-index: 60;
+        }
+        .dp-user-menu.open .dp-dropdown { display: block; }
+        .dp-dropdown-head {
+            display: flex; align-items: center; gap: 12px; padding: 14px 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        .dp-dropdown-avatar {
+            width: 32px; height: 32px; border-radius: 9999px; flex-shrink: 0;
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            color: #fff; font-weight: 700; font-size: 13px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .dp-dropdown-email {
+            font-size: 13px; color: var(--on-surface-var);
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .dp-dropdown-item {
+            display: flex; align-items: center; gap: 10px; width: 100%;
+            padding: 12px 16px; background: none; border: none;
+            color: var(--on-surface); font-size: 14px; text-align: left;
+            text-decoration: none; cursor: pointer; transition: background 0.15s;
+        }
+        .dp-dropdown-item:hover { background: rgba(255,255,255,0.06); color: var(--on-surface); }
+        .dp-dropdown-item .material-symbols-outlined { font-size: 20px; color: var(--on-surface-var); }
+        .dp-dropdown-logout { color: #ffb4ab; }
+        .dp-dropdown-logout:hover { background: rgba(255,180,171,0.1); }
+        .dp-dropdown-logout .material-symbols-outlined { color: #ffb4ab; }
+        .dp-form-reset { margin: 0; }
+
+        /* ── SubNavBar ────────────────────────────────────────── */
+        .dp-subnav {
+            position: fixed;
+            top: var(--topbar-h);
+            left: 0; right: 0;
+            height: var(--subnav-h);
+            background: var(--surface-mid);
+            z-index: 40;
+        }
+        .dp-subnav-inner {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 32px;
+            height: var(--subnav-h);
+            max-width: var(--max-w);
+            margin: 0 auto;
+            padding: 0 var(--px);
+        }
+        .dp-nav-link {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: var(--on-surface-var);
+            transition: color 0.2s;
+        }
+        .dp-nav-link:hover    { color: var(--primary); }
+        .dp-nav-link.is-active {
+            color: var(--primary);
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 4px;
+        }
+
+        /* ── Main content offset ──────────────────────────────── */
+        .dp-main { padding-top: calc(var(--topbar-h) + var(--subnav-h)); }
+
+        /* ── Footer ───────────────────────────────────────────── */
+        .dp-footer {
+            background: var(--surface-low);
+            border-top: 1px solid var(--border);
+        }
+        .dp-footer-inner {
+            display: flex;
+            flex-direction: column;
+            max-width: var(--max-w);
+            margin: 0 auto;
+            padding: 32px 24px;
+        }
+        .dp-footer-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 24px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+        .dp-footer-links { display: flex; gap: 32px; }
+        .dp-footer-link {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: var(--on-surface-var);
+            transition: color 0.2s;
+        }
+        .dp-footer-link:hover { color: var(--primary); }
+        .dp-footer-divider {
+            width: 100%; height: 1px;
+            background: var(--border);
+            margin-bottom: 24px;
+        }
+        .dp-footer-copy { font-size: 14px; color: var(--on-surface-var); }
+    </style>
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body>
+
+@{
+    var ctrl = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+    string NavActive(string name) => ctrl == name ? "is-active" : "";
+    var lpLoggedIn = !string.IsNullOrEmpty(Context.Request.Cookies["access_token"]);
+    var lpEmail    = Context.Request.Cookies["user_email"] ?? "";
+    var lpInitial  = string.IsNullOrWhiteSpace(lpEmail) ? "U" : lpEmail.Trim().Substring(0, 1).ToUpper();
+}
+
+<!-- TopNavBar -->
+<header class="dp-topbar">
+    <div class="dp-topbar-inner">
+        <a asp-controller="Home" asp-action="Index" class="dp-brand">DevPrep</a>
+        <div class="dp-topbar-actions">
+            @if (!lpLoggedIn)
+            {
+                <a asp-controller="Auth" asp-action="Login" class="dp-nav-login">Login</a>
+                <a asp-controller="Auth" asp-action="Register" class="dp-nav-cta">Get Started</a>
+            }
+            else
+            {
+                <div class="dp-user-menu" id="dp-user-menu">
+                    <button class="dp-avatar" id="dp-avatar-btn" type="button" title="@lpEmail">@lpInitial</button>
+                    <div class="dp-dropdown" id="dp-dropdown">
+                        <div class="dp-dropdown-head">
+                            <span class="dp-dropdown-avatar">@lpInitial</span>
+                            <span class="dp-dropdown-email">@lpEmail</span>
+                        </div>
+                        <a class="dp-dropdown-item" asp-controller="Profile" asp-action="Index">
+                            <span class="material-symbols-outlined">person</span> View Profile
+                        </a>
+                        <form asp-controller="Auth" asp-action="Logout" method="post" class="dp-form-reset">
+                            <button type="submit" class="dp-dropdown-item dp-dropdown-logout">
+                                <span class="material-symbols-outlined">logout</span> Logout
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</header>
+
+<!-- SubNavBar -->
+<nav class="dp-subnav">
+    <div class="dp-subnav-inner">
+        <a asp-controller="Home" asp-action="Index" class="dp-nav-link @NavActive("Home")">Home</a>
+        <a asp-controller="Payment" asp-action="Index" class="dp-nav-link @NavActive("Payment")">Payment</a>
+        <a asp-controller="News" asp-action="Index" class="dp-nav-link @NavActive("News")">News</a>
+        <a asp-controller="CvJd" asp-action="Index" class="dp-nav-link @NavActive("CvJd")">Feedback System</a>
+        <a asp-controller="Evaluation" asp-action="Index" class="dp-nav-link @NavActive("Evaluation")">Feedback AI</a>
+    </div>
+</nav>
+
+<main class="dp-main">
+    @RenderBody()
+</main>
+
+<footer class="dp-footer">
+    <div class="dp-footer-inner">
+        <div class="dp-footer-top">
+            <a asp-controller="Home" asp-action="Index" class="dp-brand">DevPrep</a>
+            <div class="dp-footer-links">
+                <a href="#" class="dp-footer-link">Product</a>
+                <a href="#" class="dp-footer-link">Legal</a>
+            </div>
+        </div>
+        <div class="dp-footer-divider"></div>
+        <p class="dp-footer-copy">© 2026 DevPrep. All rights reserved.</p>
+    </div>
+</footer>
+
+<script src="~/lib/jquery/dist/jquery.min.js"></script>
+@await RenderSectionAsync("Scripts", required: false)
+<script>
+    (function () {
+        var btn  = document.getElementById('dp-avatar-btn');
+        var menu = document.getElementById('dp-user-menu');
+        if (!btn || !menu) return;
+        btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            menu.classList.toggle('open');
+        });
+        document.addEventListener('click', function (e) {
+            if (menu && !menu.contains(e.target)) menu.classList.remove('open');
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && menu) menu.classList.remove('open');
+        });
+    })();
+</script>
+</body>
+</html>

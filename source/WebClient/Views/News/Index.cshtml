@@ -1,11 +1,176 @@
-﻿@model WebClient.Models.News.NewsViewModel
-
+@model WebClient.Models.News.NewsViewModel
 @{
-    ViewData["Title"] = Model.ModuleName;
+    Layout = null;
+    var featured = Model.HasItems ? Model.Items[0] : null;
+    var rest = Model.HasItems ? Model.Items.Skip(1).ToList() : new List<WebClient.Models.News.NewsListItem>();
 }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>News &amp; Features | DevPrep AI</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@@100..900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="~/css/home.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/news.css" asp-append-version="true" />
+</head>
+<body class="nw-page">
+    @await Html.PartialAsync("_Navbar")
 
-<section class="module-page">
-    <h1>@Model.ModuleName</h1>
-    <p>@Model.Epic</p>
-    <p>@Model.Summary</p>
-</section>
+    <main class="nw-main">
+        <header class="nw-header">
+            <h1 class="nw-title">News &amp; Features</h1>
+            <p class="nw-subtitle">Explore what makes DevPrep AI the smartest way to prepare.</p>
+        </header>
+
+        @if (!string.IsNullOrEmpty(Model.Error))
+        {
+            <div class="nw-alert">
+                <span class="material-symbols-outlined">error</span>
+                <span>@Model.Error</span>
+            </div>
+        }
+
+        @if (Model.HasItems)
+        {
+            <!-- Search + category filter (client-side trên trang hiện tại) -->
+            <section class="nw-glass nw-toolbar">
+                <div class="nw-search">
+                    <span class="material-symbols-outlined">search</span>
+                    <input type="text" id="nw-search-input" placeholder="Search articles..." autocomplete="off" />
+                </div>
+                <div class="nw-chips" id="nw-chips">
+                    <button type="button" class="nw-chip active" data-cat="__all">All</button>
+                    @foreach (var cat in Model.Categories)
+                    {
+                        <button type="button" class="nw-chip" data-cat="@cat.ToLowerInvariant()">@cat</button>
+                    }
+                </div>
+            </section>
+
+            @if (featured is not null)
+            {
+                <a class="nw-glass nw-featured nw-item"
+                   asp-controller="News" asp-action="Detail" asp-route-id="@featured.NewsId"
+                   data-title="@featured.Title.ToLowerInvariant()"
+                   data-summary="@((featured.Summary ?? string.Empty).ToLowerInvariant())"
+                   data-cat="@featured.Category.ToLowerInvariant()">
+                    @if (featured.HasThumbnail)
+                    {
+                        <div class="nw-featured-media"><img src="@featured.ThumbnailUrl" alt="@featured.Title" /></div>
+                    }
+                    else
+                    {
+                        <div class="nw-featured-media nw-ph"><span>@featured.Initial</span></div>
+                    }
+                    <div class="nw-featured-body">
+                        <span class="nw-badge nw-badge-featured">@featured.Category</span>
+                        <h2 class="nw-featured-title">@featured.Title</h2>
+                        <p class="nw-featured-summary">@featured.Summary</p>
+                        <div class="nw-meta">
+                            <span>@featured.DisplayDate.ToString("MMM dd, yyyy")</span>
+                            <span class="dot"></span>
+                            <span><span class="material-symbols-outlined">visibility</span> @featured.ViewCount views</span>
+                        </div>
+                    </div>
+                </a>
+            }
+
+            <div class="nw-grid" id="nw-grid">
+                @foreach (var item in rest)
+                {
+                    <a class="nw-glass nw-card nw-item"
+                       asp-controller="News" asp-action="Detail" asp-route-id="@item.NewsId"
+                       data-title="@item.Title.ToLowerInvariant()"
+                       data-summary="@((item.Summary ?? string.Empty).ToLowerInvariant())"
+                       data-cat="@item.Category.ToLowerInvariant()">
+                        @if (item.HasThumbnail)
+                        {
+                            <div class="nw-thumb"><img src="@item.ThumbnailUrl" alt="@item.Title" /></div>
+                        }
+                        else
+                        {
+                            <div class="nw-thumb-ph"><span>@item.Initial</span></div>
+                        }
+                        <div class="nw-card-body">
+                            <span class="nw-badge">@item.Category</span>
+                            <h3 class="nw-card-title">@item.Title</h3>
+                            <p class="nw-card-summary">@item.Summary</p>
+                            <div class="nw-meta">
+                                <span>@item.DisplayDate.ToString("MMM dd, yyyy")</span>
+                                <span class="dot"></span>
+                                <span><span class="material-symbols-outlined">visibility</span> @item.ViewCount</span>
+                            </div>
+                        </div>
+                    </a>
+                }
+            </div>
+
+            <div class="nw-empty" id="nw-empty" style="display:none;">No articles match your search.</div>
+
+            @if (Model.TotalPages > 1)
+            {
+                <nav class="nw-glass nw-pagination" style="border-radius:14px; padding:8px; max-width:fit-content; margin:0 auto;">
+                    <a class="nw-page-btn @(Model.Page <= 1 ? "disabled" : "")" href="?page=@(Model.Page - 1)">
+                        <span class="material-symbols-outlined">chevron_left</span>
+                    </a>
+                    @for (var p = 1; p <= Model.TotalPages; p++)
+                    {
+                        <a class="nw-page-btn @(p == Model.Page ? "active" : "")" href="?page=@p">@p</a>
+                    }
+                    <a class="nw-page-btn @(Model.Page >= Model.TotalPages ? "disabled" : "")" href="?page=@(Model.Page + 1)">
+                        <span class="material-symbols-outlined">chevron_right</span>
+                    </a>
+                </nav>
+            }
+        }
+        else if (string.IsNullOrEmpty(Model.Error))
+        {
+            <div class="nw-empty">No news articles have been published yet.</div>
+        }
+    </main>
+
+    @await Html.PartialAsync("_Footer")
+
+    <script>
+        (function () {
+            var search = document.getElementById('nw-search-input');
+            var chips = document.getElementById('nw-chips');
+            var empty = document.getElementById('nw-empty');
+            if (!chips) return;
+            var items = Array.prototype.slice.call(document.querySelectorAll('.nw-item'));
+            var activeCat = '__all';
+
+            function apply() {
+                var q = (search ? search.value : '').trim().toLowerCase();
+                var visible = 0;
+                items.forEach(function (el) {
+                    var cat = el.getAttribute('data-cat') || '';
+                    var title = el.getAttribute('data-title') || '';
+                    var summ = el.getAttribute('data-summary') || '';
+                    var okCat = activeCat === '__all' || cat === activeCat;
+                    var okText = !q || title.indexOf(q) !== -1 || summ.indexOf(q) !== -1;
+                    var show = okCat && okText;
+                    el.style.display = show ? '' : 'none';
+                    if (show) visible++;
+                });
+                if (empty) empty.style.display = visible === 0 ? 'block' : 'none';
+            }
+
+            chips.addEventListener('click', function (e) {
+                var btn = e.target.closest('.nw-chip');
+                if (!btn) return;
+                chips.querySelectorAll('.nw-chip').forEach(function (c) { c.classList.remove('active'); });
+                btn.classList.add('active');
+                activeCat = btn.getAttribute('data-cat');
+                apply();
+            });
+            if (search) search.addEventListener('input', apply);
+        })();
+    </script>
+</body>
+</html>

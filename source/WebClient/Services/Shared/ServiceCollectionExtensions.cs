@@ -55,7 +55,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IManagerUserService, ManagerUserService>();
         services.AddScoped<IManagerNewsService, ManagerNewsService>();
         services.AddScoped<INewsService, NewsService>();
-
+        services.AddScoped<IAdminNewsService, AdminNewsService>();
+        services.AddScoped<IAdminQuestionService, AdminQuestionService>();
         return services;
     }
 }
