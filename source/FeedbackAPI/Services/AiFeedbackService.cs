@@ -33,7 +33,11 @@ public class AiFeedbackService : IAiFeedbackService
         if (!string.IsNullOrWhiteSpace(query.Keyword))
         {
             var kw = query.Keyword.Trim();
-            q = q.Where(f => f.Content != null && f.Content.Contains(kw));
+            // Search cả nội dung + tên (UserAPI) + email (AuthAPI). matchIds rỗng -> chỉ khớp Content.
+            var nameIds = await _userApiClient.SearchIdsByNameAsync(kw);
+            var emailIds = await _authApiClient.SearchIdsByEmailAsync(kw);
+            var matchIds = nameIds.Concat(emailIds).Distinct().ToList();
+            q = q.Where(f => (f.Content != null && f.Content.Contains(kw)) || matchIds.Contains(f.UserId));
         }
         if (query.Rating.HasValue) q = q.Where(f => f.Rating == query.Rating.Value);
         if (query.IsHelpful.HasValue) q = q.Where(f => f.IsHelpful == query.IsHelpful.Value);

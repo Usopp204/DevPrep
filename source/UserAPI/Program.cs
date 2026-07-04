@@ -150,6 +150,17 @@ app.MapPost("/internal/profiles/lookup",
     })
     .ExcludeFromDescription();
 
+// Tìm AccountId theo tên (FullName chứa keyword) — FeedbackAPI gọi để search feedback theo tên user.
+app.MapPost("/internal/profiles/search-by-name",
+    async (UserAPI.DTOs.ProfileSearchRequest body, HttpRequest request, IUserProfileRepository repository) =>
+    {
+        if (!IsInternalCallAuthorized(request, internalApiKey)) return Results.Unauthorized();
+        if (string.IsNullOrWhiteSpace(body.Keyword)) return Results.Ok(Array.Empty<Guid>());
+        var ids = await repository.SearchAccountIdsByNameAsync(body.Keyword.Trim());
+        return Results.Ok(ids);
+    })
+    .ExcludeFromDescription();
+
 app.Run();
 
 // So khớp header X-Internal-Api-Key với khoá cấu hình. Chưa cấu hình khoá -> cho qua (tiện chạy dev).

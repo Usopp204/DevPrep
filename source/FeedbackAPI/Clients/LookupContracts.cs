@@ -10,3 +10,6 @@ public record ProfileLookupItem(Guid AccountId, string? FullName);
 
 /// <summary>Phần tử trả về từ AuthAPI POST /internal/accounts/lookup.</summary>
 public record AccountLookupItem(Guid AccountId, string? Email);
+
+/// <summary>Body gửi đi: tìm AccountId theo keyword (tên hoặc email).</summary>
+public record SearchByKeywordRequest(string Keyword);

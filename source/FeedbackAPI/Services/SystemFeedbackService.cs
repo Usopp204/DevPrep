@@ -1,3 +1,4 @@
+using FeedbackAPI.Clients;
 using FeedbackAPI.DTOs;
 using FeedbackAPI.Helpers;
 using FeedbackAPI.Models;
@@ -15,10 +16,14 @@ public class SystemFeedbackService : ISystemFeedbackService
     private const string RepliedStatus = "Replied";
 
     private readonly ISystemFeedbackRepository _repository;
+    private readonly IUserApiClient _userApiClient;
+    private readonly IAuthApiClient _authApiClient;
 
-    public SystemFeedbackService(ISystemFeedbackRepository repository)
+    public SystemFeedbackService(ISystemFeedbackRepository repository, IUserApiClient userApiClient, IAuthApiClient authApiClient)
     {
         _repository = repository;
+        _userApiClient = userApiClient;
+        _authApiClient = authApiClient;
     }
 
     public async Task<PagedResult<SystemFeedbackListItemDto>> GetListAsync(SystemFeedbackQuery query)
@@ -32,7 +37,11 @@ public class SystemFeedbackService : ISystemFeedbackService
         if (!string.IsNullOrWhiteSpace(query.Keyword))
         {
             var kw = query.Keyword.Trim();
-            q = q.Where(f => (f.Subject != null && f.Subject.Contains(kw)) || f.Content.Contains(kw));
+            // Search cả subject/content + tên (UserAPI) + email (AuthAPI). matchIds rỗng -> chỉ khớp subject/content.
+            var nameIds = await _userApiClient.SearchIdsByNameAsync(kw);
+            var emailIds = await _authApiClient.SearchIdsByEmailAsync(kw);
+            var matchIds = nameIds.Concat(emailIds).Distinct().ToList();
+            q = q.Where(f => (f.Subject != null && f.Subject.Contains(kw)) || f.Content.Contains(kw) || matchIds.Contains(f.UserId));
         }
         if (!string.IsNullOrWhiteSpace(query.Category)) q = q.Where(f => f.Category == query.Category);
         if (!string.IsNullOrWhiteSpace(query.Status)) q = q.Where(f => f.Status == query.Status);
@@ -71,6 +80,30 @@ public class SystemFeedbackService : ISystemFeedbackService
                     .ToList()
             })
             .ToListAsync();
+
+        // Resolve Tên (UserAPI) + Email (AuthAPI) cho tác giả feedback + Tên admin cho các reply. Best-effort.
+        var accountIds = items.Select(i => i.UserId)
+            .Concat(items.SelectMany(i => i.Replies).Select(r => r.RepliedBy))
+            .Where(id => id != Guid.Empty).Distinct().ToList();
+        if (accountIds.Count > 0)
+        {
+            var userIds = items.Select(i => i.UserId).Where(id => id != Guid.Empty).Distinct().ToList();
+            var namesTask = _userApiClient.GetFullNamesAsync(accountIds);
+            var emailsTask = _authApiClient.GetEmailsAsync(userIds);
+            await Task.WhenAll(namesTask, emailsTask);
+            var names = namesTask.Result;
+            var emails = emailsTask.Result;
+
+            foreach (var item in items)
+            {
+                if (names.TryGetValue(item.UserId, out var fn)) item.UserFullName = fn;
+                if (emails.TryGetValue(item.UserId, out var em)) item.UserEmail = em;
+                foreach (var reply in item.Replies)
+                {
+                    if (names.TryGetValue(reply.RepliedBy, out var rn)) reply.RepliedByName = rn;
+                }
+            }
+        }
 
         return new PagedResult<SystemFeedbackListItemDto>
         {

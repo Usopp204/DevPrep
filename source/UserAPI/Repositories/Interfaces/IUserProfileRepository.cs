@@ -13,6 +13,9 @@ public interface IUserProfileRepository
     /// <summary>Lấy nhiều hồ sơ theo danh sách AccountId (phục vụ resolve FullName cho service khác).</summary>
     Task<List<UserProfile>> GetByAccountIdsAsync(IReadOnlyCollection<Guid> accountIds);
 
+    /// <summary>Tìm AccountId theo FullName chứa keyword (phục vụ search theo tên ở service khác).</summary>
+    Task<List<Guid>> SearchAccountIdsByNameAsync(string keyword);
+
     /// <summary>Kiểm tra đã có hồ sơ cho AccountId hay chưa (để tạo idempotent).</summary>
     Task<bool> ExistsByAccountIdAsync(Guid accountId);
 
