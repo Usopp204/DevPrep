@@ -22,6 +22,9 @@ public partial class InterviewSession
     [StringLength(255)]
     public string? Title { get; set; }
 
+    [StringLength(100)]
+    public string? Position { get; set; }
+
     public int DurationMinutes { get; set; }
 
     [StringLength(20)]

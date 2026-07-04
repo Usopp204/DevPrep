@@ -1,0 +1,358 @@
+/* ============================================================
+   DevPrep - Register page theme
+   Bootstrap (structure/reset/layout utilities) + custom theme
+   that reproduces the original Tailwind mockup pixel-for-pixel.
+   Loaded AFTER bootstrap.min.css so these rules win on ties.
+   ============================================================ */
+
+.register-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background-color: #0e1323;
+    color: #e5e1e7;
+    font-family: 'Inter', sans-serif;
+    overflow-x: hidden;
+}
+
+/* ---- Ambient background blobs ---- */
+.ambient-blob {
+    position: fixed;
+    width: 500px;
+    height: 500px;
+    filter: blur(120px);
+    opacity: .15;
+    z-index: -1;
+    pointer-events: none;
+}
+.blob-purple { top: -10%; left: -10%; background: #7c3aed; }
+.blob-cyan { bottom: -10%; right: -10%; background: #03b5d4; }
+
+/* ---- Material Symbols base ---- */
+.material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+/* ---- Glass card ---- */
+.glass-card {
+    width: 100%;
+    max-width: 480px;
+    border-radius: .5rem;
+    overflow: hidden;
+    padding: 24px;
+    background: rgba(17, 24, 39, .6);
+    border: 1px solid rgba(255, 255, 255, .08);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, .5);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    animation: reg-in .5s ease;
+}
+@media (min-width: 768px) {
+    .glass-card { padding: 32px; }
+}
+@keyframes reg-in {
+    from { opacity: 0; transform: scale(.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+/* ---- Header ---- */
+.reg-header { margin-bottom: 32px; text-align: center; }
+.reg-logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+.reg-logo .material-symbols-outlined {
+    color: #e2dfff;
+    font-size: 32px;
+    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+.reg-logo h1 {
+    margin: 0;
+    color: #e2dfff;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -.05em;
+    line-height: 1;
+}
+.reg-title {
+    margin: 0 0 8px;
+    color: #e5e1e7;
+    font-size: 24px;
+    line-height: 32px;
+    font-weight: 600;
+}
+.reg-subtitle {
+    margin: 0;
+    color: #c8c5d0;
+    font-size: 16px;
+    line-height: 24px;
+    font-weight: 400;
+}
+
+/* ---- Form + fields ---- */
+.reg-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+.reg-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.reg-label {
+    margin-left: .25rem;
+    color: #c8c5d0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 16px;
+    letter-spacing: .05em;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+.reg-input-group { position: relative; }
+.reg-input-icon {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #c8c5d0;
+    transition: color .2s;
+    pointer-events: none;
+}
+.reg-input-group:focus-within .reg-input-icon:not(.is-error) { color: #e2dfff; }
+.reg-input-icon.is-error { color: #ffb4ab; }
+
+/* input (also carries Bootstrap .form-control; these override its theme) */
+.reg-input {
+    width: 100%;
+    background: #1a1f30;
+    border: 1px solid rgba(255, 255, 255, .08);
+    border-radius: .5rem;
+    padding: 16px 16px 16px 44px;
+    color: #e5e1e7;
+    font-family: 'Inter', sans-serif;
+    font-size: 16px;
+    line-height: 24px;
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+}
+.reg-input::placeholder { color: #47464f; opacity: 1; }
+.reg-input.has-eye { padding-right: 48px; }
+.reg-input:focus {
+    background: #1a1f30;
+    color: #e5e1e7;
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 2px rgba(79, 70, 229, .2);
+}
+.reg-input.is-error {
+    border-color: #ffb4ab;
+    box-shadow: 0 0 0 1px rgba(255, 180, 171, .2);
+}
+
+.reg-eye-btn {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: #c8c5d0;
+    cursor: pointer;
+    transition: color .2s;
+}
+.reg-eye-btn:hover { color: #e5e1e7; }
+
+/* ---- Password strength bar ---- */
+.reg-strength {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+.reg-strength > div {
+    height: 4px;
+    flex: 1 1 0%;
+    border-radius: .75rem;
+}
+.reg-strength .on { background: #10B981; }
+.reg-strength .off { background: #353438; }
+
+/* ---- Inline error message ---- */
+.reg-error-msg {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: .25rem;
+    margin-top: .25rem;
+}
+.reg-error-msg .material-symbols-outlined { color: #ffb4ab; font-size: 16px; }
+.reg-error-msg span { color: #ffb4ab; font-size: 14px; line-height: 20px; }
+
+/* ---- Terms ---- */
+.reg-terms {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-top: 12px;
+}
+.reg-checkbox {
+    flex-shrink: 0;
+    width: 1.25rem;
+    height: 1.25rem;
+    margin: 0;
+    border-radius: .125rem;
+    border: 1px solid rgba(255, 255, 255, .08);
+    background-color: #1a1f30;
+    accent-color: #c3c0ff;
+}
+.reg-terms label {
+    color: #c8c5d0;
+    font-size: 14px;
+    line-height: 1.25;
+}
+.reg-terms a { color: #e2dfff; text-decoration: none; }
+.reg-terms a:hover { text-decoration: underline; }
+
+/* ---- Primary gradient button ---- */
+.reg-btn-primary {
+    width: 100%;
+    margin-top: 16px;
+    padding: 16px;
+    border: 0;
+    border-radius: .5rem;
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    color: #fff;
+    font-weight: 700;
+    font-size: 24px;
+    line-height: 32px;
+    box-shadow: 0 10px 15px -3px rgba(99, 102, 241, .2), 0 4px 6px -4px rgba(99, 102, 241, .2);
+    cursor: pointer;
+    transition: filter .15s, transform .15s;
+}
+.reg-btn-primary:hover { color: #fff; filter: brightness(1.1); }
+.reg-btn-primary:active { transform: scale(.98); }
+
+/* ---- Divider ---- */
+.reg-divider {
+    display: flex;
+    align-items: center;
+    padding: 16px 0;
+}
+.reg-divider .line { flex-grow: 1; border-top: 1px solid rgba(255, 255, 255, .08); }
+.reg-divider .txt {
+    flex-shrink: 0;
+    margin: 0 16px;
+    color: #47464f;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 16px;
+    letter-spacing: .05em;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+/* ---- SSO buttons ---- */
+.reg-sso-grid {
+    display: flex;
+    gap: 16px;
+}
+.reg-sso-btn {
+    flex: 1 1 0%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 16px;
+    border: 1px solid rgba(255, 255, 255, .08);
+    border-radius: .5rem;
+    background: #1a1f30;
+    color: #e5e1e7;
+    cursor: pointer;
+    transition: background-color .2s, transform .2s;
+}
+.reg-sso-btn:hover { background: #2a292d; }
+.reg-sso-btn:active { transform: scale(.95); }
+.reg-sso-btn svg { width: 20px; height: 20px; transition: transform .2s; }
+.reg-sso-btn:hover svg { transform: scale(1.1); }
+.reg-sso-btn span { color: #e5e1e7; font-size: 14px; line-height: 20px; font-weight: 500; }
+
+/* ---- Footer ---- */
+.reg-footer { margin-top: 32px; text-align: center; }
+.reg-footer p { margin: 0; color: #c8c5d0; font-size: 16px; line-height: 24px; }
+.reg-footer a { margin-left: 8px; color: #e2dfff; font-weight: 700; text-decoration: none; }
+.reg-footer a:hover { text-decoration: underline; }
+
+/* ---- Validation ---- */
+/* Per-field message (asp-validation-for). Hidden when the span is empty (valid). */
+.reg-field-error {
+    display: block;
+    margin-left: .25rem;
+    color: #ffb4ab;
+    font-size: 14px;
+    line-height: 20px;
+}
+.reg-field-error:empty { display: none; }
+.field-validation-valid { display: none; }
+
+/* Model/server-level error banner (asp-validation-summary="ModelOnly"). */
+.reg-alert {
+    margin-bottom: 4px;
+    padding: 12px 16px;
+    border-radius: .5rem;
+    background: rgba(147, 0, 10, .18);
+    border: 1px solid rgba(255, 180, 171, .35);
+    color: #ffdad6;
+    font-size: 14px;
+    line-height: 20px;
+}
+.reg-alert ul { margin: 0; padding-left: 1.1rem; }
+.reg-alert.validation-summary-valid { display: none; }
+
+/* ---- Password requirements checklist ---- */
+.pw-reqs {
+    display: none;
+    margin-top: 8px;
+    padding: 12px 14px;
+    background: #1a1f30;
+    border: 1px solid rgba(255, 255, 255, .08);
+    border-radius: .5rem;
+}
+.pw-reqs.show { display: block; }
+.pw-reqs-title {
+    margin: 0 0 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: #c8c5d0;
+}
+.pw-reqs-list { list-style: none; margin: 0; padding: 0; }
+.pw-req {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    line-height: 20px;
+    color: #928f9a;
+    transition: color .2s;
+}
+.pw-req + .pw-req { margin-top: 6px; }
+.pw-req .pw-req-icon { font-size: 16px; }
+.pw-req.met { color: #10B981; }
+
+/* ---- Autofill (keep dark inputs) ---- */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+    -webkit-text-fill-color: #e5e1e7;
+    -webkit-box-shadow: 0 0 0 1000px #1a1f30 inset;
+    transition: background-color 5000s ease-in-out 0s;
+}

@@ -1,0 +1,174 @@
+"""
+internal.py — Stateless internal API consumed by the .NET InterviewAPI / EvaluationAPI.
+Location: ai-service/app/api/internal.py
+
+These endpoints hold NO session state. They are thin wrappers over the existing RAG/grading
+logic. Auth is the shared header X-Internal-Api-Key (validated against config.INTERNAL_API_KEY).
+"""
+from fastapi import APIRouter, File, Header, HTTPException, UploadFile
+from pydantic import BaseModel, Field
+
+from app.core import config
+from app.services import chroma_store, evaluator, interviewer
+from app.services.voice import DeepgramSTT
+
+router = APIRouter(prefix="/internal", tags=["internal"])
+
+# Stateless STT: transcribes an uploaded audio clip. No session state is touched.
+_stt = DeepgramSTT()
+
+
+def _check_key(x_internal_api_key: str | None) -> None:
+    # If a key is configured, require it. (Empty key = open, for local dev only.)
+    if config.INTERNAL_API_KEY and x_internal_api_key != config.INTERNAL_API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid internal API key.")
+
+
+# ---- 1. Question plan -------------------------------------------------------
+class PlanIn(BaseModel):
+    position: str
+    level: str
+    focus_areas: list[str] = Field(default_factory=list)
+    duration_min: int = 30
+    cv_text: str | None = None
+    jd_text: str | None = None
+
+
+class PlannedQuestion(BaseModel):
+    order_index: int
+    question: str
+    reference_answer: str
+    category: str
+    difficulty: str
+
+
+class PlanOut(BaseModel):
+    questions: list[PlannedQuestion]
+
+
+@router.post("/questions/plan", response_model=PlanOut)
+def plan_questions(body: PlanIn, x_internal_api_key: str | None = Header(default=None)):
+    _check_key(x_internal_api_key)
+    cfg = interviewer.SessionConfig(
+        position=body.position, level=body.level, interview_type="technical",
+        focus_areas=body.focus_areas, duration_min=body.duration_min, jd=body.jd_text or "",
+    )
+    pool = interviewer.build_interview_plan(cfg, chroma_store)
+    questions = [
+        PlannedQuestion(order_index=i + 1, question=q["question"],
+                        reference_answer=q.get("answer", ""), category=q.get("category", ""),
+                        difficulty=q.get("difficulty", ""))
+        for i, q in enumerate(pool)
+    ]
+    return PlanOut(questions=questions)
+
+
+# ---- 2. Evaluate one answer -------------------------------------------------
+class EvaluateIn(BaseModel):
+    question: str
+    reference_answer: str = ""
+    category: str = ""
+    difficulty: str = ""
+    user_answer: str = ""
+    followups: list[dict] = Field(default_factory=list)
+
+
+class EvaluateOut(BaseModel):
+    score: float | None = None
+    criteria: dict | None = None
+    analysis: str = ""
+    suggested_improvement: str = ""
+    praise: str = ""
+    model_used: str = ""
+
+
+@router.post("/evaluate-answer", response_model=EvaluateOut)
+def evaluate_answer(body: EvaluateIn, x_internal_api_key: str | None = Header(default=None)):
+    _check_key(x_internal_api_key)
+    item = {
+        "qid": "Q", "question": body.question, "reference_answer": body.reference_answer,
+        "category": body.category, "difficulty": body.difficulty,
+        "user_answer": body.user_answer, "followups": body.followups, "skipped": False,
+    }
+    judge = evaluator.GeminiJudge()
+    graded = evaluator.grade_item(item, judge, evaluator.enrich_for(item))
+    if not graded:  # transient grader failure (e.g. rate limit) -> 200 with null score
+        return EvaluateOut(score=None, model_used=config.GEMINI_JUDGE_MODEL)
+    return EvaluateOut(
+        score=graded.get("score"), criteria=graded.get("criteria"),
+        analysis=graded.get("analysis", ""),
+        suggested_improvement=graded.get("suggested_improvement", ""),
+        praise=graded.get("praise", ""), model_used=config.GEMINI_JUDGE_MODEL,
+    )
+
+
+# ---- 3. Aggregate report ----------------------------------------------------
+class EvalRow(BaseModel):
+    category: str = ""
+    score: float = 0
+    criteria: dict | None = None
+
+
+class ReportIn(BaseModel):
+    duration_actual_sec: int = 0
+    evaluations: list[EvalRow] = Field(default_factory=list)
+
+
+@router.post("/report")
+def build_report(body: ReportIn, x_internal_api_key: str | None = Header(default=None)):
+    _check_key(x_internal_api_key)
+    # Shape rows into the per-question report form aggregate() expects.
+    reports = []
+    for e in body.evaluations:
+        crit = e.criteria or {"knowledge": e.score, "problem_solving": e.score, "communication": e.score}
+        reports.append({
+            "qid": "Q", "question": "", "category": e.category, "user_answer": "x",
+            "score": e.score, "criteria": crit,
+            "analysis": "", "suggested_improvement": "", "praise": "",
+        })
+    judge = evaluator.GeminiJudge()
+    return evaluator.build_report(reports, judge, body.duration_actual_sec)
+
+
+# ---- 4. Speech-to-text (stateless) ------------------------------------------
+@router.post("/stt")
+async def transcribe_audio(
+    audio: UploadFile = File(...),
+    x_internal_api_key: str | None = Header(default=None),
+):
+    """Transcribe a single uploaded audio clip to text. No session state is touched;
+    the .NET side feeds the text back into its own SQL-tracked message flow."""
+    _check_key(x_internal_api_key)
+    text = _stt.transcribe(await audio.read())
+    return {"text": text}
+
+
+# ---- 5. Hint (stateless) ----------------------------------------------------
+class HintIn(BaseModel):
+    question: str
+
+
+_HINT_PROMPT = (
+    "You are a technical interview coach. The candidate is stuck on this question:\n"
+    "QUESTION: {question}\n\n"
+    "Give ONE short directional hint (1-2 sentences) that nudges them toward the right line of "
+    "thinking or the key concept to recall. Do NOT reveal the answer, do NOT give a model answer, "
+    "and do NOT list all the points they should mention.\n"
+    "IMPORTANT: reply in the SAME LANGUAGE as the question (e.g. Vietnamese if the question is in "
+    "Vietnamese). Return only the hint text."
+)
+
+
+@router.post("/hint")
+def get_hint(body: HintIn, x_internal_api_key: str | None = Header(default=None)):
+    """Return one light, directional hint for a question. Stateless — no session, no reference
+    answer (the model uses general knowledge). Falls back to a generic nudge on grader failure."""
+    _check_key(x_internal_api_key)
+    judge = evaluator.GeminiJudge()
+    try:
+        hint = judge(_HINT_PROMPT.format(question=body.question)).strip()
+    except Exception:
+        hint = ""
+    if not hint:
+        hint = "Think about the core concept this question targets, and start from its definition."
+    return {"hint": hint}

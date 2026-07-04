@@ -58,3 +58,17 @@ venv/
 # OS
 .DS_Store
 Thumbs.db
+
+# Claude Code local config
+.claude/
+
+# Build verify artifacts (dotnet build output used for local run workaround)
+bin_verify/
+
+# Local test UI / mockups (not part of the app)
+ai-service/test-ui/
+source/ui_mockup/
+
+# Generated model weights / vector index (not source code, rebuildable)
+ai-service/models/
+ai-service/chroma_data/

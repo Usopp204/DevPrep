@@ -17,6 +17,10 @@ public static class ServiceCollectionExtensions
     {
         services.Configure<ApiGatewayOptions>(configuration.GetSection("ApiGateway"));
 
+        // Needed by AuthTokenHandler to read the JWT cookie from the current request.
+        services.AddHttpContextAccessor();
+        services.AddTransient<AuthTokenHandler>();
+
         services.AddHttpClient<IApiClient, ApiClient>((provider, client) =>
         {
             var options = provider.GetRequiredService<IOptions<ApiGatewayOptions>>().Value;
@@ -25,7 +29,11 @@ public static class ServiceCollectionExtensions
             {
                 client.BaseAddress = baseUri;
             }
-        });
+        })
+        .AddHttpMessageHandler<AuthTokenHandler>()
+        // Calls to the localhost API Gateway must NOT go through the system proxy (a proxy can
+        // block localhost and cause timeouts).
+        .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { UseProxy = false });
 
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IProfileService, ProfileService>();
