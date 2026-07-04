@@ -53,6 +53,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IManagerService, ManagerService>();
         services.AddScoped<IManagerQuestionService, ManagerQuestionService>();
         services.AddScoped<IManagerUserService, ManagerUserService>();
+        services.AddScoped<IManagerNewsService, ManagerNewsService>();
         services.AddScoped<INewsService, NewsService>();
 
         return services;

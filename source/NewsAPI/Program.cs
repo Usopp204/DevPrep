@@ -1,5 +1,8 @@
+using System.Text;
 using DotNetEnv;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using NewsAPI.Models;
 using NewsAPI.Repositories;
 using NewsAPI.Repositories.Interfaces;
@@ -18,6 +21,27 @@ builder.WebHost.UseUrls($"http://0.0.0.0:{servicePort}");
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection is missing.");
 builder.Services.AddDbContext<NewsDbContext>(options => options.UseSqlServer(connectionString));
+
+var jwtKey = builder.Configuration["Jwt:Key"] ?? "dev-only-change-me-please-use-a-long-random-secret-key-32+chars";
+var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "DevPrep.AuthAPI";
+var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "DevPrep.Client";
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtIssuer,
+            ValidAudience = jwtAudience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+        };
+    });
+
+builder.Services.AddAuthorization();
 
 // Repositories + Services.
 builder.Services.AddScoped<INewsRepository, NewsRepository>();
@@ -50,6 +74,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("WebClientDev");
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 
