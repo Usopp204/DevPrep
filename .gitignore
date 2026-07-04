@@ -1,12 +1,9 @@
 # Environment
+/.env.example
 .env
-.env.example
 
 # AI Agent & OpenCode Session Cache
 .hive/
-
-# Local infra
-infra/
 
 # IDE metadata
 .vs/

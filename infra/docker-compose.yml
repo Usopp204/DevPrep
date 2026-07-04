@@ -1,0 +1,69 @@
+# ==============================================================================
+# DEVPREP INFRASTRUCTURE - DOCKER COMPOSE ORCHESTRATION
+# ==============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # 1. CORE AI SERVICE (FASTAPI + NVIDIA GPU PASSTHROUGH)
+  # ----------------------------------------------------------------------------
+  ai-service:
+    build:
+      context: ../ai-service
+      dockerfile: Dockerfile
+    container_name: devprep-ai-node
+    restart: unless-stopped
+    # Exposing port 8000 to the host for direct debugging + the test UI at
+    # http://localhost:8080/ui/interviewdashboard.html
+    ports:
+      - "8080:8000"
+    # Injects EVERY variable from infra/.env into the container.
+    # Put HF_TOKEN, GEMINI_API_KEY, DEEPGRAM_API_KEY, ELEVENLABS_API_KEY, etc. there.
+    env_file:
+      - .env
+    volumes:
+      # Localized model weights (no image bloat, hot-swappable).
+      - ../ai-service/models:/app/models
+      # Persist the ChromaDB index across rebuilds (matches CHROMA_DIR below).
+      - ../ai-service/chroma_data:/app/chroma_data
+      # Mount the test UI so /ui works without rebaking the image (edit live).
+      - ../ai-service/test-ui:/app/test-ui
+      # Cache HuggingFace weights (embedder + Gemma) to avoid re-downloading.
+      - hf-cache:/root/.cache/huggingface
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
+    environment:
+      - PYTHONUNBUFFERED=1
+      - HF_TOKEN=${HF_TOKEN}                 # gated Gemma weights
+      # Non-secret runtime config consumed by the app:
+      - HF_HOME=/root/.cache/huggingface
+      - CHROMA_DIR=/app/chroma_data
+      - EMBED_MODEL=BAAI/bge-m3
+    # Real readiness probe (/health responds immediately; models load lazily).
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    networks:
+      - devprep-internal-net
+
+# ----------------------------------------------------------------------------
+# 2. VIRTUAL NETWORK TOPOLOGY
+# ----------------------------------------------------------------------------
+networks:
+  devprep-internal-net:
+    driver: bridge
+    name: devprep-overlay-network
+
+# ----------------------------------------------------------------------------
+# 3. NAMED VOLUMES
+# ----------------------------------------------------------------------------
+volumes:
+  hf-cache:
