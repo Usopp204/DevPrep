@@ -4,4 +4,7 @@ namespace InterviewAPI.Clients;
 public interface IAuthApiClient
 {
     Task<IReadOnlyDictionary<Guid, string>> GetEmailsAsync(IReadOnlyCollection<Guid> accountIds, CancellationToken cancellationToken = default);
+
+    /// <summary>Tìm AccountId có Email chứa keyword (search phiên theo email). Lỗi -> rỗng.</summary>
+    Task<IReadOnlyList<Guid>> SearchIdsByEmailAsync(string keyword, CancellationToken cancellationToken = default);
 }

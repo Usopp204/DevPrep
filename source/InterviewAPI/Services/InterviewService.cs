@@ -37,7 +37,11 @@ public class InterviewService : IInterviewService
         if (!string.IsNullOrWhiteSpace(query.Keyword))
         {
             var kw = query.Keyword.Trim();
-            q = q.Where(s => s.Title != null && s.Title.Contains(kw));
+            // Search cả Title + tên (UserAPI) + email (AuthAPI). matchIds rỗng -> chỉ khớp Title.
+            var nameIds = await _userClient.SearchIdsByNameAsync(kw, cancellationToken);
+            var emailIds = await _authClient.SearchIdsByEmailAsync(kw, cancellationToken);
+            var matchIds = nameIds.Concat(emailIds).Distinct().ToList();
+            q = q.Where(s => (s.Title != null && s.Title.Contains(kw)) || matchIds.Contains(s.UserId));
         }
         if (!string.IsNullOrWhiteSpace(query.Status)) q = q.Where(s => s.Status == query.Status);
         if (!string.IsNullOrWhiteSpace(query.Level)) q = q.Where(s => s.Level == query.Level);
