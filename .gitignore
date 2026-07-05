@@ -1,12 +1,9 @@
 # Environment
+/.env.example
 .env
-.env.example
 
 # AI Agent & OpenCode Session Cache
 .hive/
-
-# Local infra
-infra/
 
 # IDE metadata
 .vs/
@@ -58,4 +55,20 @@ venv/
 # OS
 .DS_Store
 Thumbs.db
+
+# Claude Code local config
+.claude/
+
+# Build verify artifacts (dotnet build output used for local run workaround)
+bin_verify/
+
+# Local test UI / mockups (not part of the app)
+ai-service/test-ui/
+source/ui_mockup/
+
+# Generated model weights / vector index (not source code, rebuildable)
+ai-service/models/
+ai-service/chroma_data/
+
+# Uploaded files (user data, not committed)
 /source/WebClient/wwwroot/uploads/
