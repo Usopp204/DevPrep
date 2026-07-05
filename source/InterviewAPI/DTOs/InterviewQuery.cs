@@ -8,6 +8,7 @@ public class InterviewQuery
 {
     public string? Keyword { get; set; }
     public string? Status { get; set; }          // Configured / Initialized / InProgress / Completed / Expired / Cancelled
+    public string? RoomStatus { get; set; }      // Active / Closed
     public string? Level { get; set; }           // Intern / Junior / Middle / Senior / Lead
     public string? InteractionMode { get; set; } // Text / Voice / Video
     public string? QuestionType { get; set; }    // Theory / Coding / Behavioral / Mixed

@@ -4,6 +4,7 @@ using WebClient.Services.Manager;
 
 namespace WebClient.Controllers.Manager;
 
+[Authorize(Roles = "Manager,Admin")]
 [Route("Manager/QuestionBank")]
 public class ManagerQuestionBankController : Controller
 {
