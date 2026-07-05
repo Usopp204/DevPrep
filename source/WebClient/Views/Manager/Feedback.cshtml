@@ -210,16 +210,15 @@
 <thead>
 <tr class="bg-surface-container-high/50 border-b border-border-subtle">
 <th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">User</th>
-<th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">Type</th>
 <th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">Rating</th>
 <th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">Comment</th>
 <th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">Date</th>
-<th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">Status</th>
+<th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">@(feedbackKind == "ai" ? "Helpful" : "Status")</th>
 <th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant text-right">Actions</th>
 </tr>
 </thead>
 <tbody id="feedback-table-body" class="font-body-sm text-on-surface">
-<tr><td colspan="7" class="text-center py-4">Loading...</td></tr>
+<tr><td colspan="6" class="text-center py-4">Loading...</td></tr>
 </tbody>
 </table>
 <div class="px-lg py-md flex items-center justify-between border-t border-border-subtle bg-surface-container/20">
@@ -255,6 +254,7 @@
         <p class="text-on-surface-variant font-code-label text-[13px]" id="drawer-email">--</p>
         <div class="flex gap-xs pt-1">
             <span id="drawer-type" class="px-xs py-0.5 rounded bg-tertiary-container/10 border border-tertiary-container/30 text-tertiary font-code-label text-[10px] uppercase">--</span>
+            <span id="drawer-extra" class="text-on-surface-variant font-code-label text-[10px] uppercase py-0.5"></span>
             <span id="drawer-date" class="text-on-surface-variant font-code-label text-[10px] uppercase py-0.5">--</span>
         </div>
     </div>
@@ -270,6 +270,14 @@
     </div>
 </div>
 <!-- Comment Box -->
+<div id="drawer-subject-section" class="space-y-sm hidden">
+    <span class="font-code-label text-[11px] uppercase text-on-surface-variant">Subject</span>
+    <div class="glass-card rounded-xl p-md inner-glow">
+        <p id="drawer-subject" class="font-body-md text-on-surface leading-relaxed">
+            --
+        </p>
+    </div>
+</div>
 <div class="space-y-sm">
     <span class="font-code-label text-[11px] uppercase text-on-surface-variant">User Comment</span>
     <div class="glass-card rounded-xl p-md inner-glow">
@@ -277,6 +285,13 @@
             --
         </p>
     </div>
+</div>
+<div id="drawer-replies-section" class="space-y-sm hidden">
+    <div class="flex items-center justify-between">
+        <span class="font-code-label text-[11px] uppercase text-on-surface-variant">Replies</span>
+        <span id="drawer-reply-count" class="text-on-surface-variant font-code-label text-[11px]">0</span>
+    </div>
+    <div id="drawer-replies" class="space-y-sm"></div>
 </div>
 <div class="space-y-sm">
     <span class="font-code-label text-[11px] uppercase text-on-surface-variant">Status</span>
@@ -379,13 +394,13 @@
         }
 
         function renderFeedbackUnavailable() {
-            document.getElementById('feedback-table-body').innerHTML = `<tr><td colspan="7" class="text-center py-4 text-on-surface-variant">Feedback is temporarily unavailable.</td></tr>`;
+            document.getElementById('feedback-table-body').innerHTML = `<tr><td colspan="6" class="text-center py-4 text-on-surface-variant">Feedback is temporarily unavailable.</td></tr>`;
         }
 
         function renderTable(items) {
             const tbody = document.getElementById('feedback-table-body');
             if (!items || items.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-on-surface-variant">No feedback found.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-on-surface-variant">No feedback found.</td></tr>`;
                 return;
             }
 
@@ -394,13 +409,10 @@
                     <td class="px-lg py-lg">
                         <div class="flex items-center gap-sm">
                             <div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary font-code-label">
-                                U
+                                ${initial(item)}
                             </div>
-                            <span class="font-semibold text-on-surface">${getUserLabel(item.userId)}</span>
+                            <span class="font-semibold text-on-surface">${escapeHtml(userLabel(item))}</span>
                         </div>
-                    </td>
-                    <td class="px-lg py-lg">
-                        ${getTypeBadge(getFeedbackType(item))}
                     </td>
                     <td class="px-lg py-lg">
                         <div class="flex text-warning">
@@ -409,11 +421,12 @@
                         </div>
                     </td>
                     <td class="px-lg py-lg max-w-xs">
+                        ${FEEDBACK_KIND === 'system' ? `<div class="flex items-center gap-xs mb-1">${getTypeBadge(getFeedbackType(item))}${item.replyCount ? `<span class="text-on-surface-variant text-[11px] font-code-label">Replies ${item.replyCount}</span>` : ''}</div>` : ''}
                         <p class="truncate opacity-80 italic text-on-surface">"${escapeHtml(fixText(item.content || item.subject || ''))}"</p>
                     </td>
                     <td class="px-lg py-lg font-code-label text-on-surface-variant">${formatDate(item.createdAt)}</td>
                     <td class="px-lg py-lg">
-                        ${getStatusBadge(item.status)}
+                        ${FEEDBACK_KIND === 'ai' ? helpfulBadge(item.isHelpful) : getStatusBadge(item.status)}
                     </td>
                     <td class="px-lg py-lg text-right">
                         <div class="flex justify-end gap-md">
@@ -435,12 +448,13 @@
                     return;
                 }
 
+                const cached = lastItems.find(x => String(x.id).toLowerCase() === String(id).toLowerCase());
                 const res = await fetch(`${API_BASE}/${id}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 const json = await res.json();
                 if (json.success && json.data) {
-                    renderDrawer(json.data);
+                    renderDrawer(mergeFeedback(cached, json.data));
                 }
             } catch(e) {
                 console.error(e);
@@ -449,14 +463,34 @@
         }
 
         function renderDrawer(item) {
-            document.getElementById('drawer-name').innerText = getUserLabel(item.userId);
-            document.getElementById('drawer-avatar').innerText = 'U';
-            document.getElementById('drawer-email').innerText = item.userId || 'Unknown user';
+            document.getElementById('drawer-name').innerText = userLabel(item);
+            document.getElementById('drawer-avatar').innerText = initial(item);
+            document.getElementById('drawer-email').innerText = item.userEmail || 'No email available';
             document.getElementById('drawer-type').innerText = getFeedbackType(item);
+            document.getElementById('drawer-extra').innerText = FEEDBACK_KIND === 'ai'
+                ? (item.sessionId ? `Session ${String(item.sessionId).substring(0, 8)}` : '')
+                : (item.replyCount ? `${item.replyCount} replies` : '');
             document.getElementById('drawer-date').innerText = formatDate(item.createdAt);
             document.getElementById('drawer-rating').innerHTML = getStars(item.rating || 0);
+            const isSystem = FEEDBACK_KIND === 'system';
+            document.getElementById('drawer-subject-section').classList.toggle('hidden', !isSystem);
+            document.getElementById('drawer-replies-section').classList.toggle('hidden', !isSystem);
+            document.getElementById('drawer-subject').innerText = fixText(item.subject || '(no subject)');
             document.getElementById('drawer-comment').innerText = `"${fixText(item.content || item.subject || '')}"`;
-            document.getElementById('drawer-status-label').innerHTML = getStatusBadge(item.status);
+            document.getElementById('drawer-status-label').innerHTML = FEEDBACK_KIND === 'ai' ? helpfulBadge(item.isHelpful) : getStatusBadge(item.status);
+            renderReplies(item);
+        }
+
+        function mergeFeedback(cached, detail) {
+            if (!cached) return detail;
+            return {
+                ...detail,
+                userFullName: detail.userFullName || cached.userFullName,
+                userEmail: detail.userEmail || cached.userEmail,
+                isHelpful: detail.isHelpful ?? cached.isHelpful,
+                sessionId: detail.sessionId || cached.sessionId,
+                replyCount: detail.replyCount ?? cached.replyCount
+            };
         }
 
         function getFeedbackType(item) {
@@ -493,9 +527,45 @@
             });
         }
 
-        function getUserLabel(userId) {
-            if (!userId) return 'Unknown user';
-            return `User ${String(userId).substring(0, 5)}`;
+        function userLabel(item) {
+            return item.userFullName || item.userEmail || 'Unknown user';
+        }
+
+        function initial(item) {
+            const label = userLabel(item);
+            return label && label.trim() ? label.trim()[0].toUpperCase() : 'U';
+        }
+
+        function helpfulBadge(value) {
+            if (value === true) return `<span class="px-xs py-1 rounded-full bg-success/10 border border-success/30 text-success text-[10px] font-bold uppercase tracking-tighter">Yes</span>`;
+            if (value === false) return `<span class="px-xs py-1 rounded-full bg-warning/10 border border-warning/30 text-warning text-[10px] font-bold uppercase tracking-tighter">No</span>`;
+            return `<span class="text-on-surface-variant">--</span>`;
+        }
+
+        function renderReplies(item) {
+            const section = document.getElementById('drawer-replies-section');
+            if (FEEDBACK_KIND !== 'system') {
+                section.classList.add('hidden');
+                return;
+            }
+
+            const replies = item.replies || [];
+            document.getElementById('drawer-reply-count').innerText = `${replies.length}`;
+            const box = document.getElementById('drawer-replies');
+            if (!replies.length) {
+                box.innerHTML = `<p class="text-on-surface-variant text-[12px] italic">No replies yet.</p>`;
+                return;
+            }
+
+            box.innerHTML = replies.map(reply => `
+                <div class="glass-card rounded-xl p-md">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="font-code-label text-[11px] text-primary uppercase">${escapeHtml(reply.repliedByName || 'Admin')}</span>
+                        <span class="text-on-surface-variant text-[11px] font-code-label">${formatDate(reply.createdAt || reply.repliedAt)}</span>
+                    </div>
+                    <p class="text-on-surface text-[13px] leading-relaxed">${escapeHtml(fixText(reply.replyContent || reply.content || ''))}</p>
+                </div>
+            `).join('');
         }
 
         function fixText(value) {
