@@ -9,11 +9,11 @@ public class PaymentDbContext : DbContext
     {
     }
 
-    public DbSet<CreditPackage> CreditPackages { get; set; }
-
-    public DbSet<Order> Orders { get; set; }
-
-    public DbSet<CreditWallet> CreditWallets { get; set; }
+    public DbSet<CreditPackage>      CreditPackages      { get; set; }
+    public DbSet<Order>              Orders              { get; set; }
+    public DbSet<CreditWallet>       CreditWallets       { get; set; }
+    public DbSet<PaymentTransaction> PaymentTransactions { get; set; }
+    public DbSet<CreditLedgerEntry>  CreditLedgerEntries { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -50,6 +50,19 @@ public class PaymentDbContext : DbContext
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(sysutcdatetime())");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
         });
+
+        modelBuilder.Entity<PaymentTransaction>(entity =>
+        {
+            entity.HasKey(e => e.TransactionId);
+            entity.Property(e => e.TransactionId).HasDefaultValueSql("(newsequentialid())");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
+        });
+
+        modelBuilder.Entity<CreditLedgerEntry>(entity =>
+        {
+            entity.HasKey(e => e.LedgerId);
+            entity.Property(e => e.LedgerId).HasDefaultValueSql("(newsequentialid())");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
+        });
     }
 }
-

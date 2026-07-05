@@ -125,7 +125,34 @@ public class ProfileController(
             string.Equals(txRole, "Manager", StringComparison.OrdinalIgnoreCase))
             return RedirectToAction("Index", "Admin");
 
-        var model = await paymentService.GetTransactionHistoryAsync(page, ct: ct);
+        var userId = GetUserIdFromToken(Request.Cookies["access_token"]);
+        if (userId is null)
+            return RedirectToAction("Login", "Auth");
+
+        var model = await paymentService.GetTransactionHistoryAsync(userId.Value, page, ct: ct);
         return View(model);
+    }
+
+    private static Guid? GetUserIdFromToken(string? token)
+    {
+        if (string.IsNullOrEmpty(token)) return null;
+
+        var parts = token.Split('.');
+        if (parts.Length < 2) return null;
+
+        try
+        {
+            var payload = parts[1].Replace('-', '+').Replace('_', '/');
+            payload = payload.PadRight(payload.Length + (4 - payload.Length % 4) % 4, '=');
+            var bytes = Convert.FromBase64String(payload);
+
+            using var doc = System.Text.Json.JsonDocument.Parse(bytes);
+            var sub = doc.RootElement.TryGetProperty("sub", out var s) ? s.GetString() : null;
+            return Guid.TryParse(sub, out var id) ? id : null;
+        }
+        catch
+        {
+            return null;
+        }
     }
 }

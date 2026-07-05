@@ -1,0 +1,452 @@
+/* Interview Dashboard — reproduces ai-service/test-ui/interviewdashboard.html.
+   Uses the shared tokens from theme.css. Self-contained (view is Layout=null). */
+
+* {
+    box-sizing: border-box;
+}
+
+body.dashboard-page {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    overflow-x: hidden;
+    font-family: var(--font-geist);
+    font-size: var(--text-body-md-size);
+    line-height: var(--text-body-md-line);
+    color: var(--color-on-surface);
+    background:
+        radial-gradient(ellipse at top, rgba(79, 68, 226, 0.15), var(--color-background) 60%);
+    background-color: var(--color-background);
+}
+
+/* ---- Left sidebar ---- */
+.dash-sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 260px;
+    height: 100%;
+    padding: 24px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    border-right: 1px solid rgba(70, 69, 85, 0.3);
+    background: rgba(19, 19, 24, 0.4);
+    backdrop-filter: blur(20px);
+    z-index: 50;
+}
+
+.dash-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding: 0 8px;
+}
+
+.dash-brand-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-lg);
+    background: var(--gradient-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.dash-brand-title {
+    font-size: var(--text-headline-lg-mobile-size);
+    font-weight: var(--text-headline-lg-mobile-weight);
+    letter-spacing: var(--text-headline-lg-mobile-spacing);
+    color: var(--color-primary);
+    margin: 0;
+}
+
+.dash-brand-sub {
+    font-size: var(--text-label-sm-size);
+    font-weight: var(--text-label-sm-weight);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--color-on-surface-variant);
+    margin: 2px 0 0;
+}
+
+.dash-sidebar-label {
+    padding: 0 16px;
+    font-size: var(--text-label-sm-size);
+    font-weight: var(--text-label-sm-weight);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--color-on-surface-variant);
+}
+
+.dash-sidebar-link {
+    display: flex;
+    flex-direction: column;
+    padding: 8px 16px;
+    border-left: 2px solid transparent;
+    border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+    color: var(--color-on-surface-variant);
+    text-decoration: none;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.dash-sidebar-link:hover {
+    background: rgba(42, 41, 47, 0.5);
+    color: var(--color-on-surface);
+}
+
+/* ---- Recent Sessions list (sidebar) ---- */
+.dash-session-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 4px;
+}
+
+.dash-session-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 16px;
+    border-left: 2px solid transparent;
+    border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+    text-decoration: none;
+    transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.dash-session-item:hover {
+    background: rgba(42, 41, 47, 0.5);
+    border-left-color: var(--color-primary);
+}
+
+.dash-session-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-on-surface);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dash-session-meta {
+    font-size: 12px;
+    color: var(--color-on-surface-variant);
+}
+
+.dash-sidebar-empty {
+    padding: 8px 16px;
+    font-size: 13px;
+    color: var(--color-on-surface-variant);
+}
+
+.dash-sidebar-spacer {
+    flex: 1;
+}
+
+.dash-sidebar-footer {
+    margin-top: auto;
+    padding-top: 16px;
+    border-top: 1px solid rgba(70, 69, 85, 0.3);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.dash-sidebar-footer .dash-footer-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: var(--radius-lg);
+    color: var(--color-on-surface-variant);
+    text-decoration: none;
+}
+
+.dash-sidebar-footer .dash-footer-item:hover {
+    background: rgba(42, 41, 47, 0.5);
+    color: var(--color-on-surface);
+}
+
+/* ---- Primary gradient button (from the mockup .btn-primary) ---- */
+.btn-gradient {
+    background: var(--gradient-primary);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-lg);
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    text-decoration: none;
+}
+
+.dash-new-btn {
+    width: 100%;
+    padding: 12px 16px;
+    margin-bottom: 8px;
+    box-shadow: 0 10px 15px -3px rgba(135, 129, 255, 0.2);
+}
+
+/* ---- Main content ---- */
+.dash-main {
+    flex: 1;
+    margin-left: 260px;
+    min-height: 100vh;
+    overflow-y: auto;
+    position: relative;
+}
+
+.dash-main-inner {
+    max-width: 1024px;
+    margin: 0 auto;
+    padding: 64px var(--spacing-container-padding);
+}
+
+.dash-header {
+    margin-bottom: 48px;
+}
+
+.dash-title {
+    font-size: var(--text-headline-xl-size);
+    font-weight: var(--text-headline-xl-weight);
+    letter-spacing: var(--text-headline-xl-spacing);
+    line-height: var(--text-headline-xl-line);
+    margin: 0 0 12px;
+    background: linear-gradient(to right, #ffffff, var(--color-on-surface-variant));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.dash-subtitle {
+    color: var(--color-on-surface-variant);
+    margin: 0;
+}
+
+/* ---- Glass configuration card ---- */
+.dash-card {
+    position: relative;
+    overflow: hidden;
+    background: rgba(27, 27, 32, 0.4);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(70, 69, 85, 0.3);
+    border-radius: var(--radius-xl);
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.dash-card-accent {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 128px;
+    height: 128px;
+    background: linear-gradient(to bottom left, rgba(196, 192, 255, 0.1), transparent);
+    pointer-events: none;
+}
+
+.dash-field {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    position: relative;
+    z-index: 1;
+}
+
+.dash-label {
+    font-size: var(--text-label-sm-size);
+    font-weight: var(--text-label-sm-weight);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-on-surface-variant);
+}
+
+.dash-hint {
+    font-size: 14px;
+    color: var(--color-on-surface-variant);
+    margin: -4px 0 0;
+}
+
+/* selects / textarea */
+.dash-input {
+    width: 100%;
+    padding: 12px 16px;
+    background: rgba(14, 14, 19, 0.5);
+    border: 1px solid rgba(70, 69, 85, 0.3);
+    border-radius: var(--radius-lg);
+    color: var(--color-on-surface);
+    font-family: inherit;
+    font-size: var(--text-body-md-size);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.dash-input:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(196, 192, 255, 0.2);
+    outline: none;
+}
+
+.dash-input:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+textarea.dash-input {
+    min-height: 160px;
+    resize: vertical;
+}
+
+/* ---- Segmented control (Experience Level) ---- */
+.dash-segment {
+    display: flex;
+    background: rgba(14, 14, 19, 0.5);
+    border: 1px solid rgba(70, 69, 85, 0.3);
+    border-radius: var(--radius-lg);
+    padding: 6px;
+    gap: 4px;
+}
+
+.dash-segment .seg-input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.dash-segment .seg-label {
+    flex: 1;
+    text-align: center;
+    padding: 10px 8px;
+    border-radius: var(--radius-default);
+    color: var(--color-on-surface-variant);
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s, box-shadow 0.2s;
+    user-select: none;
+}
+
+.dash-segment .seg-label:hover {
+    color: var(--color-on-surface);
+}
+
+.dash-segment .seg-input:checked + .seg-label {
+    color: var(--color-on-surface);
+    font-weight: 600;
+    background: var(--color-surface-container-high);
+    box-shadow: 0 0 0 2px var(--color-primary);
+}
+
+/* ---- Focus Area chips (inert) ---- */
+.dash-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.dash-chip {
+    padding: 8px 16px;
+    border-radius: var(--radius-full);
+    border: 1px solid rgba(70, 69, 85, 0.5);
+    background: var(--color-surface-container-lowest);
+    color: var(--color-on-surface-variant);
+    font-size: var(--text-body-md-size);
+    cursor: not-allowed;
+}
+
+/* Interactive focus-area chips (loaded from /catalog). */
+.dash-chip.selectable {
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.dash-chip.selectable:hover {
+    color: var(--color-on-surface);
+    border-color: var(--color-primary);
+}
+
+.dash-chip.selected {
+    border-color: var(--color-primary);
+    background: rgba(196, 192, 255, 0.1);
+    color: var(--color-primary);
+}
+
+.dash-chip-sm {
+    padding: 6px 12px;
+    font-size: 13px;
+}
+
+.dash-chip-outline {
+    border-style: dashed;
+    cursor: pointer;
+    background: transparent;
+    color: var(--color-on-surface-variant);
+}
+
+.dash-focus-panel {
+    width: 100%;
+    margin-top: 8px;
+    padding: 16px;
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(70, 69, 85, 0.4);
+    background: rgba(14, 14, 19, 0.6);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.dash-focus-search {
+    margin-bottom: 4px;
+}
+
+/* ---- Footer action ---- */
+.dash-actions {
+    margin-top: 32px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.dash-start-btn {
+    padding: 14px 32px;
+    font-size: var(--text-headline-lg-mobile-size);
+    box-shadow: 0 0 24px rgba(135, 129, 255, 0.4);
+    transition: box-shadow 0.3s, transform 0.3s;
+}
+
+.dash-start-btn:hover {
+    box-shadow: 0 0 32px rgba(135, 129, 255, 0.6);
+    transform: translateY(-2px);
+}
+
+/* ---- Alerts ---- */
+.dash-alert {
+    padding: 12px 16px;
+    border-radius: var(--radius-lg);
+    margin-bottom: 24px;
+    border: 1px solid var(--color-error);
+    background: rgba(147, 0, 10, 0.2);
+    color: var(--color-on-error-container);
+}
+
+.material-symbols-outlined {
+    font-family: 'Material Symbols Outlined';
+    font-weight: normal;
+    font-style: normal;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    -webkit-font-feature-settings: 'liga';
+    font-feature-settings: 'liga';
+    -webkit-font-smoothing: antialiased;
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    vertical-align: middle;
+}

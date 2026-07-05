@@ -31,6 +31,27 @@ builder.Services.AddScoped<ISystemFeedbackRepository, SystemFeedbackRepository>(
 builder.Services.AddScoped<IAiFeedbackService, AiFeedbackService>();
 builder.Services.AddScoped<ISystemFeedbackService, SystemFeedbackService>();
 
+// Client nội bộ resolve Tên (UserAPI) + Email (AuthAPI) cho AI feedback. UseProxy=false + header khoá nội bộ.
+var internalApiKey = builder.Configuration.GetValue<string>("INTERNAL_API_KEY", string.Empty);
+var userBaseUrl = builder.Configuration.GetValue<string>("USER_API_BASEURL", "http://localhost:7002");
+var authBaseUrl = builder.Configuration.GetValue<string>("AUTH_API_BASEURL", "http://localhost:7001");
+builder.Services.AddHttpClient<FeedbackAPI.Clients.IUserApiClient, FeedbackAPI.Clients.UserApiClient>(client =>
+{
+    client.BaseAddress = new Uri(userBaseUrl!);
+    client.Timeout = TimeSpan.FromSeconds(15);
+    if (!string.IsNullOrEmpty(internalApiKey))
+        client.DefaultRequestHeaders.Add("X-Internal-Api-Key", internalApiKey);
+})
+.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { UseProxy = false });
+builder.Services.AddHttpClient<FeedbackAPI.Clients.IAuthApiClient, FeedbackAPI.Clients.AuthApiClient>(client =>
+{
+    client.BaseAddress = new Uri(authBaseUrl!);
+    client.Timeout = TimeSpan.FromSeconds(15);
+    if (!string.IsNullOrEmpty(internalApiKey))
+        client.DefaultRequestHeaders.Add("X-Internal-Api-Key", internalApiKey);
+})
+.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { UseProxy = false });
+
 // JWT: dùng chung Issuer/Audience/Key với AuthAPI để verify token Auth phát ra.
 var jwtKey = builder.Configuration["Jwt:Key"]
     ?? throw new InvalidOperationException("Jwt:Key is missing in configuration.");

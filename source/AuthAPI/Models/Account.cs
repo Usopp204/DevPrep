@@ -33,7 +33,7 @@ public partial class Account
 
     public DateTime? LastLoginAt { get; set; }
 
-    public int FailedLoginCount { get; set; }
+    public byte FailedLoginCount { get; set; }
 
     public DateTime? LockedUntil { get; set; }
 
