@@ -125,11 +125,7 @@ public class ProfileController(
             string.Equals(txRole, "Manager", StringComparison.OrdinalIgnoreCase))
             return RedirectToAction("Index", "Admin");
 
-        var userIdStr = Request.Cookies["user_id"];
-        if (!Guid.TryParse(userIdStr, out var userId))
-            return RedirectToAction("Login", "Auth");
-
-        var model = await paymentService.GetTransactionHistoryAsync(userId, page, ct: ct);
+        var model = await paymentService.GetTransactionHistoryAsync(page, ct: ct);
         return View(model);
     }
 }

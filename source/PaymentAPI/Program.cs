@@ -50,6 +50,7 @@ builder.Services.AddAuthorization();
 
 // ── Services ──────────────────────────────────────────────────────────────────
 builder.Services.AddScoped<ICreditPackageService, CreditPackageService>();
+builder.Services.AddScoped<ITransactionService, TransactionService>();
 
 // ── Controllers & Swagger ─────────────────────────────────────────────────────
 builder.Services.AddControllers();
