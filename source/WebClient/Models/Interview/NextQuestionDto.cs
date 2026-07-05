@@ -1,0 +1,9 @@
+namespace WebClient.Models.Interview;
+
+// Mirrors InterviewAPI.DTOs.Session.NextQuestionDto (used by both Resume and Message responses).
+public class NextQuestionDto
+{
+    public Guid SessionQuestionId { get; set; }
+    public int OrderIndex { get; set; }
+    public string Content { get; set; } = string.Empty;
+}

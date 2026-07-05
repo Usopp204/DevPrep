@@ -1,0 +1,155 @@
+@model WebClient.Models.Manager.ManagerNewsDetailViewModel
+@{
+    Layout = null;
+    var displayDate = Model.PublishedAt ?? Model.CreatedAt;
+    var publishedText = Model.PublishedAt.HasValue ? Model.PublishedAt.Value.ToString("dd/MM/yyyy HH:mm") : "Not published";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>News Details - DevPrep AI Manager</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+    <style>
+        .nd-back{display:inline-flex;align-items:center;gap:8px;color:var(--ad-on-surface-variant);text-decoration:none;margin-bottom:20px}
+        .nd-back:hover{color:var(--ad-primary)}
+        .nd-layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(280px,0.9fr);gap:24px;align-items:start}
+        .nd-hero{overflow:hidden;border-radius:8px;margin-bottom:20px}
+        .nd-banner{height:260px;background:linear-gradient(135deg,#1f2937,#111827);display:flex;align-items:flex-end;padding:28px;border-bottom:1px solid var(--ad-border)}
+        .nd-banner.has-image{background-size:cover;background-position:center}
+        .nd-title{font-size:34px;font-weight:800;color:#fff;max-width:920px;margin:0;text-shadow:0 2px 10px rgba(0,0,0,.45)}
+        .nd-body{padding:24px}
+        .nd-meta{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px}
+        .nd-pill{font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;padding:5px 10px;border-radius:999px;background:rgba(226,223,255,.1);color:var(--ad-primary)}
+        .nd-summary{font-size:16px;color:var(--ad-on-surface-variant);line-height:1.65;margin-bottom:24px}
+        .nd-content{white-space:pre-wrap;font-family:'Inter',sans-serif;font-size:15px;line-height:1.75;color:var(--ad-on-surface);background:var(--ad-surface-container);border:1px solid var(--ad-border);border-radius:8px;padding:20px}
+        .nd-side-card{background:var(--ad-surface-container);border:1px solid var(--ad-border);border-radius:8px;padding:20px;margin-bottom:16px}
+        .nd-side-title{font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;color:var(--ad-on-surface-variant);letter-spacing:.06em;margin-bottom:14px}
+        .nd-metric{font-size:28px;font-weight:800;color:var(--ad-on-surface)}
+        .nd-meta-row{display:flex;justify-content:space-between;gap:14px;padding:10px 0;border-bottom:1px solid var(--ad-border);font-size:13px}
+        .nd-meta-row:last-child{border-bottom:none}
+        .nd-meta-label{color:var(--ad-on-surface-variant);font-weight:600}
+        .nd-meta-value{color:var(--ad-on-surface);text-align:right;word-break:break-word}
+        .nd-slug{font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(255,255,255,.04);border:1px solid var(--ad-border);border-radius:6px;padding:4px 8px;display:inline-block}
+        @@media (max-width: 1100px){.nd-layout{grid-template-columns:1fr}}
+    </style>
+</head>
+<body class="admin-page">
+    @await Html.PartialAsync("_ManagerTopbar")
+    @await Html.PartialAsync("_ManagerSidebar")
+
+    <main class="ad-main">
+        <a class="nd-back" href="/Manager/News">
+            <span class="material-symbols-outlined">arrow_back</span>
+            Back to News
+        </a>
+
+        <div class="nd-layout">
+            <article class="glass-card nd-hero">
+                @if (!string.IsNullOrWhiteSpace(Model.ThumbnailUrl))
+                {
+                    <div class="nd-banner has-image" style="background-image:linear-gradient(180deg,rgba(0,0,0,.15),rgba(0,0,0,.76)),url('@Model.ThumbnailUrl')">
+                        <h1 class="nd-title">@Model.Title</h1>
+                    </div>
+                }
+                else
+                {
+                    <div class="nd-banner">
+                        <h1 class="nd-title">@Model.Title</h1>
+                    </div>
+                }
+
+                <div class="nd-body">
+                    <div class="nd-meta">
+                        <span class="nd-pill">@Model.Status</span>
+                        <span class="nd-pill">@(Model.CategoryName ?? "Uncategorized")</span>
+                        <span class="nd-pill">@displayDate.ToString("MMM dd, yyyy")</span>
+                        <span class="nd-pill">@Model.ViewCount views</span>
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(Model.Summary))
+                    {
+                        <div class="nd-summary">@Model.Summary</div>
+                    }
+
+                    <h2 style="font-size:18px;font-weight:700;margin-bottom:12px;color:var(--ad-on-surface);">Raw Article Text</h2>
+                    <div class="nd-content">@Model.Content</div>
+                </div>
+            </article>
+
+            <aside>
+                <div class="nd-side-card">
+                    <div class="nd-side-title">Performance Metrics</div>
+                    <div class="nd-meta-label">Views</div>
+                    <div class="nd-metric">@Model.ViewCount.ToString("N0")</div>
+                </div>
+
+                <div class="nd-side-card">
+                    <div class="nd-side-title">Article Summary</div>
+                    <div class="nd-summary" style="margin-bottom:0;">@(string.IsNullOrWhiteSpace(Model.Summary) ? "No summary provided." : Model.Summary)</div>
+                </div>
+
+                <div class="nd-side-card">
+                    <div class="nd-side-title">Article Metadata</div>
+                    <div class="nd-meta-row"><span class="nd-meta-label">Status</span><span class="nd-meta-value">@Model.Status</span></div>
+                    <div class="nd-meta-row"><span class="nd-meta-label">Slug</span><span class="nd-meta-value"><span class="nd-slug">@Model.Slug</span></span></div>
+                    <div class="nd-meta-row"><span class="nd-meta-label">News ID</span><span class="nd-meta-value">@Model.NewsId</span></div>
+                    <div class="nd-meta-row"><span class="nd-meta-label">Category</span><span class="nd-meta-value">@(Model.CategoryName ?? "Uncategorized")</span></div>
+                    <div class="nd-meta-row"><span class="nd-meta-label">Published At</span><span class="nd-meta-value">@publishedText</span></div>
+                    <div class="nd-meta-row"><span class="nd-meta-label">Created At</span><span class="nd-meta-value">@Model.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span></div>
+                    <div class="nd-meta-row"><span class="nd-meta-label">Updated At</span><span class="nd-meta-value">@Model.UpdatedAt.ToString("dd/MM/yyyy HH:mm")</span></div>
+                </div>
+            </aside>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            fixMojibakeText(document.querySelector('main'));
+            document.querySelectorAll('.ad-nav-item').forEach(function (link) {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === '/Manager/News') link.classList.add('active');
+            });
+        });
+
+        function fixMojibakeText(root) {
+            if (!root) return;
+            const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+            const nodes = [];
+            while (walker.nextNode()) nodes.push(walker.currentNode);
+            nodes.forEach(node => node.nodeValue = fixText(node.nodeValue));
+        }
+
+        function fixText(value) {
+            const text = String(value || '');
+            const looksMojibake = [...text].some(ch => {
+                const code = ch.charCodeAt(0);
+                return code >= 0x00C0 && code <= 0x00FF;
+            });
+            if (!looksMojibake) return text;
+            try {
+                const windows1252 = {
+                    0x20AC: 0x80, 0x201A: 0x82, 0x0192: 0x83, 0x201E: 0x84,
+                    0x2026: 0x85, 0x2020: 0x86, 0x2021: 0x87, 0x02C6: 0x88,
+                    0x2030: 0x89, 0x0160: 0x8A, 0x2039: 0x8B, 0x0152: 0x8C,
+                    0x017D: 0x8E, 0x2018: 0x91, 0x2019: 0x92, 0x201C: 0x93,
+                    0x201D: 0x94, 0x2022: 0x95, 0x2013: 0x96, 0x2014: 0x97,
+                    0x02DC: 0x98, 0x2122: 0x99, 0x0161: 0x9A, 0x203A: 0x9B,
+                    0x0153: 0x9C, 0x017E: 0x9E, 0x0178: 0x9F
+                };
+                const bytes = Uint8Array.from([...text].map(ch => {
+                    const code = ch.charCodeAt(0);
+                    return windows1252[code] || (code & 255);
+                }));
+                return new TextDecoder('utf-8').decode(bytes);
+            } catch {
+                return text;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -37,9 +37,14 @@ public class InterviewService : IInterviewService
         if (!string.IsNullOrWhiteSpace(query.Keyword))
         {
             var kw = query.Keyword.Trim();
-            q = q.Where(s => s.Title != null && s.Title.Contains(kw));
+            // Search cả Title + tên (UserAPI) + email (AuthAPI). matchIds rỗng -> chỉ khớp Title.
+            var nameIds = await _userClient.SearchIdsByNameAsync(kw, cancellationToken);
+            var emailIds = await _authClient.SearchIdsByEmailAsync(kw, cancellationToken);
+            var matchIds = nameIds.Concat(emailIds).Distinct().ToList();
+            q = q.Where(s => (s.Title != null && s.Title.Contains(kw)) || matchIds.Contains(s.UserId));
         }
         if (!string.IsNullOrWhiteSpace(query.Status)) q = q.Where(s => s.Status == query.Status);
+        if (!string.IsNullOrWhiteSpace(query.RoomStatus)) q = q.Where(s => s.InterviewRoom != null && s.InterviewRoom.Status == query.RoomStatus);
         if (!string.IsNullOrWhiteSpace(query.Level)) q = q.Where(s => s.Level == query.Level);
         if (!string.IsNullOrWhiteSpace(query.InteractionMode)) q = q.Where(s => s.InteractionMode == query.InteractionMode);
         if (!string.IsNullOrWhiteSpace(query.QuestionType)) q = q.Where(s => s.QuestionType == query.QuestionType);
@@ -92,6 +97,85 @@ public class InterviewService : IInterviewService
         };
     }
 
+    public async Task<PagedResult<ManagerInterviewSessionListItemDto>> GetManagerSessionListAsync(InterviewQuery query, CancellationToken cancellationToken = default)
+    {
+        var page = query.Page < 1 ? 1 : query.Page;
+        var pageSize = Math.Clamp(query.PageSize, 1, MaxPageSize);
+        var skip = (page - 1) * pageSize;
+
+        var q = _repository.Query()
+            .Where(s => s.InterviewRoom != null &&
+                (s.InterviewRoom.Status == "Active" || s.InterviewRoom.Status == "Closed"));
+
+        if (!string.IsNullOrWhiteSpace(query.Keyword))
+        {
+            var kw = query.Keyword.Trim();
+            var nameIds = await _userClient.SearchIdsByNameAsync(kw, cancellationToken);
+            var emailIds = await _authClient.SearchIdsByEmailAsync(kw, cancellationToken);
+            var matchIds = nameIds.Concat(emailIds).Distinct().ToList();
+            q = q.Where(s =>
+                (s.Title != null && s.Title.Contains(kw)) ||
+                (s.InterviewRoom != null && s.InterviewRoom.ChannelName.Contains(kw)) ||
+                matchIds.Contains(s.UserId));
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.Status)) q = q.Where(s => s.Status == query.Status);
+        if (!string.IsNullOrWhiteSpace(query.RoomStatus)) q = q.Where(s => s.InterviewRoom != null && s.InterviewRoom.Status == query.RoomStatus);
+        if (!string.IsNullOrWhiteSpace(query.Level)) q = q.Where(s => s.Level == query.Level);
+        if (!string.IsNullOrWhiteSpace(query.InteractionMode)) q = q.Where(s => s.InteractionMode == query.InteractionMode);
+        if (!string.IsNullOrWhiteSpace(query.QuestionType)) q = q.Where(s => s.QuestionType == query.QuestionType);
+        if (query.UserId.HasValue) q = q.Where(s => s.UserId == query.UserId.Value);
+        if (query.DateFrom.HasValue) q = q.Where(s => s.CreatedAt >= query.DateFrom.Value);
+        if (query.DateTo.HasValue) q = q.Where(s => s.CreatedAt <= query.DateTo.Value);
+
+        var total = await q.CountAsync(cancellationToken);
+        var items = await q
+            .OrderByDescending(s => s.CreatedAt)
+            .ThenByDescending(s => s.SessionId)
+            .Skip(skip).Take(pageSize)
+            .Select(s => new ManagerInterviewSessionListItemDto
+            {
+                SessionId = s.SessionId,
+                RoomId = s.InterviewRoom == null ? null : s.InterviewRoom.RoomId,
+                ChannelName = s.InterviewRoom == null ? null : s.InterviewRoom.ChannelName,
+                RoomStatus = s.InterviewRoom == null ? null : s.InterviewRoom.Status,
+                UserId = s.UserId,
+                Title = s.Title,
+                Level = s.Level,
+                InteractionMode = s.InteractionMode,
+                QuestionType = s.QuestionType,
+                Status = s.Status,
+                DurationMinutes = s.DurationMinutes,
+                TotalQuestions = s.TotalQuestions,
+                AnsweredQuestions = s.AnsweredQuestions,
+                AvgResponseTimeMs = s.AvgResponseTimeMs,
+                CreditCost = s.CreditCost,
+                StartedAt = s.StartedAt,
+                EndedAt = s.EndedAt,
+                InitializedAt = s.InterviewRoom == null ? null : s.InterviewRoom.InitializedAt,
+                ClosedAt = s.InterviewRoom == null ? null : s.InterviewRoom.ClosedAt,
+                CreatedAt = s.CreatedAt
+            })
+            .ToListAsync(cancellationToken);
+
+        var userIds = items.Select(i => i.UserId).Distinct().ToList();
+        var (emails, fullNames) = await ResolveUsersAsync(userIds, cancellationToken);
+        foreach (var item in items)
+        {
+            item.UserEmail = emails.TryGetValue(item.UserId, out var e) ? e : null;
+            item.UserFullName = fullNames.TryGetValue(item.UserId, out var n) ? n : null;
+        }
+
+        return new PagedResult<ManagerInterviewSessionListItemDto>
+        {
+            Items = items,
+            Page = page,
+            PageSize = pageSize,
+            TotalItems = total,
+            TotalPages = (int)Math.Ceiling(total / (double)pageSize)
+        };
+    }
+
     public async Task<InterviewDetailDto?> GetDetailAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var s = await _repository.GetDetailAsync(id, cancellationToken);
@@ -117,6 +201,70 @@ public class InterviewService : IInterviewService
             EndedAt = s.EndedAt,
             IsDeleted = s.IsDeleted,
             DeletedAt = s.DeletedAt,
+            CreatedAt = s.CreatedAt,
+            UpdatedAt = s.UpdatedAt,
+            Questions = s.SessionQuestions
+                .OrderBy(q => q.OrderIndex)
+                .Select(q => new SessionQuestionDto
+                {
+                    SessionQuestionId = q.SessionQuestionId,
+                    OrderIndex = q.OrderIndex,
+                    Content = q.Content,
+                    IsAiGenerated = q.IsAiGenerated,
+                    ContextSource = q.ContextSource,
+                    AskedAt = q.AskedAt,
+                    Messages = q.ChatMessages
+                        .OrderBy(m => m.SentAt)
+                        .Select(m => new ChatMessageDto
+                        {
+                            MessageId = m.MessageId,
+                            SenderType = m.SenderType,
+                            MessageType = m.MessageType,
+                            Content = m.Content,
+                            AudioUrl = m.AudioUrl,
+                            ResponseTimeMs = m.ResponseTimeMs,
+                            SentAt = m.SentAt
+                        })
+                        .ToList()
+                })
+                .ToList()
+        };
+
+        var (emails, fullNames) = await ResolveUsersAsync(new[] { s.UserId }, cancellationToken);
+        dto.UserEmail = emails.TryGetValue(s.UserId, out var e) ? e : null;
+        dto.UserFullName = fullNames.TryGetValue(s.UserId, out var n) ? n : null;
+
+        return dto;
+    }
+
+    public async Task<ManagerInterviewSessionLogDto?> GetManagerSessionLogAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var s = await _repository.GetDetailAsync(id, cancellationToken);
+        if (s is null) return null;
+
+        var dto = new ManagerInterviewSessionLogDto
+        {
+            SessionId = s.SessionId,
+            RoomId = s.InterviewRoom?.RoomId,
+            ChannelName = s.InterviewRoom?.ChannelName,
+            RoomStatus = s.InterviewRoom?.Status,
+            UserId = s.UserId,
+            CvId = s.CvId,
+            JdId = s.JdId,
+            Title = s.Title,
+            Level = s.Level,
+            InteractionMode = s.InteractionMode,
+            QuestionType = s.QuestionType,
+            Status = s.Status,
+            DurationMinutes = s.DurationMinutes,
+            TotalQuestions = s.TotalQuestions,
+            AnsweredQuestions = s.AnsweredQuestions,
+            AvgResponseTimeMs = s.AvgResponseTimeMs,
+            CreditCost = s.CreditCost,
+            StartedAt = s.StartedAt,
+            EndedAt = s.EndedAt,
+            InitializedAt = s.InterviewRoom?.InitializedAt,
+            ClosedAt = s.InterviewRoom?.ClosedAt,
             CreatedAt = s.CreatedAt,
             UpdatedAt = s.UpdatedAt,
             Questions = s.SessionQuestions

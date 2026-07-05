@@ -20,15 +20,17 @@ var builder = WebApplication.CreateBuilder(args);
 var servicePort = builder.Configuration.GetValue<int>("INTERVIEW_API_PORT", 7005);
 builder.WebHost.UseUrls($"http://0.0.0.0:{servicePort}");
 
-// DbContext: connection string lấy từ appsettings (ConnectionStrings:DefaultConnection có Encrypt=False
-// để tránh treo ~14s ở post-login phase trên SQL Server local). Override bằng ENV khi deploy.
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection is missing.");
+// DbContext: connection string đọc từ .env (key INTERVIEW_DB_CONNECTION_STRING). DotNetEnv ở trên
+// đã nạp key này vào biến môi trường nên builder.Configuration đọc được. KHÔNG hardcode trong appsettings/.cs.
+var connectionString = builder.Configuration["INTERVIEW_DB_CONNECTION_STRING"]
+    ?? throw new InvalidOperationException("INTERVIEW_DB_CONNECTION_STRING is missing in .env.");
 builder.Services.AddDbContext<InterviewDbContext>(options => options.UseSqlServer(connectionString));
 
 // Repositories + Services (kiến trúc phân lớp).
 builder.Services.AddScoped<IInterviewRepository, InterviewRepository>();
 builder.Services.AddScoped<IInterviewService, InterviewService>();
+builder.Services.AddScoped<ISessionRepository, SessionRepository>();
+builder.Services.AddScoped<ISessionService, SessionService>();
 
 // Giao tiếp liên service qua HTTP (resolve danh tính người dùng của phiên phỏng vấn):
 //   - AuthAPI: lấy Email theo AccountId.
@@ -37,6 +39,9 @@ builder.Services.AddScoped<IInterviewService, InterviewService>();
 var internalApiKey = builder.Configuration.GetValue<string>("INTERNAL_API_KEY", string.Empty);
 var authBaseUrl = builder.Configuration.GetValue<string>("AUTH_API_BASEURL", "http://localhost:7001");
 var userBaseUrl = builder.Configuration.GetValue<string>("USER_API_BASEURL", "http://localhost:7002");
+var aiServiceBaseUrl = builder.Configuration["AiService:BaseUrl"] ?? "http://localhost:8000";
+var aiServiceApiKey = builder.Configuration["AiService:InternalApiKey"] ?? string.Empty;
+var evaluationBaseUrl = builder.Configuration.GetValue<string>("EVALUATION_API_BASEURL", "http://localhost:7006");
 
 builder.Services.AddHttpClient<IAuthApiClient, AuthApiClient>(client =>
 {
@@ -55,6 +60,26 @@ builder.Services.AddHttpClient<IUserApiClient, UserApiClient>(client =>
         client.DefaultRequestHeaders.Add("X-Internal-Api-Key", internalApiKey);
 })
 .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { UseProxy = false });
+
+builder.Services.AddHttpClient<IAiServiceClient, AiServiceClient>(client =>
+{
+    client.BaseAddress = new Uri(aiServiceBaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(60);
+    if (!string.IsNullOrEmpty(aiServiceApiKey))
+        client.DefaultRequestHeaders.Add("X-Internal-Api-Key", aiServiceApiKey);
+})
+.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { UseProxy = false });
+
+// Calls EvaluationAPI to grade each answer in the background (bearer token forwarded per call).
+builder.Services.AddHttpClient<IEvaluationApiClient, EvaluationApiClient>(client =>
+{
+    client.BaseAddress = new Uri(evaluationBaseUrl!);
+    client.Timeout = TimeSpan.FromSeconds(60);
+})
+.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { UseProxy = false });
+
+// Needed to read the caller's bearer token so background grading can forward it to EvaluationAPI.
+builder.Services.AddHttpContextAccessor();
 
 // JWT: dùng chung Issuer/Audience/Key với AuthAPI để verify token Auth phát ra.
 var jwtKey = builder.Configuration["Jwt:Key"]
@@ -88,7 +113,8 @@ builder.Services.AddCors(options =>
             "http://localhost:5130",
             "http://localhost:3000",
             "http://localhost:4200",
-            "http://localhost:5500")
+            "http://localhost:5500",
+            "http://localhost:5173")   // Vite dev server (FrontendClient)
         .AllowAnyHeader()
         .AllowAnyMethod());
 });

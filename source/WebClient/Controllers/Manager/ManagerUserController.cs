@@ -6,7 +6,7 @@ using WebClient.Services.Manager;
 
 namespace WebClient.Controllers.Manager;
 
-[Authorize(Roles = "Manager,Admin")]
+[Authorize(Roles = "Manager")]
 [Route("Manager/Users")]
 public class ManagerUserController : Controller
 {

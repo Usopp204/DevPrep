@@ -28,6 +28,7 @@ public class InterviewRepository : IInterviewRepository
         _db.InterviewSessions
             .AsNoTracking()
             .Where(s => !s.IsDeleted)
+            .Include(s => s.InterviewRoom)
             .Include(s => s.SessionQuestions)
                 .ThenInclude(q => q.ChatMessages)
             .FirstOrDefaultAsync(s => s.SessionId == id, cancellationToken);

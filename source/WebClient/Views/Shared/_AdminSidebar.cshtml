@@ -1,8 +1,18 @@
 @*
     Sidebar Admin (dùng chung) — các trang admin khác include:
         @await Html.PartialAsync("_AdminSidebar")
-    Cần nạp ~/css/admin.css. Các link để href="#" (nối route sau).
+    Cần nạp ~/css/admin.css. Mục "active" (xanh) tự bám theo URL trang hiện tại.
 *@
+@{
+    var currentPath = (Context.Request.Path.Value ?? string.Empty).TrimEnd('/');
+    if (currentPath.Length == 0 || currentPath.Equals("/Admin", StringComparison.OrdinalIgnoreCase))
+    {
+        currentPath = "/Admin/Index";
+    }
+    // Thêm class " active" nếu URL hiện tại khớp tiền tố của mục (không phân biệt hoa thường).
+    string ActiveIf(string prefix) =>
+        currentPath.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) ? " active" : string.Empty;
+}
 <aside class="ad-sidebar">
     <div class="ad-sidebar-head">
         <div class="ad-console">
@@ -13,13 +23,14 @@
     </div>
 
     <nav class="ad-nav">
-        <a class="ad-nav-item active" href="/Admin/Index"><span class="material-symbols-outlined">dashboard</span><span class="label">Dashboard</span></a>
-        <a class="ad-nav-item" href="/Manager/QuestionBank"><span class="material-symbols-outlined">database</span><span class="label">Question Bank</span></a>
-        <a class="ad-nav-item" href="/Manager/Users"><span class="material-symbols-outlined">group</span><span class="label">Users</span></a>
-        <a class="ad-nav-item" href="#"><span class="material-symbols-outlined">history</span><span class="label">Sessions</span></a>
+        <a class="ad-nav-item@(ActiveIf("/Admin/Index"))" href="/Admin/Index"><span class="material-symbols-outlined">dashboard</span><span class="label">Dashboard</span></a>
+        <a class="ad-nav-item@(ActiveIf("/admin/questions"))" href="/admin/questions"><span class="material-symbols-outlined">quiz</span><span class="label">Question Bank</span></a>
+        <a class="ad-nav-item@(ActiveIf("/Admin/User"))" href="/Admin/User"><span class="material-symbols-outlined">group</span><span class="label">Users</span></a>
+        <a class="ad-nav-item@(ActiveIf("/Admin/InterviewSessions"))" href="/Admin/InterviewSessions"><span class="material-symbols-outlined">history</span><span class="label">Sessions</span></a>
         <a class="ad-nav-item" href="#"><span class="material-symbols-outlined">payments</span><span class="label">Payments</span></a>
         <a class="ad-nav-item" href="#"><span class="material-symbols-outlined">account_balance_wallet</span><span class="label">Credit Packages</span></a>
-        <a class="ad-nav-item" href="/Manager/Feedback"><span class="material-symbols-outlined">chat_bubble</span><span class="label">Feedback</span></a>
-        <a class="ad-nav-item" href="#"><span class="material-symbols-outlined">newspaper</span><span class="label">News</span></a>
+        <a class="ad-nav-item@(ActiveIf("/Admin/AiFeedback"))" href="/Admin/AiFeedback"><span class="material-symbols-outlined">smart_toy</span><span class="label">AI Feedback</span></a>
+        <a class="ad-nav-item@(ActiveIf("/Admin/SystemFeedback"))" href="/Admin/SystemFeedback"><span class="material-symbols-outlined">forum</span><span class="label">System Feedback</span></a>
+        <a class="ad-nav-item@(ActiveIf("/Admin/News"))" href="/Admin/News"><span class="material-symbols-outlined">newspaper</span><span class="label">News</span></a>
     </nav>
 </aside>
