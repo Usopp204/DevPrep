@@ -1,5 +1,9 @@
 @{
     Layout = null;
+    // Same login check as _Navbar.cshtml: logged in -> Dashboard, not logged in -> Login (not Register).
+    var homeLoggedIn = !string.IsNullOrEmpty(Context.Request.Cookies["access_token"]);
+    var ctaController = homeLoggedIn ? "Interview" : "Auth";
+    var ctaAction = homeLoggedIn ? "Index" : "Login";
 }
 <!DOCTYPE html>
 <html lang="vi">
@@ -32,7 +36,7 @@
                 Luyện tập các bài phỏng vấn System Design, Coding và Behavior với AI chuyên gia dành riêng cho Software Engineer tại Việt Nam.
             </p>
             <div class="hm-hero-actions">
-                <a class="hm-btn-lg primary-btn-gradient" asp-controller="Auth" asp-action="Register">Bắt đầu ngay</a>
+                <a class="hm-btn-lg primary-btn-gradient" asp-controller="@ctaController" asp-action="@ctaAction">Bắt đầu ngay</a>
                 <a class="hm-btn-outline" href="#">
                     <span class="material-symbols-outlined">play_circle</span>
                     Xem demo
@@ -120,7 +124,7 @@
             <div class="glass-card hm-cta">
                 <h2>Sẵn sàng để đột phá sự nghiệp?</h2>
                 <p>Tham gia cùng hơn 5,000 kỹ sư phần mềm Việt Nam đang luyện tập mỗi ngày để đạt được mức lương mong ước.</p>
-                <a class="hm-btn-lg primary-btn-gradient" asp-controller="Auth" asp-action="Register">Bắt đầu ngay hôm nay</a>
+                <a class="hm-btn-lg primary-btn-gradient" asp-controller="@ctaController" asp-action="@ctaAction">Bắt đầu ngay hôm nay</a>
             </div>
         </div>
     </main>

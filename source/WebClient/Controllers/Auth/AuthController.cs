@@ -194,21 +194,20 @@ public class AuthController(IAuthService authService) : Controller
     }
 
     // ============================ helpers ============================
-    // Admin/Manager -> Admin Dashboard; other roles -> Home.
+    // Admin and Manager use separate workspaces; other roles -> Home.
     private IActionResult RedirectAfterLogin(string? role)
     {
-        if (IsAdminAreaRole(role))
+        if (string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase))
         {
             return RedirectToAction("Index", "Admin");
         }
 
-        return RedirectToAction("Index", "Home");
-    }
+        if (string.Equals(role, "Manager", StringComparison.OrdinalIgnoreCase))
+        {
+            return RedirectToAction("Index", "Manager");
+        }
 
-    private static bool IsAdminAreaRole(string? role)
-    {
-        return string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(role, "Manager", StringComparison.OrdinalIgnoreCase);
+        return RedirectToAction("Index", "Home");
     }
 
     private async Task StoreAuthCookies(LoginResponseData data)
