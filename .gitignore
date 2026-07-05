@@ -1,6 +1,5 @@
 # Environment
 .env
-.env.example
 
 # AI Agent & OpenCode Session Cache
 .hive/
