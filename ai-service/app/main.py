@@ -54,10 +54,6 @@ app.include_router(internal.router)
 def health():
     return {"status": "ok"}
 
-
-# Serve the test UI (test-ui/*.html) same-origin at /ui, e.g. /ui/interviewdashboard.html
-import os
-
 _ui_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "test-ui")
 if os.path.isdir(_ui_dir):
     from fastapi.staticfiles import StaticFiles
