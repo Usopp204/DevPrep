@@ -4,7 +4,8 @@ using WebClient.Services.Manager;
 
 namespace WebClient.Controllers.Manager;
 
-[Authorize(Roles = "Manager,Admin")]
+// Chỉ Manager mới vào được khu Manager (Admin KHÔNG được vào).
+[Authorize(Roles = "Manager")]
 public class ManagerController(IManagerService managerService) : Controller
 {
     public IActionResult Index()
