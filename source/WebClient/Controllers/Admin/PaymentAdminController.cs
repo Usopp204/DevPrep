@@ -77,10 +77,21 @@ public class PaymentAdminController(IPaymentAdminService adminService) : Control
     }
 
     [HttpGet("Payments")]
-    public async Task<IActionResult> Payments(int page = 1, CancellationToken ct = default)
+    public async Task<IActionResult> Payments(
+        int page = 1, string? keyword = null, string? status = null, string? paymentMethod = null,
+        DateTime? dateFrom = null, DateTime? dateTo = null,
+        decimal? minAmount = null, decimal? maxAmount = null,
+        string period = "today", DateTime? from = null, DateTime? to = null,
+        CancellationToken ct = default)
     {
         if (GuardAdmin() is { } r5) return r5;
-        var model = await adminService.GetPaymentsAsync(page, ct: ct);
+
+        var model = await adminService.GetPaymentsAsync(
+            page, keyword: keyword, status: status, paymentMethod: paymentMethod,
+            dateFrom: dateFrom, dateTo: dateTo, minAmount: minAmount, maxAmount: maxAmount, ct: ct);
+
+        model.Revenue = await adminService.GetRevenueReportAsync(period, from, to, ct);
+
         return View(model);
     }
 }
