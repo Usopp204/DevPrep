@@ -1,5 +1,6 @@
 ﻿using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using UserAPI.DTOs;
 using UserAPI.Models;
 using UserAPI.Repositories.Interfaces;
@@ -9,10 +10,12 @@ namespace UserAPI.Repositories;
 public class AdminUserRepository : IAdminUserRepository
 {
     private readonly UserDbContext _context;
+    private readonly IConfiguration _configuration;
 
-    public AdminUserRepository(UserDbContext context)
+    public AdminUserRepository(UserDbContext context, IConfiguration configuration)
     {
         _context = context;
+        _configuration = configuration;
     }
 
     public async Task<PagedResult<AdminUserListItemDto>> GetUsersAsync(AdminUserQueryDto query)
@@ -38,7 +41,7 @@ public class AdminUserRepository : IAdminUserRepository
         var items = new List<AdminUserListItemDto>();
         var totalCount = 0;
 
-        var connString = _context.Database.GetDbConnection().ConnectionString;
+        var connString = _configuration.GetConnectionString("DefaultConnection");
 
         await using var conn = new SqlConnection(connString);
         await conn.OpenAsync();
@@ -144,7 +147,7 @@ public class AdminUserRepository : IAdminUserRepository
 
     public async Task<AdminUserDetailDto?> GetUserDetailAsync(Guid id)
     {
-        var connString = _context.Database.GetDbConnection().ConnectionString;
+        var connString = _configuration.GetConnectionString("DefaultConnection");
 
         AdminUserDetailDto? detail = null;
         Guid? profileUserId = null;
@@ -283,7 +286,7 @@ public class AdminUserRepository : IAdminUserRepository
 
     public async Task<bool> UpdateStatusAsync(Guid id, AdminUpdateUserStatusDto dto, Guid? adminAccountId)
     {
-        var connString = _context.Database.GetDbConnection().ConnectionString;
+        var connString = _configuration.GetConnectionString("DefaultConnection");
 
         await using var conn = new SqlConnection(connString);
         await conn.OpenAsync();
@@ -328,7 +331,7 @@ public class AdminUserRepository : IAdminUserRepository
 
     public async Task<bool> UpdateRoleAsync(Guid id, AdminUpdateUserRoleDto dto)
     {
-        var connString = _context.Database.GetDbConnection().ConnectionString;
+        var connString = _configuration.GetConnectionString("DefaultConnection");
 
         await using var conn = new SqlConnection(connString);
         await conn.OpenAsync();
@@ -413,7 +416,7 @@ public class AdminUserRepository : IAdminUserRepository
         if (inactiveDays < 1)
             inactiveDays = 30;
 
-        var connString = _context.Database.GetDbConnection().ConnectionString;
+        var connString = _configuration.GetConnectionString("DefaultConnection");
 
         var result = new AdminAutoBlockInactiveResultDto
         {
