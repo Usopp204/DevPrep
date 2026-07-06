@@ -107,10 +107,10 @@
                          background: rgba(0,0,0,.7); backdrop-filter: blur(4px);
                          align-items: center; justify-content: center; padding: 20px; }
         .modal-overlay.open { display: flex; }
-        .modal { background: #0e1323; border: 1px solid var(--border); border-radius: var(--r-lg);
+        .pm-modal { background: #0e1323; border: 1px solid var(--border); border-radius: var(--r-lg);
                  padding: 28px; width: 100%; max-width: 500px;
                  max-height: 90vh; overflow-y: auto; box-shadow: 0 24px 64px rgba(0,0,0,.5); }
-        .modal-title  { font-size: 18px; font-weight: 700; margin-bottom: 20px; color: var(--text); }
+        .pm-modal-title  { font-size: 18px; font-weight: 700; margin-bottom: 20px; color: var(--text); }
         .form-row     { margin-bottom: 16px; }
         .form-row label { display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; }
         .form-ctrl { width: 100%; background: rgba(255,255,255,.04); border: 1px solid var(--border);
@@ -120,7 +120,7 @@
         .form-ctrl:focus { border-color: rgba(129,140,248,.5); }
         textarea.form-ctrl { resize: vertical; min-height: 70px; }
         .form-grid    { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+        .pm-modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
 
         /* Delete confirm modal */
         .del-modal { text-align: center; }
@@ -296,8 +296,8 @@
 
 <!-- ── Create / Edit Modal ────────────────────────────────── -->
 <div class="modal-overlay" id="pkgModal">
-    <div class="modal">
-        <h2 class="modal-title" id="modalTitle">New Package</h2>
+    <div class="pm-modal">
+        <h2 class="pm-modal-title" id="modalTitle">New Package</h2>
         <form method="post" id="pkgForm">
             @Html.AntiForgeryToken()
             <div class="form-row">
@@ -328,7 +328,7 @@
                     <input type="number" name="sortOrder" id="f-sort" class="form-ctrl" min="0" value="0" placeholder="0" />
                 </div>
             </div>
-            <div class="modal-footer">
+            <div class="pm-modal-footer">
                 <button type="button" class="btn btn-ghost" onclick="closeModal('pkgModal')">Cancel</button>
                 <button type="submit" class="btn btn-primary" id="pkgSubmitBtn">
                     <span class="material-symbols-outlined">save</span>
@@ -341,7 +341,7 @@
 
 <!-- ── Delete Confirm Modal ───────────────────────────────── -->
 <div class="modal-overlay" id="delModal">
-    <div class="modal del-modal">
+    <div class="pm-modal del-modal">
         <span class="material-symbols-outlined del-icon" style="font-variation-settings:'FILL' 1;">warning</span>
         <p class="del-title">Deactivate Package?</p>
         <p class="del-desc">
@@ -350,7 +350,7 @@
         <form method="post" id="delForm">
             @Html.AntiForgeryToken()
             <input type="hidden" name="name" id="delPkgNameHidden" />
-            <div class="modal-footer" style="justify-content:center;">
+            <div class="pm-modal-footer" style="justify-content:center;">
                 <button type="button" class="btn btn-ghost" onclick="closeModal('delModal')">Cancel</button>
                 <button type="submit" class="btn btn-danger">
                     <span class="material-symbols-outlined">delete</span>
