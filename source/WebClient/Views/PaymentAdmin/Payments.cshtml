@@ -81,6 +81,41 @@
         .err-box   { margin-bottom: 20px; background: var(--error-dim);
                      border: 1px solid rgba(248,113,113,.2); border-radius: var(--r-md);
                      padding: 14px 18px; font-size: 14px; color: var(--error); }
+
+        /* Filter toolbar */
+        .filter-bar   { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;
+                        padding: 16px 20px; margin-bottom: 20px; }
+        .filter-field { display: flex; flex-direction: column; gap: 4px; }
+        .filter-field label { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600;
+                               letter-spacing: .08em; text-transform: uppercase; color: var(--text-dim); }
+        .filter-field input, .filter-field select {
+            background: rgba(255,255,255,.03); border: 1px solid var(--ad-border); border-radius: var(--r-sm);
+            color: var(--text); font-size: 13px; padding: 7px 10px; min-width: 130px;
+        }
+        .filter-field input:focus, .filter-field select:focus { outline: none; border-color: var(--primary); }
+        .filter-actions { display: flex; gap: 8px; }
+        .btn-filter   { background: var(--primary-dim); color: var(--primary); border: 1px solid rgba(129,140,248,.25);
+                        border-radius: var(--r-sm); padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
+        .btn-filter:hover { background: rgba(129,140,248,.2); }
+        .btn-clear    { background: rgba(255,255,255,.03); color: var(--text-muted); border: 1px solid var(--ad-border);
+                        border-radius: var(--r-sm); padding: 8px 16px; font-size: 13px; font-weight: 600;
+                        text-decoration: none; display: inline-flex; align-items: center; }
+        .btn-clear:hover { background: rgba(255,255,255,.06); color: var(--text); }
+
+        /* Revenue report card */
+        .revenue-card  { padding: 18px 20px; margin-bottom: 20px; }
+        .revenue-head  { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+        .period-tabs   { display: flex; gap: 6px; }
+        .period-tab    { padding: 6px 14px; border-radius: 20px; border: 1px solid var(--ad-border);
+                          background: rgba(255,255,255,.03); color: var(--text-muted);
+                          font-size: 12px; font-weight: 600; text-decoration: none; }
+        .period-tab:hover { color: var(--text); }
+        .period-tab.now { background: var(--primary-dim); color: var(--primary); border-color: rgba(129,140,248,.25); }
+        .custom-range  { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+        .revenue-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; }
+        .revenue-stat-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 4px; }
+        .revenue-stat-value { font-size: 22px; font-weight: 700; color: var(--text); }
+        .revenue-range { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
     </style>
     <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
 </head>
@@ -96,15 +131,129 @@
         </div>
     </header>
 
+    @{
+        var period = Model.Revenue?.Period ?? "today";
+    }
+    <!-- Filter & search toolbar -->
+    <form class="data-card filter-bar" method="get" asp-controller="PaymentAdmin" asp-action="Payments">
+        <input type="hidden" name="period" value="@period" />
+        @if (period == "custom")
+        {
+            <input type="hidden" name="from" value="@(Model.Revenue?.From.ToString("yyyy-MM-dd"))" />
+            <input type="hidden" name="to" value="@(Model.Revenue?.To.ToString("yyyy-MM-dd"))" />
+        }
+        <div class="filter-field">
+            <label>Search order code</label>
+            <input type="text" name="keyword" value="@Model.Keyword" placeholder="ORD-..." />
+        </div>
+        <div class="filter-field">
+            <label>Status</label>
+            <select name="status">
+                <option value="">All</option>
+                <option value="Paid" selected="@(Model.Status == "Paid")">Paid</option>
+                <option value="Pending" selected="@(Model.Status == "Pending")">Pending</option>
+                <option value="Failed" selected="@(Model.Status == "Failed")">Failed</option>
+            </select>
+        </div>
+        <div class="filter-field">
+            <label>Method</label>
+            <select name="paymentMethod">
+                <option value="">All</option>
+                <option value="VNPay" selected="@(Model.PaymentMethod == "VNPay")">VNPay</option>
+            </select>
+        </div>
+        <div class="filter-field">
+            <label>From date</label>
+            <input type="date" name="dateFrom" value="@(Model.DateFrom?.ToString("yyyy-MM-dd"))" />
+        </div>
+        <div class="filter-field">
+            <label>To date</label>
+            <input type="date" name="dateTo" value="@(Model.DateTo?.ToString("yyyy-MM-dd"))" />
+        </div>
+        <div class="filter-field">
+            <label>Min amount</label>
+            <input type="number" name="minAmount" value="@Model.MinAmount" placeholder="0" min="0" />
+        </div>
+        <div class="filter-field">
+            <label>Max amount</label>
+            <input type="number" name="maxAmount" value="@Model.MaxAmount" placeholder="0" min="0" />
+        </div>
+        <div class="filter-actions">
+            <button type="submit" class="btn-filter">Apply</button>
+            <a class="btn-clear" asp-controller="PaymentAdmin" asp-action="Payments" asp-route-period="@period">Clear</a>
+        </div>
+    </form>
+
     @if (!string.IsNullOrEmpty(Model.ErrorMessage))
     {
         <div class="err-box">@Model.ErrorMessage</div>
     }
     else
     {
-        var paidCount    = Model.Items.Count(x => x.Status == "Paid");
-        var failedCount  = Model.Items.Count(x => x.Status == "Failed");
-        var pendingCount = Model.Items.Count(x => x.Status == "Pending");
+        <!-- Revenue report -->
+        <div class="data-card revenue-card">
+            <div class="revenue-head">
+                <span class="data-card-title">Revenue Report</span>
+                <div class="period-tabs">
+                    <a class="period-tab @(period == "today" ? "now" : "")"
+                       asp-controller="PaymentAdmin" asp-action="Payments"
+                       asp-route-period="today" asp-route-keyword="@Model.Keyword" asp-route-status="@Model.Status"
+                       asp-route-paymentMethod="@Model.PaymentMethod" asp-route-dateFrom="@(Model.DateFrom?.ToString("yyyy-MM-dd"))" asp-route-dateTo="@(Model.DateTo?.ToString("yyyy-MM-dd"))"
+                       asp-route-minAmount="@Model.MinAmount" asp-route-maxAmount="@Model.MaxAmount">Today</a>
+                    <a class="period-tab @(period == "month" ? "now" : "")"
+                       asp-controller="PaymentAdmin" asp-action="Payments"
+                       asp-route-period="month" asp-route-keyword="@Model.Keyword" asp-route-status="@Model.Status"
+                       asp-route-paymentMethod="@Model.PaymentMethod" asp-route-dateFrom="@(Model.DateFrom?.ToString("yyyy-MM-dd"))" asp-route-dateTo="@(Model.DateTo?.ToString("yyyy-MM-dd"))"
+                       asp-route-minAmount="@Model.MinAmount" asp-route-maxAmount="@Model.MaxAmount">This Month</a>
+                    <a class="period-tab @(period == "year" ? "now" : "")"
+                       asp-controller="PaymentAdmin" asp-action="Payments"
+                       asp-route-period="year" asp-route-keyword="@Model.Keyword" asp-route-status="@Model.Status"
+                       asp-route-paymentMethod="@Model.PaymentMethod" asp-route-dateFrom="@(Model.DateFrom?.ToString("yyyy-MM-dd"))" asp-route-dateTo="@(Model.DateTo?.ToString("yyyy-MM-dd"))"
+                       asp-route-minAmount="@Model.MinAmount" asp-route-maxAmount="@Model.MaxAmount">This Year</a>
+                </div>
+                <form class="custom-range" method="get" asp-controller="PaymentAdmin" asp-action="Payments">
+                    <input type="hidden" name="period" value="custom" />
+                    <input type="hidden" name="keyword" value="@Model.Keyword" />
+                    <input type="hidden" name="status" value="@Model.Status" />
+                    <input type="hidden" name="paymentMethod" value="@Model.PaymentMethod" />
+                    <input type="hidden" name="dateFrom" value="@(Model.DateFrom?.ToString("yyyy-MM-dd"))" />
+                    <input type="hidden" name="dateTo" value="@(Model.DateTo?.ToString("yyyy-MM-dd"))" />
+                    <input type="hidden" name="minAmount" value="@Model.MinAmount" />
+                    <input type="hidden" name="maxAmount" value="@Model.MaxAmount" />
+                    <div class="filter-field">
+                        <label>From</label>
+                        <input type="date" name="from" value="@(period == "custom" ? Model.Revenue?.From.ToString("yyyy-MM-dd") : null)" />
+                    </div>
+                    <div class="filter-field">
+                        <label>To</label>
+                        <input type="date" name="to" value="@(period == "custom" ? Model.Revenue?.To.AddDays(-1).ToString("yyyy-MM-dd") : null)" />
+                    </div>
+                    <button type="submit" class="btn-filter">View</button>
+                </form>
+            </div>
+            @if (!string.IsNullOrEmpty(Model.Revenue?.ErrorMessage))
+            {
+                <div class="err-box">@Model.Revenue.ErrorMessage</div>
+            }
+            else
+            {
+                <div class="revenue-stats">
+                    <div>
+                        <div class="revenue-stat-label">Packages Sold</div>
+                        <div class="revenue-stat-value">@Model.Revenue?.PackagesSold</div>
+                    </div>
+                    <div>
+                        <div class="revenue-stat-label">Total Revenue</div>
+                        <div class="revenue-stat-value" style="color:var(--success);">@Model.Revenue?.TotalRevenue.ToString("N0") VND</div>
+                    </div>
+                    <div>
+                        <div class="revenue-stat-label">Total Credits</div>
+                        <div class="revenue-stat-value">@Model.Revenue?.TotalCredits</div>
+                    </div>
+                </div>
+                <div class="revenue-range">@Model.Revenue?.From.ToString("dd/MM/yyyy") &ndash; @Model.Revenue?.To.AddDays(-1).ToString("dd/MM/yyyy")</div>
+            }
+        </div>
 
         <!-- Stat bar — same glass-card ad-stat structure as Dashboard -->
         <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4 mb-4">
@@ -120,28 +269,28 @@
             <div class="col">
                 <div class="glass-card ad-stat">
                     <div class="ad-stat-top">
-                        <span class="ad-stat-label">Paid (this page)</span>
+                        <span class="ad-stat-label">Paid Transactions</span>
                         <span class="material-symbols-outlined" style="color:var(--ad-success);opacity:.6;font-variation-settings:'FILL' 1;">check_circle</span>
                     </div>
-                    <div><div class="ad-stat-value" style="color:var(--ad-success);">@paidCount</div></div>
+                    <div><div class="ad-stat-value" style="color:var(--ad-success);">@Model.PaidCount</div></div>
                 </div>
             </div>
             <div class="col">
                 <div class="glass-card ad-stat">
                     <div class="ad-stat-top">
-                        <span class="ad-stat-label">Failed (this page)</span>
-                        <span class="material-symbols-outlined" style="color:var(--ad-error);opacity:.6;font-variation-settings:'FILL' 1;">cancel</span>
+                        <span class="ad-stat-label">Total Amount</span>
+                        <span class="material-symbols-outlined" style="color:var(--ad-primary);opacity:.6;font-variation-settings:'FILL' 1;">payments</span>
                     </div>
-                    <div><div class="ad-stat-value" style="color:var(--ad-error);">@failedCount</div></div>
+                    <div><div class="ad-stat-value">@Model.TotalAmount.ToString("N0")</div></div>
                 </div>
             </div>
             <div class="col">
                 <div class="glass-card ad-stat">
                     <div class="ad-stat-top">
-                        <span class="ad-stat-label">Pending (this page)</span>
-                        <span class="material-symbols-outlined" style="color:var(--ad-warning);opacity:.6;font-variation-settings:'FILL' 1;">schedule</span>
+                        <span class="ad-stat-label">Paid Amount</span>
+                        <span class="material-symbols-outlined" style="color:var(--ad-success);opacity:.6;font-variation-settings:'FILL' 1;">account_balance_wallet</span>
                     </div>
-                    <div><div class="ad-stat-value" style="color:var(--ad-warning);">@pendingCount</div></div>
+                    <div><div class="ad-stat-value" style="color:var(--ad-success);">@Model.PaidAmount.ToString("N0")</div></div>
                 </div>
             </div>
         </div>
@@ -218,17 +367,29 @@
                         <nav class="pager-nav">
                             @if (Model.Page > 1)
                             {
-                                <a asp-controller="PaymentAdmin" asp-action="Payments" asp-route-page="@(Model.Page - 1)" class="pager-btn">
+                                <a asp-controller="PaymentAdmin" asp-action="Payments" asp-route-page="@(Model.Page - 1)"
+                                   asp-route-keyword="@Model.Keyword" asp-route-status="@Model.Status" asp-route-paymentMethod="@Model.PaymentMethod"
+                                   asp-route-dateFrom="@(Model.DateFrom?.ToString("yyyy-MM-dd"))" asp-route-dateTo="@(Model.DateTo?.ToString("yyyy-MM-dd"))"
+                                   asp-route-minAmount="@Model.MinAmount" asp-route-maxAmount="@Model.MaxAmount" asp-route-period="@period"
+                                   class="pager-btn">
                                     <span class="material-symbols-outlined">chevron_left</span>
                                 </a>
                             }
                             @for (int p = Math.Max(1, Model.Page - 2); p <= Math.Min(Model.TotalPages, Model.Page + 2); p++)
                             {
-                                <a asp-controller="PaymentAdmin" asp-action="Payments" asp-route-page="@p" class="pager-btn @(p == Model.Page ? "now" : "")">@p</a>
+                                <a asp-controller="PaymentAdmin" asp-action="Payments" asp-route-page="@p"
+                                   asp-route-keyword="@Model.Keyword" asp-route-status="@Model.Status" asp-route-paymentMethod="@Model.PaymentMethod"
+                                   asp-route-dateFrom="@(Model.DateFrom?.ToString("yyyy-MM-dd"))" asp-route-dateTo="@(Model.DateTo?.ToString("yyyy-MM-dd"))"
+                                   asp-route-minAmount="@Model.MinAmount" asp-route-maxAmount="@Model.MaxAmount" asp-route-period="@period"
+                                   class="pager-btn @(p == Model.Page ? "now" : "")">@p</a>
                             }
                             @if (Model.Page < Model.TotalPages)
                             {
-                                <a asp-controller="PaymentAdmin" asp-action="Payments" asp-route-page="@(Model.Page + 1)" class="pager-btn">
+                                <a asp-controller="PaymentAdmin" asp-action="Payments" asp-route-page="@(Model.Page + 1)"
+                                   asp-route-keyword="@Model.Keyword" asp-route-status="@Model.Status" asp-route-paymentMethod="@Model.PaymentMethod"
+                                   asp-route-dateFrom="@(Model.DateFrom?.ToString("yyyy-MM-dd"))" asp-route-dateTo="@(Model.DateTo?.ToString("yyyy-MM-dd"))"
+                                   asp-route-minAmount="@Model.MinAmount" asp-route-maxAmount="@Model.MaxAmount" asp-route-period="@period"
+                                   class="pager-btn">
                                     <span class="material-symbols-outlined">chevron_right</span>
                                 </a>
                             }

@@ -44,5 +44,30 @@ public class AdminPaymentsViewModel
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 20;
     public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
+    public decimal TotalAmount { get; set; }
+    public decimal PaidAmount { get; set; }
+    public int PaidCount { get; set; }
+    public string? ErrorMessage { get; set; }
+
+    // Bộ lọc đang áp dụng — dùng để render lại form và giữ query string khi phân trang.
+    public string? Keyword { get; set; }
+    public string? Status { get; set; }
+    public string? PaymentMethod { get; set; }
+    public DateTime? DateFrom { get; set; }
+    public DateTime? DateTo { get; set; }
+    public decimal? MinAmount { get; set; }
+    public decimal? MaxAmount { get; set; }
+
+    public RevenueReportViewModel? Revenue { get; set; }
+}
+
+public class RevenueReportViewModel
+{
+    public string Period { get; set; } = "today";
+    public DateTime From { get; set; }
+    public DateTime To { get; set; }
+    public int PackagesSold { get; set; }
+    public decimal TotalRevenue { get; set; }
+    public int TotalCredits { get; set; }
     public string? ErrorMessage { get; set; }
 }

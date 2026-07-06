@@ -266,18 +266,106 @@ app.MapDelete("/admin/credit-packages/{id:guid}", async (Guid id, ICreditPackage
     return Results.NoContent();
 });
 
-// --- Admin: GET /admin/payments ---
-app.MapGet("/admin/payments", async (IOrderRepository orderRepo, int page = 1, int pageSize = 20) =>
+// --- Admin: GET /admin/payments (filter + search + aggregates) ---
+app.MapGet("/admin/payments", async (
+    PaymentDbContext db,
+    int page = 1, int pageSize = 20,
+    string? keyword = null, string? status = null, string? paymentMethod = null,
+    DateTime? dateFrom = null, DateTime? dateTo = null,
+    decimal? minAmount = null, decimal? maxAmount = null) =>
 {
     pageSize = Math.Clamp(pageSize, 1, 100);
     page     = Math.Max(1, page);
-    var result = await orderRepo.GetPagedAllAsync(page, pageSize);
-    var items  = result.Items.Select(o => new
+
+    var orders = db.Orders.AsNoTracking().AsQueryable();
+
+    if (!string.IsNullOrWhiteSpace(keyword))
     {
-        o.OrderId, o.OrderCode, o.UserId, o.Amount, o.Credits,
-        o.Currency, o.PaymentMethod, o.Status, o.PaidAt, o.CreatedAt
+        var kw = keyword.Trim();
+        orders = orders.Where(o => o.OrderCode.Contains(kw));
+    }
+    if (!string.IsNullOrWhiteSpace(status))
+        orders = orders.Where(o => o.Status == status);
+    if (!string.IsNullOrWhiteSpace(paymentMethod))
+        orders = orders.Where(o => o.PaymentMethod == paymentMethod);
+    if (dateFrom.HasValue)
+        orders = orders.Where(o => o.CreatedAt >= dateFrom.Value);
+    if (dateTo.HasValue)
+        orders = orders.Where(o => o.CreatedAt < dateTo.Value.AddDays(1));
+    if (minAmount.HasValue)
+        orders = orders.Where(o => o.Amount >= minAmount.Value);
+    if (maxAmount.HasValue)
+        orders = orders.Where(o => o.Amount <= maxAmount.Value);
+
+    var totalCount  = await orders.CountAsync();
+    var totalAmount = await orders.SumAsync(o => (decimal?)o.Amount) ?? 0m;
+    var paidAmount  = await orders.Where(o => o.Status == "Paid").SumAsync(o => (decimal?)o.Amount) ?? 0m;
+    var paidCount   = await orders.CountAsync(o => o.Status == "Paid");
+
+    var items = await orders
+        .OrderByDescending(o => o.CreatedAt)
+        .Skip((page - 1) * pageSize)
+        .Take(pageSize)
+        .Select(o => new
+        {
+            o.OrderId, o.OrderCode, o.UserId, o.Amount, o.Credits,
+            o.Currency, o.PaymentMethod, o.Status, o.PaidAt, o.CreatedAt
+        })
+        .ToListAsync();
+
+    return Results.Ok(new
+    {
+        TotalCount = totalCount, Page = page, PageSize = pageSize,
+        TotalAmount = totalAmount, PaidAmount = paidAmount, PaidCount = paidCount,
+        Items = items
     });
-    return Results.Ok(new { TotalCount = result.TotalCount, Page = page, PageSize = pageSize, Items = items });
+});
+
+// --- Admin: GET /admin/payments/revenue-report ---
+app.MapGet("/admin/payments/revenue-report", async (
+    PaymentDbContext db,
+    string period = "today", DateTime? from = null, DateTime? to = null) =>
+{
+    var now = DateTime.UtcNow.AddHours(7); // giờ Việt Nam, khớp quy ước chung của codebase
+    DateTime rangeFrom, rangeTo;
+
+    switch (period.ToLowerInvariant())
+    {
+        case "month":
+            rangeFrom = new DateTime(now.Year, now.Month, 1);
+            rangeTo   = rangeFrom.AddMonths(1);
+            break;
+        case "year":
+            rangeFrom = new DateTime(now.Year, 1, 1);
+            rangeTo   = rangeFrom.AddYears(1);
+            break;
+        case "custom":
+            rangeFrom = (from ?? now.Date).Date;
+            rangeTo   = (to ?? now.Date).Date.AddDays(1);
+            break;
+        default:
+            period    = "today";
+            rangeFrom = now.Date;
+            rangeTo   = rangeFrom.AddDays(1);
+            break;
+    }
+
+    var paidOrders = db.Orders.AsNoTracking()
+        .Where(o => o.Status == "Paid" && o.PaidAt >= rangeFrom && o.PaidAt < rangeTo);
+
+    var packagesSold = await paidOrders.CountAsync();
+    var totalRevenue = await paidOrders.SumAsync(o => (decimal?)o.Amount) ?? 0m;
+    var totalCredits = await paidOrders.SumAsync(o => (int?)o.Credits) ?? 0;
+
+    return Results.Ok(new
+    {
+        Period = period,
+        From = rangeFrom,
+        To = rangeTo,
+        PackagesSold = packagesSold,
+        TotalRevenue = totalRevenue,
+        TotalCredits = totalCredits
+    });
 });
 
 // --- Admin: GET /admin/payments/{id} ---
