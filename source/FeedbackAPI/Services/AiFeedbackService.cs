@@ -1,3 +1,4 @@
+using FeedbackAPI.Clients;
 using FeedbackAPI.DTOs;
 using FeedbackAPI.Helpers;
 using FeedbackAPI.Repositories.Interfaces;
@@ -11,10 +12,14 @@ public class AiFeedbackService : IAiFeedbackService
     private const int MaxPageSize = 100;
 
     private readonly IAiFeedbackRepository _repository;
+    private readonly IUserApiClient _userApiClient;
+    private readonly IAuthApiClient _authApiClient;
 
-    public AiFeedbackService(IAiFeedbackRepository repository)
+    public AiFeedbackService(IAiFeedbackRepository repository, IUserApiClient userApiClient, IAuthApiClient authApiClient)
     {
         _repository = repository;
+        _userApiClient = userApiClient;
+        _authApiClient = authApiClient;
     }
 
     public async Task<PagedResult<AiFeedbackListItemDto>> GetListAsync(AiFeedbackQuery query)
@@ -28,7 +33,11 @@ public class AiFeedbackService : IAiFeedbackService
         if (!string.IsNullOrWhiteSpace(query.Keyword))
         {
             var kw = query.Keyword.Trim();
-            q = q.Where(f => f.Content != null && f.Content.Contains(kw));
+            // Search cả nội dung + tên (UserAPI) + email (AuthAPI). matchIds rỗng -> chỉ khớp Content.
+            var nameIds = await _userApiClient.SearchIdsByNameAsync(kw);
+            var emailIds = await _authApiClient.SearchIdsByEmailAsync(kw);
+            var matchIds = nameIds.Concat(emailIds).Distinct().ToList();
+            q = q.Where(f => (f.Content != null && f.Content.Contains(kw)) || matchIds.Contains(f.UserId));
         }
         if (query.Rating.HasValue) q = q.Where(f => f.Rating == query.Rating.Value);
         if (query.IsHelpful.HasValue) q = q.Where(f => f.IsHelpful == query.IsHelpful.Value);
@@ -53,6 +62,23 @@ public class AiFeedbackService : IAiFeedbackService
                 CreatedAt = f.CreatedAt
             })
             .ToListAsync();
+
+        // Resolve Tên (UserAPI) + Email (AuthAPI) theo UserId — best-effort, lỗi thì để null.
+        var userIds = items.Select(i => i.UserId).Where(id => id != Guid.Empty).Distinct().ToList();
+        if (userIds.Count > 0)
+        {
+            var namesTask = _userApiClient.GetFullNamesAsync(userIds);
+            var emailsTask = _authApiClient.GetEmailsAsync(userIds);
+            await Task.WhenAll(namesTask, emailsTask);
+            var names = namesTask.Result;
+            var emails = emailsTask.Result;
+
+            foreach (var item in items)
+            {
+                if (names.TryGetValue(item.UserId, out var fullName)) item.UserFullName = fullName;
+                if (emails.TryGetValue(item.UserId, out var email)) item.UserEmail = email;
+            }
+        }
 
         return new PagedResult<AiFeedbackListItemDto>
         {

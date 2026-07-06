@@ -8,6 +8,9 @@
 @{
     var navEmail = Context.Request.Cookies["user_email"];
     var navLoggedIn = !string.IsNullOrEmpty(Context.Request.Cookies["access_token"]);
+    var navRole = Context.Request.Cookies["user_role"] ?? string.Empty;
+    var navIsAdmin = string.Equals(navRole, "Admin", StringComparison.OrdinalIgnoreCase)
+                  || string.Equals(navRole, "Manager", StringComparison.OrdinalIgnoreCase);
     var navInitial = string.IsNullOrWhiteSpace(navEmail) ? "U" : navEmail.Trim().Substring(0, 1).ToUpper();
 }
 <nav class="hm-navbar" id="hm-navbar">
@@ -15,9 +18,25 @@
         <a class="hm-brand" asp-controller="Home" asp-action="Index">DevPrep AI</a>
 
         <div class="hm-nav-links">
-            <a href="#">Features</a>
-            <a href="#">Pricing</a>
-            <a href="#">About</a>
+            @if (!navLoggedIn)
+            {
+                <a href="#">Features</a>
+                <a href="#">Pricing</a>
+                <a asp-controller="News" asp-action="Index">News</a>
+                <a href="#">About</a>
+            }
+            else if (navIsAdmin)
+            {
+                <a asp-controller="Admin" asp-action="Index">Admin Dashboard</a>
+            }
+            else
+            {
+                <a asp-controller="Home" asp-action="Index">Home</a>
+                <a asp-controller="Payment" asp-action="Index">Payment</a>
+                <a asp-controller="News" asp-action="Index">News</a>
+                <a asp-controller="Evaluation" asp-action="Index">Feedback System</a>
+                <a asp-controller="Interview" asp-action="Index">Feedback AI</a>
+            }
         </div>
 
         <div class="hm-nav-actions">

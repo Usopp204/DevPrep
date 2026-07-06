@@ -1,4 +1,23 @@
-fastapi
-uvicorn
-pydantic-settings
-python-dotenv
+# --- API ---
+fastapi>=0.115
+uvicorn[standard]>=0.30
+pydantic>=2.7
+python-multipart>=0.0.9      # UploadFile (voice answer)
+
+# --- Retrieval / embeddings (chroma_store.py) ---
+chromadb>=0.5
+sentence-transformers>=3.0
+
+# --- Interviewer model: local Gemma 2B (interviewer.py) ---
+# Install torch matching your CUDA build, e.g. from https://pytorch.org for WSL+NVIDIA.
+torch>=2.3
+transformers>=4.44
+accelerate>=0.33
+peft>=0.12                   # only if gemma-2b-devprep-sft is a LoRA adapter
+
+# --- Evaluator judge: Gemini (evaluator.py) ---
+google-genai>=1.0
+
+# --- Voice (voice.py) ---
+deepgram-sdk>=6.0
+elevenlabs>=1.0

@@ -31,6 +31,10 @@ builder.Services.AddScoped<IUserProfileRepository, UserProfileRepository>();
 builder.Services.AddScoped<IUserProfileService, UserProfileService>();
 builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
 
+builder.Services.AddScoped<IAdminUserRepository, AdminUserRepository>();
+builder.Services.AddScoped<IAdminUserService, AdminUserService>();
+builder.Services.AddHostedService<InactiveUserAutoBlockHostedService>();
+
 // JWT: phải dùng cùng Issuer/Audience/Key với AuthAPI để verify được token do Auth phát ra.
 var jwtKey = builder.Configuration["Jwt:Key"]
     ?? throw new InvalidOperationException("Jwt:Key is missing in configuration.");
@@ -147,6 +151,17 @@ app.MapPost("/internal/profiles/lookup",
             .Select(p => new UserAPI.DTOs.ProfileLookupItem(p.AccountId, p.FullName))
             .ToList();
         return Results.Ok(result);
+    })
+    .ExcludeFromDescription();
+
+// Tìm AccountId theo tên (FullName chứa keyword) — FeedbackAPI gọi để search feedback theo tên user.
+app.MapPost("/internal/profiles/search-by-name",
+    async (UserAPI.DTOs.ProfileSearchRequest body, HttpRequest request, IUserProfileRepository repository) =>
+    {
+        if (!IsInternalCallAuthorized(request, internalApiKey)) return Results.Unauthorized();
+        if (string.IsNullOrWhiteSpace(body.Keyword)) return Results.Ok(Array.Empty<Guid>());
+        var ids = await repository.SearchAccountIdsByNameAsync(body.Keyword.Trim());
+        return Results.Ok(ids);
     })
     .ExcludeFromDescription();
 

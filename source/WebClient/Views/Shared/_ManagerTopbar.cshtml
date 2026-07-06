@@ -1,0 +1,54 @@
+@{
+    var managerEmail = Context.Request.Cookies["user_email"];
+    var managerInitial = string.IsNullOrWhiteSpace(managerEmail) ? "M" : managerEmail.Trim().Substring(0, 1).ToUpper();
+}
+<header class="ad-topbar">
+    <div class="ad-topbar-left">
+        <span class="ad-brand">DevPrep AI</span>
+    </div>
+
+    <div class="ad-topbar-right">
+        <div class="ad-user" id="manager-user">
+            <button class="ad-avatar" id="manager-avatar-btn" type="button" title="@managerEmail" aria-haspopup="true" aria-expanded="false">@managerInitial</button>
+            <div class="ad-dropdown" role="menu">
+                <div class="ad-dropdown-head">
+                    <span class="ad-dropdown-avatar">@managerInitial</span>
+                    <span class="ad-dropdown-email">@(string.IsNullOrWhiteSpace(managerEmail) ? "Manager" : managerEmail)</span>
+                </div>
+                <form asp-controller="Auth" asp-action="Logout" method="post" class="m-0">
+                    <button type="submit" class="ad-dropdown-item" role="menuitem">
+                        <span class="material-symbols-outlined">logout</span> Logout
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</header>
+
+<script>
+    (function () {
+        const btn = document.getElementById('manager-avatar-btn');
+        const menu = document.getElementById('manager-user');
+        if (!btn || !menu) return;
+
+        btn.addEventListener('click', function (event) {
+            event.stopPropagation();
+            const open = menu.classList.toggle('open');
+            btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+
+        document.addEventListener('click', function (event) {
+            if (!menu.contains(event.target)) {
+                menu.classList.remove('open');
+                btn.setAttribute('aria-expanded', 'false');
+            }
+        });
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                menu.classList.remove('open');
+                btn.setAttribute('aria-expanded', 'false');
+            }
+        });
+    })();
+</script>

@@ -1,0 +1,306 @@
+@{
+    var token = Context.Request.Cookies["access_token"];
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Feedback - DevPrep AI</title>
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@@400;500;600;700;800;900&family=JetBrains+Mono:wght@@500&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@@100..700,0..1&display=swap" rel="stylesheet" />
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#e2dfff", "on-primary": "#2c2a5e", "primary-container": "#c3c0ff",
+                        "on-primary-container": "#4e4c83", "secondary": "#4cd7f6", "secondary-container": "#03b5d4",
+                        "on-secondary-container": "#00424e", "tertiary": "#e9ddff", "tertiary-container": "#d0bcff",
+                        "success": "#10B981", "warning": "#F9D949", "error": "#ffb4ab",
+                        "surface": "#131317", "surface-container": "#201f23", "surface-container-low": "#1c1b1f",
+                        "surface-container-high": "#2a292d", "surface-container-highest": "#353438",
+                        "on-surface": "#e5e1e7", "on-surface-variant": "#c8c5d0",
+                        "border-subtle": "rgba(255,255,255,0.08)", "background": "#0e1323", "outline": "#928f9a"
+                    },
+                    borderRadius: { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" },
+                    spacing: { "sm": "12px", "md": "16px", "lg": "24px", "xl": "32px", "gutter": "24px", "xs": "8px", "max-width": "1200px" },
+                    fontFamily: { "display-lg": ["Inter"], "code-label": ["JetBrains Mono"], "headline-md": ["Inter"], "body-sm": ["Inter"], "body-md": ["Inter"] }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #0e1323; color: #e5e1e7; }
+        .glass-card { background: rgba(32,31,35,0.4); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); border-top: 1px solid rgba(255,255,255,0.15); }
+        .inner-glow { box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.05); }
+        .primary-btn { background: linear-gradient(135deg,#c3c0ff 0%,#4f46e5 100%); transition: all .2s ease; }
+        .primary-btn:hover { transform: translateY(-1px); filter: brightness(1.1); }
+        .side-drawer { transition: transform .3s cubic-bezier(.4,0,.2,1); }
+        .drawer-hidden { transform: translateX(100%); }
+        .ad-sidebar h2, .ad-sidebar p, .ad-sidebar a { margin-bottom: 0; }
+        .ai-main { margin-left: 250px; padding-top: 80px; padding-left: 24px; padding-right: 24px; min-height: 100vh; background: #0e1323; }
+        .chip.active { outline: 2px solid currentColor; }
+    </style>
+</head>
+<body class="font-body-md overflow-x-hidden">
+    @await Html.PartialAsync("_AdminTopbar")
+    @await Html.PartialAsync("_AdminSidebar")
+
+    <main class="ai-main">
+        <div class="flex items-center gap-lg flex-1 mb-6">
+            <div>
+                <h1 class="font-display-lg text-[24px] font-bold text-primary tracking-tight">AI Feedback</h1>
+            </div>
+        </div>
+
+        <div class="max-w-max-width mx-auto">
+            <!-- Filter Bar -->
+            <section class="glass-card rounded-2xl p-md mb-lg flex flex-wrap items-center gap-lg">
+                <div class="flex items-center gap-sm">
+                    <span class="font-code-label text-[11px] uppercase text-on-surface-variant">Rating</span>
+                    <div class="flex gap-xs" id="ai-rating">
+                        <button data-val="" class="chip active px-md py-1 rounded-full bg-primary-container/10 border border-primary-container text-primary-container font-code-label text-[10px] uppercase">All</button>
+                        <button data-val="5" class="chip px-md py-1 rounded-full bg-surface-container border border-border-subtle text-on-surface-variant text-[10px] uppercase font-code-label hover:text-primary transition-all">5★</button>
+                        <button data-val="4" class="chip px-md py-1 rounded-full bg-surface-container border border-border-subtle text-on-surface-variant text-[10px] uppercase font-code-label hover:text-primary transition-all">4★</button>
+                        <button data-val="3" class="chip px-md py-1 rounded-full bg-surface-container border border-border-subtle text-on-surface-variant text-[10px] uppercase font-code-label hover:text-primary transition-all">3★</button>
+                        <button data-val="2" class="chip px-md py-1 rounded-full bg-surface-container border border-border-subtle text-on-surface-variant text-[10px] uppercase font-code-label hover:text-primary transition-all">2★</button>
+                        <button data-val="1" class="chip px-md py-1 rounded-full bg-surface-container border border-border-subtle text-on-surface-variant text-[10px] uppercase font-code-label hover:text-primary transition-all">1★</button>
+                    </div>
+                </div>
+                <div class="flex items-center gap-sm">
+                    <span class="font-code-label text-[11px] uppercase text-on-surface-variant">Helpful</span>
+                    <div class="flex gap-xs" id="ai-helpful">
+                        <button data-val="" class="chip active px-md py-1 rounded-full bg-primary-container/10 border border-primary-container text-primary-container font-code-label text-[10px] uppercase">All</button>
+                        <button data-val="true" class="chip px-md py-1 rounded-full bg-success/10 border border-success/40 text-success text-[10px] uppercase font-code-label hover:bg-success/20 transition-all">Helpful</button>
+                        <button data-val="false" class="chip px-md py-1 rounded-full bg-warning/10 border border-warning/40 text-warning text-[10px] uppercase font-code-label hover:bg-warning/20 transition-all">Not helpful</button>
+                    </div>
+                </div>
+                <div class="ml-auto relative min-w-[300px]">
+                    <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+                    <input id="ai-search" class="w-full bg-surface-container border-border-subtle border rounded-xl pl-4 pr-10 py-1.5 font-body-sm focus:ring-1 focus:ring-primary-container" placeholder="Search comments..." type="text" />
+                </div>
+            </section>
+
+            <!-- Table -->
+            <section class="glass-card rounded-2xl overflow-hidden">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-surface-container-high/50 border-b border-border-subtle">
+                            <th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">User</th>
+                            <th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">Rating</th>
+                            <th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">Comment</th>
+                            <th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">Helpful</th>
+                            <th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">Date</th>
+                            <th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ai-table-body" class="font-body-sm text-on-surface">
+                        <tr><td colspan="6" class="text-center py-4">Loading...</td></tr>
+                    </tbody>
+                </table>
+                <div class="px-lg py-md flex items-center justify-between border-t border-border-subtle bg-surface-container/20">
+                    <p id="ai-summary" class="font-code-label text-[11px] text-on-surface-variant uppercase">Loading...</p>
+                    <div class="flex gap-xs items-center">
+                        <button id="ai-prev" class="p-1 rounded bg-surface-container border border-border-subtle text-on-surface-variant hover:text-primary transition-colors" type="button"><span class="material-symbols-outlined">chevron_left</span></button>
+                        <span id="ai-page" class="px-3 py-1 rounded bg-primary-container text-on-primary-container font-code-label text-[11px] font-bold">1 / 1</span>
+                        <button id="ai-next" class="p-1 rounded bg-surface-container border border-border-subtle text-on-surface-variant hover:text-primary transition-colors" type="button"><span class="material-symbols-outlined">chevron_right</span></button>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Detail Drawer (read-only) -->
+    <div class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] hidden opacity-0 transition-opacity duration-300" id="drawer-overlay" onclick="toggleDrawer(false)"></div>
+    <aside class="fixed top-0 right-0 h-full w-[480px] z-[70] glass-card drawer-hidden side-drawer shadow-2xl flex flex-col" id="ai-drawer">
+        <div class="p-lg border-b border-border-subtle flex items-center justify-between">
+            <h2 class="font-headline-md text-primary">Feedback Details</h2>
+            <button class="p-2 rounded-full hover:bg-surface-container-high transition-colors text-on-surface-variant" onclick="toggleDrawer(false)"><span class="material-symbols-outlined">close</span></button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-lg space-y-lg">
+            <div class="flex items-start gap-md">
+                <div id="d-avatar" class="w-16 h-16 rounded-2xl border border-border-subtle bg-primary/20 text-primary flex items-center justify-center font-bold text-xl">U</div>
+                <div class="space-y-1">
+                    <h3 id="d-name" class="text-headline-md font-bold">--</h3>
+                    <p class="text-on-surface-variant font-code-label text-[13px]">Email: <span id="d-email">--</span></p>
+                    <p class="text-on-surface-variant font-code-label text-[12px]">Session: <span id="d-session">--</span></p>
+                    <span id="d-date" class="text-on-surface-variant font-code-label text-[10px] uppercase"></span>
+                </div>
+            </div>
+            <div class="p-md rounded-xl bg-surface-container/50 border border-border-subtle flex justify-between items-center">
+                <span class="font-code-label text-[11px] uppercase text-on-surface-variant">Overall Rating</span>
+                <div id="d-rating" class="flex text-warning"></div>
+            </div>
+            <div class="flex justify-between items-center px-md">
+                <span class="font-code-label text-[11px] uppercase text-on-surface-variant">Helpful?</span>
+                <span id="d-helpful" class="font-body-sm"></span>
+            </div>
+            <div class="space-y-sm">
+                <span class="font-code-label text-[11px] uppercase text-on-surface-variant">User Comment</span>
+                <div class="glass-card rounded-xl p-md inner-glow">
+                    <p id="d-comment" class="font-body-md text-on-surface italic leading-relaxed">--</p>
+                </div>
+            </div>
+            <div class="pt-4 border-t border-border-subtle">
+                <button id="d-delete" class="w-full px-lg py-sm rounded-xl border border-error text-error font-bold hover:bg-error/10 transition-colors flex items-center justify-center gap-xs">
+                    <span class="material-symbols-outlined text-[20px]">delete</span> Delete
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Confirm modal (OK / Cancel) -->
+    <div id="confirm-modal" class="fixed inset-0 z-[80] hidden items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div class="glass-card rounded-2xl p-lg w-[360px]">
+            <h3 class="font-headline-md text-primary mb-2">Xác nhận</h3>
+            <p id="confirm-msg" class="text-on-surface-variant font-body-sm mb-lg">Bạn có chắc?</p>
+            <div class="flex justify-end gap-sm">
+                <button id="confirm-cancel" class="px-lg py-sm rounded-xl border border-border-subtle text-on-surface hover:bg-surface-container-high transition-colors">Cancel</button>
+                <button id="confirm-ok" class="px-lg py-sm rounded-xl bg-error/90 text-white font-bold hover:bg-error transition-colors">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:7007/api/admin/feedbacks/ai';
+        const token = '@token';
+        let currentPage = 1, pageSize = 10, totalPages = 1, searchTimer = null;
+        let helpful = '', rating = '', lastItems = [], currentId = null, confirmCb = null;
+
+        document.addEventListener("DOMContentLoaded", () => {
+            document.getElementById('ai-prev').addEventListener('click', () => { if (currentPage > 1) { currentPage--; fetchList(); } });
+            document.getElementById('ai-next').addEventListener('click', () => { if (currentPage < totalPages) { currentPage++; fetchList(); } });
+            document.getElementById('ai-search').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => { currentPage = 1; fetchList(); }, 300); });
+            document.getElementById('ai-rating').addEventListener('click', (e) => {
+                const btn = e.target.closest('.chip'); if (!btn) return;
+                document.querySelectorAll('#ai-rating .chip').forEach(c => c.classList.remove('active'));
+                btn.classList.add('active'); rating = btn.getAttribute('data-val'); currentPage = 1; fetchList();
+            });
+            document.getElementById('ai-helpful').addEventListener('click', (e) => {
+                const btn = e.target.closest('.chip'); if (!btn) return;
+                document.querySelectorAll('#ai-helpful .chip').forEach(c => c.classList.remove('active'));
+                btn.classList.add('active'); helpful = btn.getAttribute('data-val'); currentPage = 1; fetchList();
+            });
+            document.getElementById('d-delete').addEventListener('click', () => { if (currentId) deleteFeedback(currentId); });
+            document.getElementById('confirm-ok').addEventListener('click', () => { const cb = confirmCb; hideConfirm(); if (cb) cb(); });
+            document.getElementById('confirm-cancel').addEventListener('click', hideConfirm);
+            fetchList();
+        });
+
+        function showConfirm(msg, cb) {
+            document.getElementById('confirm-msg').innerText = msg;
+            confirmCb = cb;
+            const m = document.getElementById('confirm-modal');
+            m.classList.remove('hidden'); m.classList.add('flex');
+        }
+        function hideConfirm() {
+            const m = document.getElementById('confirm-modal');
+            m.classList.add('hidden'); m.classList.remove('flex'); confirmCb = null;
+        }
+
+        async function fetchList() {
+            const tbody = document.getElementById('ai-table-body');
+            try {
+                const keyword = document.getElementById('ai-search').value.trim();
+                const query = new URLSearchParams({ page: currentPage, pageSize });
+                if (keyword) query.set('keyword', keyword);
+                if (rating) query.set('rating', rating);
+                if (helpful !== '') query.set('isHelpful', helpful);
+
+                const res = await fetch(`${API_BASE}?${query}`, { headers: { 'Authorization': `Bearer ${token}` } });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const json = await res.json();
+                if (json.success) {
+                    lastItems = json.data.items || [];
+                    renderTable(lastItems);
+                    renderPagination(json.data);
+                } else {
+                    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-error">Failed: ${escapeHtml(json.message)}</td></tr>`;
+                }
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-error">Lỗi tải dữ liệu. Đăng nhập lại hoặc kiểm tra FeedbackAPI (:7007).</td></tr>`;
+            }
+        }
+
+        function renderTable(items) {
+            const tbody = document.getElementById('ai-table-body');
+            if (!items.length) { tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-on-surface-variant">No feedback found.</td></tr>`; return; }
+            tbody.innerHTML = items.map(it => `
+                <tr class="border-b border-border-subtle/50 hover:bg-surface-container-high/30 transition-colors cursor-pointer group" onclick="openDetail('${it.id}')">
+                    <td class="px-lg py-lg">
+                        <div class="flex items-center gap-sm">
+                            <div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary font-code-label">${initial(it.userFullName)}</div>
+                            <span class="font-semibold text-on-surface">${escapeHtml(userLabel(it))}</span>
+                        </div>
+                    </td>
+                    <td class="px-lg py-lg"><div class="flex text-warning">${stars(it.rating || 0)}<span class="ml-xs text-on-surface-variant font-code-label">${it.rating || 0}</span></div></td>
+                    <td class="px-lg py-lg max-w-xs"><p class="truncate opacity-80 italic text-on-surface">"${escapeHtml(it.content || '')}"</p></td>
+                    <td class="px-lg py-lg">${helpfulBadge(it.isHelpful)}</td>
+                    <td class="px-lg py-lg font-code-label text-on-surface-variant">${formatDate(it.createdAt)}</td>
+                    <td class="px-lg py-lg text-right">
+                        <div class="flex justify-end gap-md">
+                            <button class="text-on-surface-variant hover:text-primary transition-colors" onclick="event.stopPropagation(); openDetail('${it.id}')" title="View"><span class="material-symbols-outlined text-[20px]">visibility</span></button>
+                            <button class="text-on-surface-variant hover:text-error transition-colors" onclick="event.stopPropagation(); deleteFeedback('${it.id}')" title="Delete"><span class="material-symbols-outlined text-[20px]">delete</span></button>
+                        </div>
+                    </td>
+                </tr>`).join('');
+        }
+
+        function openDetail(id) {
+            const it = lastItems.find(x => x.id === id); if (!it) return;
+            currentId = id;
+            document.getElementById('d-name').innerText = userLabel(it);
+            document.getElementById('d-avatar').innerText = initial(it.userFullName);
+            document.getElementById('d-email').innerText = it.userEmail || '--';
+            document.getElementById('d-session').innerText = it.sessionId || '--';
+            document.getElementById('d-date').innerText = formatDate(it.createdAt);
+            document.getElementById('d-rating').innerHTML = stars(it.rating || 0);
+            document.getElementById('d-helpful').innerHTML = helpfulBadge(it.isHelpful);
+            document.getElementById('d-comment').innerText = `"${it.content || ''}"`;
+            toggleDrawer(true);
+        }
+
+        function deleteFeedback(id) {
+            showConfirm('Xoá feedback này? (soft delete)', async () => {
+                try {
+                    const res = await fetch(`${API_BASE}/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+                    if (res.status === 403) { alert('Chỉ Admin mới được xoá.'); return; }
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    toggleDrawer(false);
+                    fetchList();
+                } catch (e) { alert('Xoá thất bại. Kiểm tra quyền / kết nối.'); }
+            });
+        }
+
+        function userLabel(it) { return it.userFullName || (it.userId ? 'User ' + String(it.userId).substring(0, 5) : 'Unknown'); }
+        function initial(name) { return name && name.trim() ? name.trim()[0].toUpperCase() : 'U'; }
+        function helpfulBadge(v) {
+            if (v === true) return `<span class="px-xs py-1 rounded-full bg-success/10 border border-success/30 text-success text-[10px] font-bold uppercase">Yes</span>`;
+            if (v === false) return `<span class="px-xs py-1 rounded-full bg-warning/10 border border-warning/30 text-warning text-[10px] font-bold uppercase">No</span>`;
+            return `<span class="text-on-surface-variant">—</span>`;
+        }
+        function renderPagination(data) {
+            totalPages = Math.max(data.totalPages || 1, 1);
+            const totalItems = data.totalItems || 0, page = data.page || currentPage, size = data.pageSize || pageSize;
+            const start = totalItems === 0 ? 0 : ((page - 1) * size) + 1, end = Math.min(page * size, totalItems);
+            document.getElementById('ai-summary').innerText = `Showing ${start}-${end} of ${totalItems} entries`;
+            document.getElementById('ai-page').innerText = `${page} / ${totalPages}`;
+            document.getElementById('ai-prev').disabled = page <= 1;
+            document.getElementById('ai-next').disabled = page >= totalPages;
+        }
+        function stars(n) { let s = ''; for (let i = 1; i <= 5; i++) s += `<span class="material-symbols-outlined text-[18px]" ${i <= n ? `style="font-variation-settings:'FILL' 1;"` : ''}>star</span>`; return s; }
+        function formatDate(d) { if (!d) return ''; const x = new Date(d); const m = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"]; return `${m[x.getMonth()]} ${x.getDate().toString().padStart(2,'0')}`; }
+        function escapeHtml(u) { return (u || '').replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;"); }
+        function toggleDrawer(show) {
+            const drawer = document.getElementById('ai-drawer'), overlay = document.getElementById('drawer-overlay');
+            if (show) { drawer.classList.remove('drawer-hidden'); overlay.classList.remove('hidden'); setTimeout(() => overlay.classList.add('opacity-100'), 10); document.body.style.overflow = 'hidden'; }
+            else { drawer.classList.add('drawer-hidden'); overlay.classList.remove('opacity-100'); setTimeout(() => { overlay.classList.add('hidden'); document.body.style.overflow = 'auto'; }, 300); }
+        }
+    </script>
+</body>
+</html>

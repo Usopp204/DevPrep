@@ -1,11 +1,16 @@
-using System.Text;
 using DotNetEnv;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using PaymentAPI.Data;
+using PaymentAPI.Models;
+using PaymentAPI.Repositories;
 using PaymentAPI.Services;
+using System.Net;
+using System.Security.Claims;
+using System.Text;
+using System.Text.Json;
 
 try { Env.TraversePath().Load(".env.example"); } catch { }
 try { Env.TraversePath().Load(); } catch { }
@@ -43,13 +48,22 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidIssuer              = jwtIssuer,
             ValidAudience            = jwtAud,
             IssuerSigningKey         = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            RoleClaimType            = ClaimTypes.Role
         };
     });
 
 builder.Services.AddAuthorization();
 
+// ── Repositories ──────────────────────────────────────────────────────────────
+builder.Services.AddScoped<ICreditPackageRepository, CreditPackageRepository>();
+builder.Services.AddScoped<IOrderRepository, OrderRepository>();
+builder.Services.AddScoped<IWalletRepository, WalletRepository>();
+builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
+builder.Services.AddScoped<ILedgerRepository, LedgerRepository>();
+
 // ── Services ──────────────────────────────────────────────────────────────────
 builder.Services.AddScoped<ICreditPackageService, CreditPackageService>();
+builder.Services.AddScoped<IVnPayService, VnPayService>();
 
 // ── Controllers & Swagger ─────────────────────────────────────────────────────
 builder.Services.AddControllers();
@@ -90,12 +104,223 @@ if (app.Environment.IsDevelopment())
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapControllers();
-
+// --- Health ---
 app.MapGet("/health", () => Results.Ok(new { service = "Payment", status = "ok" }))
-   .WithName("GetHealth")
-   .WithOpenApi();
+    .WithName("GetHealth")
+    .WithOpenApi();
+
+// --- Packages ---
+app.MapGet("/packages", async (ICreditPackageRepository repo) =>
+    Results.Ok(await repo.GetActiveAsync()));
+
+// --- POST /vnpay/order ---
+app.MapPost("/vnpay/order", async (HttpContext ctx, IVnPayService vnPay) =>
+{
+    var userIdStr = ctx.Request.Headers["X-User-Id"].FirstOrDefault();
+    if (!Guid.TryParse(userIdStr, out var userId))
+        return Results.BadRequest("Missing or invalid X-User-Id header.");
+
+    VnpayOrderRequest? body;
+    try
+    {
+        body = await JsonSerializer.DeserializeAsync<VnpayOrderRequest>(
+            ctx.Request.Body, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+    }
+    catch { return Results.BadRequest("Invalid request body."); }
+    if (body == null) return Results.BadRequest("Invalid request body.");
+
+    var log = ctx.RequestServices.GetRequiredService<ILogger<Program>>();
+    log.LogInformation("CreateOrder: userId={UserId} packageId={PackageId}", userId, body.PackageId);
+    try
+    {
+        var ipAddr = ctx.Connection.RemoteIpAddress?.MapToIPv4().ToString() ?? "127.0.0.1";
+        var paymentUrl = await vnPay.CreateOrderUrlAsync(userId, body.PackageId, ipAddr);
+        return Results.Ok(new { PaymentUrl = paymentUrl });
+    }
+    catch (InvalidOperationException ex)
+    {
+        log.LogWarning("CreateOrder 404: {Message}", ex.Message);
+        return Results.NotFound(ex.Message);
+    }
+    catch (Exception ex)
+    {
+        log.LogError(ex, "CreateOrder failed for user {UserId} package {PackageId}", userId, body.PackageId);
+        return Results.Problem(ex.Message);
+    }
+});
+
+// --- GET /vnpay/return (browser redirect after payment) ---
+app.MapGet("/vnpay/return", async (HttpRequest req, IVnPayService vnPay) =>
+{
+    var query       = req.Query.ToDictionary(kv => kv.Key, kv => kv.Value.ToString());
+    var redirectUrl = await vnPay.ProcessReturnAsync(query);
+    return Results.Redirect(redirectUrl);
+});
+
+// --- GET /vnpay/ipn (VNPay server-to-server callback) ---
+app.MapGet("/vnpay/ipn", async (HttpRequest req, IVnPayService vnPay) =>
+{
+    var query  = req.Query.ToDictionary(kv => kv.Key, kv => kv.Value.ToString());
+    var result = await vnPay.ProcessIpnAsync(query);
+    return Results.Json(new { RspCode = result.RspCode, Message = result.Message });
+});
+
+// --- GET /credits/balance ---
+app.MapGet("/credits/balance", async (HttpContext ctx, IWalletRepository walletRepo, IOrderRepository orderRepo) =>
+{
+    var userIdStr = ctx.Request.Headers["X-User-Id"].FirstOrDefault();
+    if (!Guid.TryParse(userIdStr, out var userId))
+        return Results.BadRequest("Missing or invalid X-User-Id header.");
+
+    var wallet         = await walletRepo.GetByUserIdAsync(userId);
+    var totalPurchased = await orderRepo.GetTotalCreditsByUserAsync(userId);
+
+    return Results.Ok(new
+    {
+        Balance        = wallet?.Balance ?? 0,
+        TotalPurchased = totalPurchased,
+        LastUpdatedAt  = wallet?.UpdatedAt
+    });
+});
+
+// --- Admin: GET /admin/credit-packages ---
+app.MapGet("/admin/credit-packages", async (ICreditPackageRepository repo) =>
+{
+    var packages = await repo.GetAllAsync();
+    return Results.Ok(packages.Cast<CreditPackage>().OrderBy(p => p.SortOrder));
+});
+
+// --- Admin: GET /admin/credit-packages/{id} ---
+app.MapGet("/admin/credit-packages/{id:guid}", async (Guid id, ICreditPackageRepository repo) =>
+{
+    var pkg = await repo.GetByIdAsync(id);
+    return pkg is null ? Results.NotFound() : Results.Ok(pkg);
+});
+
+// --- Admin: POST /admin/credit-packages ---
+app.MapPost("/admin/credit-packages", async (HttpContext ctx, ICreditPackageRepository repo) =>
+{
+    AdminPackageRequest? body;
+    try { body = await JsonSerializer.DeserializeAsync<AdminPackageRequest>(ctx.Request.Body, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }); }
+    catch { return Results.BadRequest("Invalid request body."); }
+    if (body is null) return Results.BadRequest();
+
+    if (await repo.ExistsActiveNameAsync(body.Name))
+        return Results.Conflict($"Active package with name '{body.Name}' already exists.");
+
+    var now = DateTime.UtcNow.AddHours(7);
+    var pkg = new CreditPackage
+    {
+        PackageId    = Guid.NewGuid(),
+        Name         = body.Name,
+        Description  = body.Description,
+        Credits      = body.Credits,
+        BonusCredits = body.BonusCredits,
+        Price        = body.Price,
+        Currency     = body.Currency ?? "VND",
+        IsActive     = true,
+        SortOrder    = body.SortOrder,
+        CreatedAt    = now,
+        UpdatedAt    = now
+    };
+    await repo.AddAsync(pkg);
+    await repo.SaveChangesAsync();
+    return Results.Created($"/admin/credit-packages/{pkg.PackageId}", pkg);
+});
+
+// --- Admin: PUT /admin/credit-packages/{id} ---
+app.MapPut("/admin/credit-packages/{id:guid}", async (Guid id, HttpContext ctx, ICreditPackageRepository repo) =>
+{
+    var pkg = await repo.GetByIdAsync(id);
+    if (pkg is null) return Results.NotFound();
+
+    AdminPackageRequest? body;
+    try { body = await JsonSerializer.DeserializeAsync<AdminPackageRequest>(ctx.Request.Body, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }); }
+    catch { return Results.BadRequest("Invalid request body."); }
+    if (body is null) return Results.BadRequest();
+
+    if (await repo.ExistsActiveNameAsync(body.Name, id))
+        return Results.Conflict($"Another active package named '{body.Name}' already exists.");
+
+    pkg.Name         = body.Name;
+    pkg.Description  = body.Description;
+    pkg.Credits      = body.Credits;
+    pkg.BonusCredits = body.BonusCredits;
+    pkg.Price        = body.Price;
+    pkg.Currency     = body.Currency ?? pkg.Currency;
+    pkg.SortOrder    = body.SortOrder;
+    pkg.UpdatedAt    = DateTime.UtcNow.AddHours(7);
+    await repo.SaveChangesAsync();
+    return Results.Ok(pkg);
+});
+
+// --- Admin: DELETE /admin/credit-packages/{id} (soft delete) ---
+app.MapDelete("/admin/credit-packages/{id:guid}", async (Guid id, ICreditPackageRepository repo) =>
+{
+    var pkg = await repo.GetByIdAsync(id);
+    if (pkg is null) return Results.NotFound();
+
+    pkg.IsActive  = false;
+    pkg.UpdatedAt = DateTime.UtcNow.AddHours(7);
+    await repo.SaveChangesAsync();
+    return Results.NoContent();
+});
+
+// --- Admin: GET /admin/payments ---
+app.MapGet("/admin/payments", async (IOrderRepository orderRepo, int page = 1, int pageSize = 20) =>
+{
+    pageSize = Math.Clamp(pageSize, 1, 100);
+    page     = Math.Max(1, page);
+    var result = await orderRepo.GetPagedAllAsync(page, pageSize);
+    var items  = result.Items.Select(o => new
+    {
+        o.OrderId, o.OrderCode, o.UserId, o.Amount, o.Credits,
+        o.Currency, o.PaymentMethod, o.Status, o.PaidAt, o.CreatedAt
+    });
+    return Results.Ok(new { TotalCount = result.TotalCount, Page = page, PageSize = pageSize, Items = items });
+});
+
+// --- Admin: GET /admin/payments/{id} ---
+app.MapGet("/admin/payments/{id:guid}", async (Guid id, IOrderRepository orderRepo, ITransactionRepository txRepo) =>
+{
+    var order = await orderRepo.GetByIdAsync(id);
+    if (order is null) return Results.NotFound();
+    var tx = await txRepo.GetByOrderIdAsync(id);
+    return Results.Ok(new { Order = order, Transaction = tx });
+});
+
+// --- GET /transactions ---
+app.MapGet("/transactions", async (HttpContext ctx, IOrderRepository orderRepo, int page = 1, int pageSize = 10) =>
+{
+    var userIdStr = ctx.Request.Headers["X-User-Id"].FirstOrDefault();
+    if (!Guid.TryParse(userIdStr, out var userId))
+        return Results.BadRequest("Missing or invalid X-User-Id header.");
+
+    pageSize = Math.Clamp(pageSize, 1, 50);
+    page     = Math.Max(1, page);
+
+    var result = await orderRepo.GetPagedByUserAsync(userId, page, pageSize);
+    var items  = result.Items.Select(o => new
+    {
+        o.OrderId, o.OrderCode, o.Amount, o.Credits,
+        o.Currency, o.PaymentMethod, o.Status, o.PaidAt, o.CreatedAt
+    });
+    return Results.Ok(new { TotalCount = result.TotalCount, Page = page, PageSize = pageSize, Items = items });
+});
+
+app.MapControllers();
 
 app.Run();
 
+record VnpayOrderRequest(Guid PackageId);
 
+record AdminPackageRequest(
+    string Name,
+    string? Description,
+    int Credits,
+    int BonusCredits,
+    decimal Price,
+    string? Currency,
+    int SortOrder,
+    bool IsActive = true
+);

@@ -44,4 +44,21 @@ public class AuthApiClient : IAuthApiClient
             return Empty;
         }
     }
+
+    public async Task<IReadOnlyList<Guid>> SearchIdsByEmailAsync(string keyword, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(keyword)) return Array.Empty<Guid>();
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("/internal/accounts/search-by-email",
+                new SearchByKeywordRequest(keyword), cancellationToken);
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadFromJsonAsync<List<Guid>>(cancellationToken) ?? new List<Guid>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Search ids by email from AuthAPI failed; returning empty (best-effort).");
+            return Array.Empty<Guid>();
+        }
+    }
 }
