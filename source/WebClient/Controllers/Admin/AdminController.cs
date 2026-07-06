@@ -12,10 +12,46 @@ public class AdminController(IAdminService adminService) : Controller
 
     public IActionResult Index()
     {
-        // Chỉ tài khoản Admin hoặc Manager mới vào được dashboard.
-        if (!IsAdminOrManager())
+        // Chỉ tài khoản Admin mới vào được khu Admin (Manager KHÔNG được vào).
+        if (!IsAdminRole())
         {
-            TempData["Error"] = "You must sign in with an Admin or Manager account to access the dashboard.";
+            TempData["Error"] = "You must sign in with an Admin account to access the dashboard.";
+            return RedirectToAction("Login", "Auth");
+        }
+
+        return View();
+    }
+
+    // Trang quản lý AI / Interview Feedback. Guard UI: chỉ Admin/Manager; backend cũng tự chặn quyền.
+    public IActionResult AiFeedback()
+    {
+        if (!IsAdminRole())
+        {
+            TempData["Error"] = "You must sign in with an Admin account to access the dashboard.";
+            return RedirectToAction("Login", "Auth");
+        }
+
+        return View();
+    }
+
+    // Trang quản lý System Feedback (list + reply). Guard UI: chỉ Admin/Manager; backend tự chặn quyền.
+    public IActionResult SystemFeedback()
+    {
+        if (!IsAdminRole())
+        {
+            TempData["Error"] = "You must sign in with an Admin account to access the dashboard.";
+            return RedirectToAction("Login", "Auth");
+        }
+
+        return View();
+    }
+
+    // Trang quản lý Interview Sessions (list + detail transcript). Guard UI: Admin/Manager; backend tự chặn.
+    public IActionResult InterviewSessions()
+    {
+        if (!IsAdminRole())
+        {
+            TempData["Error"] = "You must sign in with an Admin account to access the dashboard.";
             return RedirectToAction("Login", "Auth");
         }
 
@@ -24,9 +60,10 @@ public class AdminController(IAdminService adminService) : Controller
 
     /// <summary>
     /// Đọc role từ access_token (JWT trong cookie HttpOnly) và kiểm tra hết hạn.
-    /// Đây là cổng chặn ở tầng UI; các API admin phía backend vẫn tự kiểm [Authorize(Roles=Admin)].
+    /// CHỈ cho phép role Admin (Manager KHÔNG được vào khu Admin).
+    /// Đây là cổng chặn ở tầng UI; các API admin phía backend vẫn tự kiểm quyền theo từng endpoint.
     /// </summary>
-    private bool IsAdminOrManager()
+    private bool IsAdminRole()
     {
         var token = Request.Cookies["access_token"];
         if (string.IsNullOrWhiteSpace(token)) return false;
@@ -58,8 +95,7 @@ public class AdminController(IAdminService adminService) : Controller
             if (root.TryGetProperty(RoleClaim, out var r)) role = r.GetString();
             else if (root.TryGetProperty("role", out var r2)) role = r2.GetString();
 
-            return string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase) || 
-                   string.Equals(role, "Manager", StringComparison.OrdinalIgnoreCase);
+            return string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase);
         }
         catch
         {

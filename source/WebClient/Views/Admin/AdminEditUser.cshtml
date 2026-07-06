@@ -1,0 +1,204 @@
+﻿@model WebClient.Models.Admin.AdminUserDetailDto
+
+@{
+    Layout = null;
+    ViewData["Title"] = "Edit User Role";
+
+    var displayName = string.IsNullOrWhiteSpace(Model.FullName) ? "Unknown User" : Model.FullName;
+    var email = string.IsNullOrWhiteSpace(Model.Email) ? "No email" : Model.Email;
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>@ViewData["Title"] - DevPrep AI Admin Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@@100..900&family=JetBrains+Mono:wght@@500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+
+    <style>
+        body {
+            background: #0f1424;
+            color: #fff;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .admin-main-wrapper {
+            margin-left: 260px;
+            padding-top: 78px;
+            min-height: 100vh;
+            background: #0f1424;
+        }
+
+        .admin-content {
+            padding: 28px;
+        }
+
+        .card-dark {
+            background: #111827;
+            border: 1px solid #252b3d;
+            border-radius: 14px;
+            padding: 22px;
+        }
+
+        .page-title {
+            font-size: 30px;
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+
+        .page-subtitle {
+            color: #93c5fd;
+            font-size: 14px;
+        }
+
+        .form-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: #93c5fd;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            font-weight: 800;
+        }
+
+        .form-control,
+        .form-select {
+            background: #0f1322;
+            border: 1px solid #30384e;
+            color: #ffffff;
+            height: 44px;
+        }
+
+            .form-control:disabled {
+                background: #151a2b;
+                border-color: #30384e;
+                color: #9ca3af;
+            }
+
+            .form-select:focus,
+            .form-control:focus {
+                background: #0f1322;
+                color: #fff;
+                border-color: #6366f1;
+                box-shadow: none;
+            }
+
+        .btn-main {
+            background: #6366f1;
+            color: #fff;
+            border: none;
+            border-radius: 9px;
+            padding: 10px 16px;
+            font-weight: 800;
+        }
+
+            .btn-main:hover {
+                background: #4f46e5;
+                color: #fff;
+            }
+
+        .btn-outline-soft {
+            background: transparent;
+            color: #cbd5e1;
+            border: 1px solid #30384e;
+            border-radius: 9px;
+            padding: 10px 16px;
+            text-decoration: none;
+            font-weight: 800;
+        }
+
+            .btn-outline-soft:hover {
+                background: rgba(255,255,255,.06);
+                color: #fff;
+            }
+
+        .notice-box {
+            background: rgba(245,158,11,.1);
+            border: 1px solid rgba(245,158,11,.25);
+            color: #fbbf24;
+            border-radius: 10px;
+            padding: 12px 14px;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+
+<body class="admin-page">
+    @await Html.PartialAsync("_AdminTopbar")
+    @await Html.PartialAsync("_AdminSidebar")
+
+    <main class="admin-main-wrapper">
+        <div class="admin-content">
+            <div class="d-flex justify-content-between align-items-start gap-3 mb-4">
+                <div>
+                    <h1 class="page-title">Edit User Role</h1>
+                    <p class="page-subtitle">Admin can view user information here, but only role is editable.</p>
+                </div>
+
+                <a href="/Admin/User/Detail/@Model.UserId" class="btn-outline-soft">
+                    Back to Detail
+                </a>
+            </div>
+
+            @if (TempData["ErrorMessage"] != null)
+            {
+                <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+            }
+
+            <div class="card-dark">
+                <div class="notice-box">
+                    <strong>Permission rule:</strong> Only the user role can be edited on this page. Other fields are read-only.
+                </div>
+
+                <form method="post" action="/Admin/User/Edit/@Model.UserId">
+                    <div class="row g-3">
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">Full Name</label>
+                            <input class="form-control" value="@displayName" disabled />
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">Email</label>
+                            <input class="form-control" value="@email" disabled />
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">Current Status</label>
+                            <input class="form-control" value="@(Model.Status ?? "Unknown")" disabled />
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">Created At</label>
+                            <input class="form-control" value="@Model.CreatedAt.ToString("dd/MM/yyyy HH:mm")" disabled />
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">Credit Balance</label>
+                            <input class="form-control" value="@Model.CurrentCreditBalance.ToString("N0")" disabled />
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">Role</label>
+                            <select class="form-select" name="Role">
+                                <option value="User" selected="@(string.Equals(Model.Role, "User", StringComparison.OrdinalIgnoreCase))">User</option>
+                                <option value="Manager" selected="@(string.Equals(Model.Role, "Manager", StringComparison.OrdinalIgnoreCase))">Manager</option>
+                                <option value="Admin" selected="@(string.Equals(Model.Role, "Admin", StringComparison.OrdinalIgnoreCase))">Admin</option>
+                            </select>
+                        </div>
+
+                        <div class="col-12 d-flex gap-2 justify-content-end mt-4">
+                            <a href="/Admin/User/Detail/@Model.UserId" class="btn-outline-soft">Cancel</a>
+                            <button type="submit" class="btn-main">Save Role</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

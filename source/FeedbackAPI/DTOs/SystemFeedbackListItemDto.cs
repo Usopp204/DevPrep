@@ -5,6 +5,13 @@ public class SystemFeedbackListItemDto
 {
     public Guid Id { get; set; }
     public Guid UserId { get; set; }
+
+    /// <summary>Tên người dùng — resolve từ UserAPI theo UserId (null nếu không lấy được).</summary>
+    public string? UserFullName { get; set; }
+
+    /// <summary>Email người dùng — resolve từ AuthAPI theo UserId (null nếu không lấy được).</summary>
+    public string? UserEmail { get; set; }
+
     public string Category { get; set; } = null!;
     public string? Subject { get; set; }
     public string? Content { get; set; }

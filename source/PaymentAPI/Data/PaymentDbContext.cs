@@ -9,7 +9,11 @@ public class PaymentDbContext : DbContext
     {
     }
 
-    public DbSet<CreditPackage> CreditPackages { get; set; }
+    public DbSet<CreditPackage>      CreditPackages      { get; set; }
+    public DbSet<Order>              Orders              { get; set; }
+    public DbSet<CreditWallet>       CreditWallets       { get; set; }
+    public DbSet<PaymentTransaction> PaymentTransactions { get; set; }
+    public DbSet<CreditLedgerEntry>  CreditLedgerEntries { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -26,6 +30,39 @@ public class PaymentDbContext : DbContext
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(sysutcdatetime())");
         });
+
+        modelBuilder.Entity<Order>(entity =>
+        {
+            entity.HasKey(e => e.OrderId);
+            entity.Property(e => e.OrderId).HasDefaultValueSql("(newsequentialid())");
+            entity.Property(e => e.Currency).HasDefaultValue("VND");
+            entity.Property(e => e.PaymentMethod).HasDefaultValue("VNPay");
+            entity.Property(e => e.Status).HasDefaultValue("Pending");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(sysutcdatetime())");
+        });
+
+        modelBuilder.Entity<CreditWallet>(entity =>
+        {
+            entity.HasKey(e => e.WalletId);
+            entity.Property(e => e.WalletId).HasDefaultValueSql("(newsequentialid())");
+            entity.Property(e => e.Balance).HasDefaultValue(0);
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(sysutcdatetime())");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
+        });
+
+        modelBuilder.Entity<PaymentTransaction>(entity =>
+        {
+            entity.HasKey(e => e.TransactionId);
+            entity.Property(e => e.TransactionId).HasDefaultValueSql("(newsequentialid())");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
+        });
+
+        modelBuilder.Entity<CreditLedgerEntry>(entity =>
+        {
+            entity.HasKey(e => e.LedgerId);
+            entity.Property(e => e.LedgerId).HasDefaultValueSql("(newsequentialid())");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
+        });
     }
 }
-

@@ -5,3 +5,6 @@ public record ProfileLookupRequest(List<Guid> AccountIds);
 
 /// <summary>Thông tin tên hiển thị của một hồ sơ (resolve cho service khác).</summary>
 public record ProfileLookupItem(Guid AccountId, string? FullName);
+
+/// <summary>Yêu cầu tìm AccountId theo tên (FullName chứa keyword).</summary>
+public record ProfileSearchRequest(string Keyword);

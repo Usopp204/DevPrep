@@ -20,6 +20,9 @@ public partial class SessionQuestion
 
     public string Content { get; set; } = null!;
 
+    // Câu trả lời tham chiếu từ ai-service — chỉ lưu server-side, không bao giờ trả về browser.
+    public string? ReferenceAnswer { get; set; }
+
     public bool IsAiGenerated { get; set; }
 
     [StringLength(50)]

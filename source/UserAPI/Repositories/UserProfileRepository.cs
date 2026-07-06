@@ -28,6 +28,13 @@ public class UserProfileRepository : IUserProfileRepository
             .Where(p => accountIds.Contains(p.AccountId))
             .ToListAsync();
 
+    public Task<List<Guid>> SearchAccountIdsByNameAsync(string keyword) =>
+        _context.UserProfiles
+            .AsNoTracking()
+            .Where(p => p.FullName != null && p.FullName.Contains(keyword))
+            .Select(p => p.AccountId)
+            .ToListAsync();
+
     public Task<bool> ExistsByAccountIdAsync(Guid accountId) =>
         _context.UserProfiles.AnyAsync(p => p.AccountId == accountId);
 

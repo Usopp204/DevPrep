@@ -7,7 +7,7 @@ namespace PaymentAPI.Controllers;
 
 [ApiController]
 [Route("api/admin/manager/credit-packages")]
-[Authorize(Roles = "Manager,Admin")]
+[Authorize(Roles = "Manager")]
 public class ManagerCreditPackagesController : ControllerBase
 {
     private readonly ICreditPackageService _service;

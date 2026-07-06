@@ -43,4 +43,21 @@ public class UserApiClient : IUserApiClient
             return Empty;
         }
     }
+
+    public async Task<IReadOnlyList<Guid>> SearchIdsByNameAsync(string keyword, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(keyword)) return Array.Empty<Guid>();
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync("/internal/profiles/search-by-name",
+                new SearchByKeywordRequest(keyword), cancellationToken);
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadFromJsonAsync<List<Guid>>(cancellationToken) ?? new List<Guid>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Search ids by name from UserAPI failed; returning empty (best-effort).");
+            return Array.Empty<Guid>();
+        }
+    }
 }

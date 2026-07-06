@@ -172,6 +172,17 @@ app.MapPost("/internal/accounts/lookup",
     })
     .ExcludeFromDescription();
 
+// Tìm AccountId theo email (Email chứa keyword) — FeedbackAPI gọi để search feedback theo email user.
+app.MapPost("/internal/accounts/search-by-email",
+    async (AuthAPI.DTOs.AccountSearchRequest body, HttpRequest request, IAccountRepository accounts) =>
+    {
+        if (!IsInternalCallAuthorized(request, internalApiKey)) return Results.Unauthorized();
+        if (string.IsNullOrWhiteSpace(body.Keyword)) return Results.Ok(Array.Empty<Guid>());
+        var ids = await accounts.SearchAccountIdsByEmailAsync(body.Keyword.Trim());
+        return Results.Ok(ids);
+    })
+    .ExcludeFromDescription();
+
 app.Run();
 
 // So khớp header X-Internal-Api-Key với khoá cấu hình. Chưa cấu hình khoá -> cho qua (tiện chạy dev).
