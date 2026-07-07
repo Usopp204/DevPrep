@@ -72,3 +72,6 @@ ai-service/chroma_data/
 
 # Uploaded files (user data, not committed)
 /source/WebClient/wwwroot/uploads/
+
+# SQL seed scripts (rebuildable, not source code)
+*.sql

@@ -111,7 +111,7 @@
     </aside>
 
     <script>
-        const API_BASE = 'http://localhost:7000/api/admin/manager/sessions';
+        const API_BASE = '@ViewData["ApiBaseUrl"]/api/admin/manager/sessions';
         const token = '@token';
         const STATUSES = ['Configured', 'Initialized', 'InProgress', 'Completed', 'Expired', 'Cancelled'];
         const LEVELS = ['Intern', 'Junior', 'Middle', 'Senior', 'Lead'];

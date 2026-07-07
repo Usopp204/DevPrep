@@ -1,13 +1,19 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using WebClient.Services.Manager;
+using WebClient.Services.Shared;
 
 namespace WebClient.Controllers.Manager;
 
-// Chỉ Manager mới vào được khu Manager (Admin KHÔNG được vào).
+// Manager-only area (Admin not allowed).
 [Authorize(Roles = "Manager")]
-public class ManagerController(IManagerService managerService) : Controller
+public class ManagerController(
+    IManagerService managerService,
+    IOptions<ApiGatewayOptions> gatewayOptions) : Controller
 {
+    private string ApiBaseUrl => gatewayOptions.Value.BaseUrl?.TrimEnd('/') ?? "http://localhost:7000";
+
     public IActionResult Index()
     {
         return View(managerService.GetOverview());
@@ -15,17 +21,19 @@ public class ManagerController(IManagerService managerService) : Controller
 
     public IActionResult Feedback()
     {
+        ViewData["ApiBaseUrl"] = ApiBaseUrl;
         ViewData["FeedbackTitle"] = "System Feedback";
         ViewData["FeedbackKind"] = "system";
-        ViewData["FeedbackApiBase"] = "http://localhost:7000/api/admin/manager/feedbacks";
+        ViewData["FeedbackApiBase"] = $"{ApiBaseUrl}/api/admin/manager/feedbacks";
         return View();
     }
 
     public IActionResult AiFeedback()
     {
+        ViewData["ApiBaseUrl"] = ApiBaseUrl;
         ViewData["FeedbackTitle"] = "AI Feedback";
         ViewData["FeedbackKind"] = "ai";
-        ViewData["FeedbackApiBase"] = "http://localhost:7000/api/admin/feedbacks/ai";
+        ViewData["FeedbackApiBase"] = $"{ApiBaseUrl}/api/admin/feedbacks/ai";
         return View("Feedback");
     }
 
@@ -41,16 +49,19 @@ public class ManagerController(IManagerService managerService) : Controller
 
     public IActionResult InterviewSessions()
     {
+        ViewData["ApiBaseUrl"] = ApiBaseUrl;
         return View();
     }
 
     public IActionResult Payments()
     {
+        ViewData["ApiBaseUrl"] = ApiBaseUrl;
         return View();
     }
 
     public IActionResult CreditPackages()
     {
+        ViewData["ApiBaseUrl"] = ApiBaseUrl;
         return View();
     }
 }
