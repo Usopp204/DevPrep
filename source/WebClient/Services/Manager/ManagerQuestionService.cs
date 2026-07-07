@@ -2,6 +2,7 @@ using WebClient.Models.Manager;
 using WebClient.Models.Shared;
 using WebClient.Services.Shared;
 using Microsoft.AspNetCore.WebUtilities;
+using System.Net.Http.Json;
 
 namespace WebClient.Services.Manager;
 
@@ -31,14 +32,52 @@ public class ManagerQuestionService : IManagerQuestionService
         if (categoryId.HasValue) queryParams["categoryId"] = categoryId.Value.ToString();
 
         var requestUrl = QueryHelpers.AddQueryString(url, queryParams);
-        
-        var response = await _apiClient.HttpClient.GetFromJsonAsync<ApiResponse<PagedResult<QuestionBankListItemViewModel>>>(requestUrl);
-        return response?.Data ?? new PagedResult<QuestionBankListItemViewModel>();
+
+        try
+        {
+            var httpResponse = await _apiClient.HttpClient.GetAsync(requestUrl);
+            if (!httpResponse.IsSuccessStatusCode)
+            {
+                return new PagedResult<QuestionBankListItemViewModel>
+                {
+                    Page = page,
+                    PageSize = pageSize
+                };
+            }
+
+            var response = await httpResponse.Content.ReadFromJsonAsync<ApiResponse<PagedResult<QuestionBankListItemViewModel>>>();
+            return response?.Data ?? new PagedResult<QuestionBankListItemViewModel>
+            {
+                Page = page,
+                PageSize = pageSize
+            };
+        }
+        catch (HttpRequestException)
+        {
+            return new PagedResult<QuestionBankListItemViewModel>
+            {
+                Page = page,
+                PageSize = pageSize
+            };
+        }
     }
 
     public async Task<QuestionBankDetailViewModel?> GetByIdAsync(Guid id)
     {
-        var response = await _apiClient.HttpClient.GetFromJsonAsync<ApiResponse<QuestionBankDetailViewModel>>($"/api/admin/manager/questions/{id}");
-        return response?.Data;
+        try
+        {
+            var httpResponse = await _apiClient.HttpClient.GetAsync($"/api/admin/manager/questions/{id}");
+            if (!httpResponse.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
+            var response = await httpResponse.Content.ReadFromJsonAsync<ApiResponse<QuestionBankDetailViewModel>>();
+            return response?.Data;
+        }
+        catch (HttpRequestException)
+        {
+            return null;
+        }
     }
 }
