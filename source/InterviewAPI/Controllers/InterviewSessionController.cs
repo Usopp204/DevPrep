@@ -40,6 +40,25 @@ public class InterviewSessionController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Đánh dấu user hiện tại đã xem/đóng Product Tour của Room (chỉ 1 lần trong đời user, không
+    /// theo từng phiên). Gọi khi tour hoàn tất hoặc bị đóng/skip.
+    /// </summary>
+    [HttpPost("/api/interview/room-tour/seen")]
+    public async Task<IActionResult> MarkRoomTourSeen(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            await _service.MarkRoomTourSeenAsync(userId, cancellationToken);
+            return Ok(ApiResponse<object>.Ok(new { }, "Marked."));
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+        }
+    }
+
     /// <summary>Lấy danh sách tất cả phiên phỏng vấn của user hiện tại (không bao gồm đã xoá mềm).</summary>
     [HttpGet]
     public async Task<IActionResult> GetMySessions(CancellationToken cancellationToken)
@@ -128,6 +147,38 @@ public class InterviewSessionController : ControllerBase
             var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var result = await _service.EndSessionAsync(userId, id, cancellationToken);
             return Ok(ApiResponse<EndResponse>.Ok(result));
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+        }
+    }
+
+    /// <summary>Tạm dừng phiên (tối đa 3 lần / tổng 300 giây mỗi phiên) — đóng băng timer + idle.</summary>
+    [HttpPost("{id:guid}/pause")]
+    public async Task<IActionResult> Pause(Guid id, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var result = await _service.PauseSessionAsync(userId, id, cancellationToken);
+            return Ok(ApiResponse<PauseResponse>.Ok(result));
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+        }
+    }
+
+    /// <summary>Bỏ tạm dừng phiên — cộng dồn thời gian đã pause, trả về timer đã tính lại.</summary>
+    [HttpPost("{id:guid}/unpause")]
+    public async Task<IActionResult> Unpause(Guid id, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var result = await _service.UnpauseSessionAsync(userId, id, cancellationToken);
+            return Ok(ApiResponse<UnpauseResponse>.Ok(result));
         }
         catch (Exception ex)
         {

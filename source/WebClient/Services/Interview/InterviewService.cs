@@ -25,6 +25,14 @@ public interface IInterviewService
 
     Task<(bool Success, string? Error)> EndSessionAsync(Guid sessionId, CancellationToken cancellationToken);
 
+    Task<(bool Success, PauseResponse? Pause, string? Error)> PauseSessionAsync(
+        Guid sessionId, CancellationToken cancellationToken);
+
+    Task<(bool Success, UnpauseResponse? Unpause, string? Error)> UnpauseSessionAsync(
+        Guid sessionId, CancellationToken cancellationToken);
+
+    Task<(bool Success, string? Error)> MarkRoomTourSeenAsync(CancellationToken cancellationToken);
+
     Task<(bool Success, byte[]? Audio, string? Error)> GetTtsAudioAsync(string text, CancellationToken cancellationToken);
 
     Task<(bool Success, string? Text, string? Error)> TranscribeAudioAsync(
@@ -130,6 +138,13 @@ public sealed class InterviewService(IApiClient apiClient) : IInterviewService
             TotalQuestions = resume.Data.TotalQuestions,
             AnsweredQuestions = resume.Data.AnsweredQuestions,
             CurrentQuestionId = resume.Data.CurrentQuestion?.SessionQuestionId,
+            IdleReminderSeconds = resume.Data.CurrentQuestion?.IdleReminderSeconds ?? 0,
+            IdleHardSeconds = resume.Data.CurrentQuestion?.IdleHardSeconds ?? 0,
+            IdleElapsedSeconds = resume.Data.CurrentQuestion?.IdleElapsedSeconds ?? 0,
+            PauseCount = resume.Data.PauseCount,
+            PausesRemaining = resume.Data.PausesRemaining,
+            PausedSecondsRemaining = resume.Data.PausedSecondsRemaining,
+            HasSeenRoomTour = resume.Data.HasSeenRoomTour,
             ChatHistory = resume.Data.ChatHistory
         };
         return (true, room, null);
@@ -150,6 +165,35 @@ public sealed class InterviewService(IApiClient apiClient) : IInterviewService
     {
         var result = await SendAsync<EndResponse>(HttpMethod.Post,
             $"api/interview/sessions/{sessionId}/end",
+            body: null,
+            cancellationToken);
+        return (result.Success, result.Error);
+    }
+
+    public async Task<(bool Success, PauseResponse? Pause, string? Error)> PauseSessionAsync(
+        Guid sessionId, CancellationToken cancellationToken)
+    {
+        var result = await SendAsync<PauseResponse>(HttpMethod.Post,
+            $"api/interview/sessions/{sessionId}/pause",
+            body: null,
+            cancellationToken);
+        return (result.Success, result.Data, result.Error);
+    }
+
+    public async Task<(bool Success, UnpauseResponse? Unpause, string? Error)> UnpauseSessionAsync(
+        Guid sessionId, CancellationToken cancellationToken)
+    {
+        var result = await SendAsync<UnpauseResponse>(HttpMethod.Post,
+            $"api/interview/sessions/{sessionId}/unpause",
+            body: null,
+            cancellationToken);
+        return (result.Success, result.Data, result.Error);
+    }
+
+    public async Task<(bool Success, string? Error)> MarkRoomTourSeenAsync(CancellationToken cancellationToken)
+    {
+        var result = await SendAsync<object>(HttpMethod.Post,
+            "api/interview/room-tour/seen",
             body: null,
             cancellationToken);
         return (result.Success, result.Error);

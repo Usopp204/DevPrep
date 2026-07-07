@@ -151,4 +151,47 @@ public class InterviewController(IInterviewService interviewService) : Controlle
 
         return Json(new { ok = true });
     }
+
+    // Same-origin proxy for pausing the interview (Room UX Phase 2).
+    [HttpPost]
+    public async Task<IActionResult> Pause(Guid id, CancellationToken cancellationToken)
+    {
+        var (success, pause, error) = await interviewService.PauseSessionAsync(id, cancellationToken);
+
+        if (!success || pause is null)
+        {
+            return BadRequest(new { error = error ?? "Could not pause the session." });
+        }
+
+        return Json(pause);
+    }
+
+    // Same-origin proxy for un-pausing the interview (Room UX Phase 2).
+    [HttpPost]
+    public async Task<IActionResult> Unpause(Guid id, CancellationToken cancellationToken)
+    {
+        var (success, unpause, error) = await interviewService.UnpauseSessionAsync(id, cancellationToken);
+
+        if (!success || unpause is null)
+        {
+            return BadRequest(new { error = error ?? "Could not resume the session." });
+        }
+
+        return Json(unpause);
+    }
+
+    // Same-origin proxy for marking the Room's onboarding tour as seen (Room UX Phase 3) — called
+    // once the tour finishes or is skipped/closed. Not session-scoped (the flag is per-user).
+    [HttpPost]
+    public async Task<IActionResult> TourSeen(CancellationToken cancellationToken)
+    {
+        var (success, error) = await interviewService.MarkRoomTourSeenAsync(cancellationToken);
+
+        if (!success)
+        {
+            return BadRequest(new { error = error ?? "Could not save tour status." });
+        }
+
+        return Json(new { ok = true });
+    }
 }

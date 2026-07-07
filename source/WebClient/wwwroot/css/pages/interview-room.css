@@ -274,6 +274,11 @@ body.room-page {
     color: var(--color-text-primary);
 }
 
+.chat-header-actions button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 .chat-messages {
     flex: 1;
     overflow-y: auto;
@@ -362,6 +367,90 @@ body.room-page {
     color: var(--color-text-tertiary);
     font-size: 13px;
     font-style: italic;
+}
+
+/* Idle reminder / auto-advance banner (Room UX Phase 1) */
+.idle-banner {
+    max-width: 896px;
+    margin: 0 auto 12px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.idle-banner.tier1 {
+    background: var(--color-surface-container);
+    border: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
+}
+
+.idle-banner.tier2 {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    color: var(--color-destructive);
+    font-weight: 500;
+}
+
+.idle-banner-cancel {
+    flex-shrink: 0;
+    padding: 6px 12px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    color: var(--color-text-primary);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.idle-banner-cancel:hover {
+    background: var(--color-surface-container-high);
+}
+
+/* Pause overlay (Room UX Phase 2) — covers the whole chat panel (.room-chat has position:
+   relative already) so the current question and history can't be read/looked-up while paused. */
+.pause-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(17, 17, 24, 0.92);
+    backdrop-filter: blur(8px);
+}
+
+.pause-overlay-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 32px;
+    text-align: center;
+}
+
+.pause-overlay-icon {
+    font-size: 48px;
+    color: var(--color-primary);
+}
+
+.pause-overlay-title {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+
+.pause-overlay-sub {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--color-text-secondary);
 }
 
 /* input bar */
@@ -738,6 +827,19 @@ body.room-page {
 
 .btn-secondary .icon-skip {
     color: var(--color-text-secondary);
+}
+
+.btn-secondary .icon-pause {
+    color: var(--color-primary);
+}
+
+.quick-actions-note {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--color-text-tertiary);
+    text-align: center;
+    margin-top: -6px;
 }
 
 .btn-end {

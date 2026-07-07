@@ -2,7 +2,8 @@
 
 @{
     Layout = null;
-    var isActive = Model.Status is "Initialized" or "InProgress";
+    var isActive = Model.Status is "Initialized" or "InProgress" or "Paused";
+    var isPaused = Model.Status == "Paused";
     var progressPct = Model.TotalQuestions > 0 ? Model.AnsweredQuestions * 100 / Model.TotalQuestions : 0;
 
     // Static greeting shown before the first question (modeled on ai-service's _greeting_text).
@@ -24,6 +25,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="~/css/theme-session.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/lib/driver.js/driver.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/pages/interview-room.css" asp-append-version="true" />
 </head>
 <body class="room-page">
@@ -32,10 +34,21 @@
          data-session-id="@Model.SessionId"
          data-remaining-seconds="@Model.RemainingSeconds"
          data-current-question-id="@Model.CurrentQuestionId"
+         data-idle-reminder-seconds="@Model.IdleReminderSeconds"
+         data-idle-hard-seconds="@Model.IdleHardSeconds"
+         data-idle-elapsed-seconds="@Model.IdleElapsedSeconds"
          data-total-questions="@Model.TotalQuestions"
          data-answered-questions="@Model.AnsweredQuestions"
+         data-initial-status="@Model.Status"
+         data-pause-count="@Model.PauseCount"
+         data-pauses-remaining="@Model.PausesRemaining"
+         data-paused-seconds-remaining="@Model.PausedSecondsRemaining"
+         data-has-seen-tour="@Model.HasSeenRoomTour.ToString().ToLowerInvariant()"
+         data-tour-seen-url="@Url.Action("TourSeen", "Interview")"
          data-message-url="@Url.Action("Message", "Interview", new { id = Model.SessionId })"
          data-end-url="@Url.Action("EndSession", "Interview", new { id = Model.SessionId })"
+         data-pause-url="@Url.Action("Pause", "Interview", new { id = Model.SessionId })"
+         data-unpause-url="@Url.Action("Unpause", "Interview", new { id = Model.SessionId })"
          data-tts-url="@Url.Action("Tts", "Interview")"
          data-stt-url="@Url.Action("Stt", "Interview")"
          data-hint-url="@Url.Action("Hint", "Interview")"
@@ -91,6 +104,9 @@
                     </div>
                 </div>
                 <div class="chat-header-actions">
+                    <button id="replay-tour-btn" type="button" title="Replay the guided tour" @(isActive ? "" : "disabled")>
+                        <span class="material-symbols-outlined">help_outline</span>
+                    </button>
                     <button type="button"><span class="material-symbols-outlined">more_vert</span></button>
                 </div>
             </div>
@@ -115,6 +131,8 @@
                 <div class="room-ended-note">This interview has already ended (status: @Model.Status).</div>
             }
 
+            <div id="idle-banner" class="idle-banner d-none"></div>
+
             <div class="chat-input-bar">
                 <div class="chat-input-inner">
                     <button type="button" class="icon-btn" title="Attach (coming soon)" disabled>
@@ -131,6 +149,17 @@
                     </button>
                 </div>
                 <div class="input-hint">Press Enter to send, Shift + Enter for new line</div>
+            </div>
+
+            <!-- Covers the whole chat panel while paused — hides the current question and history
+                 so pausing can't be used to read carefully / look things up. -->
+            <div id="pause-overlay" class="pause-overlay @(isPaused ? "" : "d-none")">
+                <div class="pause-overlay-content">
+                    <span class="material-symbols-outlined pause-overlay-icon">pause_circle</span>
+                    <div class="pause-overlay-title">Interview Paused</div>
+                    <div class="pause-overlay-sub" id="pause-overlay-quota"></div>
+                    <button id="resume-btn" class="btn-camera" type="button">Resume Interview</button>
+                </div>
             </div>
         </main>
 
@@ -182,6 +211,11 @@
                     <span class="material-symbols-outlined icon-skip">skip_next</span>
                     Skip question
                 </button>
+                <button id="pause-btn" class="btn-secondary" type="button" @(isActive ? "" : "disabled")>
+                    <span class="material-symbols-outlined icon-pause">pause_circle</span>
+                    <span id="pause-btn-label">Pause Interview</span>
+                </button>
+                <span class="quick-actions-note" id="pause-quota-text"></span>
                 <button id="end-btn" class="btn-end" type="button" @(isActive ? "" : "disabled")>
                     <span class="material-symbols-outlined">exit_to_app</span>
                     End Interview
@@ -190,6 +224,7 @@
         </aside>
     </div>
 
+    <script src="~/lib/driver.js/driver.js.iife.js" asp-append-version="true"></script>
     <script src="~/js/pages/interview-room.js" asp-append-version="true"></script>
 </body>
 </html>

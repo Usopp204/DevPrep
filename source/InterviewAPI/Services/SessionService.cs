@@ -17,6 +17,39 @@ public class SessionService : ISessionService
     private static readonly string[] ValidLevels = { "Intern", "Fresher", "Junior", "Middle", "Senior", "Lead" };
     private static readonly string[] ValidModes = { "Text", "Voice" };
 
+    // Idle-reminder / auto-advance thresholds (seconds since AskedAt), by question difficulty.
+    // NOTE: SessionQuestion has no persisted Difficulty column (ai-service's plan-time
+    // Category/Difficulty is discarded when Init maps to SessionQuestion — see InitAsync Step D),
+    // so GetIdleThresholds is always called with null today and always falls back to Medium.
+    private static readonly Dictionary<string, (int ReminderSeconds, int HardSeconds)> IdleThresholds = new()
+    {
+        ["Easy"] = (60, 120),
+        ["Medium"] = (90, 180),
+        ["Hard"] = (150, 300)
+    };
+
+    private static (int ReminderSeconds, int HardSeconds) GetIdleThresholds(string? difficulty)
+    {
+        if (difficulty is not null && IdleThresholds.TryGetValue(difficulty, out var t))
+            return t;
+        return IdleThresholds["Medium"];
+    }
+
+    // Pause/Resume limits (Room UX Phase 2) — flat per-session caps, not scaled by DurationMinutes.
+    private const int MaxPauseCount = 3;
+    private const int MaxTotalPausedSeconds = 300;
+
+    // Every timer formula (remaining time, Expired detection) must subtract this — it's the ONLY
+    // correct way to keep the countdown frozen while paused: while an ongoing pause is active
+    // (PausedAt is set), Now and the in-progress pause delta grow together and cancel out.
+    private static int GetEffectivePausedSeconds(InterviewSession session)
+    {
+        var ongoing = session.PausedAt is null
+            ? 0
+            : (int)(VietnamTime.Now - session.PausedAt.Value).TotalSeconds;
+        return session.TotalPausedSeconds + ongoing;
+    }
+
     private readonly ISessionRepository _repo;
     private readonly IAiServiceClient _aiServiceClient;
     private readonly InterviewDbContext _db;
@@ -307,13 +340,18 @@ public class SessionService : ISessionService
         }, ct);
 
         // Step F: Trả về thông tin câu hỏi tiếp theo (không kèm ReferenceAnswer).
+        var (reminderSeconds, hardSeconds) = GetIdleThresholds(null);
+        var elapsedSeconds = Math.Max(0, (int)(VietnamTime.Now - nextQuestion.AskedAt!.Value).TotalSeconds - GetEffectivePausedSeconds(session));
         return new GenerateQuestionResponse
         {
             SessionQuestionId = nextQuestion.SessionQuestionId,
             OrderIndex = nextQuestion.OrderIndex,
             Content = nextQuestion.Content,
             TotalQuestions = session.TotalQuestions,
-            Ended = false
+            Ended = false,
+            IdleReminderSeconds = reminderSeconds,
+            IdleHardSeconds = hardSeconds,
+            IdleElapsedSeconds = elapsedSeconds
         };
     }
 
@@ -332,7 +370,26 @@ public class SessionService : ISessionService
         if (currentQuestion is null || currentQuestion.SessionId != sessionId)
             throw new InvalidOperationException("Question not found.");
 
-        // Step C: Lưu câu trả lời của user vào ChatMessages.
+        // Step C: Xác thực reason client gửi lên — "TimedOut" chỉ được tin khi server tự tính lại
+        // idle từ AskedAt (nguồn sự thật) đã vượt ngưỡng cứng; nếu không đủ, không tin nhãn đó.
+        // "Skipped" là hành động chủ động tức thời của user nên không cần kiểm tra idle.
+        string? answerReason = null;
+        if (req.Reason == "Skipped")
+        {
+            answerReason = "Skipped";
+        }
+        else if (req.Reason == "TimedOut")
+        {
+            const int graceSeconds = 5;
+            var (_, hardSeconds) = GetIdleThresholds(null);
+            var elapsedSeconds = currentQuestion.AskedAt is null
+                ? 0
+                : (VietnamTime.Now - currentQuestion.AskedAt.Value).TotalSeconds - GetEffectivePausedSeconds(session);
+            if (elapsedSeconds >= hardSeconds - graceSeconds)
+                answerReason = "TimedOut";
+        }
+
+        // Step D: Lưu câu trả lời của user vào ChatMessages.
         await _repo.AddChatMessageAsync(new ChatMessage
         {
             MessageId = Guid.NewGuid(),
@@ -341,24 +398,25 @@ public class SessionService : ISessionService
             MessageType = "Answer",
             Content = req.Content,
             ResponseTimeMs = req.ResponseTimeMs,
+            AnswerReason = answerReason,
             SentAt = VietnamTime.Now
         }, ct);
 
-        // Step D: Tăng số câu đã trả lời, lưu session.
+        // Step E: Tăng số câu đã trả lời, lưu session.
         session.AnsweredQuestions += 1;
         session.UpdatedAt = VietnamTime.Now;
         await _repo.SaveChangesAsync(ct);
 
-        // Step D.1: Grade this answer in the background so the interview turn stays fast and the
+        // Step E.1: Grade this answer in the background so the interview turn stays fast and the
         // report is ready by the time the user reaches it. Empty content (Skip) is graded as
         // score 0 "No answer provided." by ai-service — no special handling needed here.
         ScheduleGrading(sessionId, currentQuestion, req.Content);
 
-        // Step E: Tìm câu hỏi tiếp theo chưa được trả lời.
+        // Step F: Tìm câu hỏi tiếp theo chưa được trả lời.
         var nextQuestion = await _repo.GetNextUnansweredQuestionAsync(
             sessionId, currentQuestion.OrderIndex, ct);
 
-        // Step F: Còn câu hỏi tiếp theo — phát câu hỏi AI, cập nhật AskedAt.
+        // Step G: Còn câu hỏi tiếp theo — phát câu hỏi AI, cập nhật AskedAt.
         if (nextQuestion is not null)
         {
             await _repo.AddChatMessageAsync(new ChatMessage
@@ -374,6 +432,7 @@ public class SessionService : ISessionService
             nextQuestion.AskedAt = VietnamTime.Now;
             await _repo.SaveChangesAsync(ct);
 
+            var (reminderSeconds, hardSeconds) = GetIdleThresholds(null);
             return new MessageResponse
             {
                 Ended = false,
@@ -381,12 +440,15 @@ public class SessionService : ISessionService
                 {
                     SessionQuestionId = nextQuestion.SessionQuestionId,
                     OrderIndex = nextQuestion.OrderIndex,
-                    Content = nextQuestion.Content
+                    Content = nextQuestion.Content,
+                    IdleReminderSeconds = reminderSeconds,
+                    IdleHardSeconds = hardSeconds,
+                    IdleElapsedSeconds = 0
                 }
             };
         }
 
-        // Step G: Đã trả lời hết — đóng phiên và phòng phỏng vấn.
+        // Step H: Đã trả lời hết — đóng phiên và phòng phỏng vấn.
         session.Status = "Completed";
         session.EndedAt = VietnamTime.Now;
         session.UpdatedAt = VietnamTime.Now;
@@ -419,7 +481,7 @@ public class SessionService : ISessionService
         }
         else
         {
-            var elapsed = (int)(VietnamTime.Now - session.StartedAt.Value).TotalSeconds;
+            var elapsed = (int)(VietnamTime.Now - session.StartedAt.Value).TotalSeconds - GetEffectivePausedSeconds(session);
             remaining = Math.Max(0, session.DurationMinutes * 60 - elapsed);
         }
 
@@ -469,9 +531,12 @@ public class SessionService : ISessionService
         if (session.Status != "Initialized" && session.Status != "InProgress")
             throw new InvalidOperationException("Session already ended.");
 
-        // Hết giờ → Expired; kết thúc sớm → Completed.
-        if (session.StartedAt is not null &&
-            (VietnamTime.Now - session.StartedAt.Value).TotalMinutes >= session.DurationMinutes)
+        // Hết giờ → Expired; kết thúc sớm → Completed. Trừ effective paused seconds, không thì
+        // thời gian Pause bị tính nhầm là đã trôi qua và phiên bị đánh dấu Expired oan.
+        var elapsedSeconds = session.StartedAt is null
+            ? 0
+            : (VietnamTime.Now - session.StartedAt.Value).TotalSeconds - GetEffectivePausedSeconds(session);
+        if (session.StartedAt is not null && elapsedSeconds >= session.DurationMinutes * 60)
             session.Status = "Expired";
         else
             session.Status = "Completed";
@@ -494,6 +559,63 @@ public class SessionService : ISessionService
         return new EndResponse { Status = session.Status, EndedAt = session.EndedAt };
     }
 
+    public async Task<PauseResponse> PauseSessionAsync(Guid userId, Guid sessionId, CancellationToken ct)
+    {
+        var session = await _repo.GetByIdAsync(sessionId, ct);
+        if (session is null || session.UserId != userId)
+            throw new InvalidOperationException("Session not found.");
+        if (session.Status != "InProgress")
+            throw new InvalidOperationException("Only an in-progress session can be paused.");
+
+        if (session.PauseCount >= MaxPauseCount)
+            throw new InvalidOperationException($"Pause limit reached ({MaxPauseCount} pauses per session).");
+        if (session.TotalPausedSeconds >= MaxTotalPausedSeconds)
+            throw new InvalidOperationException($"Total pause time limit reached ({MaxTotalPausedSeconds} seconds per session).");
+
+        session.Status = "Paused";
+        session.PausedAt = VietnamTime.Now;
+        session.PauseCount += 1;
+        session.UpdatedAt = VietnamTime.Now;
+        await _repo.SaveChangesAsync(ct);
+
+        return new PauseResponse
+        {
+            Status = session.Status,
+            PauseCount = session.PauseCount,
+            PausesRemaining = Math.Max(0, MaxPauseCount - session.PauseCount),
+            PausedSecondsRemaining = Math.Max(0, MaxTotalPausedSeconds - session.TotalPausedSeconds)
+        };
+    }
+
+    public async Task<UnpauseResponse> UnpauseSessionAsync(Guid userId, Guid sessionId, CancellationToken ct)
+    {
+        var session = await _repo.GetByIdAsync(sessionId, ct);
+        if (session is null || session.UserId != userId)
+            throw new InvalidOperationException("Session not found.");
+        if (session.Status != "Paused" || session.PausedAt is null)
+            throw new InvalidOperationException("Session is not paused.");
+
+        session.TotalPausedSeconds += (int)(VietnamTime.Now - session.PausedAt.Value).TotalSeconds;
+        session.PausedAt = null;
+        session.Status = "InProgress";
+        session.UpdatedAt = VietnamTime.Now;
+        await _repo.SaveChangesAsync(ct);
+
+        var elapsed = session.StartedAt is null
+            ? 0
+            : (int)(VietnamTime.Now - session.StartedAt.Value).TotalSeconds - GetEffectivePausedSeconds(session);
+        var remaining = Math.Max(0, session.DurationMinutes * 60 - elapsed);
+
+        return new UnpauseResponse
+        {
+            Status = session.Status,
+            RemainingSeconds = remaining,
+            PauseCount = session.PauseCount,
+            PausesRemaining = Math.Max(0, MaxPauseCount - session.PauseCount),
+            PausedSecondsRemaining = Math.Max(0, MaxTotalPausedSeconds - session.TotalPausedSeconds)
+        };
+    }
+
     public async Task<ResumeResponse> ResumeSessionAsync(Guid userId, Guid sessionId, CancellationToken ct)
     {
         var session = await _repo.GetWithFullHistoryAsync(sessionId, ct);
@@ -508,7 +630,7 @@ public class SessionService : ISessionService
         }
         else
         {
-            var elapsed = (int)(VietnamTime.Now - session.StartedAt.Value).TotalSeconds;
+            var elapsed = (int)(VietnamTime.Now - session.StartedAt.Value).TotalSeconds - GetEffectivePausedSeconds(session);
             remaining = Math.Max(0, session.DurationMinutes * 60 - elapsed);
         }
 
@@ -519,14 +641,39 @@ public class SessionService : ISessionService
             var hasAnswer = q.ChatMessages.Any(m => m.SenderType == "User" && m.MessageType == "Answer");
             if (!hasAnswer)
             {
+                var (reminderSeconds, hardSeconds) = GetIdleThresholds(null);
+                var elapsedSeconds = q.AskedAt is null
+                    ? 0
+                    : Math.Max(0, (int)(VietnamTime.Now - q.AskedAt.Value).TotalSeconds - GetEffectivePausedSeconds(session));
                 currentQuestion = new NextQuestionDto
                 {
                     SessionQuestionId = q.SessionQuestionId,
                     OrderIndex = q.OrderIndex,
-                    Content = q.Content
+                    Content = q.Content,
+                    IdleReminderSeconds = reminderSeconds,
+                    IdleHardSeconds = hardSeconds,
+                    IdleElapsedSeconds = elapsedSeconds
                 };
                 break;
             }
+        }
+
+        // Room UX Phase 3 — true once this user has ever dismissed/completed the onboarding tour
+        // (no row yet = never seen it). This is a nice-to-have onboarding flag, never allowed to
+        // block entering the room — if the lookup fails for any reason (e.g. table not migrated
+        // yet on this environment), fall back to "not seen" so the tour just shows once more
+        // instead of taking down Resume, which is on the critical path to the interview itself.
+        UserRoomTourStatus? tourStatus = null;
+        try
+        {
+            tourStatus = await _db.UserRoomTourStatuses.AsNoTracking()
+                .FirstOrDefaultAsync(t => t.UserId == userId, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "ResumeSessionAsync: could not read UserRoomTourStatuses for user {UserId} — defaulting HasSeenRoomTour to false.",
+                userId);
         }
 
         // Gộp toàn bộ lịch sử chat từ tất cả câu hỏi, sắp xếp theo thời gian.
@@ -553,8 +700,32 @@ public class SessionService : ISessionService
             CurrentQuestion = currentQuestion,
             TotalQuestions = session.TotalQuestions,
             AnsweredQuestions = session.AnsweredQuestions,
+            PauseCount = session.PauseCount,
+            PausesRemaining = Math.Max(0, MaxPauseCount - session.PauseCount),
+            PausedSecondsRemaining = Math.Max(0, MaxTotalPausedSeconds - session.TotalPausedSeconds),
+            HasSeenRoomTour = tourStatus?.HasSeenRoomTour ?? false,
             ChatHistory = chatHistory
         };
+    }
+
+    public async Task MarkRoomTourSeenAsync(Guid userId, CancellationToken ct)
+    {
+        var status = await _db.UserRoomTourStatuses.FirstOrDefaultAsync(t => t.UserId == userId, ct);
+        if (status is null)
+        {
+            _db.UserRoomTourStatuses.Add(new UserRoomTourStatus
+            {
+                UserId = userId,
+                HasSeenRoomTour = true,
+                UpdatedAt = VietnamTime.Now
+            });
+        }
+        else if (!status.HasSeenRoomTour)
+        {
+            status.HasSeenRoomTour = true;
+            status.UpdatedAt = VietnamTime.Now;
+        }
+        await _db.SaveChangesAsync(ct);
     }
 
     public async Task SoftDeleteAsync(Guid userId, Guid sessionId, CancellationToken ct)

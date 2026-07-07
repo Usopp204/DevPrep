@@ -14,6 +14,12 @@ public interface ISessionService
     Task                  TrackTimeAsync(Guid userId, Guid sessionId, TrackTimeRequest req, CancellationToken ct);
     Task<EndResponse>     EndSessionAsync(Guid userId, Guid sessionId, CancellationToken ct);
     Task<ResumeResponse>  ResumeSessionAsync(Guid userId, Guid sessionId, CancellationToken ct);
+    Task<PauseResponse>   PauseSessionAsync(Guid userId, Guid sessionId, CancellationToken ct);
+    Task<UnpauseResponse> UnpauseSessionAsync(Guid userId, Guid sessionId, CancellationToken ct);
+
+    // Room UX Phase 3 — marks the onboarding tour as seen for this user (once ever, not per session).
+    Task MarkRoomTourSeenAsync(Guid userId, CancellationToken ct);
+
     Task                  SoftDeleteAsync(Guid userId, Guid sessionId, CancellationToken ct);
     Task<List<SessionListItemDto>> GetMySessionsAsync(Guid userId, CancellationToken ct);
     Task<TranscriptResponse>       GetTranscriptAsync(Guid userId, Guid sessionId, CancellationToken ct);

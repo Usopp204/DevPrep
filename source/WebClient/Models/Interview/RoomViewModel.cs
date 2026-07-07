@@ -14,5 +14,16 @@ public class RoomViewModel
     public int TotalQuestions { get; set; }
     public int AnsweredQuestions { get; set; }
     public Guid? CurrentQuestionId { get; set; }
+    // Idle-reminder / auto-advance thresholds for the current question, from InterviewAPI.
+    public int IdleReminderSeconds { get; set; }
+    public int IdleHardSeconds { get; set; }
+    public int IdleElapsedSeconds { get; set; }
+    // Pause/Resume quota (Room UX Phase 2).
+    public int PauseCount { get; set; }
+    public int PausesRemaining { get; set; }
+    public int PausedSecondsRemaining { get; set; }
+    // Room UX Phase 3 — false only for this user's very first Room ever; the JS auto-runs the
+    // onboarding tour and marks it seen so it never auto-shows again.
+    public bool HasSeenRoomTour { get; set; }
     public List<ChatHistoryItem> ChatHistory { get; set; } = new();
 }

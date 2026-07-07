@@ -27,6 +27,11 @@ public partial class ChatMessage
 
     public int? ResponseTimeMs { get; set; }
 
+    // Null = a real typed answer. "Skipped" = user pressed Skip. "TimedOut" = server-verified
+    // auto-advance after the idle deadline. See SessionService.SendMessageAsync for how this is set.
+    [StringLength(20)]
+    public string? AnswerReason { get; set; }
+
     public DateTime SentAt { get; set; }
 
     [ForeignKey("SessionQuestionId")]

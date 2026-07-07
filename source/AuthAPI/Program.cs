@@ -17,10 +17,11 @@ try { Env.TraversePath().Load(); } catch { }
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Connection string lấy từ appsettings, có thể override bằng biến môi trường
-// ConnectionStrings__DefaultConnection khi deploy lên server.
-builder.Services.AddDbContext<AuthDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+// Connection string đọc từ .env (key AUTH_DB_CONNECTION_STRING). DotNetEnv ở trên đã nạp key này
+// vào biến môi trường nên builder.Configuration đọc được. KHÔNG hardcode trong appsettings/.cs.
+var connectionString = builder.Configuration["AUTH_DB_CONNECTION_STRING"]
+    ?? throw new InvalidOperationException("AUTH_DB_CONNECTION_STRING is missing in .env.");
+builder.Services.AddDbContext<AuthDbContext>(options => options.UseSqlServer(connectionString));
 
 // Repositories
 builder.Services.AddScoped<IAccountRepository, AccountRepository>();
@@ -131,7 +132,8 @@ builder.Services.AddCors(options =>
             "http://localhost:5130",  // WebClient MVC
             "http://localhost:3000",  // CRA / Next.js
             "http://localhost:4200",  // Angular
-            "http://localhost:5500")  // VS Code Live Server / trang sso-test
+            "http://localhost:5500",  // VS Code Live Server / trang sso-test
+            "http://localhost:5173")  // Vite dev server (FrontendClient)
         .AllowAnyHeader()
         .AllowAnyMethod());
 });

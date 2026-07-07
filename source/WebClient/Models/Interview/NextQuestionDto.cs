@@ -6,4 +6,7 @@ public class NextQuestionDto
     public Guid SessionQuestionId { get; set; }
     public int OrderIndex { get; set; }
     public string Content { get; set; } = string.Empty;
+    public int IdleReminderSeconds { get; set; }
+    public int IdleHardSeconds { get; set; }
+    public int IdleElapsedSeconds { get; set; }
 }

@@ -23,6 +23,8 @@ public partial class InterviewDbContext : DbContext
 
     public virtual DbSet<SessionQuestion> SessionQuestions { get; set; }
 
+    public virtual DbSet<UserRoomTourStatus> UserRoomTourStatuses { get; set; }
+
     // Guard IsConfigured: khi chạy thật, options đã được DI cấu hình từ appsettings (có Encrypt=False)
     // nên KHÔNG ghi đè. Chuỗi hard-code chỉ dùng cho design-time (scaffold/migration) và có sẵn Encrypt=False.
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
