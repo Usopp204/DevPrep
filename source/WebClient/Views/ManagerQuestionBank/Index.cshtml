@@ -32,6 +32,7 @@
             gap: 16px;
             margin-bottom: 16px;
             flex-wrap: wrap;
+            align-items: flex-end;
         }
         
         .qb-filter-row:last-child {
@@ -42,6 +43,22 @@
             position: relative;
             flex: 1;
             min-width: 300px;
+        }
+
+        .qb-filter-field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 160px;
+        }
+
+        .qb-filter-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9px;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--ad-on-surface-variant);
         }
 
         .qb-search-icon {
@@ -70,6 +87,31 @@
             width: auto;
             min-width: 150px;
             cursor: pointer;
+        }
+
+        .qb-filter-actions {
+            display: flex;
+            gap: 8px;
+            align-items: flex-end;
+        }
+
+        .qb-filter-btn {
+            height: 36px;
+            border: 1px solid var(--ad-border);
+            border-radius: 6px;
+            background: var(--ad-surface-container);
+            color: var(--ad-on-surface);
+            padding: 0 14px;
+            font-size: 13px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .qb-filter-btn:hover {
+            color: var(--ad-primary);
+            border-color: var(--ad-primary);
         }
         
         .qb-input:focus, .qb-select:focus {
@@ -251,37 +293,51 @@
         <form method="get" action="/Manager/QuestionBank" class="glass-card qb-filter-bar">
             <div class="qb-filter-row">
                 <div class="qb-search-wrapper">
+                    <span class="qb-filter-label">Search</span>
                     <span class="material-symbols-outlined qb-search-icon">search</span>
                     <input name="keyword" value="@ViewBag.Keyword" type="text" class="qb-input" placeholder="Search questions..." onkeypress="if(event.key === 'Enter') this.form.submit();" />
                 </div>
-                
-                <select name="level" class="qb-select" onchange="this.form.submit()">
-                    <option value="">All Levels</option>
-                    <option value="Intern" selected="@(ViewBag.Level == "Intern")">Intern</option>
-                    <option value="Fresher" selected="@(ViewBag.Level == "Fresher")">Fresher</option>
-                    <option value="Junior" selected="@(ViewBag.Level == "Junior")">Junior</option>
-                    <option value="Middle" selected="@(ViewBag.Level == "Middle")">Middle</option>
-                    <option value="Senior" selected="@(ViewBag.Level == "Senior")">Senior</option>
-                    <option value="All" selected="@(ViewBag.Level == "All")">All</option>
-                </select>
 
-                <select name="questionType" class="qb-select" onchange="this.form.submit()">
-                    <option value="">All Tech Stacks</option>
-                    <option value="Java" selected="@(ViewBag.QuestionType == "Java")">Java</option>
-                    <option value=".NET" selected="@(ViewBag.QuestionType == ".NET")">.NET</option>
-                    <option value="React" selected="@(ViewBag.QuestionType == "React")">React</option>
-                    <option value="NodeJS" selected="@(ViewBag.QuestionType == "NodeJS")">NodeJS</option>
-                    <option value="AI" selected="@(ViewBag.QuestionType == "AI")">AI</option>
-                    <option value="All" selected="@(ViewBag.QuestionType == "All")">All</option>
-                </select>
-                
-                <select name="categoryId" class="qb-select" onchange="this.form.submit()">
-                    <option value="">All Categories</option>
-                    <option value="00000000-0000-0000-0000-000000000001" selected="@(ViewBag.CategoryId?.ToString() == "00000000-0000-0000-0000-000000000001")">DSA</option>
-                    <option value="00000000-0000-0000-0000-000000000002" selected="@(ViewBag.CategoryId?.ToString() == "00000000-0000-0000-0000-000000000002")">System Design</option>
-                    <option value="00000000-0000-0000-0000-000000000003" selected="@(ViewBag.CategoryId?.ToString() == "00000000-0000-0000-0000-000000000003")">Behavioral</option>
-                    <option value="00000000-0000-0000-0000-000000000004" selected="@(ViewBag.CategoryId?.ToString() == "00000000-0000-0000-0000-000000000004")">Framework</option>
-                </select>
+                <div class="qb-filter-field">
+                    <span class="qb-filter-label">Level</span>
+                    <select name="level" class="qb-select" onchange="this.form.submit()">
+                        <option value="">All Levels</option>
+                        <option value="Intern" selected="@(ViewBag.Level == "Intern")">Intern</option>
+                        <option value="Fresher" selected="@(ViewBag.Level == "Fresher")">Fresher</option>
+                        <option value="Junior" selected="@(ViewBag.Level == "Junior")">Junior</option>
+                        <option value="Middle" selected="@(ViewBag.Level == "Middle")">Middle</option>
+                        <option value="Senior" selected="@(ViewBag.Level == "Senior")">Senior</option>
+                        <option value="All" selected="@(ViewBag.Level == "All")">All</option>
+                    </select>
+                </div>
+
+                <div class="qb-filter-field">
+                    <span class="qb-filter-label">Tech Stack</span>
+                    <select name="questionType" class="qb-select" onchange="this.form.submit()">
+                        <option value="">All Tech Stacks</option>
+                        <option value="Java" selected="@(ViewBag.QuestionType == "Java")">Java</option>
+                        <option value=".NET" selected="@(ViewBag.QuestionType == ".NET")">.NET</option>
+                        <option value="React" selected="@(ViewBag.QuestionType == "React")">React</option>
+                        <option value="NodeJS" selected="@(ViewBag.QuestionType == "NodeJS")">NodeJS</option>
+                        <option value="AI" selected="@(ViewBag.QuestionType == "AI")">AI</option>
+                        <option value="All" selected="@(ViewBag.QuestionType == "All")">All</option>
+                    </select>
+                </div>
+
+                <div class="qb-filter-field">
+                    <span class="qb-filter-label">Category</span>
+                    <select name="categoryId" class="qb-select" onchange="this.form.submit()">
+                        <option value="">All Categories</option>
+                        <option value="00000000-0000-0000-0000-000000000001" selected="@(ViewBag.CategoryId?.ToString() == "00000000-0000-0000-0000-000000000001")">DSA</option>
+                        <option value="00000000-0000-0000-0000-000000000002" selected="@(ViewBag.CategoryId?.ToString() == "00000000-0000-0000-0000-000000000002")">System Design</option>
+                        <option value="00000000-0000-0000-0000-000000000003" selected="@(ViewBag.CategoryId?.ToString() == "00000000-0000-0000-0000-000000000003")">Behavioral</option>
+                        <option value="00000000-0000-0000-0000-000000000004" selected="@(ViewBag.CategoryId?.ToString() == "00000000-0000-0000-0000-000000000004")">Framework</option>
+                    </select>
+                </div>
+                <div class="qb-filter-actions">
+                    <button type="submit" class="qb-filter-btn"><span class="material-symbols-outlined" style="font-size:18px;">filter_alt</span>Apply</button>
+                    <a href="/Manager/QuestionBank" class="qb-filter-btn"><span class="material-symbols-outlined" style="font-size:18px;">restart_alt</span>Clear</a>
+                </div>
             </div>
             
             <div class="qb-filter-row">

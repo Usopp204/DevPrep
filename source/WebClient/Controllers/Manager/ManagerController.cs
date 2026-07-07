@@ -31,6 +31,16 @@ public class ManagerController(IManagerService managerService) : Controller
 
     public IActionResult Sessions()
     {
+        return RedirectToAction(nameof(InterviewSessions));
+    }
+
+    public IActionResult Interview()
+    {
+        return RedirectToAction(nameof(InterviewSessions));
+    }
+
+    public IActionResult InterviewSessions()
+    {
         return View();
     }
 
