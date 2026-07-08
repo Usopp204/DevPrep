@@ -18,15 +18,11 @@ builder.WebHost.UseUrls($"http://0.0.0.0:{servicePort}");
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Ưu tiên key NOTIFICATION_DB_CONNECTION_STRING từ .env (DotNetEnv nạp ở trên), fallback appsettings.
+// CHỈ đọc từ .env (key NOTIFICATION_DB_CONNECTION_STRING, DotNetEnv nạp ở trên).
 var connectionString = builder.Configuration.GetValue<string>("NOTIFICATION_DB_CONNECTION_STRING");
 if (string.IsNullOrWhiteSpace(connectionString))
 {
-    connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-}
-if (string.IsNullOrWhiteSpace(connectionString))
-{
-    throw new InvalidOperationException("NOTIFICATION_DB_CONNECTION_STRING (.env) or ConnectionStrings:DefaultConnection is missing.");
+    throw new InvalidOperationException("NOTIFICATION_DB_CONNECTION_STRING is missing in .env.");
 }
 
 builder.Services.AddDbContext<NotificationDbContext>(options =>

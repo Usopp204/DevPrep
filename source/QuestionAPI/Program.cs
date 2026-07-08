@@ -18,13 +18,12 @@ var builder = WebApplication.CreateBuilder(args);
 var servicePort = builder.Configuration.GetValue<int>("QUESTION_API_PORT", 7004);
 builder.WebHost.UseUrls($"http://0.0.0.0:{servicePort}");
 
-// ── Connection String ─────────────────────────────────────────────────────────
+// ── Connection String: CHỈ đọc từ .env (key QUESTION_DB_CONNECTION_STRING) ───
 var connectionString =
-    builder.Configuration.GetValue<string>("QUESTION_DB_CONNECTION_STRING")
-    ?? builder.Configuration.GetConnectionString("DefaultConnection");
+    builder.Configuration.GetValue<string>("QUESTION_DB_CONNECTION_STRING");
 
 if (string.IsNullOrWhiteSpace(connectionString))
-    throw new InvalidOperationException("Question DB connection string is missing.");
+    throw new InvalidOperationException("QUESTION_DB_CONNECTION_STRING is missing in .env.");
 
 builder.Services.AddDbContext<QuestionBankDbContext>(options =>
     options.UseSqlServer(connectionString));
