@@ -20,12 +20,9 @@ var builder = WebApplication.CreateBuilder(args);
 var servicePort = builder.Configuration.GetValue<int>("EVALUATION_API_PORT", 7006);
 builder.WebHost.UseUrls($"http://0.0.0.0:{servicePort}");
 
-// DbContext: ưu tiên key EVALUATION_DB_CONNECTION_STRING từ .env (DotNetEnv nạp ở trên),
-// fallback appsettings ConnectionStrings:DefaultConnection (máy không có .env vẫn chạy).
+// DbContext: CHỈ đọc từ .env (key EVALUATION_DB_CONNECTION_STRING, DotNetEnv nạp ở trên).
 var connectionString = builder.Configuration.GetValue<string>("EVALUATION_DB_CONNECTION_STRING")
-    ?? builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException(
-        "EVALUATION_DB_CONNECTION_STRING (.env) or ConnectionStrings:DefaultConnection is missing.");
+    ?? throw new InvalidOperationException("EVALUATION_DB_CONNECTION_STRING is missing in .env.");
 
 builder.Services.AddDbContext<EvaluationDbContext>(options =>
     options.UseSqlServer(connectionString));
