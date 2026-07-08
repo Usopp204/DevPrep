@@ -19,11 +19,9 @@ var builder = WebApplication.CreateBuilder(args);
 var servicePort = builder.Configuration.GetValue<int>("FEEDBACK_API_PORT", 7007);
 builder.WebHost.UseUrls($"http://0.0.0.0:{servicePort}");
 
-// DbContext: ưu tiên key FEEDBACK_DB_CONNECTION_STRING từ .env (DotNetEnv nạp ở trên),
-// fallback appsettings ConnectionStrings:DefaultConnection (máy không có .env vẫn chạy).
+// DbContext: CHỈ đọc từ .env (key FEEDBACK_DB_CONNECTION_STRING, DotNetEnv nạp ở trên).
 var connectionString = builder.Configuration.GetValue<string>("FEEDBACK_DB_CONNECTION_STRING")
-    ?? builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException("FEEDBACK_DB_CONNECTION_STRING (.env) or ConnectionStrings:DefaultConnection is missing.");
+    ?? throw new InvalidOperationException("FEEDBACK_DB_CONNECTION_STRING is missing in .env.");
 builder.Services.AddDbContext<FeedbackDbContext>(options => options.UseSqlServer(connectionString));
 
 // Repositories + Services (kiến trúc phân lớp). Tách riêng AI feedback và System feedback.

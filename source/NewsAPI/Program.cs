@@ -18,10 +18,9 @@ var builder = WebApplication.CreateBuilder(args);
 var servicePort = builder.Configuration.GetValue<int>("NEWS_API_PORT", 7009);
 builder.WebHost.UseUrls($"http://0.0.0.0:{servicePort}");
 
-// Ưu tiên key NEWS_DB_CONNECTION_STRING từ .env (DotNetEnv nạp ở trên), fallback appsettings.
+// CHỈ đọc từ .env (key NEWS_DB_CONNECTION_STRING, DotNetEnv nạp ở trên).
 var connectionString = builder.Configuration.GetValue<string>("NEWS_DB_CONNECTION_STRING")
-    ?? builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException("NEWS_DB_CONNECTION_STRING (.env) or ConnectionStrings:DefaultConnection is missing.");
+    ?? throw new InvalidOperationException("NEWS_DB_CONNECTION_STRING is missing in .env.");
 builder.Services.AddDbContext<NewsDbContext>(options => options.UseSqlServer(connectionString));
 
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "dev-only-change-me-please-use-a-long-random-secret-key-32+chars";

@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using WebClient.Models.Payment;
 using WebClient.Services.Payment;
-using WebClient.Services.Shared;
 
 namespace WebClient.Controllers.Payment;
 
@@ -35,8 +34,8 @@ public class PaymentController(IPaymentService paymentService) : Controller
         if (IsAdminOrManager())
             return RedirectToAction("Index", "Admin");
 
-        var userId = JwtUserId.FromToken(Request.Cookies["access_token"]);
-        if (userId is null)
+        var userIdStr = Request.Cookies["user_id"];
+        if (!Guid.TryParse(userIdStr, out var userId))
         {
             TempData["PaymentError"] = "Phiên đăng nhập không hợp lệ. Vui lòng thử lại.";
             return RedirectToAction("Index");
@@ -44,7 +43,7 @@ public class PaymentController(IPaymentService paymentService) : Controller
 
         try
         {
-            var result = await paymentService.CreateOrderAsync(packageId, userId.Value, ct);
+            var result = await paymentService.CreateOrderAsync(packageId, userId, ct);
             return Redirect(result.PaymentUrl);
         }
         catch (Exception)

@@ -20,13 +20,12 @@ var builder = WebApplication.CreateBuilder(args);
 var servicePort = builder.Configuration.GetValue<int>("PAYMENT_API_PORT", 7008);
 builder.WebHost.UseUrls($"http://0.0.0.0:{servicePort}");
 
-// ── Connection String ─────────────────────────────────────────────────────────
+// ── Connection String: CHỈ đọc từ .env (key PAYMENT_DB_CONNECTION_STRING) ────
 var connectionString =
-    builder.Configuration.GetValue<string>("PAYMENT_DB_CONNECTION_STRING")
-    ?? builder.Configuration.GetConnectionString("DefaultConnection");
+    builder.Configuration.GetValue<string>("PAYMENT_DB_CONNECTION_STRING");
 
 if (string.IsNullOrWhiteSpace(connectionString))
-    throw new InvalidOperationException("Payment DB connection string is missing.");
+    throw new InvalidOperationException("PAYMENT_DB_CONNECTION_STRING is missing in .env.");
 
 builder.Services.AddDbContext<PaymentDbContext>(options =>
     options.UseSqlServer(connectionString));
