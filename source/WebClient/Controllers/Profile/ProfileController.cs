@@ -114,6 +114,17 @@ public class ProfileController(
         return View(model);
     }
 
+    // ============================ CV & JD ============================
+    [HttpGet]
+    public IActionResult CvJd()
+    {
+        if (string.IsNullOrEmpty(Request.Cookies["access_token"]))
+            return RedirectToAction("Login", "Auth");
+
+        ViewData["ProfileActive"] = "cvjd";
+        return View();
+    }
+
     // ============================ Transaction History ============================
     public async Task<IActionResult> TransactionHistory(int page = 1, CancellationToken ct = default)
     {
