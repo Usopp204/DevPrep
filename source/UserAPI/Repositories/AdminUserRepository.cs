@@ -41,7 +41,7 @@ public class AdminUserRepository : IAdminUserRepository
         var items = new List<AdminUserListItemDto>();
         var totalCount = 0;
 
-        var connString = _configuration.GetConnectionString("DefaultConnection");
+        var connString = _configuration.GetValue<string>("USER_DB_CONNECTION_STRING");
 
         await using var conn = new SqlConnection(connString);
         await conn.OpenAsync();
@@ -147,7 +147,7 @@ public class AdminUserRepository : IAdminUserRepository
 
     public async Task<AdminUserDetailDto?> GetUserDetailAsync(Guid id)
     {
-        var connString = _configuration.GetConnectionString("DefaultConnection");
+        var connString = _configuration.GetValue<string>("USER_DB_CONNECTION_STRING");
 
         AdminUserDetailDto? detail = null;
         Guid? profileUserId = null;
@@ -286,7 +286,7 @@ public class AdminUserRepository : IAdminUserRepository
 
     public async Task<bool> UpdateStatusAsync(Guid id, AdminUpdateUserStatusDto dto, Guid? adminAccountId)
     {
-        var connString = _configuration.GetConnectionString("DefaultConnection");
+        var connString = _configuration.GetValue<string>("USER_DB_CONNECTION_STRING");
 
         await using var conn = new SqlConnection(connString);
         await conn.OpenAsync();
@@ -331,7 +331,7 @@ public class AdminUserRepository : IAdminUserRepository
 
     public async Task<bool> UpdateRoleAsync(Guid id, AdminUpdateUserRoleDto dto)
     {
-        var connString = _configuration.GetConnectionString("DefaultConnection");
+        var connString = _configuration.GetValue<string>("USER_DB_CONNECTION_STRING");
 
         await using var conn = new SqlConnection(connString);
         await conn.OpenAsync();
@@ -416,7 +416,7 @@ public class AdminUserRepository : IAdminUserRepository
         if (inactiveDays < 1)
             inactiveDays = 30;
 
-        var connString = _configuration.GetConnectionString("DefaultConnection");
+        var connString = _configuration.GetValue<string>("USER_DB_CONNECTION_STRING");
 
         var result = new AdminAutoBlockInactiveResultDto
         {
