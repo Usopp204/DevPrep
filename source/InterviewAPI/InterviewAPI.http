@@ -1,0 +1,5 @@
+@InterviewAPI_HostAddress = http://localhost:7005
+
+GET {{InterviewAPI_HostAddress}}/health/
+Accept: application/json
+

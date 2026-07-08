@@ -1,0 +1,652 @@
+@{
+    var token = Context.Request.Cookies["access_token"];
+    var feedbackTitle = ViewData["FeedbackTitle"] as string ?? "System Feedback";
+    var feedbackKind = ViewData["FeedbackKind"] as string ?? "system";
+    var feedbackApiBase = ViewData["FeedbackApiBase"] as string ?? "http://localhost:7007/api/admin/manager/feedbacks";
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@feedbackTitle - DevPrep AI</title>
+
+    <!-- Include admin.css for Topbar and Sidebar -->
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+
+    <!-- Extract Tailwind and Fonts from code.html -->
+
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>DevPrep AI | @feedbackTitle</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-secondary-container": "#00424e",
+                    "surface": "#131317",
+                    "surface-container-high": "#2a292d",
+                    "tertiary-fixed-dim": "#d0bcff",
+                    "surface-bright": "#34394a",
+                    "on-primary": "#2c2a5e",
+                    "outline-variant": "#47464f",
+                    "primary-container": "#c3c0ff",
+                    "on-primary-container": "#4e4c83",
+                    "glass-fill": "rgba(17, 24, 39, 0.6)",
+                    "on-secondary-fixed-variant": "#004e5c",
+                    "tertiary": "#e9ddff",
+                    "warning": "#F9D949",
+                    "secondary-fixed": "#acedff",
+                    "success": "#10B981",
+                    "error-container": "#93000a",
+                    "error": "#ffb4ab",
+                    "on-primary-fixed": "#161349",
+                    "surface-dim": "#131317",
+                    "on-secondary-fixed": "#001f26",
+                    "inverse-surface": "#e5e1e7",
+                    "inverse-on-surface": "#313034",
+                    "secondary-container": "#03b5d4",
+                    "on-tertiary-fixed-variant": "#4d3d76",
+                    "primary": "#e2dfff",
+                    "on-tertiary-fixed": "#210f48",
+                    "secondary-fixed-dim": "#4cd7f6",
+                    "secondary": "#4cd7f6",
+                    "primary-fixed-dim": "#c3c0ff",
+                    "on-surface-variant": "#c8c5d0",
+                    "on-secondary": "#003640",
+                    "border-subtle": "rgba(255, 255, 255, 0.08)",
+                    "background": "#0e1323",
+                    "outline": "#928f9a",
+                    "on-tertiary-container": "#594983",
+                    "surface-container": "#201f23",
+                    "surface-container-low": "#1c1b1f",
+                    "on-primary-fixed-variant": "#434176",
+                    "surface-variant": "#353438",
+                    "surface-tint": "#c3c0ff",
+                    "tertiary-fixed": "#e9ddff",
+                    "on-tertiary": "#37265e",
+                    "on-error-container": "#ffdad6",
+                    "on-error": "#690005",
+                    "on-background": "#e5e1e7",
+                    "surface-container-highest": "#353438",
+                    "inverse-primary": "#5a5890",
+                    "tertiary-container": "#d0bcff",
+                    "surface-container-lowest": "#0e0e11",
+                    "primary-fixed": "#e3dfff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "sm": "12px",
+                    "unit": "4px",
+                    "md": "16px",
+                    "gutter": "24px",
+                    "xl": "32px",
+                    "max-width": "1200px",
+                    "2xl": "48px",
+                    "lg": "24px",
+                    "3xl": "64px",
+                    "xs": "8px"
+            },
+            "fontFamily": {
+                    "display-lg": ["Inter"],
+                    "code-label": ["JetBrains Mono"],
+                    "headline-md": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "body-md": ["Inter"]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        body { background-color: #0e1323; color: #e5e1e7; }
+        .glass-card {
+            background: rgba(32, 31, 35, 0.4);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-top: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        .inner-glow {
+            box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+        }
+        .primary-btn {
+            background: linear-gradient(135deg, #c3c0ff 0%, #4f46e5 100%);
+            transition: all 0.2s ease;
+        }
+        .primary-btn:hover { transform: translateY(-1px); filter: brightness(1.1); }
+        .side-drawer {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .drawer-hidden { transform: translateX(100%); }
+        .chip.active { outline: 2px solid currentColor; }
+    </style>
+
+
+    <style>
+        /* Fix any potential preflight overrides on admin.css */
+        .ad-sidebar h2, .ad-sidebar p, .ad-sidebar a { margin-bottom: 0; }
+        .ad-topbar { box-sizing: border-box; }
+        .ad-avatar { padding: 0; }
+
+        /* Adjust layout to accommodate _ManagerTopbar and _ManagerSidebar */
+        /* _ManagerSidebar is 250px wide and fixed */
+        /* _ManagerTopbar is 60px tall and fixed */
+        body { background-color: #0e1323; color: #e5e1e7; }
+
+        .fb-main {
+            margin-left: 250px;
+            padding-top: 80px; /* 60px topbar + 20px padding */
+            padding-left: 24px;
+            padding-right: 24px;
+            min-height: 100vh;
+            background: #0e1323;
+        }
+    </style>
+</head>
+<body class="font-body-md overflow-x-hidden">
+    @await Html.PartialAsync("_ManagerTopbar")
+    @await Html.PartialAsync("_ManagerSidebar")
+
+    <main class="fb-main">
+        <div class="flex items-center gap-lg flex-1 mb-6">
+            <div>
+                <h1 class="font-display-lg text-[24px] font-bold text-primary tracking-tight">@feedbackTitle</h1>
+            </div>
+        </div>
+
+        <div class="max-w-max-width mx-auto">
+            <!-- Filter Bar -->
+            <section class="glass-card rounded-2xl p-md mb-lg flex flex-wrap items-center gap-lg">
+                <div class="flex items-center gap-sm">
+                    <span class="font-code-label text-[11px] uppercase text-on-surface-variant">Rating</span>
+                    <div class="flex gap-xs" id="feedback-rating">
+                        <button data-val="" class="chip active px-md py-1 rounded-full bg-primary-container/10 border border-primary-container text-primary-container font-code-label text-[10px] uppercase">All</button>
+                        <button data-val="5" class="chip px-md py-1 rounded-full bg-surface-container border border-border-subtle text-on-surface-variant text-[10px] uppercase font-code-label hover:text-primary transition-all">5★</button>
+                        <button data-val="4" class="chip px-md py-1 rounded-full bg-surface-container border border-border-subtle text-on-surface-variant text-[10px] uppercase font-code-label hover:text-primary transition-all">4★</button>
+                        <button data-val="3" class="chip px-md py-1 rounded-full bg-surface-container border border-border-subtle text-on-surface-variant text-[10px] uppercase font-code-label hover:text-primary transition-all">3★</button>
+                        <button data-val="2" class="chip px-md py-1 rounded-full bg-surface-container border border-border-subtle text-on-surface-variant text-[10px] uppercase font-code-label hover:text-primary transition-all">2★</button>
+                        <button data-val="1" class="chip px-md py-1 rounded-full bg-surface-container border border-border-subtle text-on-surface-variant text-[10px] uppercase font-code-label hover:text-primary transition-all">1★</button>
+                    </div>
+                </div>
+                @if (feedbackKind == "ai")
+                {
+                    <div class="flex items-center gap-sm">
+                        <span class="font-code-label text-[11px] uppercase text-on-surface-variant">Helpful</span>
+                        <div class="flex gap-xs" id="feedback-helpful">
+                            <button data-val="" class="chip active px-md py-1 rounded-full bg-primary-container/10 border border-primary-container text-primary-container font-code-label text-[10px] uppercase">All</button>
+                            <button data-val="true" class="chip px-md py-1 rounded-full bg-success/10 border border-success/40 text-success text-[10px] uppercase font-code-label hover:bg-success/20 transition-all">Helpful</button>
+                            <button data-val="false" class="chip px-md py-1 rounded-full bg-warning/10 border border-warning/40 text-warning text-[10px] uppercase font-code-label hover:bg-warning/20 transition-all">Not helpful</button>
+                        </div>
+                    </div>
+                }
+                @if (feedbackKind == "system")
+                {
+                    <div class="flex items-center gap-sm">
+                        <span class="font-code-label text-[11px] uppercase text-on-surface-variant">Status</span>
+                        <div class="flex gap-xs" id="feedback-status">
+                            <button data-val="" class="chip active px-md py-1 rounded-full bg-primary-container/10 border border-primary-container text-primary-container font-code-label text-[10px] uppercase">All</button>
+                            <button data-val="New" class="chip px-md py-1 rounded-full bg-warning/10 border border-warning/40 text-warning text-[10px] uppercase font-code-label hover:bg-warning/20 transition-all">New</button>
+                            <button data-val="Replied" class="chip px-md py-1 rounded-full bg-success/10 border border-success/40 text-success text-[10px] uppercase font-code-label hover:bg-success/20 transition-all">Replied</button>
+                        </div>
+                    </div>
+                }
+                <div class="ml-auto relative min-w-[300px]">
+                    <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+                    <input id="feedback-search" class="w-full bg-surface-container border-border-subtle border rounded-xl pl-4 pr-10 py-1.5 font-body-sm focus:ring-1 focus:ring-primary-container" placeholder="Search comments..." type="text" />
+                </div>
+            </section>
+<!-- Feedback Table -->
+<section class="glass-card rounded-2xl overflow-hidden">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-high/50 border-b border-border-subtle">
+<th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">User</th>
+<th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">Rating</th>
+<th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">Comment</th>
+<th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">Date</th>
+<th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">@(feedbackKind == "ai" ? "Helpful" : "Status")</th>
+<th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant text-right">Actions</th>
+</tr>
+</thead>
+<tbody id="feedback-table-body" class="font-body-sm text-on-surface">
+<tr><td colspan="6" class="text-center py-4">Loading...</td></tr>
+</tbody>
+</table>
+<div class="px-lg py-md flex items-center justify-between border-t border-border-subtle bg-surface-container/20">
+<p id="feedback-summary" class="font-code-label text-[11px] text-on-surface-variant uppercase">Loading feedback entries...</p>
+<div class="flex items-center gap-xs">
+<button id="feedback-prev" class="w-9 h-9 inline-flex items-center justify-center rounded-lg bg-surface-container border border-border-subtle text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors disabled:opacity-40 disabled:pointer-events-none" type="button"><span class="material-symbols-outlined text-[18px]">chevron_left</span></button>
+<span id="feedback-page" class="w-9 h-9 inline-flex items-center justify-center rounded-lg bg-primary-container text-on-primary-container font-code-label text-[11px] font-bold">1</span>
+<button id="feedback-next" class="w-9 h-9 inline-flex items-center justify-center rounded-lg bg-surface-container border border-border-subtle text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors disabled:opacity-40 disabled:pointer-events-none" type="button"><span class="material-symbols-outlined text-[18px]">chevron_right</span></button>
+</div>
+</div>
+</section>
+</div>
+
+    </main>
+
+    <!-- Side Detail Drawer -->
+<div class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] hidden opacity-0 transition-opacity duration-300" id="drawer-overlay" onclick="toggleDrawer(false)"></div>
+<aside class="fixed top-0 right-0 h-full w-[480px] z-[70] glass-card drawer-hidden side-drawer shadow-2xl flex flex-col" id="feedback-drawer">
+<!-- Drawer Header -->
+<div class="p-lg border-b border-border-subtle flex items-center justify-between">
+<h2 class="font-headline-md text-primary">Feedback Details</h2>
+<button class="p-2 rounded-full hover:bg-surface-container-high transition-colors text-on-surface-variant" onclick="toggleDrawer(false)">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<div class="flex-1 overflow-y-auto p-lg space-y-lg">
+<div class="flex items-start gap-md">
+    <div id="drawer-avatar" class="w-16 h-16 rounded-2xl border border-border-subtle bg-surface-container flex items-center justify-center font-bold text-xl">
+        --
+    </div>
+    <div class="space-y-1">
+        <h3 id="drawer-name" class="text-headline-md font-bold">--</h3>
+        <p class="text-on-surface-variant font-code-label text-[13px]" id="drawer-email">--</p>
+        <div class="flex gap-xs pt-1">
+            <span id="drawer-type" class="px-xs py-0.5 rounded bg-tertiary-container/10 border border-tertiary-container/30 text-tertiary font-code-label text-[10px] uppercase">--</span>
+            <span id="drawer-extra" class="text-on-surface-variant font-code-label text-[10px] uppercase py-0.5"></span>
+            <span id="drawer-date" class="text-on-surface-variant font-code-label text-[10px] uppercase py-0.5">--</span>
+        </div>
+    </div>
+</div>
+<!-- Ratings Section -->
+<div class="grid grid-cols-1 gap-md">
+    <div class="p-md rounded-xl bg-surface-container/50 border border-border-subtle space-y-sm">
+        <div class="flex justify-between items-center">
+            <span class="font-code-label text-[11px] uppercase text-on-surface-variant">Overall Rating</span>
+            <div id="drawer-rating" class="flex text-warning">
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Comment Box -->
+<div id="drawer-subject-section" class="space-y-sm hidden">
+    <span class="font-code-label text-[11px] uppercase text-on-surface-variant">Subject</span>
+    <div class="glass-card rounded-xl p-md inner-glow">
+        <p id="drawer-subject" class="font-body-md text-on-surface leading-relaxed">
+            --
+        </p>
+    </div>
+</div>
+<div class="space-y-sm">
+    <span class="font-code-label text-[11px] uppercase text-on-surface-variant">User Comment</span>
+    <div class="glass-card rounded-xl p-md inner-glow">
+        <p id="drawer-comment" class="font-body-md text-on-surface italic leading-relaxed">
+            --
+        </p>
+    </div>
+</div>
+<div id="drawer-replies-section" class="space-y-sm hidden">
+    <div class="flex items-center justify-between">
+        <span class="font-code-label text-[11px] uppercase text-on-surface-variant">Replies</span>
+        <span id="drawer-reply-count" class="text-on-surface-variant font-code-label text-[11px]">0</span>
+    </div>
+    <div id="drawer-replies" class="space-y-sm"></div>
+</div>
+<div class="space-y-sm">
+    <span class="font-code-label text-[11px] uppercase text-on-surface-variant">Status</span>
+    <div id="drawer-status-label"></div>
+</div>
+
+</div>
+</aside>
+
+
+    <script>
+        const API_BASE = '@feedbackApiBase';
+        const FEEDBACK_KIND = '@feedbackKind';
+        const token = '@token';
+
+        let currentPage = 1;
+        let pageSize = 10;
+        let totalPages = 1;
+        let searchTimer = null;
+        let lastItems = [];
+        let currentRating = '';
+        let currentHelpful = '';
+        let currentStatus = '';
+
+        document.addEventListener("DOMContentLoaded", () => {
+            document.getElementById('feedback-prev').addEventListener('click', () => {
+                if (currentPage > 1) {
+                    currentPage -= 1;
+                    fetchFeedbackList();
+                }
+            });
+
+            document.getElementById('feedback-next').addEventListener('click', () => {
+                if (currentPage < totalPages) {
+                    currentPage += 1;
+                    fetchFeedbackList();
+                }
+            });
+
+            document.getElementById('feedback-search').addEventListener('input', () => {
+                clearTimeout(searchTimer);
+                searchTimer = setTimeout(() => {
+                    currentPage = 1;
+                    fetchFeedbackList();
+                }, 300);
+            });
+
+            chipGroup('feedback-rating', v => { currentRating = v; });
+            chipGroup('feedback-helpful', v => { currentHelpful = v; });
+            chipGroup('feedback-status', v => { currentStatus = v; });
+
+            fetchFeedbackList();
+        });
+
+        function chipGroup(id, setter) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.addEventListener('click', (e) => {
+                const btn = e.target.closest('.chip'); if (!btn) return;
+                el.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+                btn.classList.add('active');
+                setter(btn.getAttribute('data-val'));
+                currentPage = 1;
+                fetchFeedbackList();
+            });
+        }
+
+        async function fetchFeedbackList() {
+            try {
+                const keyword = document.getElementById('feedback-search').value.trim();
+                const query = new URLSearchParams({
+                    page: currentPage,
+                    pageSize: pageSize
+                });
+                if (keyword) query.set('keyword', keyword);
+                if (currentRating) query.set('rating', currentRating);
+                if (FEEDBACK_KIND === 'ai' && currentHelpful !== '') query.set('isHelpful', currentHelpful);
+                if (FEEDBACK_KIND === 'system' && currentStatus) query.set('status', currentStatus);
+
+                const res = await fetch(`${API_BASE}?${query}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!res.ok) {
+                    throw new Error(`HTTP ${res.status}`);
+                }
+
+                const json = await res.json();
+
+                if (json.success) {
+                    lastItems = json.data.items || [];
+                    renderTable(lastItems);
+                    renderPagination(json.data);
+                } else {
+                    console.warn('Feedback list request was not successful:', json.message);
+                    renderFeedbackUnavailable();
+                    renderPagination({ page: currentPage, pageSize, totalItems: 0, totalPages: 1 });
+                }
+            } catch (err) {
+                console.error(err);
+                renderFeedbackUnavailable();
+                renderPagination({ page: currentPage, pageSize, totalItems: 0, totalPages: 1 });
+            }
+        }
+
+        function renderFeedbackUnavailable() {
+            document.getElementById('feedback-table-body').innerHTML = `<tr><td colspan="6" class="text-center py-4 text-on-surface-variant">Feedback is temporarily unavailable.</td></tr>`;
+        }
+
+        function renderTable(items) {
+            const tbody = document.getElementById('feedback-table-body');
+            if (!items || items.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-on-surface-variant">No feedback found.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = items.map(item => `
+                <tr class="border-b border-border-subtle/50 hover:bg-surface-container-high/30 transition-colors cursor-pointer group" onclick="openFeedbackDetail('${item.id}')">
+                    <td class="px-lg py-lg">
+                        <div class="flex items-center gap-sm">
+                            <div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary font-code-label">
+                                ${initial(item)}
+                            </div>
+                            <span class="font-semibold text-on-surface">${escapeHtml(userLabel(item))}</span>
+                        </div>
+                    </td>
+                    <td class="px-lg py-lg">
+                        <div class="flex text-warning">
+                            ${getStars(item.rating || 0)}
+                            <span class="ml-xs text-on-surface-variant font-code-label">${item.rating || 0}</span>
+                        </div>
+                    </td>
+                    <td class="px-lg py-lg max-w-xs">
+                        ${FEEDBACK_KIND === 'system' ? `<div class="flex items-center gap-xs mb-1">${getTypeBadge(getFeedbackType(item))}${item.replyCount ? `<span class="text-on-surface-variant text-[11px] font-code-label">Replies ${item.replyCount}</span>` : ''}</div>` : ''}
+                        <p class="truncate opacity-80 italic text-on-surface">"${escapeHtml(fixText(item.content || item.subject || ''))}"</p>
+                    </td>
+                    <td class="px-lg py-lg font-code-label text-on-surface-variant">${formatDate(item.createdAt)}</td>
+                    <td class="px-lg py-lg">
+                        ${FEEDBACK_KIND === 'ai' ? helpfulBadge(item.isHelpful) : getStatusBadge(item.status)}
+                    </td>
+                    <td class="px-lg py-lg text-right">
+                        <div class="flex justify-end gap-md">
+                            <button class="text-on-surface-variant hover:text-primary transition-colors" onclick="event.stopPropagation(); openFeedbackDetail('${item.id}')" title="View details"><span class="material-symbols-outlined text-[20px]">visibility</span></button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function openFeedbackDetail(id) {
+            toggleDrawer(true);
+            document.getElementById('drawer-comment').innerText = 'Loading...';
+
+            try {
+                if (FEEDBACK_KIND === 'ai') {
+                    const item = lastItems.find(x => String(x.id).toLowerCase() === String(id).toLowerCase());
+                    if (item) renderDrawer(item);
+                    return;
+                }
+
+                const cached = lastItems.find(x => String(x.id).toLowerCase() === String(id).toLowerCase());
+                const res = await fetch(`${API_BASE}/${id}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const json = await res.json();
+                if (json.success && json.data) {
+                    renderDrawer(mergeFeedback(cached, json.data));
+                }
+            } catch(e) {
+                console.error(e);
+                document.getElementById('drawer-comment').innerText = 'Failed to load details.';
+            }
+        }
+
+        function renderDrawer(item) {
+            document.getElementById('drawer-name').innerText = userLabel(item);
+            document.getElementById('drawer-avatar').innerText = initial(item);
+            document.getElementById('drawer-email').innerText = item.userEmail || 'No email available';
+            document.getElementById('drawer-type').innerText = getFeedbackType(item);
+            document.getElementById('drawer-extra').innerText = FEEDBACK_KIND === 'ai'
+                ? (item.sessionId ? `Session ${String(item.sessionId).substring(0, 8)}` : '')
+                : (item.replyCount ? `${item.replyCount} replies` : '');
+            document.getElementById('drawer-date').innerText = formatDate(item.createdAt);
+            document.getElementById('drawer-rating').innerHTML = getStars(item.rating || 0);
+            const isSystem = FEEDBACK_KIND === 'system';
+            document.getElementById('drawer-subject-section').classList.toggle('hidden', !isSystem);
+            document.getElementById('drawer-replies-section').classList.toggle('hidden', !isSystem);
+            document.getElementById('drawer-subject').innerText = fixText(item.subject || '(no subject)');
+            document.getElementById('drawer-comment').innerText = `"${fixText(item.content || item.subject || '')}"`;
+            document.getElementById('drawer-status-label').innerHTML = FEEDBACK_KIND === 'ai' ? helpfulBadge(item.isHelpful) : getStatusBadge(item.status);
+            renderReplies(item);
+        }
+
+        function mergeFeedback(cached, detail) {
+            if (!cached) return detail;
+            return {
+                ...detail,
+                userFullName: detail.userFullName || cached.userFullName,
+                userEmail: detail.userEmail || cached.userEmail,
+                isHelpful: detail.isHelpful ?? cached.isHelpful,
+                sessionId: detail.sessionId || cached.sessionId,
+                replyCount: detail.replyCount ?? cached.replyCount
+            };
+        }
+
+        function getFeedbackType(item) {
+            if (FEEDBACK_KIND === 'ai') return 'AI';
+            return item.category || 'System';
+        }
+
+        function getTypeBadge(type) {
+            const t = (type || 'System').toLowerCase();
+            if (t === 'interview') {
+                return `<span class="px-xs py-0.5 rounded bg-secondary-container/10 border border-secondary-container/30 text-secondary font-code-label text-[10px] uppercase">Interview</span>`;
+            }
+            return `<span class="px-xs py-0.5 rounded bg-tertiary-container/10 border border-tertiary-container/30 text-tertiary font-code-label text-[10px] uppercase">${escapeHtml(type || 'System')}</span>`;
+        }
+
+        function getStatusBadge(status) {
+            const s = normalizeStatus(status).toLowerCase();
+            if (s === 'resolved') return `<span class="px-xs py-1 rounded-full bg-success/10 border border-success/30 text-success text-[10px] font-bold uppercase tracking-tighter">Resolved</span>`;
+            if (s === 'replied') return `<span class="px-xs py-1 rounded-full bg-success/10 border border-success/30 text-success text-[10px] font-bold uppercase tracking-tighter">Replied</span>`;
+            return `<span class="px-xs py-1 rounded-full bg-warning/10 border border-warning/30 text-warning text-[10px] font-bold uppercase tracking-tighter">New</span>`;
+        }
+
+        function normalizeStatus(status) {
+            if (!status || status.toLowerCase() === 'new' || status.toLowerCase() === 'inreview') return 'New';
+            return status;
+        }
+
+        function userLabel(item) {
+            return item.userFullName || item.userEmail || 'Unknown user';
+        }
+
+        function initial(item) {
+            const label = userLabel(item);
+            return label && label.trim() ? label.trim()[0].toUpperCase() : 'U';
+        }
+
+        function helpfulBadge(value) {
+            if (value === true) return `<span class="px-xs py-1 rounded-full bg-success/10 border border-success/30 text-success text-[10px] font-bold uppercase tracking-tighter">Yes</span>`;
+            if (value === false) return `<span class="px-xs py-1 rounded-full bg-warning/10 border border-warning/30 text-warning text-[10px] font-bold uppercase tracking-tighter">No</span>`;
+            return `<span class="text-on-surface-variant">--</span>`;
+        }
+
+        function renderReplies(item) {
+            const section = document.getElementById('drawer-replies-section');
+            if (FEEDBACK_KIND !== 'system') {
+                section.classList.add('hidden');
+                return;
+            }
+
+            const replies = item.replies || [];
+            document.getElementById('drawer-reply-count').innerText = `${replies.length}`;
+            const box = document.getElementById('drawer-replies');
+            if (!replies.length) {
+                box.innerHTML = `<p class="text-on-surface-variant text-[12px] italic">No replies yet.</p>`;
+                return;
+            }
+
+            box.innerHTML = replies.map(reply => `
+                <div class="glass-card rounded-xl p-md">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="font-code-label text-[11px] text-primary uppercase">${escapeHtml(reply.repliedByName || 'Admin')}</span>
+                        <span class="text-on-surface-variant text-[11px] font-code-label">${formatDate(reply.createdAt || reply.repliedAt)}</span>
+                    </div>
+                    <p class="text-on-surface text-[13px] leading-relaxed">${escapeHtml(fixText(reply.replyContent || reply.content || ''))}</p>
+                </div>
+            `).join('');
+        }
+
+        function fixText(value) {
+            const text = String(value || '');
+            const looksMojibake = [...text].some(ch => {
+                const code = ch.charCodeAt(0);
+                return code >= 0x00C0 && code <= 0x00FF;
+            });
+
+            if (!looksMojibake) return text;
+
+            try {
+                const windows1252 = {
+                    0x20AC: 0x80, 0x201A: 0x82, 0x0192: 0x83, 0x201E: 0x84,
+                    0x2026: 0x85, 0x2020: 0x86, 0x2021: 0x87, 0x02C6: 0x88,
+                    0x2030: 0x89, 0x0160: 0x8A, 0x2039: 0x8B, 0x0152: 0x8C,
+                    0x017D: 0x8E, 0x2018: 0x91, 0x2019: 0x92, 0x201C: 0x93,
+                    0x201D: 0x94, 0x2022: 0x95, 0x2013: 0x96, 0x2014: 0x97,
+                    0x02DC: 0x98, 0x2122: 0x99, 0x0161: 0x9A, 0x203A: 0x9B,
+                    0x0153: 0x9C, 0x017E: 0x9E, 0x0178: 0x9F
+                };
+                const bytes = Uint8Array.from([...text].map(ch => {
+                    const code = ch.charCodeAt(0);
+                    return windows1252[code] || (code & 255);
+                }));
+                return new TextDecoder('utf-8').decode(bytes);
+            } catch {
+                return text;
+            }
+        }
+
+        function renderPagination(data) {
+            totalPages = Math.max(data.totalPages || 1, 1);
+            const totalItems = data.totalItems || 0;
+            const page = data.page || currentPage;
+            const size = data.pageSize || pageSize;
+            const start = totalItems === 0 ? 0 : ((page - 1) * size) + 1;
+            const end = Math.min(page * size, totalItems);
+
+            document.getElementById('feedback-summary').innerText = `Showing ${start}-${end} of ${totalItems} feedback entries`;
+            document.getElementById('feedback-page').innerText = `${page}`;
+            document.getElementById('feedback-prev').disabled = page <= 1;
+            document.getElementById('feedback-next').disabled = page >= totalPages;
+        }
+
+        function getStars(num) {
+            let s = '';
+            for(let i=1; i<=5; i++) {
+                s += `<span class="material-symbols-outlined text-[18px]" ${i <= num ? `style="font-variation-settings: 'FILL' 1;"` : ''}>star</span>`;
+            }
+            return s;
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return '';
+            const d = new Date(dateString);
+            const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+            return `${months[d.getMonth()]} ${d.getDate().toString().padStart(2, '0')}`;
+        }
+
+        function escapeHtml(unsafe) {
+            return (unsafe||'').replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        function toggleDrawer(show) {
+            const drawer = document.getElementById('feedback-drawer');
+            const overlay = document.getElementById('drawer-overlay');
+            if (show) {
+                drawer.classList.remove('drawer-hidden');
+                overlay.classList.remove('hidden');
+                setTimeout(() => overlay.classList.add('opacity-100'), 10);
+                document.body.style.overflow = 'hidden';
+            } else {
+                drawer.classList.add('drawer-hidden');
+                overlay.classList.remove('opacity-100');
+                setTimeout(() => {
+                    overlay.classList.add('hidden');
+                    document.body.style.overflow = 'auto';
+                }, 300);
+            }
+        }
+    </script>
+
+</body>
+</html>

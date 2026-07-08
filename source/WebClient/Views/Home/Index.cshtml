@@ -1,0 +1,193 @@
+@{
+    Layout = null;
+    // Same login check as _Navbar.cshtml: logged in -> Interview, not logged in -> Login.
+    var homeLoggedIn = !string.IsNullOrEmpty(Context.Request.Cookies["access_token"]);
+    var ctaController = homeLoggedIn ? "Interview" : "Auth";
+    var ctaAction = homeLoggedIn ? "Index" : "Login";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DevPrep | AI-Powered Engineering Prep</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@@100..900&family=JetBrains+Mono:wght@@500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="~/css/home.css" asp-append-version="true" />
+</head>
+<body class="home-page">
+    <!-- Ambient Background -->
+    <div class="hm-ambient">
+        <div class="hm-blob hm-blob-1"></div>
+        <div class="hm-blob hm-blob-2"></div>
+    </div>
+
+    @await Html.PartialAsync("_Navbar")
+
+    <main class="hm-main">
+        <!-- Hero -->
+        <section class="hm-hero-v2">
+            <div class="row g-5 align-items-center">
+                <!-- Hero Left -->
+                <div class="col-lg-6">
+                    <div class="hm-badge-inline">
+                        <span class="material-symbols-outlined">bolt</span>
+                        <span>AI-Powered Engineering Prep</span>
+                    </div>
+                    <h1 class="hm-hero-title">Master Technical Interviews with <span class="hm-text-gradient">AI</span></h1>
+                    <p class="hm-hero-lead">
+                        The only high-performance platform designed by elite engineers to help you conquer coding,
+                        system design, and behavioral interviews through real-time AI feedback.
+                    </p>
+                    <div class="hm-hero-actions-v2">
+                        <a class="hm-btn primary-btn-gradient" asp-controller="@ctaController" asp-action="@ctaAction">
+                            <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">rocket_launch</span>
+                            Start Interview Session
+                        </a>
+                        <a class="hm-btn hm-btn-outline" asp-controller="Payment" asp-action="Index">View Pricing Plans</a>
+                    </div>
+                    <div class="hm-flow">Register → Login → Purchase Credits → Start Interview</div>
+                    <div class="hm-trust">
+                        <div class="hm-trust-avatars">
+                            <img alt="User" src="https://lh3.googleusercontent.com/aida-public/AB6AXuALh24lwdLGbyyHz4qjKqHHR0jL15udqM-5oqEvWhXfmX7ruT2CmAE5TfptxEg5-SlNL93WrQoRfJdzc0TCKZpg6m8gFAA70HqH22igMUcCo9_H-VzRjaxQX9OrM-oBPle7uHhHUgvrNA5Nkt6bP6vkTqvIN362WC6sbX8wSPkPXaPspEBhKDP7DnoM5WbLjMb626_WS9qHOmKTJUyUJIYhoNcs0IRGyscE1ndjfRR7Ef4FK-E2MxKZcVOJY7jdRRWF1qRvMz3T49E">
+                            <img alt="User" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBNoJDM321kRCgej1mIPS3NkKE3zrCeV9R_UV6HcthJ0jsL_VtTmKXvzxEDosSS928f0RHnh12dp9kWquxJS4jRkKB_PfDC03haTr0Bn1tpSxdFRMmTRw5JuaJ5EdnhpcKH9PDnolcJfvbTlWRtUQwQEM3kB4RyMSeAjuLKLh5kt-6GgUpaWoQnhb0b534d3Aot3TTfe4ticIzUpv7XKQHgNAEsDwqKuRWmE1P1Zms3O6BIoTY4rjh4C7KMlc1vkOqi8eOYgFis0sE">
+                            <div class="hm-trust-more">+2k</div>
+                        </div>
+                        <span>Trusted by 2,000+ engineers</span>
+                    </div>
+                </div>
+                <!-- Hero Right -->
+                <div class="col-lg-6">
+                    <div class="hm-hero-visual">
+                        <div class="hm-glow-purple"></div>
+                        <div class="glass-card hm-hero-card">
+                            <img alt="Dashboard Screenshot" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAwTqYUSeX9BYW2slzry9YaM8WezcKkVPjXs218bhuyN62P7IbQu0Eqrm2icW24Oshg0i4P0sHuEYBLs_v9JmLB7AfEOGmHcye_0tjl25qN7sLjg1DrC3m1YnncAgcDR10CNAtXvMCXo5dbDgiQQ2n8bSwecEIb6nuahXlK07C6qbW71HZyIiSQz9c3RAv7Sdki8a8gdxBCj-5WpTEqwhwATQzb-IXtbIOodnpeghlCcmxSHrcD1JWXHTnf_X729lJj-eIUEIrRKM8">
+                            <div class="hm-hero-badge">
+                                <span class="hm-pulse-dot"></span>
+                                <span>AI Listening...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Stats Bar (full width) -->
+        <section class="hm-stats-bar">
+            <div class="hm-stats-inner">
+                <div class="hm-stat">
+                    <span class="hm-stat-num">98%</span>
+                    <span class="hm-stat-label">Success Rate</span>
+                </div>
+                <div class="hm-stat-div"></div>
+                <div class="hm-stat">
+                    <span class="hm-stat-num">50k+</span>
+                    <span class="hm-stat-label">Sessions</span>
+                </div>
+                <div class="hm-stat-div"></div>
+                <div class="hm-stat">
+                    <span class="hm-stat-num">150+</span>
+                    <span class="hm-stat-label">Role Types</span>
+                </div>
+                <div class="hm-stat-div"></div>
+                <div class="hm-stat">
+                    <span class="hm-stat-num">12ms</span>
+                    <span class="hm-stat-label">AI Latency</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features Bento Grid -->
+        <section class="hm-section">
+            <div class="hm-section-head">
+                <h2>Why Choose DevPrep AI</h2>
+                <p>Explore all features on the <a asp-controller="News" asp-action="Index">News page</a>.</p>
+            </div>
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="glass-card hm-feature">
+                        <div class="hm-feature-icon" style="background:rgba(79,70,229,.2);">
+                            <span class="material-symbols-outlined" style="color:#e2dfff;">search_check</span>
+                        </div>
+                        <h3>CV Semantic Analyzer</h3>
+                        <p>AI-powered parsing that maps your experience to target role competencies for perfect alignment.</p>
+                        <a class="hm-link" href="#">Learn More <span class="material-symbols-outlined">arrow_forward</span></a>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="glass-card hm-feature">
+                        <div class="hm-feature-icon" style="background:rgba(76,215,246,.2);">
+                            <span class="material-symbols-outlined" style="color:#4cd7f6;">mic</span>
+                        </div>
+                        <h3>Immersive Mock Interviews</h3>
+                        <p>Voice-activated real-time sessions that simulate actual high-pressure tech interview environments.</p>
+                        <a class="hm-link" href="#">Learn More <span class="material-symbols-outlined">arrow_forward</span></a>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="glass-card hm-feature">
+                        <div class="hm-feature-icon" style="background:rgba(208,188,255,.2);">
+                            <span class="material-symbols-outlined" style="color:#d0bcff;">shield</span>
+                        </div>
+                        <h3>Interview Integrity System</h3>
+                        <p>Advanced anti-cheat and verification protocols ensuring a fair and credible preparation cycle.</p>
+                        <a class="hm-link" href="#">Learn More <span class="material-symbols-outlined">arrow_forward</span></a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- How It Works Timeline -->
+        <section class="hm-section">
+            <div class="hm-timeline">
+                <div class="hm-timeline-line"></div>
+                <div class="hm-step">
+                    <div class="hm-step-num active">1</div>
+                    <div class="hm-step-title">Register &amp; Login</div>
+                    <p>Create your dev profile in seconds.</p>
+                </div>
+                <div class="hm-step">
+                    <div class="hm-step-num">2</div>
+                    <div class="hm-step-title">Purchase Credits</div>
+                    <p>Flexible pay-as-you-prep model.</p>
+                </div>
+                <div class="hm-step">
+                    <div class="hm-step-num">3</div>
+                    <div class="hm-step-title">Select Role</div>
+                    <p>Target specific FAANG/Startup roles.</p>
+                </div>
+                <div class="hm-step">
+                    <div class="hm-step-num">4</div>
+                    <div class="hm-step-title">Start Interview</div>
+                    <p>Engage with our lifelike AI interviewer.</p>
+                </div>
+                <div class="hm-step">
+                    <div class="hm-step-num">5</div>
+                    <div class="hm-step-title">Review &amp; Improve</div>
+                    <p>Get actionable behavioral feedback.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- CTA Banner -->
+        <section class="hm-section">
+            <div class="glass-card hm-cta">
+                <h2>Ready to Ace Your Next Interview?</h2>
+                <p>
+                    Join thousands of engineers who used DevPrep to secure offers at world-class technology companies.
+                    Your dream career starts with a single session.
+                </p>
+                <a class="hm-btn primary-btn-gradient" asp-controller="@ctaController" asp-action="@ctaAction">
+                    <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">rocket_launch</span>
+                    Start Interview Session
+                </a>
+            </div>
+        </section>
+    </main>
+
+    @await Html.PartialAsync("_Footer")
+</body>
+</html>

@@ -1,0 +1,5 @@
+@NotificationAPI_HostAddress = http://localhost:7010
+
+GET {{NotificationAPI_HostAddress}}/health/
+Accept: application/json
+

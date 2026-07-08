@@ -1,0 +1,534 @@
+@model WebClient.Models.Shared.PagedResult<WebClient.Models.Manager.QuestionBankListItemViewModel>
+
+@{
+    Layout = null;
+    ViewData["Title"] = "Question Repository";
+
+    var pageIndex = Model.PageIndex > 0 ? Model.PageIndex : 1;
+    var pageSize = Model.PageSize > 0 ? Model.PageSize : 10;
+    var totalCount = Model.TotalCount;
+    var totalPages = Model.TotalPages > 0 ? Model.TotalPages : 1;
+
+    var startItem = totalCount == 0 ? 0 : ((pageIndex - 1) * pageSize) + 1;
+    var endItem = Math.Min(pageIndex * pageSize, totalCount);
+
+    string BuildPageUrl(int page)
+    {
+        var values = new Dictionary<string, string?>
+                {
+                    ["keyword"] = ViewBag.Keyword,
+                    ["questionType"] = ViewBag.QuestionType,
+                    ["level"] = ViewBag.Level,
+                    ["difficulty"] = ViewBag.Difficulty,
+                    ["status"] = ViewBag.Status,
+                    ["categoryId"] = ViewBag.CategoryId?.ToString(),
+                    ["page"] = page.ToString(),
+                    ["pageSize"] = pageSize.ToString()
+                };
+
+        return Microsoft.AspNetCore.WebUtilities.QueryHelpers.AddQueryString("/Manager/QuestionBank", values);
+    }
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Question Repository - DevPrep AI Manager Console</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+    <style>
+        :root {
+            --bg-main: #0f1424;
+            --bg-panel: #111827;
+            --bg-panel-2: #151f36;
+            --bg-head: #171a24;
+            --border-main: #252b3d;
+            --text-main: #ffffff;
+            --text-muted: #9ca3af;
+            --text-blue: #93c5fd;
+            --primary: #6366f1;
+            --danger: #ff5d7a;
+            --success: #10b981;
+            --warning: #f59e0b;
+        }
+
+        body {
+            background: var(--bg-main);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+        }
+
+        .admin-main-wrapper {
+            margin-left: 260px;
+            padding-top: 78px;
+            min-height: 100vh;
+            background: var(--bg-main);
+        }
+
+        .admin-content {
+            padding: 28px 28px 60px;
+        }
+
+        .page-title {
+            font-size: 30px;
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            margin-bottom: 4px;
+        }
+
+        .page-subtitle {
+            color: var(--text-blue);
+            font-size: 14px;
+            margin-bottom: 0;
+        }
+
+        .filter-card {
+            border: 1px solid var(--border-main);
+            background: rgba(17, 24, 39, 0.95);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 18px;
+        }
+
+        .filter-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--text-blue);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 7px;
+        }
+
+        .admin-input,
+        .admin-select {
+            height: 42px;
+            border-radius: 7px;
+            border: 1px solid #30384e;
+            background: #0f1322;
+            color: #ffffff;
+            font-size: 14px;
+            box-shadow: none !important;
+        }
+
+        .admin-input:focus,
+        .admin-select:focus {
+            border-color: var(--primary);
+            background: #0f1322;
+            color: #ffffff;
+        }
+
+        .admin-input::placeholder {
+            color: #64748b;
+        }
+        
+        .btn-filter {
+            height: 42px;
+            width: 100%;
+            border: none;
+            border-radius: 7px;
+            background: #35304f;
+            color: #ffffff;
+            font-weight: 800;
+        }
+
+        .btn-filter:hover {
+            background: #4f46e5;
+            color: #ffffff;
+        }
+
+        .btn-clear {
+            height: 42px;
+            width: 100%;
+            border-radius: 7px;
+            border: 1px solid #30384e;
+            background: transparent;
+            color: #cbd5e1;
+            font-weight: 700;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-clear:hover {
+            background: rgba(255, 255, 255, 0.06);
+            color: #ffffff;
+        }
+
+        .table-shell {
+            border: 1px solid var(--border-main);
+            background: var(--bg-panel);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .admin-table {
+            width: 100%;
+            margin: 0;
+            color: #dbeafe;
+            --bs-table-bg: #111827;
+            --bs-table-color: #dbeafe;
+            --bs-table-border-color: #242b3e;
+            --bs-table-hover-bg: #151f36;
+            --bs-table-hover-color: #ffffff;
+        }
+
+        .admin-table thead th {
+            background: #171a24 !important;
+            color: #a9c7f5 !important;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            border-bottom: 1px solid var(--border-main);
+            padding: 15px 14px;
+            white-space: nowrap;
+        }
+
+        .admin-table tbody tr {
+            background: #111827 !important;
+        }
+
+        .admin-table tbody td {
+            background: #111827 !important;
+            color: #dbeafe !important;
+            border-bottom: 1px solid #242b3e;
+            padding: 16px 14px;
+            vertical-align: middle;
+            font-size: 14px;
+        }
+
+        .admin-table tbody tr:hover td {
+            background: #151f36 !important;
+        }
+
+        .question-title {
+            color: #ffffff;
+            font-weight: 800;
+            max-width: 560px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .question-meta {
+            color: var(--text-muted);
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 7px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        .pill-type { background: rgba(14, 165, 233, 0.16); color: #7dd3fc; }
+        .pill-level { background: rgba(99, 102, 241, 0.16); color: #c4b5fd; }
+        .pill-easy { background: rgba(16, 185, 129, 0.14); color: #34d399; }
+        .pill-medium { background: rgba(245, 158, 11, 0.16); color: #fbbf24; }
+        .pill-hard { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+        .pill-tech { background: rgba(148, 163, 184, 0.14); color: #cbd5e1; }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 7px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .status-active { background: rgba(16, 185, 129, 0.14); color: #34d399; }
+        .status-draft { background: rgba(148, 163, 184, 0.14); color: #cbd5e1; }
+        .status-archived, .status-deleted { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+
+        .action-btn {
+            width: 34px;
+            height: 34px;
+            border: none;
+            background: transparent;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            transition: 0.15s ease;
+            text-decoration: none;
+        }
+
+        .action-btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .action-view { color: #93c5fd; }
+
+        .empty-row {
+            height: 140px;
+            color: #cbd5e1;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .table-footer {
+            padding: 14px 16px;
+            color: #cbd5e1;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            border-top: 1px solid #242b3e;
+            background: #111827;
+        }
+
+        .pager {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .pager a,
+        .pager span {
+            min-width: 34px;
+            height: 34px;
+            border-radius: 7px;
+            border: 1px solid #30384e;
+            color: #cbd5e1;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .pager .active-page {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: #ffffff;
+        }
+
+        .error-box {
+            border: 1px solid rgba(239, 68, 68, 0.45);
+            background: rgba(239, 68, 68, 0.08);
+            color: #fecaca;
+            border-radius: 10px;
+            padding: 13px 16px;
+            margin-bottom: 18px;
+            font-weight: 700;
+        }
+
+        @@media (max-width: 991.98px) {
+            .admin-main-wrapper {
+                margin-left: 0;
+                padding-top: 70px;
+            }
+
+            .admin-content {
+                padding: 20px 14px 50px;
+            }
+
+            .table-footer {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body class="admin-page">
+    @await Html.PartialAsync("_ManagerTopbar")
+    @await Html.PartialAsync("_ManagerSidebar")
+
+    <main class="admin-main-wrapper">
+        <div class="admin-content">
+            <div class="d-flex align-items-start justify-content-between gap-3 mb-4">
+                <div>
+                    <h1 class="page-title">Question Repository</h1>
+                    <p class="page-subtitle">View interview questions, categories, difficulty levels and publishing status.</p>
+                </div>
+            </div>
+
+            <form method="get" action="/Manager/QuestionBank" class="filter-card">
+                <div class="row g-3 align-items-end">
+                    <div class="col-12 col-lg-4">
+                        <label class="filter-label">Search</label>
+                        <input name="keyword" value="@ViewBag.Keyword" type="text" class="form-control admin-input" placeholder="Search questions..." onkeypress="if(event.key === 'Enter') this.form.submit();" />
+                    </div>
+
+                    <div class="col-6 col-md-3 col-lg-2">
+                        <label class="filter-label">Level</label>
+                        <select name="level" class="form-select admin-select" onchange="this.form.submit()">
+                            <option value="">All Levels</option>
+                            <option value="Intern" selected="@(ViewBag.Level == "Intern")">Intern</option>
+                            <option value="Fresher" selected="@(ViewBag.Level == "Fresher")">Fresher</option>
+                            <option value="Junior" selected="@(ViewBag.Level == "Junior")">Junior</option>
+                            <option value="Middle" selected="@(ViewBag.Level == "Middle")">Middle</option>
+                            <option value="Senior" selected="@(ViewBag.Level == "Senior")">Senior</option>
+                        </select>
+                    </div>
+
+                    <div class="col-6 col-md-3 col-lg-2">
+                        <label class="filter-label">Tech Stack</label>
+                        <select name="questionType" class="form-select admin-select" onchange="this.form.submit()">
+                            <option value="">All Tech Stacks</option>
+                            <option value="Java" selected="@(ViewBag.QuestionType == "Java")">Java</option>
+                            <option value=".NET" selected="@(ViewBag.QuestionType == ".NET")">.NET</option>
+                            <option value="React" selected="@(ViewBag.QuestionType == "React")">React</option>
+                            <option value="NodeJS" selected="@(ViewBag.QuestionType == "NodeJS")">NodeJS</option>
+                            <option value="AI" selected="@(ViewBag.QuestionType == "AI")">AI</option>
+                        </select>
+                    </div>
+
+                    <div class="col-6 col-md-3 col-lg-2">
+                        <label class="filter-label">Category</label>
+                        <select name="categoryId" class="form-select admin-select" onchange="this.form.submit()">
+                            <option value="">All Categories</option>
+                            <option value="00000000-0000-0000-0000-000000000001" selected="@(ViewBag.CategoryId?.ToString() == "00000000-0000-0000-0000-000000000001")">DSA</option>
+                            <option value="00000000-0000-0000-0000-000000000002" selected="@(ViewBag.CategoryId?.ToString() == "00000000-0000-0000-0000-000000000002")">System Design</option>
+                            <option value="00000000-0000-0000-0000-000000000003" selected="@(ViewBag.CategoryId?.ToString() == "00000000-0000-0000-0000-000000000003")">Behavioral</option>
+                            <option value="00000000-0000-0000-0000-000000000004" selected="@(ViewBag.CategoryId?.ToString() == "00000000-0000-0000-0000-000000000004")">Framework</option>
+                        </select>
+                    </div>
+
+                    <div class="col-6 col-md-3 col-lg-2">
+                        <label class="filter-label">Status</label>
+                        <select name="status" class="form-select admin-select" onchange="this.form.submit()">
+                            <option value="">All Status</option>
+                            <option value="Active" selected="@(ViewBag.Status == "Active")">Active</option>
+                            <option value="Inactive" selected="@(ViewBag.Status == "Inactive")">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row g-3 mt-1">
+                    <div class="col-12 col-md-6 col-lg-2 offset-lg-8">
+                        <button class="btn-filter" type="submit">Apply Filter</button>
+                    </div>
+                    <div class="col-12 col-md-6 col-lg-2">
+                        <a class="btn-clear" href="/Manager/QuestionBank">Clear</a>
+                    </div>
+                </div>
+            </form>
+
+            <div class="table-shell">
+                <div class="table-responsive">
+                    <table class="table admin-table align-middle">
+                        <thead>
+                            <tr>
+                                <th style="width: 40%;">Question</th>
+                                <th style="width: 10%;">Level</th>
+                                <th style="width: 12%;">Tech Stack</th>
+                                <th style="width: 13%;">Category</th>
+                                <th style="width: 10%;">Status</th>
+                                <th style="width: 8%;" class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.Items != null && Model.Items.Any())
+                            {
+                                foreach (var item in Model.Items)
+                                {
+                                    var statusClass = (item.Status ?? string.Empty).ToLowerInvariant() switch
+                                    {
+                                        "active" => "status-active",
+                                        "draft" => "status-draft",
+                                        "archived" => "status-archived",
+                                        "deleted" => "status-deleted",
+                                        _ => "status-draft"
+                                    };
+
+                                    <tr>
+                                        <td>
+                                            <div class="question-title">@item.Content</div>
+                                            <div class="question-meta">@(string.IsNullOrEmpty(item.Tags) ? "No tags" : item.Tags)</div>
+                                        </td>
+                                        <td><span class="pill pill-level">@item.Level</span></td>
+                                        <td><span class="pill pill-tech">@(string.IsNullOrEmpty(item.TechStack) ? "All" : item.TechStack)</span></td>
+                                        <td>@(string.IsNullOrEmpty(item.CategoryName) ? "N/A" : item.CategoryName)</td>
+                                        <td>
+                                            <span class="status-badge @statusClass">
+                                                <span style="font-size: 8px;">●</span>
+                                                @(item.Status ?? "Unknown")
+                                            </span>
+                                        </td>
+                                        <td class="text-end">
+                                            <a class="action-btn action-view"
+                                               href="/Manager/QuestionBank/@item.QuestionId"
+                                               title="View details">
+                                                <i class="fa-regular fa-eye"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="6" class="empty-row">
+                                        <i class="fa-regular fa-folder-open d-block mb-2" style="font-size: 28px;"></i>
+                                        No questions found.
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="table-footer">
+                    <div>
+                        Showing <strong>@startItem</strong>-<strong>@endItem</strong> of <strong>@totalCount</strong> questions
+                    </div>
+
+                    @if (totalPages > 1)
+                    {
+                        var prevPage = pageIndex <= 1 ? 1 : pageIndex - 1;
+                        var nextPage = pageIndex >= totalPages ? totalPages : pageIndex + 1;
+
+                        <div class="pager">
+                            <a href="@BuildPageUrl(prevPage)">
+                                <i class="fa-solid fa-chevron-left"></i>
+                            </a>
+
+                            @for (var i = 1; i <= totalPages; i++)
+                            {
+                                if (i == pageIndex)
+                                {
+                                    <span class="active-page">@i</span>
+                                }
+                                else
+                                {
+                                    <a href="@BuildPageUrl(i)">@i</a>
+                                }
+                            }
+
+                            <a href="@BuildPageUrl(nextPage)">
+                                <i class="fa-solid fa-chevron-right"></i>
+                            </a>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

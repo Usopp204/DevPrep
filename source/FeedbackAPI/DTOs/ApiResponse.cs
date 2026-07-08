@@ -1,0 +1,17 @@
+namespace FeedbackAPI.DTOs;
+
+/// <summary>
+/// Bao bọc kết quả trả về cho client: success/message/data — đồng bộ với các service khác.
+/// </summary>
+public class ApiResponse<T>
+{
+    public bool Success { get; set; }
+    public string? Message { get; set; }
+    public T? Data { get; set; }
+
+    public static ApiResponse<T> Ok(T data, string? message = null) =>
+        new() { Success = true, Data = data, Message = message };
+
+    public static ApiResponse<T> Fail(string message) =>
+        new() { Success = false, Message = message };
+}

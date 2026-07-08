@@ -1,0 +1,34 @@
+# --- API ---
+fastapi>=0.115
+uvicorn[standard]>=0.30
+pydantic>=2.7
+pydantic-settings
+python-dotenv
+python-multipart>=0.0.9      # UploadFile (voice answer)
+
+# --- CV/JD parsing ---
+pymupdf
+python-docx
+pdf2image
+pytesseract
+
+# --- Retrieval / embeddings (chroma_store.py) ---
+chromadb>=0.5
+sentence-transformers>=3.0
+
+# --- Models (interviewer.py, CV/JD parser) ---
+# Install torch matching your CUDA build, e.g. from https://pytorch.org for WSL+NVIDIA.
+torch>=2.3
+transformers>=4.51.0
+accelerate>=0.33
+bitsandbytes
+huggingface_hub
+peft>=0.12                   # only if gemma-2b-devprep-sft is a LoRA adapter
+
+# --- Evaluator judge: Gemini (evaluator.py) ---
+google-genai>=1.0
+
+# --- Voice (voice.py) ---
+deepgram-sdk>=6.0
+elevenlabs>=1.0
+

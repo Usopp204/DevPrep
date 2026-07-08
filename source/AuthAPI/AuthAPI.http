@@ -1,0 +1,5 @@
+@AuthAPI_HostAddress = http://localhost:7001
+
+GET {{AuthAPI_HostAddress}}/health/
+Accept: application/json
+

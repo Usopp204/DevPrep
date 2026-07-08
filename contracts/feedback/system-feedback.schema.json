@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "devprep/contracts/feedback/system-feedback.schema.json",
+  "title": "SystemFeedback",
+  "type": "object",
+  "required": ["overallRating"],
+  "properties": {
+    "overallRating": { "type": "integer", "minimum": 1, "maximum": 5 },
+    "uiUxRating": { "type": "integer", "minimum": 1, "maximum": 5 },
+    "performanceRating": { "type": "integer", "minimum": 1, "maximum": 5 },
+    "trustRating": { "type": "integer", "minimum": 1, "maximum": 5 },
+    "comment": { "type": "string" }
+  },
+  "additionalProperties": false
+}

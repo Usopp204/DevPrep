@@ -1,0 +1,5 @@
+@NewsAPI_HostAddress = http://localhost:7009
+
+GET {{NewsAPI_HostAddress}}/health/
+Accept: application/json
+

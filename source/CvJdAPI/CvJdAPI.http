@@ -1,0 +1,5 @@
+@CvJdAPI_HostAddress = http://localhost:7003
+
+GET {{CvJdAPI_HostAddress}}/health/
+Accept: application/json
+
