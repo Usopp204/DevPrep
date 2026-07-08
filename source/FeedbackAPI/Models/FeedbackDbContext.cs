@@ -21,16 +21,6 @@ public partial class FeedbackDbContext : DbContext
 
     public virtual DbSet<SystemFeedback> SystemFeedbacks { get; set; }
 
-    // Guard IsConfigured: khi chạy thật, options đã được DI cấu hình từ appsettings (có Encrypt=False)
-    // nên KHÔNG ghi đè. Chuỗi hard-code chỉ dùng cho design-time (scaffold/migration) và có sẵn Encrypt=False.
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    {
-        if (!optionsBuilder.IsConfigured)
-        {
-            optionsBuilder.UseSqlServer("Server=.;Database=DevPrep_Feedback;User Id=sa;Password=123;TrustServerCertificate=True;Encrypt=False");
-        }
-    }
-
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<FeedbackReply>(entity =>

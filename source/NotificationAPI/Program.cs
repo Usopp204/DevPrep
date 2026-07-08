@@ -26,7 +26,7 @@ if (string.IsNullOrWhiteSpace(connectionString))
 }
 
 builder.Services.AddDbContext<NotificationDbContext>(options =>
-    options.UseSqlServer(connectionString));
+    options.UseSqlServer(connectionString, sql => sql.EnableRetryOnFailure(maxRetryCount: 5)));
 
 // Repositories
 builder.Services.AddScoped<IEmailTemplateRepository, EmailTemplateRepository>();
