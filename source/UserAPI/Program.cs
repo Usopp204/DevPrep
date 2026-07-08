@@ -20,10 +20,11 @@ var builder = WebApplication.CreateBuilder(args);
 var servicePort = builder.Configuration.GetValue<int>("USER_API_PORT", 7002);
 builder.WebHost.UseUrls($"http://0.0.0.0:{servicePort}");
 
-// DbContext: connection string lấy từ appsettings (ConnectionStrings:DefaultConnection),
-// override được bằng ENV ConnectionStrings__DefaultConnection khi deploy.
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection is missing.");
+// DbContext: ưu tiên key USER_DB_CONNECTION_STRING từ .env (DotNetEnv nạp ở trên),
+// fallback appsettings ConnectionStrings:DefaultConnection (máy không có .env vẫn chạy).
+var connectionString = builder.Configuration.GetValue<string>("USER_DB_CONNECTION_STRING")
+    ?? builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("USER_DB_CONNECTION_STRING (.env) or ConnectionStrings:DefaultConnection is missing.");
 builder.Services.AddDbContext<UserDbContext>(options => options.UseSqlServer(connectionString));
 
 // Repositories + Services (kiến trúc phân lớp).

@@ -214,3 +214,101 @@ body.home-page {
 .hm-footer-legal { display: flex; gap: 24px; }
 .hm-footer-legal a { color: var(--hm-on-surface-variant); text-decoration: none; font-size: 14px; transition: color .2s; }
 .hm-footer-legal a:hover { color: var(--hm-secondary); }
+
+/* ============================================================
+   Homepage v2 (updated mockup: two-column hero, stats bar,
+   feature bento, how-it-works timeline, CTA). Rules below
+   override the legacy landing styles above.
+   ============================================================ */
+
+/* ---- Layout ---- */
+.hm-main { position: relative; padding-top: 112px; }
+.hm-section { max-width: 1200px; margin: 0 auto 96px; padding: 0 24px; }
+
+/* ---- Buttons ---- */
+.hm-btn { padding: 12px 24px; border-radius: .75rem; font-size: 16px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; cursor: pointer; transition: box-shadow .2s, transform .2s, background-color .2s; }
+.hm-btn .material-symbols-outlined { font-size: 20px; }
+.hm-btn.primary-btn-gradient:hover { box-shadow: 0 0 20px rgba(79, 70, 229, .4); }
+.hm-btn.hm-btn-outline { padding: 12px 24px; border-radius: .75rem; font-size: 16px; background: transparent; border: 1px solid var(--hm-outline-variant); color: var(--hm-on-surface); }
+.hm-btn.hm-btn-outline:hover { background: var(--hm-surface-container); }
+
+/* ---- Hero (two column) ---- */
+.hm-hero-v2 { max-width: 1200px; margin: 0 auto 32px; padding: 48px 24px; }
+.hm-badge-inline { display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px; border-radius: 9999px; background: var(--hm-surface-container); border: 1px solid var(--hm-border); margin-bottom: 16px; }
+.hm-badge-inline .material-symbols-outlined { color: var(--hm-secondary); font-size: 16px; }
+.hm-badge-inline span:last-child { font-family: 'JetBrains Mono', monospace; font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: var(--hm-secondary); }
+.hm-hero-title { font-size: 48px; line-height: 56px; font-weight: 700; letter-spacing: -.02em; color: var(--hm-on-surface); margin: 0 0 16px; }
+.hm-text-gradient { background: linear-gradient(to right, #e2dfff, #4cd7f6); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent; }
+.hm-hero-lead { font-size: 16px; line-height: 24px; color: var(--hm-on-surface-variant); max-width: 500px; margin: 0 0 32px; }
+.hm-hero-actions-v2 { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 32px; }
+.hm-flow { font-family: 'JetBrains Mono', monospace; font-size: 13px; letter-spacing: .2em; text-transform: uppercase; color: rgba(200, 197, 208, .6); margin-bottom: 24px; }
+.hm-trust { display: flex; align-items: center; gap: 12px; }
+.hm-trust-avatars { display: flex; align-items: center; }
+.hm-trust-avatars img, .hm-trust-more { width: 40px; height: 40px; border-radius: 9999px; border: 2px solid var(--hm-bg); object-fit: cover; margin-left: -12px; }
+.hm-trust-avatars img:first-child { margin-left: 0; }
+.hm-trust-more { background: var(--hm-primary-container); color: #fff; display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+.hm-trust > span { font-size: 14px; color: var(--hm-on-surface-variant); }
+
+/* ---- Hero visual (right) ---- */
+.hm-hero-visual { position: relative; }
+.hm-glow-purple { position: absolute; inset: -40px; filter: blur(80px); background: rgba(79, 70, 229, .25); border-radius: 50%; z-index: 0; }
+.hm-hero-card { position: relative; z-index: 1; border-radius: 1rem; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, .5); aspect-ratio: 16 / 9; }
+.hm-hero-card > img { width: 100%; height: 100%; object-fit: cover; opacity: .9; display: block; }
+.hm-hero-badge { position: absolute; bottom: 16px; left: 16px; display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: .75rem; background: rgba(17, 24, 39, .7); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); border: 1px solid rgba(76, 215, 246, .2); }
+.hm-hero-badge span:last-child { font-family: 'JetBrains Mono', monospace; font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: var(--hm-secondary); }
+.hm-pulse-dot { width: 8px; height: 8px; border-radius: 9999px; background: var(--hm-success); animation: hm-pulse 2s infinite; }
+@keyframes hm-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
+
+/* ---- Stats bar (full width) ---- */
+.hm-stats-bar { width: 100%; background: var(--hm-surface-lowest); border-top: 1px solid var(--hm-border); border-bottom: 1px solid var(--hm-border); padding: 24px 0; margin-bottom: 96px; }
+.hm-stats-inner { max-width: 1200px; margin: 0 auto; padding: 0 24px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 24px; }
+.hm-stat { display: flex; flex-direction: column; align-items: center; }
+@media (min-width: 768px) { .hm-stat { align-items: flex-start; } }
+.hm-stat-num { font-size: 24px; line-height: 32px; font-weight: 700; color: var(--hm-primary); }
+.hm-stat-label { font-family: 'JetBrains Mono', monospace; font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: var(--hm-on-surface-variant); }
+.hm-stat-div { width: 1px; height: 32px; background: var(--hm-border); display: none; }
+@media (min-width: 768px) { .hm-stat-div { display: block; } }
+
+/* ---- Section heading ---- */
+.hm-section-head { text-align: center; margin-bottom: 48px; }
+.hm-section-head h2 { font-size: 32px; line-height: 40px; font-weight: 700; color: var(--hm-on-surface); margin: 0 0 8px; }
+.hm-section-head p { color: var(--hm-on-surface-variant); margin: 0; }
+.hm-section-head a { color: var(--hm-primary); text-decoration: none; }
+.hm-section-head a:hover { text-decoration: underline; }
+
+/* ---- Feature cards (override legacy) ---- */
+.hm-feature { border-radius: 1rem; padding: 32px; transition: transform .3s, border-color .3s; height: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: 16px; }
+.hm-feature:hover { transform: translateY(-4px); border-color: rgba(226, 223, 255, .3); }
+.hm-feature-icon { width: 48px; height: 48px; border-radius: 9999px; display: flex; align-items: center; justify-content: center; margin-bottom: 0; }
+.hm-feature-icon .material-symbols-outlined { font-size: 26px; }
+.hm-feature h3 { font-size: 24px; line-height: 32px; font-weight: 600; color: var(--hm-on-surface); margin: 0; }
+.hm-feature p { color: var(--hm-on-surface-variant); font-size: 14px; line-height: 20px; margin: 0; }
+.hm-feature .hm-link { margin-top: auto; color: var(--hm-primary); font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600; }
+.hm-feature .hm-link .material-symbols-outlined { font-size: 18px; }
+
+/* ---- How-it-works timeline ---- */
+.hm-timeline { position: relative; display: flex; flex-direction: column; gap: 32px; padding-top: 24px; }
+@media (min-width: 768px) { .hm-timeline { flex-direction: row; justify-content: space-between; align-items: flex-start; } }
+.hm-timeline-line { display: none; }
+@media (min-width: 768px) { .hm-timeline-line { display: block; position: absolute; top: 44px; left: 40px; right: 40px; height: 2px; background: linear-gradient(to right, #4f46e5 0%, rgba(79, 70, 229, .1) 100%); z-index: 0; } }
+.hm-step { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; }
+@media (min-width: 768px) { .hm-step { width: 20%; } }
+.hm-step-num { width: 48px; height: 48px; border-radius: 9999px; display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; color: #fff; background: var(--hm-surface-container); border: 2px solid var(--hm-primary-container); }
+.hm-step-num.active { background: var(--hm-primary-container); border: none; box-shadow: 0 0 15px rgba(79, 70, 229, .5); }
+.hm-step-title { font-size: 18px; font-weight: 600; color: var(--hm-on-surface); }
+.hm-step p { font-size: 14px; line-height: 20px; color: var(--hm-on-surface-variant); margin: 0; }
+
+/* ---- CTA (override legacy sizing) ---- */
+.hm-cta h2 { font-size: 32px; line-height: 40px; }
+.hm-cta p { max-width: 42rem; margin: 0 auto 32px; }
+.hm-cta .hm-btn { font-size: 18px; padding: 16px 32px; }
+
+/* ---- Responsive hero ---- */
+@media (max-width: 991px) {
+    .hm-hero-title { font-size: 40px; line-height: 48px; }
+    .hm-hero-visual { margin-top: 8px; }
+}
+@media (max-width: 575px) {
+    .hm-hero-title { font-size: 32px; line-height: 40px; }
+    .hm-stat-div { display: none; }
+}
