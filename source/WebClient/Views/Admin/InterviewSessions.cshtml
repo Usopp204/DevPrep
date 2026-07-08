@@ -271,8 +271,8 @@
             });
         }
 
-        function userLabel(it) { return it.userFullName || (it.userId ? 'User ' + String(it.userId).substring(0, 5) : 'Unknown'); }
-        function initial(n) { return n && n.trim() ? n.trim()[0].toUpperCase() : 'U'; }
+        function userLabel(it) { return cleanText(it.userFullName) || (it.userId ? 'User ' + String(it.userId).substring(0, 5) : 'Unknown'); }
+        function initial(n) { const clean = cleanText(n); return clean && clean.trim() ? clean.trim()[0].toUpperCase() : 'U'; }
         function badge(t) { return t ? `<span class="px-xs py-0.5 rounded bg-surface-container-highest text-on-surface-variant text-[10px] uppercase font-code-label">${escapeHtml(t)}</span>` : '—'; }
         function statusBadge(s) {
             const map = { InProgress: 'bg-secondary/15 border-secondary/40 text-secondary', Completed: 'bg-success/10 border-success/30 text-success', Configured: 'bg-warning/10 border-warning/30 text-warning', Initialized: 'bg-warning/10 border-warning/30 text-warning', Expired: 'bg-tertiary-container/15 border-tertiary/30 text-tertiary', Cancelled: 'bg-error/10 border-error/30 text-error' };
@@ -291,7 +291,34 @@
         function fmtDateTime(d) { if (!d) return '—'; const x = new Date(d); return x.toLocaleString(); }
         function msToSec(ms) { if (!ms && ms !== 0) return '—'; return (ms / 1000).toFixed(1) + 's'; }
         function actualDuration(a, b) { if (!a || !b) return '—'; const ms = new Date(b) - new Date(a); if (ms < 0) return '—'; const min = Math.floor(ms / 60000), sec = Math.floor((ms % 60000) / 1000); return `${min}m ${sec}s`; }
-        function escapeHtml(u) { return (u || '').replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;"); }
+        function cleanText(value) {
+            let text = String(value || '');
+            for (let i = 0; i < 2; i++) {
+                if (!/[ÃÂâ]|áº|á»|Ä|Æ|�/.test(text)) break;
+                try {
+                    const windows1252 = {
+                        0x20AC: 0x80, 0x201A: 0x82, 0x0192: 0x83, 0x201E: 0x84,
+                        0x2026: 0x85, 0x2020: 0x86, 0x2021: 0x87, 0x02C6: 0x88,
+                        0x2030: 0x89, 0x0160: 0x8A, 0x2039: 0x8B, 0x0152: 0x8C,
+                        0x017D: 0x8E, 0x2018: 0x91, 0x2019: 0x92, 0x201C: 0x93,
+                        0x201D: 0x94, 0x2022: 0x95, 0x2013: 0x96, 0x2014: 0x97,
+                        0x02DC: 0x98, 0x2122: 0x99, 0x0161: 0x9A, 0x203A: 0x9B,
+                        0x0153: 0x9C, 0x017E: 0x9E, 0x0178: 0x9F
+                    };
+                    const bytes = Uint8Array.from([...text].map(ch => {
+                        const code = ch.charCodeAt(0);
+                        return windows1252[code] || (code <= 255 ? code : 63);
+                    }));
+                    const fixed = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+                    if (!fixed || fixed === text) break;
+                    text = fixed;
+                } catch {
+                    break;
+                }
+            }
+            return text;
+        }
+        function escapeHtml(u) { return cleanText(u).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;"); }
         function toggleDrawer(show) {
             const drawer = document.getElementById('iv-drawer'), overlay = document.getElementById('drawer-overlay');
             if (show) { drawer.classList.remove('drawer-hidden'); overlay.classList.remove('hidden'); setTimeout(() => overlay.classList.add('opacity-100'), 10); document.body.style.overflow = 'hidden'; }

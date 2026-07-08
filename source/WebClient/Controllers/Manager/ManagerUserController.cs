@@ -40,6 +40,6 @@ public class ManagerUserController : Controller
         if (model == null)
             return NotFound();
 
-        return PartialView(model);
+        return View("~/Views/ManagerUser/Details.cshtml", model);
     }
 }

@@ -131,6 +131,7 @@
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .drawer-hidden { transform: translateX(100%); }
+        .chip.active { outline: 2px solid currentColor; }
     </style>
 
 
@@ -160,50 +161,53 @@
     @await Html.PartialAsync("_ManagerSidebar")
 
     <main class="fb-main">
-        <!-- Title and Search moved from header -->
         <div class="flex items-center gap-lg flex-1 mb-6">
-            <h1 class="font-display-lg text-[24px] font-bold text-primary tracking-tight">@feedbackTitle</h1>
-            <div class="relative w-64">
-                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
-                <input class="w-full bg-surface-container border-none rounded-full pl-10 pr-4 py-1.5 font-body-sm text-on-surface placeholder:text-on-surface-variant focus:ring-1 focus:ring-primary" placeholder="Quick find feedback..." type="text">
+            <div>
+                <h1 class="font-display-lg text-[24px] font-bold text-primary tracking-tight">@feedbackTitle</h1>
             </div>
         </div>
 
-
-<div class="max-w-max-width mx-auto">
-<!-- Filter Bar -->
-<section class="glass-card rounded-2xl p-md mb-lg flex flex-wrap items-center gap-lg">
-<div class="flex items-center gap-sm">
-<span class="font-code-label text-[11px] uppercase text-on-surface-variant">Rating</span>
-<select id="feedback-rating" class="bg-surface-container-highest border-none rounded-xl px-md py-xs font-body-sm text-on-surface focus:ring-1 focus:ring-primary-container min-w-[100px]">
-<option value="">All Stars</option>
-<option value="5">5 Stars</option>
-<option value="4">4 Stars</option>
-<option value="3">3 Stars</option>
-<option value="2">2 Stars</option>
-<option value="1">1 Star</option>
-</select>
-</div>
-<div class="flex items-center gap-sm">
-<span class="font-code-label text-[11px] uppercase text-on-surface-variant">Scope</span>
-<span class="px-md py-1 rounded-full bg-primary-container/10 border border-primary-container text-primary-container font-code-label text-[10px] uppercase">@feedbackTitle</span>
-</div>
-@if (feedbackKind == "system")
-{
-<div class="flex items-center gap-sm">
-<span class="font-code-label text-[11px] uppercase text-on-surface-variant">Status</span>
-<div class="flex gap-xs">
-<button class="feedback-status-filter px-md py-1 rounded-full bg-primary-container/10 border border-primary-container text-primary-container text-[10px] uppercase font-code-label hover:bg-primary-container/20 transition-all" type="button" data-status="">All</button>
-<button class="feedback-status-filter px-md py-1 rounded-full bg-warning/10 border border-warning/40 text-warning text-[10px] uppercase font-code-label hover:bg-warning/20 transition-all" type="button" data-status="New">New</button>
-<button class="feedback-status-filter px-md py-1 rounded-full bg-success/10 border border-success/40 text-success text-[10px] uppercase font-code-label hover:bg-success/20 transition-all" type="button" data-status="Replied">Replied</button>
-</div>
-</div>
-}
-<div class="ml-auto relative min-w-[300px]">
-<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
-<input id="feedback-search" class="w-full bg-surface-container border-border-subtle border rounded-xl pl-4 pr-10 py-1.5 font-body-sm focus:ring-1 focus:ring-primary-container" placeholder="Search comments or users..." type="text">
-</div>
-</section>
+        <div class="max-w-max-width mx-auto">
+            <!-- Filter Bar -->
+            <section class="glass-card rounded-2xl p-md mb-lg flex flex-wrap items-center gap-lg">
+                <div class="flex items-center gap-sm">
+                    <span class="font-code-label text-[11px] uppercase text-on-surface-variant">Rating</span>
+                    <div class="flex gap-xs" id="feedback-rating">
+                        <button data-val="" class="chip active px-md py-1 rounded-full bg-primary-container/10 border border-primary-container text-primary-container font-code-label text-[10px] uppercase">All</button>
+                        <button data-val="5" class="chip px-md py-1 rounded-full bg-surface-container border border-border-subtle text-on-surface-variant text-[10px] uppercase font-code-label hover:text-primary transition-all">5★</button>
+                        <button data-val="4" class="chip px-md py-1 rounded-full bg-surface-container border border-border-subtle text-on-surface-variant text-[10px] uppercase font-code-label hover:text-primary transition-all">4★</button>
+                        <button data-val="3" class="chip px-md py-1 rounded-full bg-surface-container border border-border-subtle text-on-surface-variant text-[10px] uppercase font-code-label hover:text-primary transition-all">3★</button>
+                        <button data-val="2" class="chip px-md py-1 rounded-full bg-surface-container border border-border-subtle text-on-surface-variant text-[10px] uppercase font-code-label hover:text-primary transition-all">2★</button>
+                        <button data-val="1" class="chip px-md py-1 rounded-full bg-surface-container border border-border-subtle text-on-surface-variant text-[10px] uppercase font-code-label hover:text-primary transition-all">1★</button>
+                    </div>
+                </div>
+                @if (feedbackKind == "ai")
+                {
+                    <div class="flex items-center gap-sm">
+                        <span class="font-code-label text-[11px] uppercase text-on-surface-variant">Helpful</span>
+                        <div class="flex gap-xs" id="feedback-helpful">
+                            <button data-val="" class="chip active px-md py-1 rounded-full bg-primary-container/10 border border-primary-container text-primary-container font-code-label text-[10px] uppercase">All</button>
+                            <button data-val="true" class="chip px-md py-1 rounded-full bg-success/10 border border-success/40 text-success text-[10px] uppercase font-code-label hover:bg-success/20 transition-all">Helpful</button>
+                            <button data-val="false" class="chip px-md py-1 rounded-full bg-warning/10 border border-warning/40 text-warning text-[10px] uppercase font-code-label hover:bg-warning/20 transition-all">Not helpful</button>
+                        </div>
+                    </div>
+                }
+                @if (feedbackKind == "system")
+                {
+                    <div class="flex items-center gap-sm">
+                        <span class="font-code-label text-[11px] uppercase text-on-surface-variant">Status</span>
+                        <div class="flex gap-xs" id="feedback-status">
+                            <button data-val="" class="chip active px-md py-1 rounded-full bg-primary-container/10 border border-primary-container text-primary-container font-code-label text-[10px] uppercase">All</button>
+                            <button data-val="New" class="chip px-md py-1 rounded-full bg-warning/10 border border-warning/40 text-warning text-[10px] uppercase font-code-label hover:bg-warning/20 transition-all">New</button>
+                            <button data-val="Replied" class="chip px-md py-1 rounded-full bg-success/10 border border-success/40 text-success text-[10px] uppercase font-code-label hover:bg-success/20 transition-all">Replied</button>
+                        </div>
+                    </div>
+                }
+                <div class="ml-auto relative min-w-[300px]">
+                    <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+                    <input id="feedback-search" class="w-full bg-surface-container border-border-subtle border rounded-xl pl-4 pr-10 py-1.5 font-body-sm focus:ring-1 focus:ring-primary-container" placeholder="Search comments..." type="text" />
+                </div>
+            </section>
 <!-- Feedback Table -->
 <section class="glass-card rounded-2xl overflow-hidden">
 <table class="w-full text-left border-collapse">
@@ -312,6 +316,8 @@
         let totalPages = 1;
         let searchTimer = null;
         let lastItems = [];
+        let currentRating = '';
+        let currentHelpful = '';
         let currentStatus = '';
 
         document.addEventListener("DOMContentLoaded", () => {
@@ -337,23 +343,25 @@
                 }, 300);
             });
 
-            document.getElementById('feedback-rating').addEventListener('change', () => {
-                currentPage = 1;
-                fetchFeedbackList();
-            });
-
-            document.querySelectorAll('.feedback-status-filter').forEach(button => {
-                button.addEventListener('click', () => {
-                    currentStatus = button.dataset.status || '';
-                    currentPage = 1;
-                    updateStatusFilters();
-                    fetchFeedbackList();
-                });
-            });
-            updateStatusFilters();
+            chipGroup('feedback-rating', v => { currentRating = v; });
+            chipGroup('feedback-helpful', v => { currentHelpful = v; });
+            chipGroup('feedback-status', v => { currentStatus = v; });
 
             fetchFeedbackList();
         });
+
+        function chipGroup(id, setter) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.addEventListener('click', (e) => {
+                const btn = e.target.closest('.chip'); if (!btn) return;
+                el.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+                btn.classList.add('active');
+                setter(btn.getAttribute('data-val'));
+                currentPage = 1;
+                fetchFeedbackList();
+            });
+        }
 
         async function fetchFeedbackList() {
             try {
@@ -363,8 +371,8 @@
                     pageSize: pageSize
                 });
                 if (keyword) query.set('keyword', keyword);
-                const rating = document.getElementById('feedback-rating').value;
-                if (rating) query.set('rating', rating);
+                if (currentRating) query.set('rating', currentRating);
+                if (FEEDBACK_KIND === 'ai' && currentHelpful !== '') query.set('isHelpful', currentHelpful);
                 if (FEEDBACK_KIND === 'system' && currentStatus) query.set('status', currentStatus);
 
                 const res = await fetch(`${API_BASE}?${query}`, {
@@ -516,15 +524,6 @@
         function normalizeStatus(status) {
             if (!status || status.toLowerCase() === 'new' || status.toLowerCase() === 'inreview') return 'New';
             return status;
-        }
-
-        function updateStatusFilters() {
-            document.querySelectorAll('.feedback-status-filter').forEach(button => {
-                const isActive = (button.dataset.status || '') === currentStatus;
-                button.classList.toggle('ring-1', isActive);
-                button.classList.toggle('ring-primary-container', isActive);
-                button.classList.toggle('brightness-125', isActive);
-            });
         }
 
         function userLabel(item) {
