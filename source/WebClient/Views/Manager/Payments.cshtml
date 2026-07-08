@@ -159,7 +159,7 @@
     </aside>
 
     <script>
-        const API_BASE = 'http://localhost:7000/api/admin/manager/payments';
+        const API_BASE = '@ViewData["ApiBaseUrl"]/api/admin/manager/payments';
         const token = '@token';
         let currentPage = 1, pageSize = 10, totalPages = 1, searchTimer = null;
 

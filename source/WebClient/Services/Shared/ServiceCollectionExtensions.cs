@@ -38,6 +38,8 @@ public static class ServiceCollectionExtensions
             {
                 client.BaseAddress = baseUri;
             }
+            // AI parse endpoints (CV/JD) can take several minutes on CPU
+            client.Timeout = TimeSpan.FromMinutes(6);
         })
         .AddHttpMessageHandler<JwtDelegatingHandler>()
         // Gọi tới API Gateway ở localhost: KHÔNG đi qua proxy hệ thống (proxy có thể chặn localhost -> timeout).
