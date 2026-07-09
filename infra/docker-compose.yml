@@ -16,15 +16,18 @@ services:
     # http://localhost:8080/ui/interviewdashboard.html
     ports:
       - "8080:8000"
-    # Injects EVERY variable from infra/.env into the container.
-    # Put HF_TOKEN, GEMINI_API_KEY, DEEPGRAM_API_KEY, ELEVENLABS_API_KEY, etc. there.
+    # Env layering: the repo-root .env is the single source of truth (keys, model ids);
+    # infra/.env only overrides container-specific paths. Later files win.
     env_file:
+      - ../.env
       - .env
     volumes:
       # Localized model weights (no image bloat, hot-swappable).
       - ../ai-service/models:/app/models
       # Persist the ChromaDB index across rebuilds (matches CHROMA_DIR below).
-      - ../ai-service/chroma_data:/app/chroma_data
+      # Separate dir from the venv mode's ./chroma_data so the two modes never
+      # write to the same Chroma index concurrently.
+      - ../ai-service/chroma_data_docker:/app/chroma_data
       # Mount the test UI so /ui works without rebaking the image (edit live).
       - ../ai-service/test-ui:/app/test-ui
       # Cache HuggingFace weights (embedder + Gemma) to avoid re-downloading.
