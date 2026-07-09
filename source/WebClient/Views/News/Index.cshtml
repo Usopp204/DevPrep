@@ -55,7 +55,7 @@
             @if (featured is not null)
             {
                 <a class="nw-glass nw-featured nw-item"
-                   asp-controller="News" asp-action="Detail" asp-route-id="@featured.NewsId"
+                   asp-controller="News" asp-action="Detail" asp-route-slug="@featured.Slug"
                    data-title="@featured.Title.ToLowerInvariant()"
                    data-summary="@((featured.Summary ?? string.Empty).ToLowerInvariant())"
                    data-cat="@featured.Category.ToLowerInvariant()">
@@ -84,7 +84,7 @@
                 @foreach (var item in rest)
                 {
                     <a class="nw-glass nw-card nw-item"
-                       asp-controller="News" asp-action="Detail" asp-route-id="@item.NewsId"
+                       asp-controller="News" asp-action="Detail" asp-route-slug="@item.Slug"
                        data-title="@item.Title.ToLowerInvariant()"
                        data-summary="@((item.Summary ?? string.Empty).ToLowerInvariant())"
                        data-cat="@item.Category.ToLowerInvariant()">

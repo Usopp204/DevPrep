@@ -79,7 +79,7 @@
                     <div class="nw-related-grid">
                         @foreach (var r in Model.Related)
                         {
-                            <a class="nw-related-card" asp-controller="News" asp-action="Detail" asp-route-id="@r.NewsId">
+                            <a class="nw-related-card" asp-controller="News" asp-action="Detail" asp-route-slug="@r.Slug">
                                 <div class="nw-related-thumb @(r.HasThumbnail ? "" : "nw-ph")">
                                     @if (r.HasThumbnail)
                                     {

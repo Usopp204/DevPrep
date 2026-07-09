@@ -26,5 +26,13 @@ public class NewsRepository : INewsRepository
         return query.FirstOrDefaultAsync(n => n.NewsId == id && n.Status == PublishedStatus && !n.IsDeleted);
     }
 
+    // Tra bài công khai theo slug (URL SEO). Cùng điều kiện Published + chưa xoá mềm.
+    public Task<NewsArticle?> GetPublishedBySlugAsync(string slug, bool tracking = false)
+    {
+        IQueryable<NewsArticle> query = _db.NewsArticles.Include(n => n.Category);
+        if (!tracking) query = query.AsNoTracking();
+        return query.FirstOrDefaultAsync(n => n.Slug == slug && n.Status == PublishedStatus && !n.IsDeleted);
+    }
+
     public Task SaveChangesAsync() => _db.SaveChangesAsync();
 }

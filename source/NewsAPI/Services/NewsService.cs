@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using NewsAPI.DTOs;
+using NewsAPI.Models;
 using NewsAPI.Repositories.Interfaces;
 using NewsAPI.Services.Interfaces;
 
@@ -57,9 +58,20 @@ public class NewsService : INewsService
     public async Task<NewsDetailDto?> GetDetailAsync(Guid id)
     {
         var article = await _repository.GetPublishedByIdAsync(id, tracking: true);
-        if (article is null) return null;
+        return article is null ? null : await BuildDetailAsync(article);
+    }
 
-        // Đếm lượt xem mỗi lần mở chi tiết.
+    // Xem chi tiết theo slug (URL SEO); null nếu không tồn tại/chưa xuất bản.
+    public async Task<NewsDetailDto?> GetDetailBySlugAsync(string slug)
+    {
+        if (string.IsNullOrWhiteSpace(slug)) return null;
+        var article = await _repository.GetPublishedBySlugAsync(slug, tracking: true);
+        return article is null ? null : await BuildDetailAsync(article);
+    }
+
+    // Tăng lượt xem + map sang DTO — dùng chung cho tra theo id lẫn theo slug.
+    private async Task<NewsDetailDto> BuildDetailAsync(NewsArticle article)
+    {
         article.ViewCount += 1;
         await _repository.SaveChangesAsync();
 
