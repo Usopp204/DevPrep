@@ -25,16 +25,6 @@ public partial class InterviewDbContext : DbContext
 
     public virtual DbSet<UserRoomTourStatus> UserRoomTourStatuses { get; set; }
 
-    // Guard IsConfigured: khi chạy thật, options đã được DI cấu hình từ appsettings (có Encrypt=False)
-    // nên KHÔNG ghi đè. Chuỗi hard-code chỉ dùng cho design-time (scaffold/migration) và có sẵn Encrypt=False.
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    {
-        if (!optionsBuilder.IsConfigured)
-        {
-            optionsBuilder.UseSqlServer("Server=.;Database=DevPrep_Interview;User Id=sa;Password=123;TrustServerCertificate=True;Encrypt=False");
-        }
-    }
-
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<ChatMessage>(entity =>
