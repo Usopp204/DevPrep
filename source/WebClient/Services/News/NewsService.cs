@@ -11,6 +11,7 @@ public interface INewsService
 {
     Task<NewsViewModel> GetListAsync(int page, int pageSize);
     Task<NewsDetailViewModel> GetDetailAsync(Guid id);
+    Task<NewsDetailViewModel> GetDetailBySlugAsync(string slug);
 }
 
 public sealed class NewsService(IApiClient apiClient) : INewsService
@@ -59,11 +60,20 @@ public sealed class NewsService(IApiClient apiClient) : INewsService
         }
     }
 
-    public async Task<NewsDetailViewModel> GetDetailAsync(Guid id)
+    // Giữ tương thích link cũ theo id.
+    public Task<NewsDetailViewModel> GetDetailAsync(Guid id)
+        => FetchDetailAsync($"api/news/{id}");
+
+    // URL mới theo slug (SEO).
+    public Task<NewsDetailViewModel> GetDetailBySlugAsync(string slug)
+        => FetchDetailAsync($"api/news/slug/{Uri.EscapeDataString(slug)}");
+
+    // Gọi backend + map sang view model + lấy bài liên quan — dùng chung cho tra theo id và slug.
+    private async Task<NewsDetailViewModel> FetchDetailAsync(string url)
     {
         try
         {
-            using var resp = await apiClient.HttpClient.GetAsync($"api/news/{id}");
+            using var resp = await apiClient.HttpClient.GetAsync(url);
             if (resp.StatusCode == HttpStatusCode.NotFound)
             {
                 return new NewsDetailViewModel { Found = false, Error = "Article not found." };
@@ -77,6 +87,7 @@ public sealed class NewsService(IApiClient apiClient) : INewsService
                 {
                     Found = true,
                     NewsId = d.NewsId,
+                    Slug = d.Slug,
                     Title = d.Title,
                     Summary = d.Summary,
                     Content = d.Content,
@@ -91,7 +102,7 @@ public sealed class NewsService(IApiClient apiClient) : INewsService
                 try
                 {
                     var list = await GetListAsync(1, 6);
-                    vm.Related = list.Items.Where(i => i.NewsId != id).Take(3).ToList();
+                    vm.Related = list.Items.Where(i => i.NewsId != d.NewsId).Take(3).ToList();
                 }
                 catch { /* related là phụ, lỗi thì bỏ qua */ }
 
