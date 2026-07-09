@@ -31,16 +31,6 @@ public partial class AuthDbContext : DbContext
 
     public virtual DbSet<SsoIdentity> SsoIdentities { get; set; }
 
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    {
-        // Chỉ dùng connection string mặc định khi chưa được cấu hình từ DI (ví dụ chạy
-        // EF Core tooling lúc design-time). Khi chạy app, cấu hình trong Program.cs sẽ thắng.
-        if (!optionsBuilder.IsConfigured)
-        {
-            optionsBuilder.UseSqlServer("Server=.;Database=DevPrep_Auth;User Id=sa;Password=123;TrustServerCertificate=True;");
-        }
-    }
-
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Account>(entity =>
