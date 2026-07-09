@@ -1,149 +1,168 @@
 @model WebClient.Models.Payment.PaymentFailedViewModel
 
 @{
+    Layout = null;
     ViewData["Title"] = "Payment Failed";
-    Layout = "~/Views/Shared/_LayoutPayment.cshtml";
 }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Payment Failed | DevPrep AI</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@@100..900&family=JetBrains+Mono:wght@@500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="~/css/home.css" asp-append-version="true" />
+    <style>
+        /* ── Payment Failed Page ─────────────────────────────────── */
+        .pff-main { padding-top: 112px; }
+        .pff-blob-a {
+            position: fixed; top: -10%; left: -10%; width: 40vw; height: 40vw;
+            background: radial-gradient(circle, rgba(255,180,171,.05) 0%, transparent 70%);
+            filter: blur(80px); z-index: 0; pointer-events: none;
+        }
+        .pff-blob-b {
+            position: fixed; bottom: -10%; right: -10%; width: 50vw; height: 50vw;
+            background: radial-gradient(circle, rgba(226,223,255,.05) 0%, transparent 70%);
+            filter: blur(100px); z-index: 0; pointer-events: none;
+        }
+        .pff-wrap {
+            max-width: 512px; margin: 0 auto 64px; padding: 0 24px;
+            display: flex; flex-direction: column; align-items: center;
+            position: relative; z-index: 1;
+        }
+        .pff-card {
+            width: 100%;
+            background: rgba(17,24,39,.6); backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,.08); border-radius: 16px; padding: 32px;
+            box-shadow: 0 0 40px rgba(255,180,171,.15);
+            display: flex; flex-direction: column; align-items: center; text-align: center;
+        }
 
-@section Styles {
-<style>
-/* ── Payment Failed Page ─────────────────────────────────── */
-.pff-blob-a {
-    position: fixed; top: -10%; left: -10%; width: 40vw; height: 40vw;
-    background: radial-gradient(circle, rgba(255,180,171,.05) 0%, transparent 70%);
-    filter: blur(80px); z-index: 0; pointer-events: none;
-}
-.pff-blob-b {
-    position: fixed; bottom: -10%; right: -10%; width: 50vw; height: 50vw;
-    background: radial-gradient(circle, rgba(226,223,255,.05) 0%, transparent 70%);
-    filter: blur(100px); z-index: 0; pointer-events: none;
-}
-.pff-wrap {
-    max-width: 512px; margin: 40px auto 64px; padding: 0 24px;
-    display: flex; flex-direction: column; align-items: center;
-    position: relative; z-index: 1;
-}
-.pff-card {
-    width: 100%;
-    background: rgba(17,24,39,.6); backdrop-filter: blur(12px);
-    border: 1px solid rgba(255,255,255,.08); border-radius: 16px; padding: 32px;
-    box-shadow: 0 0 40px rgba(255,180,171,.15);
-    display: flex; flex-direction: column; align-items: center; text-align: center;
-}
+        /* Icon */
+        .pff-icon-wrap { position: relative; margin-bottom: 24px; }
+        .pff-ring {
+            position: absolute; inset: 0; border-radius: 9999px;
+            border: 2px solid rgba(255,180,171,.2);
+            animation: pff-pulse 2s cubic-bezier(.455,.03,.515,.955) infinite;
+        }
+        @@keyframes pff-pulse {
+            0%, 100% { transform: scale(.95); opacity: .8; }
+            50%       { transform: scale(1.05); opacity: .4; }
+        }
+        .pff-icon {
+            width: 80px; height: 80px; border-radius: 9999px;
+            background: rgba(255,180,171,.1); display: flex; align-items: center; justify-content: center;
+            position: relative; z-index: 1;
+        }
+        .pff-icon .material-symbols-outlined {
+            font-size: 40px; color: #ffb4ab;
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 40;
+        }
 
-/* Icon */
-.pff-icon-wrap { position: relative; margin-bottom: 24px; }
-.pff-ring {
-    position: absolute; inset: 0; border-radius: 9999px;
-    border: 2px solid rgba(255,180,171,.2);
-    animation: pff-pulse 2s cubic-bezier(.455,.03,.515,.955) infinite;
-}
-@@keyframes pff-pulse {
-    0%, 100% { transform: scale(.95); opacity: .8; }
-    50%       { transform: scale(1.05); opacity: .4; }
-}
-.pff-icon {
-    width: 80px; height: 80px; border-radius: 9999px;
-    background: rgba(255,180,171,.1); display: flex; align-items: center; justify-content: center;
-    position: relative; z-index: 1;
-}
-.pff-icon .material-symbols-outlined {
-    font-size: 40px; color: #ffb4ab;
-    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 40;
-}
+        .pff-title { font-size: 32px; font-weight: 700; color: #e5e1e7; margin-bottom: 8px; }
+        .pff-sub   { font-size: 16px; color: #c8c5d0; max-width: 380px; margin-bottom: 32px; }
 
-.pff-title { font-size: 32px; font-weight: 700; color: #e5e1e7; margin-bottom: 8px; }
-.pff-sub   { font-size: 16px; color: #c8c5d0; max-width: 380px; margin-bottom: 32px; }
+        /* Bento details */
+        .pff-bento {
+            width: 100%; display: grid; grid-template-columns: 1fr 1fr;
+            background: rgba(17,24,39,.6); backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,.08); border-radius: 12px;
+            overflow: hidden; margin-bottom: 32px;
+        }
+        .pff-cell      { padding: 16px; text-align: left; }
+        .pff-cell-r    { border-right: 1px solid rgba(255,255,255,.08); }
+        .pff-cell-t    { border-top:   1px solid rgba(255,255,255,.08); }
+        .pff-cell-full { grid-column: span 2; }
+        .pff-lbl {
+            display: block; font-family: 'JetBrains Mono', monospace;
+            font-size: 12px; letter-spacing: .05em; text-transform: uppercase;
+            color: rgba(200,197,208,.6); margin-bottom: 4px;
+        }
+        .pff-val     { display: block; font-size: 14px; color: #e5e1e7; word-break: break-word; }
+        .pff-err-val { color: #ffb4ab; font-weight: 500; }
 
-/* Bento details */
-.pff-bento {
-    width: 100%; display: grid; grid-template-columns: 1fr 1fr;
-    background: rgba(17,24,39,.6); backdrop-filter: blur(12px);
-    border: 1px solid rgba(255,255,255,.08); border-radius: 12px;
-    overflow: hidden; margin-bottom: 32px;
-}
-.pff-cell      { padding: 16px; text-align: left; }
-.pff-cell-r    { border-right: 1px solid rgba(255,255,255,.08); }
-.pff-cell-t    { border-top:   1px solid rgba(255,255,255,.08); }
-.pff-cell-full { grid-column: span 2; }
-.pff-lbl {
-    display: block; font-family: 'JetBrains Mono', monospace;
-    font-size: 12px; letter-spacing: .05em; text-transform: uppercase;
-    color: rgba(200,197,208,.6); margin-bottom: 4px;
-}
-.pff-val     { display: block; font-size: 14px; color: #e5e1e7; word-break: break-word; }
-.pff-err-val { color: #ffb4ab; font-weight: 500; }
+        /* Actions */
+        .pff-actions { width: 100%; display: flex; flex-direction: column; gap: 16px; }
+        .pff-btn-retry {
+            width: 100%; background: linear-gradient(135deg, #ffb4ab 0%, #93000a 100%);
+            color: #fff; font-weight: 700; font-size: 14px; padding: 16px; border-radius: 12px;
+            border: none; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            text-decoration: none; transition: opacity .2s;
+            box-shadow: 0 4px 16px rgba(255,180,171,.15);
+        }
+        .pff-btn-retry:hover { opacity: .9; color: #fff; }
+        .pff-btn-retry .material-symbols-outlined { font-size: 20px; }
+        .pff-btn-s {
+            width: 100%; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08);
+            color: #e5e1e7; font-weight: 600; font-size: 14px; padding: 16px; border-radius: 12px;
+            text-decoration: none; text-align: center; transition: background .2s; display: block;
+        }
+        .pff-btn-s:hover { background: rgba(255,255,255,.1); color: #e5e1e7; }
+    </style>
+</head>
+<body class="pff-page">
+    @await Html.PartialAsync("_Navbar")
 
-/* Actions */
-.pff-actions { width: 100%; display: flex; flex-direction: column; gap: 16px; }
-.pff-btn-retry {
-    width: 100%; background: linear-gradient(135deg, #ffb4ab 0%, #93000a 100%);
-    color: #fff; font-weight: 700; font-size: 14px; padding: 16px; border-radius: 12px;
-    border: none; cursor: pointer;
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-    text-decoration: none; transition: opacity .2s;
-    box-shadow: 0 4px 16px rgba(255,180,171,.15);
-}
-.pff-btn-retry:hover { opacity: .9; color: #fff; }
-.pff-btn-retry .material-symbols-outlined { font-size: 20px; }
-.pff-btn-s {
-    width: 100%; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08);
-    color: #e5e1e7; font-weight: 600; font-size: 14px; padding: 16px; border-radius: 12px;
-    text-decoration: none; text-align: center; transition: background .2s; display: block;
-}
-.pff-btn-s:hover { background: rgba(255,255,255,.1); color: #e5e1e7; }
-</style>
-}
+    <main class="pff-main">
+        <div class="pff-blob-a"></div>
+        <div class="pff-blob-b"></div>
 
-<div class="pff-blob-a"></div>
-<div class="pff-blob-b"></div>
+        <div class="pff-wrap">
+            <div class="pff-card">
+                <!-- Animated error icon -->
+                <div class="pff-icon-wrap">
+                    <div class="pff-ring"></div>
+                    <div class="pff-icon">
+                        <span class="material-symbols-outlined">warning</span>
+                    </div>
+                </div>
 
-<div class="pff-wrap">
-    <div class="pff-card">
-        <!-- Animated error icon -->
-        <div class="pff-icon-wrap">
-            <div class="pff-ring"></div>
-            <div class="pff-icon">
-                <span class="material-symbols-outlined">warning</span>
+                <h1 class="pff-title">Payment Failed</h1>
+                <p class="pff-sub">We couldn't process your transaction. Please review the details below.</p>
+
+                <!-- Details bento grid -->
+                <div class="pff-bento">
+                    @if (!string.IsNullOrEmpty(Model.OrderCode))
+                    {
+                        <div class="pff-cell pff-cell-r">
+                            <span class="pff-lbl">Order ID</span>
+                            <span class="pff-val">@Model.OrderCode</span>
+                        </div>
+                        <div class="pff-cell">
+                            <span class="pff-lbl">Status</span>
+                            <span class="pff-val pff-err-val">Failed</span>
+                        </div>
+                        <div class="pff-cell pff-cell-t pff-cell-full">
+                            <span class="pff-lbl">Reason</span>
+                            <span class="pff-val">@Model.Reason</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="pff-cell pff-cell-full">
+                            <span class="pff-lbl">Reason</span>
+                            <span class="pff-val">@Model.Reason</span>
+                        </div>
+                    }
+                </div>
+
+                <!-- Action buttons -->
+                <div class="pff-actions">
+                    <a class="pff-btn-retry" asp-controller="Payment" asp-action="Index">
+                        <span class="material-symbols-outlined">refresh</span>
+                        Retry Payment
+                    </a>
+                    <a class="pff-btn-s" asp-controller="Home" asp-action="Index">Back to Homepage</a>
+                </div>
             </div>
         </div>
+    </main>
 
-        <h1 class="pff-title">Payment Failed</h1>
-        <p class="pff-sub">We couldn't process your transaction. Please review the details below.</p>
-
-        <!-- Details bento grid -->
-        <div class="pff-bento">
-            @if (!string.IsNullOrEmpty(Model.OrderCode))
-            {
-                <div class="pff-cell pff-cell-r">
-                    <span class="pff-lbl">Order ID</span>
-                    <span class="pff-val">@Model.OrderCode</span>
-                </div>
-                <div class="pff-cell">
-                    <span class="pff-lbl">Status</span>
-                    <span class="pff-val pff-err-val">Failed</span>
-                </div>
-                <div class="pff-cell pff-cell-t pff-cell-full">
-                    <span class="pff-lbl">Reason</span>
-                    <span class="pff-val">@Model.Reason</span>
-                </div>
-            }
-            else
-            {
-                <div class="pff-cell pff-cell-full">
-                    <span class="pff-lbl">Reason</span>
-                    <span class="pff-val">@Model.Reason</span>
-                </div>
-            }
-        </div>
-
-        <!-- Action buttons -->
-        <div class="pff-actions">
-            <a class="pff-btn-retry" asp-controller="Payment" asp-action="Index">
-                <span class="material-symbols-outlined">refresh</span>
-                Retry Payment
-            </a>
-            <a class="pff-btn-s" asp-controller="Home" asp-action="Index">Back to Homepage</a>
-        </div>
-    </div>
-</div>
+    @await Html.PartialAsync("_Footer")
+</body>
+</html>
