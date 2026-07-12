@@ -14,10 +14,20 @@ public class NewsController(INewsService newsService) : Controller
         return View(model);
     }
 
-    // /News/Detail/{id} — public. Backend tự tăng ViewCount mỗi lần xem.
-    public async Task<IActionResult> Detail(Guid id)
+    // /News/Detail/{slug} — public, URL dùng slug (SEO). Backend tự tăng ViewCount mỗi lần xem.
+    // Tương thích ngược: link cũ /News/Detail/{guid} vẫn vào được -> tự chuyển hướng sang URL slug.
+    [HttpGet("/News/Detail/{slug}")]
+    public async Task<IActionResult> Detail(string slug)
     {
-        var model = await newsService.GetDetailAsync(id);
+        if (Guid.TryParse(slug, out var id))
+        {
+            var byId = await newsService.GetDetailAsync(id);
+            if (byId.Found && !string.IsNullOrWhiteSpace(byId.Slug))
+                return RedirectToAction(nameof(Detail), new { slug = byId.Slug });
+            return View(byId);
+        }
+
+        var model = await newsService.GetDetailBySlugAsync(slug);
         return View(model);
     }
 }

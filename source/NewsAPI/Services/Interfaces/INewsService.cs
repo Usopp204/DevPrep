@@ -11,4 +11,5 @@ public interface INewsService
 {
     Task<PagedResult<NewsListItemDto>> GetListAsync(int page, int pageSize);
     Task<NewsDetailDto?> GetDetailAsync(Guid id);
+    Task<NewsDetailDto?> GetDetailBySlugAsync(string slug);
 }

@@ -27,13 +27,24 @@ public class NewsController : ControllerBase
         return Ok(ApiResponse<PagedResult<NewsListItemDto>>.Ok(result));
     }
 
-    /// <summary>View News Detail: chi tiết một bài tin + tăng lượt xem.</summary>
+    /// <summary>View News Detail theo id (giữ tương thích link cũ) + tăng lượt xem.</summary>
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(ApiResponse<NewsDetailDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetDetail(Guid id)
     {
         var detail = await _service.GetDetailAsync(id);
+        if (detail is null) return NotFound(ApiResponse<object>.Fail("News article not found."));
+        return Ok(ApiResponse<NewsDetailDto>.Ok(detail));
+    }
+
+    /// <summary>View News Detail theo slug (URL SEO) + tăng lượt xem.</summary>
+    [HttpGet("slug/{slug}")]
+    [ProducesResponseType(typeof(ApiResponse<NewsDetailDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetDetailBySlug(string slug)
+    {
+        var detail = await _service.GetDetailBySlugAsync(slug);
         if (detail is null) return NotFound(ApiResponse<object>.Fail("News article not found."));
         return Ok(ApiResponse<NewsDetailDto>.Ok(detail));
     }
