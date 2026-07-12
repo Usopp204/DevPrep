@@ -4,7 +4,7 @@ using QuestionAPI.DTOs;
 using QuestionAPI.Models;
 using QuestionAPI.Repositories.Interfaces;
 using QuestionAPI.Services.Interfaces;
-
+using QuestionAPI.Helpers;
 namespace QuestionAPI.Services;
 
 public class AdminQuestionService : IAdminQuestionService
@@ -64,7 +64,7 @@ public class AdminQuestionService : IAdminQuestionService
             }
         }
 
-        var now = DateTime.UtcNow;
+        var now =  VietnamTime.Now;
 
         var question = new Question
         {
@@ -77,6 +77,9 @@ public class AdminQuestionService : IAdminQuestionService
             ExpectedAnswer = dto.ExpectedAnswer,
             TechStack = dto.TechStack,
             Tags = dto.Tags,
+            // Bổ sung
+            Position = string.IsNullOrWhiteSpace(dto.Position)? null: dto.Position.Trim(),
+
             Status = "Active",
             IsDeleted = false,
             CreatedBy = adminId,
@@ -163,12 +166,19 @@ public class AdminQuestionService : IAdminQuestionService
             question.Tags = dto.Tags;
         }
 
+        if (dto.Position != null)
+        {
+            question.Position = string.IsNullOrWhiteSpace(dto.Position)
+                ? null
+                : dto.Position.Trim();
+        }
+
         if (dto.Status != null)
         {
             question.Status = dto.Status.Trim();
         }
 
-        question.UpdatedAt = DateTime.UtcNow;
+        question.UpdatedAt =  VietnamTime.Now;
 
         await _repo.SaveAsync();
 
@@ -187,8 +197,9 @@ public class AdminQuestionService : IAdminQuestionService
         }
 
         question.IsDeleted = true;
-        question.DeletedAt = DateTime.UtcNow;
-        question.UpdatedAt = DateTime.UtcNow;
+        question.DeletedAt =  VietnamTime.Now;
+        question.DeletedBy = adminId;   // <-- THÊM
+        question.UpdatedAt =  VietnamTime.Now;
 
         await _repo.SaveAsync();
 
@@ -206,8 +217,9 @@ public class AdminQuestionService : IAdminQuestionService
 
         question.IsDeleted = false;
         question.DeletedAt = null;
+        question.DeletedBy = null;   // <-- THÊM
         question.Status = "Active";
-        question.UpdatedAt = DateTime.UtcNow;
+        question.UpdatedAt =  VietnamTime.Now;
 
         await _repo.SaveAsync();
 
@@ -309,28 +321,29 @@ public class AdminQuestionService : IAdminQuestionService
         var totalPages = (int)Math.Ceiling((double)totalRecords / f.PageSize);
 
         var items = await query
-            .Include(x => x.Category)
-            .OrderByDescending(x => x.CreatedAt)
-            .Skip((f.PageIndex - 1) * f.PageSize)
-            .Take(f.PageSize)
-            .Select(x => new AdminQuestionListItemDto
-            {
-                QuestionId = x.QuestionId,
-                CategoryId = x.CategoryId,
-                CategoryName = x.Category != null ? x.Category.Name : null,
-                Content = x.Content,
-                QuestionType = x.QuestionType,
-                Level = x.Level,
-                Difficulty = x.Difficulty,
-                TechStack = x.TechStack,
-                Tags = x.Tags,
-                Status = x.Status,
-                IsDeleted = x.IsDeleted,
-                DeletedAt = x.DeletedAt,
-                DeletedBy = null,
-                CreatedAt = x.CreatedAt
-            })
-            .ToListAsync();
+    .Include(x => x.Category)
+    .OrderByDescending(x => x.CreatedAt)
+    .Skip((f.PageIndex - 1) * f.PageSize)
+    .Take(f.PageSize)
+    .Select(x => new AdminQuestionListItemDto
+    {
+        QuestionId = x.QuestionId,
+        CategoryId = x.CategoryId,
+        CategoryName = x.Category != null ? x.Category.Name : null,
+        Content = x.Content,
+        QuestionType = x.QuestionType,
+        Level = x.Level,
+        Difficulty = x.Difficulty,
+        TechStack = x.TechStack,
+        Tags = x.Tags,
+        Position = x.Position,
+        Status = x.Status,
+        IsDeleted = x.IsDeleted,
+        DeletedAt = x.DeletedAt,
+        DeletedBy = x.DeletedBy,   // <-- SỬA, bỏ null
+        CreatedAt = x.CreatedAt
+    })
+    .ToListAsync();
 
         return new AdminPagedResultDto<AdminQuestionListItemDto>
         {
@@ -369,10 +382,11 @@ public class AdminQuestionService : IAdminQuestionService
             ExpectedAnswer = x.ExpectedAnswer,
             TechStack = x.TechStack,
             Tags = x.Tags,
+            Position = x.Position,
             Status = x.Status,
             IsDeleted = x.IsDeleted,
             CreatedBy = x.CreatedBy,
-            DeletedBy = null,
+            DeletedBy = x.DeletedBy,
             DeletedAt = x.DeletedAt,
             CreatedAt = x.CreatedAt,
             UpdatedAt = x.UpdatedAt

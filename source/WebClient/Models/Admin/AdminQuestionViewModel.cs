@@ -43,6 +43,9 @@ public class AdminQuestionQueryDto
 
     public Guid? CategoryId { get; set; }
 
+    // Bổ sung
+    public string? Position { get; set; }
+
     public string? Status { get; set; }
 
     public int PageIndex { get; set; } = 1;
@@ -69,6 +72,8 @@ public class AdminQuestionListItemDto
     public string? TechStack { get; set; }
 
     public string? Tags { get; set; }
+    // Bổ sung
+    public string? Position { get; set; }
 
     public string Status { get; set; } = string.Empty;
 
@@ -102,6 +107,8 @@ public class AdminQuestionDetailDto
     public string? TechStack { get; set; }
 
     public string? Tags { get; set; }
+    // Bổ sung
+    public string? Position { get; set; }
 
     public string Status { get; set; } = string.Empty;
 
@@ -135,6 +142,8 @@ public class AdminCreateQuestionDto
     public string? TechStack { get; set; }
 
     public string? Tags { get; set; }
+    // Bổ sung
+    public string? Position { get; set; }
 }
 
 public class AdminUpdateQuestionDto
@@ -154,6 +163,8 @@ public class AdminUpdateQuestionDto
     public string? TechStack { get; set; }
 
     public string? Tags { get; set; }
+    // Bổ sung
+    public string? Position { get; set; }
 
     public string? Status { get; set; }
 }

@@ -29,4 +29,10 @@ public class AdminCreateQuestionDto
 
     [StringLength(500)]
     public string? Tags { get; set; }
+    // Bổ sung
+    [StringLength(
+        50,
+        ErrorMessage = "Position cannot exceed 50 characters."
+    )]
+    public string? Position { get; set; }
 }

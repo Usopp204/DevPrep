@@ -21,6 +21,9 @@ public class AdminQuestionDetailDto
     public string? TechStack { get; set; }
 
     public string? Tags { get; set; }
+    // Bổ sung
+    public string? Position { get; set; }
+
 
     public string Status { get; set; } = string.Empty;
 

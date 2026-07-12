@@ -31,12 +31,18 @@ public class Question
     [MaxLength(500)]
     public string? Tags { get; set; }
 
+    // Bổ sung Position
+    [MaxLength(50)]
+    public string? Position { get; set; }
+
     [MaxLength(20)]
     public string Status { get; set; } = "Active";
 
     public bool IsDeleted { get; set; } = false;
 
     public DateTime? DeletedAt { get; set; }
+
+    public Guid? DeletedBy { get; set; }   // <-- THÊM DÒNG NÀY
 
     public Guid? CreatedBy { get; set; }
 

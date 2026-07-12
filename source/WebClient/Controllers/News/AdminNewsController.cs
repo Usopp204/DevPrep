@@ -139,11 +139,11 @@ public class AdminNewsController : Controller
     [HttpPost("create")]
     public async Task<IActionResult> Create([FromForm] AdminNewsFormViewModel model)
     {
+        // BỎ điều kiện bắt buộc Slug — chỉ còn Title và Content
         if (string.IsNullOrWhiteSpace(model.Title) ||
-            string.IsNullOrWhiteSpace(model.Slug) ||
             string.IsNullOrWhiteSpace(model.Content))
         {
-            ViewBag.ErrorMessage = "Please fill in Title, Slug, and Content.";
+            ViewBag.ErrorMessage = "Please fill in Title and Content.";
             await LoadCategoriesAsync(model);
 
             return View("~/Views/News/AdminNewsCreate.cshtml", model);
@@ -154,11 +154,17 @@ public class AdminNewsController : Controller
             var uploadedUrl = await SaveThumbnailAsync(model.ThumbnailFile);
             var finalThumbnailUrl = uploadedUrl ?? model.ThumbnailUrl;
 
+            // Nếu Slug admin để trống/toàn khoảng trắng -> gửi null lên API
+            // để backend tự sinh slug từ Title (không gửi chuỗi rỗng "").
+            var finalSlug = string.IsNullOrWhiteSpace(model.Slug)
+                ? null
+                : model.Slug.Trim();
+
             var dto = new AdminCreateNewsDto
             {
                 CategoryId = model.CategoryId,
                 Title = model.Title.Trim(),
-                Slug = model.Slug.Trim(),
+                Slug = finalSlug,
                 Summary = model.Summary,
                 Content = model.Content,
                 ThumbnailUrl = finalThumbnailUrl,
@@ -217,11 +223,11 @@ public class AdminNewsController : Controller
     [HttpPost("edit/{id:guid}")]
     public async Task<IActionResult> Edit(Guid id, [FromForm] AdminNewsFormViewModel model)
     {
+        // BỎ điều kiện bắt buộc Slug — chỉ còn Title và Content
         if (string.IsNullOrWhiteSpace(model.Title) ||
-            string.IsNullOrWhiteSpace(model.Slug) ||
             string.IsNullOrWhiteSpace(model.Content))
         {
-            ViewBag.ErrorMessage = "Please fill in Title, Slug, and Content.";
+            ViewBag.ErrorMessage = "Please fill in Title and Content.";
             model.NewsId = id;
             await LoadCategoriesAsync(model);
 
@@ -237,11 +243,17 @@ public class AdminNewsController : Controller
                 model.ThumbnailUrl ??
                 model.ExistingThumbnailUrl;
 
+            // Nếu Slug admin để trống/toàn khoảng trắng -> gửi null lên API
+            // để backend tự sinh slug từ Title.
+            var finalSlug = string.IsNullOrWhiteSpace(model.Slug)
+                ? null
+                : model.Slug.Trim();
+
             var dto = new AdminUpdateNewsDto
             {
                 CategoryId = model.CategoryId,
                 Title = model.Title.Trim(),
-                Slug = model.Slug.Trim(),
+                Slug = finalSlug,
                 Summary = model.Summary,
                 Content = model.Content,
                 ThumbnailUrl = finalThumbnailUrl,
