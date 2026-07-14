@@ -15,15 +15,31 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
     <title>@ViewData["Title"] - DevPrep AI Admin Dashboard</title>
 
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@@100..900&family=JetBrains+Mono:wght@@500&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
-    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+
+    <link rel="preconnect"
+          href="https://fonts.googleapis.com">
+
+    <link rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossorigin>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@@100..900&family=JetBrains+Mono:wght@@500&display=swap"
+          rel="stylesheet">
+
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@@20..48,100..700,0..1,-50..200&display=swap"
+          rel="stylesheet">
+
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
+
+    <link rel="stylesheet"
+          href="~/css/admin.css"
+          asp-append-version="true" />
 
     <style>
         body.admin-page {
@@ -102,17 +118,22 @@
 </head>
 
 <body class="admin-page">
+
     @await Html.PartialAsync("_AdminTopbar")
     @await Html.PartialAsync("_AdminSidebar")
 
     <div class="admin-main-wrapper">
-        <div class="container-fluid text-white py-4" style="font-family: 'Inter', sans-serif;">
+        <div class="container-fluid text-white py-4"
+             style="font-family: 'Inter', sans-serif;">
 
             <div class="mb-4">
-                <h2 class="fw-bold mb-1" style="color: #ffffff; font-size: 1.75rem;">
+                <h2 class="fw-bold mb-1"
+                    style="color: #ffffff; font-size: 1.75rem;">
                     Update Interview Question
                 </h2>
-                <p class="text-muted mb-0" style="font-size: 0.9rem; color: #a1a1aa !important;">
+
+                <p class="text-muted mb-0"
+                   style="font-size: 0.9rem; color: #a1a1aa !important;">
                     Modify the high-quality prompt, evaluation criteria, or status for this question.
                 </p>
             </div>
@@ -123,24 +144,36 @@
                     Không tìm thấy dữ liệu câu hỏi để cập nhật.
                 </div>
 
-                <a href="/admin/questions" class="btn btn-outline-secondary">
+                <a href="/admin/questions"
+                   class="btn btn-outline-secondary">
                     Back to Questions
                 </a>
             }
             else
             {
-                <form id="updateQuestionForm" method="post" action="@formActionUrl">
+                <form id="updateQuestionForm"
+                      method="post"
+                      action="@formActionUrl">
+
                     <div class="row g-4">
                         <div class="col-lg-12">
 
-                            <div class="p-4 mb-4" style="background-color: #16161a; border-radius: 12px; border: 1px solid #26262b;">
-                                <p class="text-uppercase fw-bold text-white mb-4 d-flex align-items-center gap-2" style="font-size: 0.85rem; letter-spacing: 0.05em; border-bottom: 1px solid #26262b; padding-bottom: 10px;">
+                            <!-- Question Definition -->
+                            <div class="p-4 mb-4"
+                                 style="background-color: #16161a; border-radius: 12px; border: 1px solid #26262b;">
+
+                                <p class="text-uppercase fw-bold text-white mb-4 d-flex align-items-center gap-2"
+                                   style="font-size: 0.85rem; letter-spacing: 0.05em; border-bottom: 1px solid #26262b; padding-bottom: 10px;">
+
                                     <i class="fa-regular fa-file-lines text-indigo"></i>
+
                                     Question Definition
                                 </p>
 
                                 <div class="mb-4">
-                                    <label class="d-block mb-2 fw-semibold" style="font-size: 0.75rem; color: #a1a1aa; letter-spacing: 0.05em;">
+                                    <label class="d-block mb-2 fw-semibold"
+                                           style="font-size: 0.75rem; color: #a1a1aa; letter-spacing: 0.05em;">
+
                                         QUESTION CONTENT / PROMPT
                                     </label>
 
@@ -151,19 +184,31 @@
                                 </div>
 
                                 <div class="row g-3">
+
+                                    <!-- Category -->
                                     <div class="col-md-4">
-                                        <label class="d-block mb-2 fw-semibold" style="font-size: 0.75rem; color: #a1a1aa; letter-spacing: 0.05em;">
+                                        <label class="d-block mb-2 fw-semibold"
+                                               style="font-size: 0.75rem; color: #a1a1aa; letter-spacing: 0.05em;">
+
                                             CATEGORY
                                         </label>
 
-                                        <select class="form-select custom-input" required name="CategoryId">
-                                            <option value="" disabled>Select Category</option>
+                                        <select class="form-select custom-input"
+                                                required
+                                                name="CategoryId">
 
-                                            @if (Model?.Categories != null && Model.Categories.Any())
+                                            <option value=""
+                                                    disabled>
+                                                Select Category
+                                            </option>
+
+                                            @if (Model?.Categories != null &&
+                                           Model.Categories.Any())
                                             {
                                                 foreach (var cat in Model.Categories)
                                                 {
-                                                    <option value="@cat.CategoryId" selected="@(cat.CategoryId == qDetail.CategoryId)">
+                                                    <option value="@cat.CategoryId"
+                                                            selected="@(cat.CategoryId == qDetail.CategoryId)">
                                                         @cat.Name
                                                     </option>
                                                 }
@@ -171,82 +216,194 @@
                                         </select>
                                     </div>
 
+                                    <!-- Question Type: Admin tự nhập -->
                                     <div class="col-md-4">
-                                        <label class="d-block mb-2 fw-semibold" style="font-size: 0.75rem; color: #a1a1aa; letter-spacing: 0.05em;">
+                                        <label class="d-block mb-2 fw-semibold"
+                                               style="font-size: 0.75rem; color: #a1a1aa; letter-spacing: 0.05em;">
+
                                             QUESTION TYPE
                                         </label>
 
-                                        <select class="form-select custom-input" required name="QuestionType">
-                                            <option value="" disabled>Select Question Type</option>
-                                            <option value="Theory" selected="@(string.Equals(qDetail.QuestionType, "Theory", StringComparison.OrdinalIgnoreCase))">Theory</option>
-                                            <option value="Coding" selected="@(string.Equals(qDetail.QuestionType, "Coding", StringComparison.OrdinalIgnoreCase))">Coding</option>
-                                            <option value="Situational" selected="@(string.Equals(qDetail.QuestionType, "Situational", StringComparison.OrdinalIgnoreCase))">Situational</option>
-                                            <option value="Behavioral" selected="@(string.Equals(qDetail.QuestionType, "Behavioral", StringComparison.OrdinalIgnoreCase))">Behavioral</option>
-                                        </select>
+                                        <input type="text"
+                                               class="form-control custom-input"
+                                               required
+                                               maxlength="20"
+                                               name="QuestionType"
+                                               value="@qDetail.QuestionType"
+                                               placeholder="e.g. Theory, Coding, Behavioral..." />
                                     </div>
 
+                                    <!-- Status -->
                                     <div class="col-md-4">
-                                        <label class="d-block mb-2 fw-semibold" style="font-size: 0.75rem; color: #a1a1aa; letter-spacing: 0.05em;">
+                                        <label class="d-block mb-2 fw-semibold"
+                                               style="font-size: 0.75rem; color: #a1a1aa; letter-spacing: 0.05em;">
+
                                             STATUS
                                         </label>
 
-                                        <select class="form-select custom-input" required name="Status">
-                                            <option value="Active" selected="@(string.Equals(qDetail.Status, "Active", StringComparison.OrdinalIgnoreCase))">Active</option>
-                                            <option value="Draft" selected="@(string.Equals(qDetail.Status, "Draft", StringComparison.OrdinalIgnoreCase))">Draft</option>
-                                            <option value="Archived" selected="@(string.Equals(qDetail.Status, "Archived", StringComparison.OrdinalIgnoreCase))">Archived</option>
+                                        <select class="form-select custom-input"
+                                                required
+                                                name="Status">
+
+                                            <option value="Active"
+                                                    selected="@(string.Equals(
+                                                        qDetail.Status,
+                                                        "Active",
+                                                        StringComparison.OrdinalIgnoreCase
+                                                    ))">
+                                                Active
+                                            </option>
+
+                                            <option value="Draft"
+                                                    selected="@(string.Equals(
+                                                        qDetail.Status,
+                                                        "Draft",
+                                                        StringComparison.OrdinalIgnoreCase
+                                                    ))">
+                                                Draft
+                                            </option>
+
+                                            <option value="Archived"
+                                                    selected="@(string.Equals(
+                                                        qDetail.Status,
+                                                        "Archived",
+                                                        StringComparison.OrdinalIgnoreCase
+                                                    ))">
+                                                Archived
+                                            </option>
                                         </select>
                                     </div>
+
                                 </div>
                             </div>
 
-                            <div class="p-4 mb-4" style="background-color: #16161a; border-radius: 12px; border: 1px solid #26262b;">
-                                <p class="text-uppercase fw-bold text-white mb-4 d-flex align-items-center gap-2" style="font-size: 0.85rem; letter-spacing: 0.05em; border-bottom: 1px solid #26262b; padding-bottom: 10px;">
+                            <!-- Targeting & Complexity -->
+                            <div class="p-4 mb-4"
+                                 style="background-color: #16161a; border-radius: 12px; border: 1px solid #26262b;">
+
+                                <p class="text-uppercase fw-bold text-white mb-4 d-flex align-items-center gap-2"
+                                   style="font-size: 0.85rem; letter-spacing: 0.05em; border-bottom: 1px solid #26262b; padding-bottom: 10px;">
+
                                     <i class="fa-solid fa-layer-group text-indigo"></i>
+
                                     Targeting & Complexity
                                 </p>
 
-                                <div class="row g-3 align-items-center">
+                                <div class="row g-3 align-items-start">
+
+                                    <!-- Position -->
                                     <div class="col-md-6">
-                                        <label class="d-block mb-2 fw-semibold" style="font-size: 0.75rem; color: #a1a1aa; letter-spacing: 0.05em;">
+                                        <label class="d-block mb-2 fw-semibold"
+                                               style="font-size: 0.75rem; color: #a1a1aa; letter-spacing: 0.05em;">
+
+                                            POSITION
+                                        </label>
+
+                                        <input type="text"
+                                               class="form-control custom-input"
+                                               maxlength="50"
+                                               name="Position"
+                                               value="@qDetail.Position"
+                                               placeholder="e.g. Backend Developer, QA Engineer..." />
+                                    </div>
+
+                                    <!-- Target Level: Admin tự nhập -->
+                                    <div class="col-md-6">
+                                        <label class="d-block mb-2 fw-semibold"
+                                               style="font-size: 0.75rem; color: #a1a1aa; letter-spacing: 0.05em;">
+
                                             TARGET LEVEL
                                         </label>
 
-                                        <select class="form-select custom-input" required name="Level">
-                                            <option value="" disabled>Select Target Level</option>
-                                            <option value="Intern" selected="@(string.Equals(qDetail.Level, "Intern", StringComparison.OrdinalIgnoreCase))">Intern</option>
-                                            <option value="Junior" selected="@(string.Equals(qDetail.Level, "Junior", StringComparison.OrdinalIgnoreCase))">Junior</option>
-                                            <option value="Middle" selected="@(string.Equals(qDetail.Level, "Middle", StringComparison.OrdinalIgnoreCase))">Middle</option>
-                                            <option value="Senior" selected="@(string.Equals(qDetail.Level, "Senior", StringComparison.OrdinalIgnoreCase))">Senior</option>
-                                        </select>
+                                        <input type="text"
+                                               class="form-control custom-input"
+                                               required
+                                               maxlength="20"
+                                               name="Level"
+                                               value="@qDetail.Level"
+                                               placeholder="e.g. Intern, Junior, Middle, Senior..." />
                                     </div>
 
-                                    <div class="col-md-6">
-                                        <label class="d-block mb-2 fw-semibold" style="font-size: 0.75rem; color: #a1a1aa; letter-spacing: 0.05em;">
+                                    <!-- Difficulty -->
+                                    <div class="col-12">
+                                        <label class="d-block mb-2 fw-semibold"
+                                               style="font-size: 0.75rem; color: #a1a1aa; letter-spacing: 0.05em;">
+
                                             DIFFICULTY
                                         </label>
 
                                         <div class="d-flex gap-2 btn-group-toggle flex-wrap">
-                                            <input type="radio" class="btn-check" name="Difficulty" id="diffEasy" value="Easy" checked="@(string.Equals(qDetail.Difficulty, "Easy", StringComparison.OrdinalIgnoreCase))">
-                                            <label class="btn btn-custom-radio px-4" for="diffEasy">Easy</label>
 
-                                            <input type="radio" class="btn-check" name="Difficulty" id="diffMedium" value="Medium" checked="@(string.Equals(qDetail.Difficulty, "Medium", StringComparison.OrdinalIgnoreCase))">
-                                            <label class="btn btn-custom-radio px-4" for="diffMedium">Medium</label>
+                                            <input type="radio"
+                                                   class="btn-check"
+                                                   name="Difficulty"
+                                                   id="diffEasy"
+                                                   value="Easy"
+                                                   checked="@(string.Equals(
+                                                       qDetail.Difficulty,
+                                                       "Easy",
+                                                       StringComparison.OrdinalIgnoreCase
+                                                   ))">
 
-                                            <input type="radio" class="btn-check" name="Difficulty" id="diffHard" value="Hard" checked="@(string.Equals(qDetail.Difficulty, "Hard", StringComparison.OrdinalIgnoreCase))">
-                                            <label class="btn btn-custom-radio px-4" for="diffHard">Hard</label>
+                                            <label class="btn btn-custom-radio px-4"
+                                                   for="diffEasy">
+                                                Easy
+                                            </label>
+
+                                            <input type="radio"
+                                                   class="btn-check"
+                                                   name="Difficulty"
+                                                   id="diffMedium"
+                                                   value="Medium"
+                                                   checked="@(string.Equals(
+                                                       qDetail.Difficulty,
+                                                       "Medium",
+                                                       StringComparison.OrdinalIgnoreCase
+                                                   ))">
+
+                                            <label class="btn btn-custom-radio px-4"
+                                                   for="diffMedium">
+                                                Medium
+                                            </label>
+
+                                            <input type="radio"
+                                                   class="btn-check"
+                                                   name="Difficulty"
+                                                   id="diffHard"
+                                                   value="Hard"
+                                                   checked="@(string.Equals(
+                                                       qDetail.Difficulty,
+                                                       "Hard",
+                                                       StringComparison.OrdinalIgnoreCase
+                                                   ))">
+
+                                            <label class="btn btn-custom-radio px-4"
+                                                   for="diffHard">
+                                                Hard
+                                            </label>
+
                                         </div>
                                     </div>
+
                                 </div>
                             </div>
 
-                            <div class="p-4 mb-4" style="background-color: #16161a; border-radius: 12px; border: 1px solid #26262b;">
-                                <p class="text-uppercase fw-bold text-white mb-4 d-flex align-items-center gap-2" style="font-size: 0.85rem; letter-spacing: 0.05em; border-bottom: 1px solid #26262b; padding-bottom: 10px;">
+                            <!-- Evaluation Criteria -->
+                            <div class="p-4 mb-4"
+                                 style="background-color: #16161a; border-radius: 12px; border: 1px solid #26262b;">
+
+                                <p class="text-uppercase fw-bold text-white mb-4 d-flex align-items-center gap-2"
+                                   style="font-size: 0.85rem; letter-spacing: 0.05em; border-bottom: 1px solid #26262b; padding-bottom: 10px;">
+
                                     <i class="fa-regular fa-circle-check text-indigo"></i>
+
                                     Evaluation Criteria
                                 </p>
 
                                 <div class="mb-2">
-                                    <label class="d-block mb-2 fw-semibold" style="font-size: 0.75rem; color: #a1a1aa; letter-spacing: 0.05em;">
+                                    <label class="d-block mb-2 fw-semibold"
+                                           style="font-size: 0.75rem; color: #a1a1aa; letter-spacing: 0.05em;">
+
                                         EXPECTED ANSWER / IDEAL RESPONSE
                                     </label>
 
@@ -255,67 +412,89 @@
                                               required
                                               name="ExpectedAnswer">@qDetail.ExpectedAnswer</textarea>
                                 </div>
+
                             </div>
 
-                            <div class="p-4 mb-4" style="background-color: #16161a; border-radius: 12px; border: 1px solid #26262b;">
-                                <p class="text-uppercase fw-bold text-white mb-4 d-flex align-items-center gap-2" style="font-size: 0.85rem; letter-spacing: 0.05em; border-bottom: 1px solid #26262b; padding-bottom: 10px;">
+                            <!-- Taxonomy -->
+                            <div class="p-4 mb-4"
+                                 style="background-color: #16161a; border-radius: 12px; border: 1px solid #26262b;">
+
+                                <p class="text-uppercase fw-bold text-white mb-4 d-flex align-items-center gap-2"
+                                   style="font-size: 0.85rem; letter-spacing: 0.05em; border-bottom: 1px solid #26262b; padding-bottom: 10px;">
+
                                     <i class="fa-solid fa-tags text-indigo"></i>
+
                                     Taxonomy
                                 </p>
 
                                 <div class="row g-3">
+
+                                    <!-- Tech Stack: Admin tự nhập -->
                                     <div class="col-md-6">
-                                        <label class="d-block mb-2 fw-semibold" style="font-size: 0.75rem; color: #a1a1aa; letter-spacing: 0.05em;">
+                                        <label class="d-block mb-2 fw-semibold"
+                                               style="font-size: 0.75rem; color: #a1a1aa; letter-spacing: 0.05em;">
+
                                             TECH STACK
                                         </label>
 
-                                        <select class="form-select custom-input" name="TechStack">
-                                            <option value="">Select Tech Stack</option>
-                                            <option value="ASP.NET Core" selected="@(string.Equals(qDetail.TechStack, "ASP.NET Core", StringComparison.OrdinalIgnoreCase))">ASP.NET Core</option>
-                                            <option value="C#" selected="@(string.Equals(qDetail.TechStack, "C#", StringComparison.OrdinalIgnoreCase))">C#</option>
-                                            <option value="Java" selected="@(string.Equals(qDetail.TechStack, "Java", StringComparison.OrdinalIgnoreCase))">Java</option>
-                                            <option value="JavaScript" selected="@(string.Equals(qDetail.TechStack, "JavaScript", StringComparison.OrdinalIgnoreCase))">JavaScript</option>
-                                            <option value="React" selected="@(string.Equals(qDetail.TechStack, "React", StringComparison.OrdinalIgnoreCase))">React</option>
-                                            <option value="Node.js" selected="@(string.Equals(qDetail.TechStack, "Node.js", StringComparison.OrdinalIgnoreCase))">Node.js</option>
-                                        </select>
+                                        <input type="text"
+                                               class="form-control custom-input"
+                                               maxlength="255"
+                                               value="@qDetail.TechStack"
+                                               name="TechStack"
+                                               placeholder="e.g. ASP.NET Core, C#, React, SQL Server..." />
                                     </div>
 
+                                    <!-- Tags -->
                                     <div class="col-md-6">
-                                        <label class="d-block mb-2 fw-semibold" style="font-size: 0.75rem; color: #a1a1aa; letter-spacing: 0.05em;">
+                                        <label class="d-block mb-2 fw-semibold"
+                                               style="font-size: 0.75rem; color: #a1a1aa; letter-spacing: 0.05em;">
+
                                             TAGS
                                         </label>
 
                                         <input type="text"
                                                class="form-control custom-input"
+                                               maxlength="500"
                                                value="@qDetail.Tags"
-                                               name="Tags" />
+                                               name="Tags"
+                                               placeholder="e.g. oop, dotnet, logic..." />
                                     </div>
+
                                 </div>
                             </div>
 
+                            <!-- Actions -->
                             <div class="d-flex justify-content-center align-items-center gap-3 mt-4 pt-2">
+
                                 <a href="/admin/questions"
                                    class="btn btn-outline-secondary px-5"
                                    style="border-radius: 8px; font-weight: 500; border-color: #3f3f46; color: #ffffff;">
+
                                     Cancel
                                 </a>
 
                                 <button type="submit"
                                         class="btn btn-primary px-5"
                                         style="background-color: #6366f1; border: none; border-radius: 8px; font-weight: 500;">
+
                                     Save Changes
                                 </button>
+
                             </div>
 
                         </div>
                     </div>
                 </form>
             }
+
         </div>
     </div>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@@11"></script>
 
     <script>
@@ -341,10 +520,14 @@
                         result = null;
                     }
 
-                    if (response.ok && result && result.success) {
+                    if (response.ok &&
+                        result &&
+                        result.success) {
+
                         Swal.fire({
                             title: 'Updated Successfully!',
-                            text: result.message || 'The question has been updated successfully.',
+                            text: result.message ||
+                                'The question has been updated successfully.',
                             icon: 'success',
                             background: '#16161a',
                             color: '#ffffff',
@@ -352,13 +535,17 @@
                             timer: 1800,
                             showConfirmButton: false
                         }).then(() => {
-                            window.location.href = '/admin/questions';
+                            window.location.href =
+                                '/admin/questions';
                         });
 
                         return;
                     }
 
-                    throw new Error((result && result.message) || 'An error occurred while updating the question.');
+                    throw new Error(
+                        (result && result.message) ||
+                        'An error occurred while updating the question.'
+                    );
                 })
                 .catch(error => {
                     Swal.fire({
@@ -373,5 +560,6 @@
             });
         }
     </script>
+
 </body>
 </html>

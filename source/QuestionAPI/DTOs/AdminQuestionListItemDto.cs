@@ -19,6 +19,7 @@ public class AdminQuestionListItemDto
     public string? TechStack { get; set; }
 
     public string? Tags { get; set; }
+    public string? Position { get; set; }
 
     public string Status { get; set; } = string.Empty;
 

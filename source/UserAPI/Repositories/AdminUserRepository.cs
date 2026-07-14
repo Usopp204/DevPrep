@@ -1,7 +1,8 @@
-﻿using Microsoft.Data.SqlClient;
-using Microsoft.EntityFrameworkCore;
+﻿using System.Data;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 using UserAPI.DTOs;
+using UserAPI.Helpers;
 using UserAPI.Models;
 using UserAPI.Repositories.Interfaces;
 
@@ -18,49 +19,45 @@ public class AdminUserRepository : IAdminUserRepository
         _configuration = configuration;
     }
 
+    // =========================================================
+    // DANH SÁCH USER
+    // =========================================================
+
     public async Task<PagedResult<AdminUserListItemDto>> GetUsersAsync(AdminUserQueryDto query)
     {
-        if (query.Page < 1)
-            query.Page = 1;
+        if (query.Page < 1) query.Page = 1;
+        if (query.PageSize < 1 || query.PageSize > 100) query.PageSize = 10;
 
-        if (query.PageSize < 1 || query.PageSize > 100)
-            query.PageSize = 10;
-
-        var keyword = string.IsNullOrWhiteSpace(query.Keyword)
-            ? null
-            : $"%{query.Keyword.Trim()}%";
-
-        var role = string.IsNullOrWhiteSpace(query.Role)
-            ? null
-            : query.Role.Trim();
-
-        var status = string.IsNullOrWhiteSpace(query.Status)
-            ? null
-            : query.Status.Trim();
+        var keyword = string.IsNullOrWhiteSpace(query.Keyword) ? null : $"%{query.Keyword.Trim()}%";
+        var role = string.IsNullOrWhiteSpace(query.Role) ? null : query.Role.Trim();
+        var status = string.IsNullOrWhiteSpace(query.Status) ? null : query.Status.Trim();
 
         var items = new List<AdminUserListItemDto>();
         var totalCount = 0;
 
-        var connString = _configuration.GetValue<string>("USER_DB_CONNECTION_STRING");
-
-        await using var conn = new SqlConnection(connString);
+        await using var conn = new SqlConnection(GetConnectionString());
         await conn.OpenAsync();
 
         var countSql = @"
             SELECT COUNT(1)
             FROM DevPrep_Auth.dbo.Accounts a
-            LEFT JOIN DevPrep_User.dbo.UserProfiles p
-                ON p.AccountId = a.AccountId
-            WHERE
-                (@Keyword IS NULL OR p.FullName LIKE @Keyword OR a.Email LIKE @Keyword)
-                AND (@Role IS NULL OR a.Role = @Role)
-                AND (@Status IS NULL OR a.Status = @Status)
-                AND (@CreatedFrom IS NULL OR a.CreatedAt >= @CreatedFrom)
-                AND (@CreatedTo IS NULL OR a.CreatedAt < DATEADD(day, 1, @CreatedTo));";
+            LEFT JOIN DevPrep_User.dbo.UserProfiles p ON p.AccountId = a.AccountId
+            WHERE (@Keyword IS NULL OR p.FullName LIKE @Keyword OR a.Email LIKE @Keyword)
+              AND (@Role IS NULL OR a.Role = @Role)
+              AND (@Status IS NULL OR a.Status = @Status)
+              AND (@CreatedFrom IS NULL OR a.CreatedAt >= @CreatedFrom)
+              AND (@CreatedTo IS NULL OR a.CreatedAt < DATEADD(day, 1, @CreatedTo));";
 
         await using (var cmd = new SqlCommand(countSql, conn))
         {
-            AddCommonQueryParameters(cmd, keyword, role, status, query.CreatedFrom, query.CreatedTo);
+            AddCommonQueryParameters(
+                cmd,
+                keyword,
+                role,
+                status,
+                query.CreatedFrom,
+                query.CreatedTo
+            );
 
             var countResult = await cmd.ExecuteScalarAsync();
 
@@ -80,6 +77,7 @@ public class AdminUserRepository : IAdminUserRepository
                 a.IsEmailVerified,
                 a.CreatedAt,
                 a.UpdatedAt,
+
                 COALESCE((
                     SELECT COUNT(1)
                     FROM DevPrep_Interview.dbo.InterviewSessions s
@@ -87,30 +85,42 @@ public class AdminUserRepository : IAdminUserRepository
                       AND s.UserId = p.UserId
                       AND ISNULL(s.IsDeleted, 0) = 0
                 ), 0) AS TotalSessionCount,
+
                 COALESCE((
                     SELECT TOP 1 w.Balance
                     FROM DevPrep_Payment.dbo.CreditWallets w
                     WHERE p.UserId IS NOT NULL
                       AND w.UserId = p.UserId
                 ), 0) AS CreditBalance
+
             FROM DevPrep_Auth.dbo.Accounts a
-            LEFT JOIN DevPrep_User.dbo.UserProfiles p
-                ON p.AccountId = a.AccountId
-            WHERE
-                (@Keyword IS NULL OR p.FullName LIKE @Keyword OR a.Email LIKE @Keyword)
-                AND (@Role IS NULL OR a.Role = @Role)
-                AND (@Status IS NULL OR a.Status = @Status)
-                AND (@CreatedFrom IS NULL OR a.CreatedAt >= @CreatedFrom)
-                AND (@CreatedTo IS NULL OR a.CreatedAt < DATEADD(day, 1, @CreatedTo))
+            LEFT JOIN DevPrep_User.dbo.UserProfiles p ON p.AccountId = a.AccountId
+
+            WHERE (@Keyword IS NULL OR p.FullName LIKE @Keyword OR a.Email LIKE @Keyword)
+              AND (@Role IS NULL OR a.Role = @Role)
+              AND (@Status IS NULL OR a.Status = @Status)
+              AND (@CreatedFrom IS NULL OR a.CreatedAt >= @CreatedFrom)
+              AND (@CreatedTo IS NULL OR a.CreatedAt < DATEADD(day, 1, @CreatedTo))
+
             ORDER BY a.CreatedAt DESC
             OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;";
 
         await using (var cmd = new SqlCommand(listSql, conn))
         {
-            AddCommonQueryParameters(cmd, keyword, role, status, query.CreatedFrom, query.CreatedTo);
+            AddCommonQueryParameters(
+                cmd,
+                keyword,
+                role,
+                status,
+                query.CreatedFrom,
+                query.CreatedTo
+            );
 
-            cmd.Parameters.AddWithValue("@Offset", (query.Page - 1) * query.PageSize);
-            cmd.Parameters.AddWithValue("@PageSize", query.PageSize);
+            cmd.Parameters.Add("@Offset", SqlDbType.Int).Value =
+                (query.Page - 1) * query.PageSize;
+
+            cmd.Parameters.Add("@PageSize", SqlDbType.Int).Value =
+                query.PageSize;
 
             await using var reader = await cmd.ExecuteReaderAsync();
 
@@ -133,26 +143,26 @@ public class AdminUserRepository : IAdminUserRepository
             }
         }
 
-        var totalPages = (int)Math.Ceiling((double)totalCount / query.PageSize);
-
         return new PagedResult<AdminUserListItemDto>
         {
             PageIndex = query.Page,
             PageSize = query.PageSize,
             TotalCount = totalCount,
-            TotalPages = totalPages,
+            TotalPages = (int)Math.Ceiling(totalCount / (double)query.PageSize),
             Items = items
         };
     }
 
+    // =========================================================
+    // CHI TIẾT USER
+    // =========================================================
+
     public async Task<AdminUserDetailDto?> GetUserDetailAsync(Guid id)
     {
-        var connString = _configuration.GetValue<string>("USER_DB_CONNECTION_STRING");
-
         AdminUserDetailDto? detail = null;
         Guid? profileUserId = null;
 
-        await using var conn = new SqlConnection(connString);
+        await using var conn = new SqlConnection(GetConnectionString());
         await conn.OpenAsync();
 
         var detailSql = @"
@@ -174,13 +184,12 @@ public class AdminUserRepository : IAdminUserRepository
                 a.BlockedAt,
                 a.BlockedBy
             FROM DevPrep_Auth.dbo.Accounts a
-            LEFT JOIN DevPrep_User.dbo.UserProfiles p
-                ON p.AccountId = a.AccountId
+            LEFT JOIN DevPrep_User.dbo.UserProfiles p ON p.AccountId = a.AccountId
             WHERE a.AccountId = @Id OR p.UserId = @Id;";
 
         await using (var cmd = new SqlCommand(detailSql, conn))
         {
-            cmd.Parameters.AddWithValue("@Id", id);
+            cmd.Parameters.Add("@Id", SqlDbType.UniqueIdentifier).Value = id;
 
             await using var reader = await cmd.ExecuteReaderAsync();
 
@@ -212,11 +221,8 @@ public class AdminUserRepository : IAdminUserRepository
             }
         }
 
-        if (detail == null)
-            return null;
-
-        if (!profileUserId.HasValue)
-            return detail;
+        if (detail == null) return null;
+        if (!profileUserId.HasValue) return detail;
 
         var creditSql = @"
             SELECT TOP 1 Balance
@@ -225,13 +231,15 @@ public class AdminUserRepository : IAdminUserRepository
 
         await using (var cmd = new SqlCommand(creditSql, conn))
         {
-            cmd.Parameters.AddWithValue("@UserId", profileUserId.Value);
+            cmd.Parameters.Add("@UserId", SqlDbType.UniqueIdentifier).Value =
+                profileUserId.Value;
 
             var balanceObj = await cmd.ExecuteScalarAsync();
 
-            detail.CurrentCreditBalance = balanceObj == null || balanceObj == DBNull.Value
-                ? 0
-                : Convert.ToInt32(balanceObj);
+            detail.CurrentCreditBalance =
+                balanceObj == null || balanceObj == DBNull.Value
+                    ? 0
+                    : Convert.ToInt32(balanceObj);
         }
 
         var sessionSql = @"
@@ -256,7 +264,8 @@ public class AdminUserRepository : IAdminUserRepository
 
         await using (var cmd = new SqlCommand(sessionSql, conn))
         {
-            cmd.Parameters.AddWithValue("@UserId", profileUserId.Value);
+            cmd.Parameters.Add("@UserId", SqlDbType.UniqueIdentifier).Value =
+                profileUserId.Value;
 
             await using var reader = await cmd.ExecuteReaderAsync();
 
@@ -284,56 +293,144 @@ public class AdminUserRepository : IAdminUserRepository
         return detail;
     }
 
-    public async Task<bool> UpdateStatusAsync(Guid id, AdminUpdateUserStatusDto dto, Guid? adminAccountId)
-    {
-        var connString = _configuration.GetValue<string>("USER_DB_CONNECTION_STRING");
+    // =========================================================
+    // BLOCK / UNBLOCK + LƯU LỊCH SỬ
+    // =========================================================
 
-        await using var conn = new SqlConnection(connString);
+    public async Task<bool> UpdateStatusAsync(
+        Guid id,
+        AdminUpdateUserStatusDto dto,
+        Guid? adminAccountId)
+    {
+        if (!adminAccountId.HasValue)
+        {
+            throw new InvalidOperationException(
+                "Không xác định được tài khoản admin đang thực hiện."
+            );
+        }
+
+        var vietnamNow = VietnamTime.Now;
+
+        await using var conn = new SqlConnection(GetConnectionString());
         await conn.OpenAsync();
 
-        var sql = @"
-            DECLARE @TargetAccountId UNIQUEIDENTIFIER;
+        await using var transaction =
+            (SqlTransaction)await conn.BeginTransactionAsync();
 
-            SELECT TOP 1 @TargetAccountId = a.AccountId
-            FROM DevPrep_Auth.dbo.Accounts a
-            LEFT JOIN DevPrep_User.dbo.UserProfiles p
-                ON p.AccountId = a.AccountId
-            WHERE a.AccountId = @Id OR p.UserId = @Id;
+        try
+        {
+            var sql = @"
+                DECLARE @TargetAccountId UNIQUEIDENTIFIER;
 
-            IF @TargetAccountId IS NULL
-            BEGIN
-                SELECT CAST(0 AS INT);
-                RETURN;
-            END;
+                SELECT TOP 1 @TargetAccountId = a.AccountId
+                FROM DevPrep_Auth.dbo.Accounts a
+                LEFT JOIN DevPrep_User.dbo.UserProfiles p
+                    ON p.AccountId = a.AccountId
+                WHERE a.AccountId = @Id OR p.UserId = @Id;
 
-            UPDATE DevPrep_Auth.dbo.Accounts
-            SET
-                Status = @Status,
-                BlockedReason = CASE WHEN @Status = 'Blocked' THEN @Reason ELSE NULL END,
-                BlockedAt = CASE WHEN @Status = 'Blocked' THEN SYSUTCDATETIME() ELSE NULL END,
-                BlockedBy = CASE WHEN @Status = 'Blocked' THEN @BlockedBy ELSE NULL END,
-                UpdatedAt = SYSUTCDATETIME()
-            WHERE AccountId = @TargetAccountId;
+                IF @TargetAccountId IS NULL
+                BEGIN
+                    SELECT CAST(0 AS INT);
+                    RETURN;
+                END;
 
-            SELECT CAST(1 AS INT);";
+                IF @Status = 'Blocked'
+                   AND @TargetAccountId = @AdminAccountId
+                BEGIN
+                    ;THROW 50001,
+                        N'An admin cannot block themselves.',
+                        1;
+                END;
 
-        await using var cmd = new SqlCommand(sql, conn);
+                UPDATE DevPrep_Auth.dbo.Accounts
+                SET
+                    Status = @Status,
+                    BlockedReason =
+                        CASE
+                            WHEN @Status = 'Blocked' THEN @Reason
+                            ELSE NULL
+                        END,
+                    BlockedAt =
+                        CASE
+                            WHEN @Status = 'Blocked' THEN @Now
+                            ELSE NULL
+                        END,
+                    BlockedBy =
+                        CASE
+                            WHEN @Status = 'Blocked' THEN @AdminAccountId
+                            ELSE NULL
+                        END,
+                    UpdatedAt = @Now
+                WHERE AccountId = @TargetAccountId;
 
-        cmd.Parameters.AddWithValue("@Id", id);
-        cmd.Parameters.AddWithValue("@Status", dto.Status.Trim());
-        cmd.Parameters.AddWithValue("@Reason", (object?)dto.Reason ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@BlockedBy", (object?)adminAccountId ?? DBNull.Value);
+                INSERT INTO DevPrep_Auth.dbo.AccountBlockHistories
+                (
+                    BlockHistoryId,
+                    AccountId,
+                    Action,
+                    Reason,
+                    PerformedBy,
+                    CreatedAt
+                )
+                VALUES
+                (
+                    NEWID(),
+                    @TargetAccountId,
+                    CASE
+                        WHEN @Status = 'Blocked' THEN 'Block'
+                        ELSE 'Unblock'
+                    END,
+                    @Reason,
+                    @AdminAccountId,
+                    @Now
+                );
 
-        var result = await cmd.ExecuteScalarAsync();
+                SELECT CAST(1 AS INT);";
 
-        return result != null && result != DBNull.Value && Convert.ToInt32(result) == 1;
+            await using var cmd = new SqlCommand(sql, conn, transaction);
+
+            cmd.Parameters.Add("@Id", SqlDbType.UniqueIdentifier).Value = id;
+
+            cmd.Parameters.Add("@Status", SqlDbType.NVarChar, 20).Value =
+                dto.Status.Trim();
+
+            cmd.Parameters.Add("@Reason", SqlDbType.NVarChar, 500).Value =
+                string.IsNullOrWhiteSpace(dto.Reason)
+                    ? DBNull.Value
+                    : dto.Reason.Trim();
+
+            cmd.Parameters.Add("@AdminAccountId", SqlDbType.UniqueIdentifier).Value =
+                adminAccountId.Value;
+
+            cmd.Parameters.Add("@Now", SqlDbType.DateTime2).Value =
+                vietnamNow;
+
+            var result = await cmd.ExecuteScalarAsync();
+
+            await transaction.CommitAsync();
+
+            return result != null
+                   && result != DBNull.Value
+                   && Convert.ToInt32(result) == 1;
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 
-    public async Task<bool> UpdateRoleAsync(Guid id, AdminUpdateUserRoleDto dto)
-    {
-        var connString = _configuration.GetValue<string>("USER_DB_CONNECTION_STRING");
+    // =========================================================
+    // UPDATE ROLE THEO GIỜ VIỆT NAM
+    // =========================================================
 
-        await using var conn = new SqlConnection(connString);
+    public async Task<bool> UpdateRoleAsync(
+        Guid id,
+        AdminUpdateUserRoleDto dto)
+    {
+        var vietnamNow = VietnamTime.Now;
+
+        await using var conn = new SqlConnection(GetConnectionString());
         await conn.OpenAsync();
 
         var sql = @"
@@ -354,188 +451,169 @@ public class AdminUserRepository : IAdminUserRepository
             UPDATE DevPrep_Auth.dbo.Accounts
             SET
                 Role = @Role,
-                UpdatedAt = SYSUTCDATETIME()
+                UpdatedAt = @Now
             WHERE AccountId = @TargetAccountId;
 
             SELECT CAST(1 AS INT);";
 
         await using var cmd = new SqlCommand(sql, conn);
 
-        cmd.Parameters.AddWithValue("@Id", id);
-        cmd.Parameters.AddWithValue("@Role", dto.Role.Trim());
+        cmd.Parameters.Add("@Id", SqlDbType.UniqueIdentifier).Value = id;
+
+        cmd.Parameters.Add("@Role", SqlDbType.NVarChar, 30).Value =
+            dto.Role.Trim();
+
+        cmd.Parameters.Add("@Now", SqlDbType.DateTime2).Value =
+            vietnamNow;
 
         var result = await cmd.ExecuteScalarAsync();
 
-        return result != null && result != DBNull.Value && Convert.ToInt32(result) == 1;
+        return result != null
+               && result != DBNull.Value
+               && Convert.ToInt32(result) == 1;
     }
 
-    private static void AddCommonQueryParameters(
-        SqlCommand cmd,
-        string? keyword,
-        string? role,
-        string? status,
-        DateTime? createdFrom,
-        DateTime? createdTo)
-    {
-        cmd.Parameters.AddWithValue("@Keyword", (object?)keyword ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@Role", (object?)role ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@Status", (object?)status ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@CreatedFrom", (object?)createdFrom ?? DBNull.Value);
-        cmd.Parameters.AddWithValue("@CreatedTo", (object?)createdTo ?? DBNull.Value);
-    }
+    // =========================================================
+    // AUTO-BLOCK USER KHÔNG HOẠT ĐỘNG
+    // =========================================================
 
-    private static string? GetNullableString(SqlDataReader reader, int index)
+    public async Task<AdminAutoBlockInactiveResultDto>
+        AutoBlockInactiveUsersAsync(int inactiveDays)
     {
-        return reader.IsDBNull(index) ? null : reader.GetString(index);
-    }
+        if (inactiveDays < 1) inactiveDays = 30;
 
-    private static DateTime? GetNullableDateTime(SqlDataReader reader, int index)
-    {
-        return reader.IsDBNull(index) ? null : reader.GetDateTime(index);
-    }
-
-    private static int GetInt(SqlDataReader reader, int index)
-    {
-        return reader.IsDBNull(index) ? 0 : Convert.ToInt32(reader.GetValue(index));
-    }
-
-    private static int? GetNullableInt(SqlDataReader reader, int index)
-    {
-        return reader.IsDBNull(index) ? null : Convert.ToInt32(reader.GetValue(index));
-    }
-
-    private static bool GetBool(SqlDataReader reader, int index)
-    {
-        if (reader.IsDBNull(index))
-            return false;
-
-        return Convert.ToBoolean(reader.GetValue(index));
-    }
-    public async Task<AdminAutoBlockInactiveResultDto> AutoBlockInactiveUsersAsync(int inactiveDays)
-    {
-        if (inactiveDays < 1)
-            inactiveDays = 30;
-
-        var connString = _configuration.GetValue<string>("USER_DB_CONNECTION_STRING");
+        var vietnamNow = VietnamTime.Now;
 
         var result = new AdminAutoBlockInactiveResultDto
         {
             InactiveDays = inactiveDays,
-            ExecutedAt = DateTime.UtcNow
+            ExecutedAt = vietnamNow
         };
 
-        await using var conn = new SqlConnection(connString);
+        await using var conn = new SqlConnection(GetConnectionString());
         await conn.OpenAsync();
 
         var sql = @"
-        DECLARE @CutoffDate DATETIME2 = DATEADD(day, -@InactiveDays, SYSUTCDATETIME());
+            DECLARE @CutoffDate DATETIME2 =
+                DATEADD(day, -@InactiveDays, SYSUTCDATETIME());
 
-        DECLARE @Targets TABLE
-        (
-            AccountId UNIQUEIDENTIFIER,
-            UserId UNIQUEIDENTIFIER NULL,
-            FullName NVARCHAR(150) NULL,
-            Email NVARCHAR(320) NULL,
-            LastActivityAt DATETIME2 NULL
-        );
-
-        INSERT INTO @Targets
-        (
-            AccountId,
-            UserId,
-            FullName,
-            Email,
-            LastActivityAt
-        )
-        SELECT
-            a.AccountId,
-            p.UserId,
-            p.FullName,
-            a.Email,
-            lastActivity.LastActivityAt
-        FROM DevPrep_Auth.dbo.Accounts a
-        LEFT JOIN DevPrep_User.dbo.UserProfiles p
-            ON p.AccountId = a.AccountId
-        OUTER APPLY
-        (
-            SELECT MAX(SessionActivityAt) AS LastSessionAt
-            FROM
+            DECLARE @Targets TABLE
             (
-                SELECT s.StartedAt AS SessionActivityAt
-                FROM DevPrep_Interview.dbo.InterviewSessions s
-                WHERE p.UserId IS NOT NULL
-                  AND s.UserId = p.UserId
-                  AND ISNULL(s.IsDeleted, 0) = 0
+                AccountId UNIQUEIDENTIFIER,
+                UserId UNIQUEIDENTIFIER NULL,
+                FullName NVARCHAR(150) NULL,
+                Email NVARCHAR(320) NULL,
+                LastActivityAt DATETIME2 NULL
+            );
 
-                UNION ALL
-
-                SELECT s.EndedAt
-                FROM DevPrep_Interview.dbo.InterviewSessions s
-                WHERE p.UserId IS NOT NULL
-                  AND s.UserId = p.UserId
-                  AND ISNULL(s.IsDeleted, 0) = 0
-
-                UNION ALL
-
-                SELECT s.CreatedAt
-                FROM DevPrep_Interview.dbo.InterviewSessions s
-                WHERE p.UserId IS NOT NULL
-                  AND s.UserId = p.UserId
-                  AND ISNULL(s.IsDeleted, 0) = 0
-
-                UNION ALL
-
-                SELECT s.UpdatedAt
-                FROM DevPrep_Interview.dbo.InterviewSessions s
-                WHERE p.UserId IS NOT NULL
-                  AND s.UserId = p.UserId
-                  AND ISNULL(s.IsDeleted, 0) = 0
-            ) sessionDates
-            WHERE SessionActivityAt IS NOT NULL
-        ) sessionActivity
-        OUTER APPLY
-        (
-            SELECT MAX(ActivityAt) AS LastActivityAt
-            FROM
+            INSERT INTO @Targets
             (
-                VALUES
-                    (a.LastLoginAt),
-                    (a.UpdatedAt),
-                    (a.CreatedAt),
-                    (p.UpdatedAt),
-                    (p.CreatedAt),
-                    (sessionActivity.LastSessionAt)
-            ) AS activityValues(ActivityAt)
-            WHERE ActivityAt IS NOT NULL
-        ) lastActivity
-        WHERE
-            a.Role = 'User'
-            AND a.Status = 'Active'
-            AND lastActivity.LastActivityAt < @CutoffDate;
+                AccountId,
+                UserId,
+                FullName,
+                Email,
+                LastActivityAt
+            )
+            SELECT
+                a.AccountId,
+                p.UserId,
+                p.FullName,
+                a.Email,
+                lastActivity.LastActivityAt
+            FROM DevPrep_Auth.dbo.Accounts a
 
-        UPDATE a
-        SET
-            a.Status = 'Blocked',
-            a.BlockedReason = CONCAT('Auto-blocked due to inactivity for ', @InactiveDays, ' days.'),
-            a.BlockedAt = SYSUTCDATETIME(),
-            a.BlockedBy = NULL,
-            a.UpdatedAt = SYSUTCDATETIME()
-        FROM DevPrep_Auth.dbo.Accounts a
-        INNER JOIN @Targets t
-            ON t.AccountId = a.AccountId;
+            LEFT JOIN DevPrep_User.dbo.UserProfiles p
+                ON p.AccountId = a.AccountId
 
-        SELECT
-            AccountId,
-            UserId,
-            FullName,
-            Email,
-            LastActivityAt
-        FROM @Targets
-        ORDER BY LastActivityAt ASC;
-    ";
+            OUTER APPLY
+            (
+                SELECT MAX(SessionActivityAt) AS LastSessionAt
+                FROM
+                (
+                    SELECT s.StartedAt AS SessionActivityAt
+                    FROM DevPrep_Interview.dbo.InterviewSessions s
+                    WHERE p.UserId IS NOT NULL
+                      AND s.UserId = p.UserId
+                      AND ISNULL(s.IsDeleted, 0) = 0
+
+                    UNION ALL
+
+                    SELECT s.EndedAt
+                    FROM DevPrep_Interview.dbo.InterviewSessions s
+                    WHERE p.UserId IS NOT NULL
+                      AND s.UserId = p.UserId
+                      AND ISNULL(s.IsDeleted, 0) = 0
+
+                    UNION ALL
+
+                    SELECT s.CreatedAt
+                    FROM DevPrep_Interview.dbo.InterviewSessions s
+                    WHERE p.UserId IS NOT NULL
+                      AND s.UserId = p.UserId
+                      AND ISNULL(s.IsDeleted, 0) = 0
+
+                    UNION ALL
+
+                    SELECT s.UpdatedAt
+                    FROM DevPrep_Interview.dbo.InterviewSessions s
+                    WHERE p.UserId IS NOT NULL
+                      AND s.UserId = p.UserId
+                      AND ISNULL(s.IsDeleted, 0) = 0
+                ) sessionDates
+                WHERE SessionActivityAt IS NOT NULL
+            ) sessionActivity
+
+            OUTER APPLY
+            (
+                SELECT MAX(ActivityAt) AS LastActivityAt
+                FROM
+                (
+                    VALUES
+                        (a.LastLoginAt),
+                        (a.UpdatedAt),
+                        (a.CreatedAt),
+                        (p.UpdatedAt),
+                        (p.CreatedAt),
+                        (sessionActivity.LastSessionAt)
+                ) AS activityValues(ActivityAt)
+                WHERE ActivityAt IS NOT NULL
+            ) lastActivity
+
+            WHERE a.Role = 'User'
+              AND a.Status = 'Active'
+              AND lastActivity.LastActivityAt < @CutoffDate;
+
+            UPDATE a
+            SET
+                a.Status = 'Blocked',
+                a.BlockedReason =
+                    CONCAT(
+                        'Auto-blocked due to inactivity for ',
+                        @InactiveDays,
+                        ' days.'
+                    ),
+                a.BlockedAt = @Now,
+                a.BlockedBy = NULL,
+                a.UpdatedAt = @Now
+            FROM DevPrep_Auth.dbo.Accounts a
+            INNER JOIN @Targets t ON t.AccountId = a.AccountId;
+
+            SELECT
+                AccountId,
+                UserId,
+                FullName,
+                Email,
+                LastActivityAt
+            FROM @Targets
+            ORDER BY LastActivityAt ASC;";
 
         await using var cmd = new SqlCommand(sql, conn);
-        cmd.Parameters.AddWithValue("@InactiveDays", inactiveDays);
+
+        cmd.Parameters.Add("@InactiveDays", SqlDbType.Int).Value =
+            inactiveDays;
+
+        cmd.Parameters.Add("@Now", SqlDbType.DateTime2).Value =
+            vietnamNow;
 
         await using var reader = await cmd.ExecuteReaderAsync();
 
@@ -547,12 +625,84 @@ public class AdminUserRepository : IAdminUserRepository
                 UserId = reader.IsDBNull(1) ? null : reader.GetGuid(1),
                 FullName = reader.IsDBNull(2) ? null : reader.GetString(2),
                 Email = reader.IsDBNull(3) ? null : reader.GetString(3),
-                LastActivityAt = reader.IsDBNull(4) ? null : reader.GetDateTime(4)
+                LastActivityAt = reader.IsDBNull(4)
+                    ? null
+                    : reader.GetDateTime(4)
             });
         }
 
         result.BlockedCount = result.BlockedUsers.Count;
 
         return result;
+    }
+
+    // =========================================================
+    // HELPER
+    // =========================================================
+
+    private string GetConnectionString()
+    {
+        return _configuration.GetValue<string>("USER_DB_CONNECTION_STRING")
+               ?? throw new InvalidOperationException(
+                   "USER_DB_CONNECTION_STRING is missing."
+               );
+    }
+
+    private static void AddCommonQueryParameters(
+        SqlCommand cmd,
+        string? keyword,
+        string? role,
+        string? status,
+        DateTime? createdFrom,
+        DateTime? createdTo)
+    {
+        cmd.Parameters.Add("@Keyword", SqlDbType.NVarChar, 500).Value =
+            (object?)keyword ?? DBNull.Value;
+
+        cmd.Parameters.Add("@Role", SqlDbType.NVarChar, 30).Value =
+            (object?)role ?? DBNull.Value;
+
+        cmd.Parameters.Add("@Status", SqlDbType.NVarChar, 30).Value =
+            (object?)status ?? DBNull.Value;
+
+        cmd.Parameters.Add("@CreatedFrom", SqlDbType.DateTime2).Value =
+            (object?)createdFrom ?? DBNull.Value;
+
+        cmd.Parameters.Add("@CreatedTo", SqlDbType.DateTime2).Value =
+            (object?)createdTo ?? DBNull.Value;
+    }
+
+    private static string? GetNullableString(SqlDataReader reader, int index)
+    {
+        return reader.IsDBNull(index) ? null : reader.GetString(index);
+    }
+
+    private static DateTime? GetNullableDateTime(
+        SqlDataReader reader,
+        int index)
+    {
+        return reader.IsDBNull(index) ? null : reader.GetDateTime(index);
+    }
+
+    private static int GetInt(SqlDataReader reader, int index)
+    {
+        return reader.IsDBNull(index)
+            ? 0
+            : Convert.ToInt32(reader.GetValue(index));
+    }
+
+    private static int? GetNullableInt(
+        SqlDataReader reader,
+        int index)
+    {
+        return reader.IsDBNull(index)
+            ? null
+            : Convert.ToInt32(reader.GetValue(index));
+    }
+
+    private static bool GetBool(SqlDataReader reader, int index)
+    {
+        return !reader.IsDBNull(index)
+               && Convert.ToBoolean(reader.GetValue(index));
     }
 }

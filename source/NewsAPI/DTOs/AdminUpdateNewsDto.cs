@@ -10,7 +10,7 @@ namespace NewsAPI.DTOs
         [StringLength(255)]
         public string Title { get; set; } = null!;
 
-        [Required(ErrorMessage = "Slug is required.")]
+       // [Required(ErrorMessage = "Slug is required.")]
         [StringLength(280)]
         public string Slug { get; set; } = null!;
 

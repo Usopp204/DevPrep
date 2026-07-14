@@ -36,6 +36,7 @@ public class QuestionBankDbContext : DbContext
             entity.Property(e => e.IsDeleted).HasDefaultValue(false);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(sysutcdatetime())");
+            entity.Property(e => e.Position).HasMaxLength(50).IsRequired(false);
 
             entity.HasOne(e => e.Category)
                   .WithMany(c => c.Questions)

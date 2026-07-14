@@ -55,6 +55,9 @@ public sealed class AdminQuestionService : IAdminQuestionService
             ["Level"] = query.Level,
             ["Difficulty"] = query.Difficulty,
             ["TechStack"] = query.TechStack,
+            // Bổ sung
+            ["Position"] = query.Position,
+
             ["Status"] = query.Status,
             ["PageIndex"] = query.PageIndex.ToString(),
             ["PageSize"] = query.PageSize.ToString()
