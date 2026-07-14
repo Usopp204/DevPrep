@@ -642,9 +642,6 @@ public class SessionService : ISessionService
             if (!hasAnswer)
             {
                 var (reminderSeconds, hardSeconds) = GetIdleThresholds(null);
-                var elapsedSeconds = q.AskedAt is null
-                    ? 0
-                    : Math.Max(0, (int)(VietnamTime.Now - q.AskedAt.Value).TotalSeconds - GetEffectivePausedSeconds(session));
                 currentQuestion = new NextQuestionDto
                 {
                     SessionQuestionId = q.SessionQuestionId,
@@ -652,7 +649,7 @@ public class SessionService : ISessionService
                     Content = q.Content,
                     IdleReminderSeconds = reminderSeconds,
                     IdleHardSeconds = hardSeconds,
-                    IdleElapsedSeconds = elapsedSeconds
+                    IdleElapsedSeconds = 0
                 };
                 break;
             }
@@ -696,6 +693,7 @@ public class SessionService : ISessionService
             Status = session.Status,
             Position = session.Position,
             Level = session.Level,
+            QuestionType = session.QuestionType,
             RemainingSeconds = remaining,
             CurrentQuestion = currentQuestion,
             TotalQuestions = session.TotalQuestions,
