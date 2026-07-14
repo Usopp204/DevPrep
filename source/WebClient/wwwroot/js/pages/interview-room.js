@@ -32,6 +32,13 @@
     let idleTier = 0; // 0 = none shown, 1 = reminder shown, 2 = warning+countdown shown
     const TIER2_LEAD_SECONDS = 20;
 
+    // "AI is typing" delay before the next question is revealed, scaled to question length so a
+    // long question doesn't feel instant and a short one doesn't feel sluggish.
+    const TYPING_DELAY_BASE_MS = 800;
+    const TYPING_DELAY_PER_CHAR_MS = 15;
+    const TYPING_DELAY_MAX_MS = 2000;
+    let typingTimeoutHandle = null;
+
     // Pause/Resume state (Room UX Phase 2). Quota numbers are server-computed and re-synced from
     // every pause/unpause response — the client never invents or decrements them itself.
     let paused = root.dataset.initialStatus === "Paused";
@@ -65,6 +72,7 @@
     const resumeBtn = document.getElementById("resume-btn");
     const timerEl = document.getElementById("timer");
     const progressEl = document.getElementById("progress-text");
+    const progressHeadEl = document.querySelector(".room-progress-head .v");
     const statusEl = document.getElementById("status-text");
     const idleBannerEl = document.getElementById("idle-banner");
     const replayTourBtn = document.getElementById("replay-tour-btn");
@@ -120,6 +128,7 @@
 
     function updateProgressDisplay() {
         if (progressEl) progressEl.textContent = `${answeredQuestions}/${totalQuestions}`;
+        if (progressHeadEl) progressHeadEl.textContent = `${answeredQuestions} / ${totalQuestions}`;
     }
 
     // Reflects the server-computed pause quota in the sidebar button and the overlay. Disables
@@ -199,13 +208,6 @@
     function buildRoomTourSteps() {
         return [
             {
-                element: "#chat-messages",
-                popover: {
-                    title: "Your Interview Chat",
-                    description: "The AI interviewer asks questions here, and your answers show up as chat bubbles, just like a real conversation."
-                }
-            },
-            {
                 element: "#mic-btn",
                 popover: {
                     title: "Answer by Voice",
@@ -217,6 +219,20 @@
                 popover: {
                     title: "AI Voice",
                     description: "Turn this on to have the interviewer read each question out loud."
+                }
+            },
+            {
+                element: "#chat-messages",
+                popover: {
+                    title: "Your Interview Chat",
+                    description: "The AI interviewer asks questions here, and your answers show up as chat bubbles, just like a real conversation."
+                }
+            },
+            {
+                element: ".camera-section",
+                popover: {
+                    title: "Camera Preview",
+                    description: "Turn your camera on to practice looking at the camera like a real interview — it's a local preview only, never uploaded or recorded."
                 }
             },
             {
@@ -238,20 +254,6 @@
                 popover: {
                     title: "Pause the Interview",
                     description: "Need a short break? Pause a limited number of times — the countdown timer freezes while paused."
-                }
-            },
-            {
-                element: ".timer-box",
-                popover: {
-                    title: "Time Remaining",
-                    description: "Your session countdown. It keeps running once the interview starts, including while you're reading this tour."
-                }
-            },
-            {
-                element: ".room-progress",
-                popover: {
-                    title: "Your Progress",
-                    description: "Tracks how many questions you've answered out of the total planned for this session."
                 }
             },
             {
@@ -364,8 +366,25 @@
         }
     }
 
+    function typingDelayFor(text) {
+        return Math.min(TYPING_DELAY_MAX_MS, TYPING_DELAY_BASE_MS + text.length * TYPING_DELAY_PER_CHAR_MS);
+    }
+
+    function showTypingIndicator() {
+        const row = document.createElement("div");
+        row.className = "chat-row chat-row-ai";
+        const bubble = document.createElement("div");
+        bubble.className = "chat-bubble chat-bubble-ai chat-bubble-typing";
+        bubble.innerHTML = "<span class=\"typing-dot\"></span><span class=\"typing-dot\"></span><span class=\"typing-dot\"></span>";
+        row.appendChild(bubble);
+        chatEl.appendChild(row);
+        chatEl.scrollTop = chatEl.scrollHeight;
+        return row;
+    }
+
     // Applies a freshly-served question (from send/skip/auto-advance responses) to local state,
-    // including the server-supplied idle thresholds for that question.
+    // including the server-supplied idle thresholds for that question. The question itself is
+    // revealed after a short "AI is typing" delay (see showTypingIndicator).
     function applyNextQuestion(nextQuestion) {
         currentQuestionId = nextQuestion.sessionQuestionId;
         currentQuestionText = nextQuestion.content;
@@ -374,11 +393,22 @@
         idleSeconds = nextQuestion.idleElapsedSeconds || 0;
         idleTier = 0;
         hideIdleBanner();
-        appendBubble("AI", nextQuestion.content);
-        speak(nextQuestion.content);
-        inputEl.disabled = false;
-        sendBtn.disabled = false;
-        inputEl.focus();
+
+        if (typingTimeoutHandle) clearTimeout(typingTimeoutHandle);
+        const typingRow = showTypingIndicator();
+        typingTimeoutHandle = setTimeout(() => {
+            typingTimeoutHandle = null;
+            typingRow.remove();
+            // The countdown timer can independently call finishInterview() while this delay is
+            // in flight (e.g. it hits 0 mid-"typing"). Don't resurrect the input or show a now-stale
+            // question bubble after the session has already ended.
+            if (ended) return;
+            appendBubble("AI", nextQuestion.content);
+            speak(nextQuestion.content);
+            inputEl.disabled = false;
+            sendBtn.disabled = false;
+            inputEl.focus();
+        }, typingDelayFor(nextQuestion.content));
     }
 
     function appendBubble(senderType, content) {
@@ -418,6 +448,13 @@
         if (ended) return;
         ended = true;
         hideIdleBanner();
+        // A typing indicator from a still-pending applyNextQuestion delay must not linger
+        // under the closing message (see the "ended" race note in applyNextQuestion).
+        if (typingTimeoutHandle) {
+            clearTimeout(typingTimeoutHandle);
+            typingTimeoutHandle = null;
+        }
+        document.querySelectorAll(".chat-bubble-typing").forEach((el) => el.closest(".chat-row")?.remove());
         if (inputEl) inputEl.disabled = true;
         if (sendBtn) sendBtn.disabled = true;
         if (endBtn) endBtn.disabled = true;
@@ -723,6 +760,8 @@
         aiVoiceOn = !aiVoiceOn;
         voiceToggleBtn.classList.toggle("is-on", aiVoiceOn);
         voiceToggleBtn.setAttribute("aria-pressed", aiVoiceOn ? "true" : "false");
+        const visualizer = document.querySelector(".visualizer");
+        if (visualizer) visualizer.classList.toggle("paused", !aiVoiceOn);
         if (!aiVoiceOn) currentAudio?.pause();
     });
 
