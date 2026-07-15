@@ -369,6 +369,36 @@ body.room-page {
     font-style: italic;
 }
 
+/* "AI is typing" indicator shown briefly before the next question is revealed. */
+.chat-bubble-typing {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    width: fit-content;
+    padding: 14px 16px;
+}
+
+.typing-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--color-text-tertiary);
+    animation: typing-bounce 1.2s infinite ease-in-out;
+}
+
+.typing-dot:nth-child(2) {
+    animation-delay: 0.15s;
+}
+
+.typing-dot:nth-child(3) {
+    animation-delay: 0.3s;
+}
+
+@keyframes typing-bounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+    30% { transform: translateY(-4px); opacity: 1; }
+}
+
 /* Idle reminder / auto-advance banner (Room UX Phase 1) */
 .idle-banner {
     max-width: 896px;
@@ -762,6 +792,11 @@ body.room-page {
 .waveform-bar:nth-child(4) { background: var(--color-primary); animation-delay: 0.2s; }
 .waveform-bar:nth-child(5) { background: var(--color-secondary); animation-delay: 0.4s; }
 .waveform-bar:nth-child(6) { background: var(--color-primary-container); animation-delay: 0.6s; }
+
+.visualizer.paused .waveform-bar {
+    animation: none;
+    height: 8px;
+}
 
 @keyframes pulse-wave {
     0%, 100% { height: 8px; }

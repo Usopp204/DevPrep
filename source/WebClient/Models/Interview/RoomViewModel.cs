@@ -10,6 +10,7 @@ public class RoomViewModel
     // Session config used to compose the static greeting bubble (display only, never stored).
     public string? Position { get; set; }
     public string Level { get; set; } = string.Empty;
+    public string QuestionType { get; set; } = string.Empty;
     public int RemainingSeconds { get; set; }
     public int TotalQuestions { get; set; }
     public int AnsweredQuestions { get; set; }
