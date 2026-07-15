@@ -3,22 +3,16 @@
 public class QuestionApiResponse<T>
 {
     public bool Success { get; set; }
-
     public string? Message { get; set; }
-
     public T? Data { get; set; }
 }
 
 public class AdminPagedResultDto<T>
 {
     public int PageIndex { get; set; }
-
     public int PageSize { get; set; }
-
     public int TotalRecords { get; set; }
-
     public int TotalPages { get; set; }
-
     public List<T> Items { get; set; } = new();
 }
 
@@ -26,25 +20,18 @@ public class AdminCategoryDto
 {
     public Guid CategoryId { get; set; }
 
-    public string Name { get; set; } = string.Empty;
+    public string Category { get; set; } = string.Empty;
 }
 
 public class AdminQuestionQueryDto
 {
     public string? Keyword { get; set; }
 
-    public string? QuestionType { get; set; }
-
-    public string? Level { get; set; }
-
     public string? Difficulty { get; set; }
 
-    public string? TechStack { get; set; }
+    // public string? TechStack { get; set; }
 
     public Guid? CategoryId { get; set; }
-
-    // Bổ sung
-    public string? Position { get; set; }
 
     public string? Status { get; set; }
 
@@ -59,20 +46,16 @@ public class AdminQuestionListItemDto
 
     public Guid? CategoryId { get; set; }
 
-    public string? CategoryName { get; set; }
+    public string? Category { get; set; }
 
-    public string Content { get; set; } = string.Empty;
-
-    public string QuestionType { get; set; } = string.Empty;
-
-    public string Level { get; set; } = string.Empty;
+    public string Question { get; set; } = string.Empty;
 
     public string Difficulty { get; set; } = string.Empty;
 
-    public string? TechStack { get; set; }
+    //public string? TechStack { get; set; }
 
-    public string? Tags { get; set; }
-    // Bổ sung
+    //public string? Tags { get; set; }
+
     public string? Position { get; set; }
 
     public string Status { get; set; } = string.Empty;
@@ -92,22 +75,18 @@ public class AdminQuestionDetailDto
 
     public Guid? CategoryId { get; set; }
 
-    public string? CategoryName { get; set; }
+    public string? Category { get; set; }
 
-    public string Content { get; set; } = string.Empty;
-
-    public string QuestionType { get; set; } = string.Empty;
-
-    public string Level { get; set; } = string.Empty;
+    public string Question { get; set; } = string.Empty;
 
     public string Difficulty { get; set; } = string.Empty;
 
-    public string? ExpectedAnswer { get; set; }
+    public string? Answer { get; set; }
 
-    public string? TechStack { get; set; }
+    // public string? TechStack { get; set; }
 
-    public string? Tags { get; set; }
-    // Bổ sung
+    // public string? Tags { get; set; }
+
     public string? Position { get; set; }
 
     public string Status { get; set; } = string.Empty;
@@ -129,41 +108,35 @@ public class AdminCreateQuestionDto
 {
     public Guid? CategoryId { get; set; }
 
-    public string Content { get; set; } = string.Empty;
+    public string Question { get; set; } = string.Empty;
 
-    public string QuestionType { get; set; } = "Theory";
+    public string Difficulty { get; set; } = string.Empty;
 
-    public string Level { get; set; } = "Junior";
+    public string Answer { get; set; } = string.Empty;
 
-    public string Difficulty { get; set; } = "Medium";
+    // public string TechStack { get; set; } = string.Empty;
 
-    public string? ExpectedAnswer { get; set; }
+    // public string Tags { get; set; } = string.Empty;
 
-    public string? TechStack { get; set; }
+    public string Position { get; set; } = string.Empty;
 
-    public string? Tags { get; set; }
-    // Bổ sung
-    public string? Position { get; set; }
+    public string Status { get; set; } = "Active";
 }
 
 public class AdminUpdateQuestionDto
 {
     public Guid? CategoryId { get; set; }
 
-    public string? Content { get; set; }
-
-    public string? QuestionType { get; set; }
-
-    public string? Level { get; set; }
+    public string? Question { get; set; }
 
     public string? Difficulty { get; set; }
 
-    public string? ExpectedAnswer { get; set; }
+    public string? Answer { get; set; }
 
-    public string? TechStack { get; set; }
+    // public string? TechStack { get; set; }
 
-    public string? Tags { get; set; }
-    // Bổ sung
+    //public string? Tags { get; set; }
+
     public string? Position { get; set; }
 
     public string? Status { get; set; }

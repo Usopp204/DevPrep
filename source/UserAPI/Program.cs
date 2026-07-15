@@ -34,6 +34,29 @@ builder.Services.AddScoped<IAdminUserRepository, AdminUserRepository>();
 builder.Services.AddScoped<IAdminUserService, AdminUserService>();
 builder.Services.AddHostedService<InactiveUserAutoBlockHostedService>();
 
+
+
+
+// Đăng ký HttpClient gọi trực tiếp không thông qua file config/JSON
+builder.Services.AddHttpClient("AuthServiceClient", client =>
+{
+    client.BaseAddress = new Uri("http://localhost:7001/");
+});
+
+builder.Services.AddHttpClient("InterviewServiceClient", client =>
+{
+    client.BaseAddress = new Uri("http://localhost:7005/");
+});
+
+builder.Services.AddHttpClient("PaymentServiceClient", client =>
+{
+    client.BaseAddress = new Uri("http://localhost:7008/");
+});
+
+
+
+
+
 // JWT: phải dùng cùng Issuer/Audience/Key với AuthAPI để verify được token do Auth phát ra.
 var jwtKey = builder.Configuration["Jwt:Key"]
     ?? throw new InvalidOperationException("Jwt:Key is missing in configuration.");

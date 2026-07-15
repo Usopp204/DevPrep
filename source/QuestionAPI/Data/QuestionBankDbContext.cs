@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using QuestionAPI.Models;
 
 namespace QuestionAPI.Data;
@@ -22,15 +22,20 @@ public class QuestionBankDbContext : DbContext
             entity.Property(e => e.CategoryId).HasDefaultValueSql("(newsequentialid())");
             entity.Property(e => e.IsActive).HasDefaultValue(true);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
-            entity.HasIndex(e => e.Name).IsUnique();
+            //entity.HasIndex(e => e.Name).IsUnique();
+            entity.HasIndex(e => e.Category).IsUnique(); // sửa Name thành Category
         });
 
         modelBuilder.Entity<Question>(entity =>
         {
             entity.HasKey(e => e.QuestionId);
             entity.Property(e => e.QuestionId).HasDefaultValueSql("(newsequentialid())");
-            entity.Property(e => e.QuestionType).HasDefaultValue("Theory");
-            entity.Property(e => e.Level).HasDefaultValue("Junior");
+            
+            //Question and Level xóa không còn trong database 
+            //entity.Property(e => e.QuestionType).HasDefaultValue("Theory");
+            //entity.Property(e => e.Level).HasDefaultValue("Junior");
+
+
             entity.Property(e => e.Difficulty).HasDefaultValue("Medium");
             entity.Property(e => e.Status).HasDefaultValue("Active");
             entity.Property(e => e.IsDeleted).HasDefaultValue(false);

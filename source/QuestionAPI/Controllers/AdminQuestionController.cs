@@ -58,7 +58,7 @@ public class AdminQuestionController : ControllerBase
 
             return Ok(ApiResponse<AdminQuestionDetailDto>.Ok(
                 result,
-                "Created question successfully."
+                "Created question successfully và synced sang AI."
             ));
         }
         catch (Exception ex)
@@ -84,7 +84,7 @@ public class AdminQuestionController : ControllerBase
 
             return Ok(ApiResponse<AdminQuestionDetailDto>.Ok(
                 result,
-                "Updated question successfully."
+                "Updated question successfully và synced sang AI."
             ));
         }
         catch (Exception ex)
@@ -112,7 +112,7 @@ public class AdminQuestionController : ControllerBase
 
             return Ok(ApiResponse<object>.Ok(
                 true,
-                "Soft-deleted question successfully."
+                "Soft-deleted question successfully và removed khỏi AI."
             ));
         }
         catch (Exception ex)
@@ -139,7 +139,7 @@ public class AdminQuestionController : ControllerBase
 
             return Ok(ApiResponse<object>.Ok(
                 true,
-                "Restored question successfully."
+                "Restored question successfully và synced sang AI."
             ));
         }
         catch (Exception ex)
@@ -149,35 +149,18 @@ public class AdminQuestionController : ControllerBase
         }
     }
 
-    // POST /api/admin/questions/bulk-delete
-    [HttpPost("questions/bulk-delete")]
-    public async Task<IActionResult> BulkDelete([FromBody] List<Guid> ids)
+    // POST /api/admin/questions/reindex
+    // Endpoint đồng bộ lại toàn bộ SQL Active sang ChromaDB
+    [HttpPost("questions/reindex")]
+    public async Task<IActionResult> ReindexAll()
     {
         try
         {
-            if (ids == null || ids.Count == 0)
-            {
-                return BadRequest(ApiResponse<object>.Fail(
-                    "Please select at least one question to delete."
-                ));
-            }
+            var result = await _service.ReindexAllQuestionsAsync();
 
-            var adminId = GetAdminId();
-            var successCount = 0;
-
-            foreach (var id in ids)
-            {
-                var success = await _service.DeleteAsync(id, adminId);
-
-                if (success)
-                {
-                    successCount++;
-                }
-            }
-
-            return Ok(ApiResponse<object>.Ok(
-                true,
-                $"Soft-deleted {successCount}/{ids.Count} questions successfully."
+            return Ok(ApiResponse<AdminReindexResultDto>.Ok(
+                result,
+                "Re-indexed active questions to AI Service successfully."
             ));
         }
         catch (Exception ex)
