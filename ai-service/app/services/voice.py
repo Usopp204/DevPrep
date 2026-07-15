@@ -27,10 +27,15 @@ class DeepgramSTT:
         from deepgram import DeepgramClient
         self._client = DeepgramClient()  # reads DEEPGRAM_API_KEY from the environment
 
-    def transcribe(self, audio_bytes: bytes) -> str:
+    def transcribe(self, audio_bytes: bytes, language: Optional[str] = None) -> str:
+        # language=None (default) preserves existing behavior for callers that don't pass
+        # it: the SDK omits the param and Deepgram defaults to English (language=en) for
+        # every model, per Deepgram's docs. Pass an explicit BCP-47 code (e.g. "vi") for
+        # non-English audio.
         if self._client is None:
             self._load()
-        resp = self._client.listen.v1.media.transcribe_file(request=audio_bytes, model=self.model)
+        resp = self._client.listen.v1.media.transcribe_file(
+            request=audio_bytes, model=self.model, language=language)
         return resp.results.channels[0].alternatives[0].transcript
 
 
