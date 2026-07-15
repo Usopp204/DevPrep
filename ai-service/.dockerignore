@@ -1,0 +1,10 @@
+models/
+chroma_data/
+chroma_data_docker/
+__pycache__/
+**/__pycache__/
+*.pyc
+.venv/
+venv/
+.git/
+test-ui/

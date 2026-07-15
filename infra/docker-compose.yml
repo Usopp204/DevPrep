@@ -7,6 +7,7 @@ services:
   # 1. CORE AI SERVICE (FASTAPI + NVIDIA GPU PASSTHROUGH)
   # ----------------------------------------------------------------------------
   ai-service:
+    shm_size: '4gb'
     build:
       context: ../ai-service
       dockerfile: Dockerfile

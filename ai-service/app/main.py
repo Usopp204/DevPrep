@@ -14,6 +14,8 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api import catalog, evaluation, interview, internal
 from app.core import config
+from biometrics.router import router as biometrics_router
+from biometrics.router import warm_up as biometrics_warm_up
 from app.core.config import settings
 from app.core.model_manager import get_model_and_tokenizer
 from app.cv.router import router as cv_router
@@ -28,6 +30,9 @@ async def lifespan(app: FastAPI):
     # Start loading model in background immediately on server startup
     loop = asyncio.get_event_loop()
     loop.run_in_executor(_executor, get_model_and_tokenizer)
+    # Warm up biometric models on the default executor (separate from the LLM one,
+    # which is single-worker and would serialize this behind the LLM load).
+    loop.run_in_executor(None, biometrics_warm_up)
     yield
 
 
@@ -48,6 +53,7 @@ app.include_router(interview.router)
 app.include_router(evaluation.router)
 app.include_router(catalog.router)
 app.include_router(internal.router)
+app.include_router(biometrics_router)
 
 
 @app.get("/health")

@@ -1,0 +1,29 @@
+using InterviewAPI.DTOs.Biometrics;
+
+namespace InterviewAPI.Services.Interfaces;
+
+public interface IBiometricVerificationService
+{
+    // modality: "Face" | "Voice". Generates a server-side challenge for the session,
+    // stores the expected value with a short TTL, and returns only the instruction.
+    Task<VerificationChallengeResponse> IssueChallengeAsync(
+        Guid userId, Guid sessionId, string modality, CancellationToken ct);
+
+    // phase: "Entry" | "InSession" — recorded on the SessionVerificationEvents audit row
+    // (Milestone 4 groundwork). Defaults to "Entry" for existing callers.
+    Task<VerificationResultResponse> VerifyFaceAsync(
+        Guid userId, Guid sessionId, List<IFormFile> frames, CancellationToken ct, string phase = "Entry");
+
+    Task<VerificationResultResponse> VerifyVoiceAsync(
+        Guid userId, Guid sessionId, IFormFile file, CancellationToken ct, string phase = "Entry");
+
+    // Read-only decision: is this user allowed past the room entry gate right now?
+    // Does not itself verify anything — it inspects enrollment + recent Entry-phase
+    // events written by VerifyFaceAsync/VerifyVoiceAsync. Milestone 4 groundwork —
+    // not called from any Room UI yet.
+    Task<EntryGateStatusResponse> GetEntryGateStatusAsync(Guid userId, Guid sessionId, CancellationToken ct);
+
+    // Randomized-cadence signal for whether a fresh in-session re-check should be
+    // prompted now. Milestone 4 groundwork — not called from any Room UI yet.
+    Task<InSessionCheckDueResponse> IsInSessionCheckDueAsync(Guid sessionId, CancellationToken ct);
+}
