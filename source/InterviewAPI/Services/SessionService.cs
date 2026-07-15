@@ -52,6 +52,7 @@ public class SessionService : ISessionService
 
     private readonly ISessionRepository _repo;
     private readonly IAiServiceClient _aiServiceClient;
+    private readonly IPaymentApiClient _paymentApiClient;
     private readonly InterviewDbContext _db;
     private readonly ILogger<SessionService> _logger;
     private readonly IServiceScopeFactory _scopeFactory;
@@ -60,6 +61,7 @@ public class SessionService : ISessionService
     public SessionService(
         ISessionRepository repo,
         IAiServiceClient aiServiceClient,
+        IPaymentApiClient paymentApiClient,
         InterviewDbContext db,
         ILogger<SessionService> logger,
         IServiceScopeFactory scopeFactory,
@@ -67,6 +69,7 @@ public class SessionService : ISessionService
     {
         _repo = repo;
         _aiServiceClient = aiServiceClient;
+        _paymentApiClient = paymentApiClient;
         _db = db;
         _logger = logger;
         _scopeFactory = scopeFactory;
@@ -313,31 +316,69 @@ public class SessionService : ISessionService
         if (nextQuestion is null)
             return new GenerateQuestionResponse { Ended = true, TotalQuestions = session.TotalQuestions };
 
-        // Step C + D: Cập nhật AskedAt và chuyển trạng thái session — gộp 1 lần save.
-        bool dirty = false;
+        // Step C: Set AskedAt on first question serve.
         if (nextQuestion.AskedAt is null)
         {
             nextQuestion.AskedAt = VietnamTime.Now;
-            dirty = true;
+            await _repo.SaveChangesAsync(ct);
         }
-        if (session.Status == "Initialized")
+
+        // Step D: Atomic status update (Initialized → InProgress) + deduct credit on first entry.
+        bool isFirstEntry = session.Status == "Initialized";
+        _logger.LogInformation("GenerateQuestion: session {SessionId}, isFirstEntry={isFirstEntry}, sessionStatus={Status}, userId={UserId}",
+            sessionId, isFirstEntry, session.Status, userId);
+        bool statusChanged = await _repo.UpdateStatusIfAsync(userId, sessionId, "Initialized", "InProgress", ct);
+        _logger.LogInformation("GenerateQuestion: UpdateStatusIfAsync returned {StatusChanged}", statusChanged);
+
+        // Step D.1: Deduct credit if this is the first entry (status changed successfully).
+        int creditCost = 0;
+        if (isFirstEntry && statusChanged)
         {
-            session.Status = "InProgress";
-            session.UpdatedAt = VietnamTime.Now;
-            dirty = true;
+            creditCost = CreditConfig.GetCreditCost(session.DurationMinutes);
+            var deductResult = await _paymentApiClient.DeductCreditAsync(userId, creditCost, sessionId,
+                $"Interview session {session.DurationMinutes} minutes", ct);
+
+            if (!deductResult.Success)
+            {
+                _logger.LogError("Credit deduction failed: {Message}", deductResult.Message);
+                // Rollback status back to Initialized (race-safe: only we can update from InProgress in this flow).
+                await _repo.UpdateStatusIfAsync(userId, sessionId, "InProgress", "Initialized", ct);
+                throw new InvalidOperationException($"Credit deduction failed: {deductResult.Message}");
+            }
+
+            // Update session with credit cost.
+            session = await _repo.GetByIdAsync(sessionId, ct);
+            if (session != null)
+            {
+                session.CreditCost = creditCost;
+                await _repo.SaveChangesAsync(ct);
+            }
         }
-        if (dirty) await _repo.SaveChangesAsync(ct);
 
         // Step E: Lưu tin nhắn câu hỏi của AI vào ChatMessages.
-        await _repo.AddChatMessageAsync(new ChatMessage
+        try
         {
-            MessageId = Guid.NewGuid(),
-            SessionQuestionId = nextQuestion.SessionQuestionId,
-            SenderType = "AI",
-            MessageType = "Question",
-            Content = nextQuestion.Content,
-            SentAt = VietnamTime.Now
-        }, ct);
+            await _repo.AddChatMessageAsync(new ChatMessage
+            {
+                MessageId = Guid.NewGuid(),
+                SessionQuestionId = nextQuestion.SessionQuestionId,
+                SenderType = "AI",
+                MessageType = "Question",
+                Content = nextQuestion.Content,
+                SentAt = VietnamTime.Now
+            }, ct);
+        }
+        catch (Exception ex)
+        {
+            // If chat message fails after credit deduction, refund the credit.
+            if (isFirstEntry && statusChanged && creditCost > 0)
+            {
+                _logger.LogError(ex, "Failed to save chat message after credit deduction. Refunding credit.");
+                await _paymentApiClient.RefundCreditAsync(userId, creditCost, sessionId,
+                    "Refund: failed to initialize session", ct);
+            }
+            throw;
+        }
 
         // Step F: Trả về thông tin câu hỏi tiếp theo (không kèm ReferenceAnswer).
         var (reminderSeconds, hardSeconds) = GetIdleThresholds(null);
