@@ -18,15 +18,19 @@
 
     var startItem = totalCount == 0 ? 0 : ((pageIndex - 1) * pageSize) + 1;
     var endItem = Math.Min(pageIndex * pageSize, totalCount);
+    var keyword = ViewBag.Keyword as string;
+    var difficultyFilter = ViewBag.Difficulty as string;
+    var statusFilter = ViewBag.Status as string;
+    Guid? selectedCategoryId = ViewBag.CategoryId is Guid categoryId ? categoryId : null;
 
     string BuildPageUrl(int page)
     {
         var values = new Dictionary<string, string?>
                 {
-                    ["keyword"] = ViewBag.Keyword,
-                    ["difficulty"] = ViewBag.Difficulty,
-                    ["status"] = ViewBag.Status,
-                    ["categoryId"] = ViewBag.CategoryId?.ToString(),
+                    ["keyword"] = keyword,
+                    ["difficulty"] = difficultyFilter,
+                    ["status"] = statusFilter,
+                    ["categoryId"] = selectedCategoryId?.ToString(),
                     ["page"] = page.ToString(),
                     ["pageSize"] = pageSize.ToString()
                 };
@@ -394,7 +398,7 @@
                 <div class="row g-3 align-items-end">
                     <div class="col-12 col-xl-4">
                         <label class="filter-label">Search</label>
-                        <input name="keyword" value="@ViewBag.Keyword" type="text" class="form-control admin-input" placeholder="Search questions" />
+                        <input name="keyword" value="@keyword" type="text" class="form-control admin-input" placeholder="Search questions" />
                     </div>
 
                     <div class="col-12 col-sm-6 col-xl-2">
@@ -403,7 +407,7 @@
                             <option value="">All Categories</option>
                             @foreach (var category in categories.Where(category => category is not null))
                             {
-                                <option value="@category.CategoryId" selected="@(ViewBag.CategoryId.HasValue && ViewBag.CategoryId == category.CategoryId ? "selected" : null)">@category.Category</option>
+                                <option value="@category.CategoryId" selected="@(selectedCategoryId == category.CategoryId ? "selected" : null)">@category.Category</option>
                             }
                         </select>
                     </div>
@@ -414,7 +418,7 @@
                             <option value="">All Difficulty</option>
                             @foreach (var difficulty in new[] { "Intern", "Fresher", "Junior", "Middle", "Senior" })
                             {
-                                <option value="@difficulty" selected="@(string.Equals(ViewBag.Difficulty as string, difficulty, StringComparison.OrdinalIgnoreCase) ? "selected" : null)">@difficulty</option>
+                                <option value="@difficulty" selected="@(string.Equals(difficultyFilter, difficulty, StringComparison.OrdinalIgnoreCase) ? "selected" : null)">@difficulty</option>
                             }
                         </select>
                     </div>
@@ -425,7 +429,7 @@
                             <option value="">All Statuses</option>
                             @foreach (var status in new[] { "Active", "Draft", "Archived", "Deleted" })
                             {
-                                <option value="@status" selected="@(string.Equals(ViewBag.Status as string, status, StringComparison.OrdinalIgnoreCase) ? "selected" : null)">@status</option>
+                                <option value="@status" selected="@(string.Equals(statusFilter, status, StringComparison.OrdinalIgnoreCase) ? "selected" : null)">@status</option>
                             }
                         </select>
                     </div>
