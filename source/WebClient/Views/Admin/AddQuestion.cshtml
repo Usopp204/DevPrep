@@ -9,11 +9,11 @@
 <html lang="en">
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <title>
-        @ViewData["Title"] - DevPrep AI Admin Dashboard
-    </title>
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0" />
+
+    <title>@ViewData["Title"] - DevPrep AI Admin Dashboard</title>
 
     <link rel="stylesheet"
           href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
@@ -45,6 +45,7 @@
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
             margin: 0;
             padding: 0;
+            overflow-x: hidden;
         }
 
         .ad-main {
@@ -62,7 +63,7 @@
             margin-bottom: 6px;
         }
 
-        .ad-page-date {
+        .ad-page-description {
             color: #94a3b8;
             font-size: 0.95rem;
             margin-bottom: 0;
@@ -72,28 +73,52 @@
             background-color: #16161a;
             border-radius: 12px;
             border: 1px solid #26262b;
+            padding: 24px;
+            margin-bottom: 22px;
         }
 
         .section-title {
+            color: #ffffff;
             font-size: 0.85rem;
+            font-weight: 800;
             letter-spacing: 0.05em;
+            text-transform: uppercase;
             border-bottom: 1px solid #26262b;
-            padding-bottom: 10px;
+            padding-bottom: 11px;
+            margin-bottom: 22px;
+            display: flex;
+            align-items: center;
+            gap: 9px;
         }
 
+            .section-title i {
+                color: #6366f1;
+            }
+
         .field-label {
+            display: block;
             font-size: 0.75rem;
             color: #a1a1aa;
+            font-weight: 700;
             letter-spacing: 0.05em;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .required-mark {
+            color: #f87171;
+            margin-left: 3px;
         }
 
         .custom-input {
+            width: 100%;
             background-color: #0f0f11 !important;
             border: 1px solid #26262b !important;
             color: #ffffff !important;
             border-radius: 8px !important;
             padding: 12px 16px;
             font-size: 0.95rem;
+            box-shadow: none !important;
         }
 
             .custom-input:focus {
@@ -113,62 +138,135 @@
             background-size: 12px 12px !important;
         }
 
-        .btn-custom-radio {
-            background-color: #0f0f11;
-            border: 1px solid #26262b;
-            color: #a1a1aa;
-            border-radius: 8px;
-            padding: 10px 24px;
-            font-weight: 500;
-            transition: all 0.2s ease;
+            select.custom-input option {
+                color: #ffffff;
+                background-color: #16161a;
+            }
+
+        .status-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
         }
 
-            .btn-custom-radio:hover {
-                background-color: #1e1e24;
+        .btn-check {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .status-option {
+            min-width: 118px;
+            background-color: #0f0f11;
+            border: 1px solid #303038;
+            color: #a1a1aa;
+            border-radius: 8px;
+            padding: 11px 18px;
+            font-size: 0.87rem;
+            font-weight: 700;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.18s ease;
+        }
+
+            .status-option:hover {
+                background-color: #202026;
+                border-color: #52525b;
                 color: #ffffff;
             }
 
-        .btn-check:checked + .btn-custom-radio {
-            background-color: #24242b !important;
-            border-color: #6366f1 !important;
-            color: #6366f1 !important;
-            box-shadow: 0 0 0 1px #6366f1;
+            .status-option::before {
+                content: "";
+                width: 9px;
+                height: 9px;
+                border: 2px solid currentColor;
+                border-radius: 50%;
+                display: inline-block;
+                margin-right: 7px;
+                vertical-align: 1px;
+            }
+
+        #statusActive:checked + .status-active {
+            color: #34d399;
+            border-color: #10b981;
+            background: rgba(16, 185, 129, 0.12);
+            box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.35);
         }
 
-        .text-indigo {
-            color: #6366f1;
+        #statusDraft:checked + .status-draft {
+            color: #fbbf24;
+            border-color: #f59e0b;
+            background: rgba(245, 158, 11, 0.12);
+            box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.35);
         }
+
+        #statusArchived:checked + .status-archived {
+            color: #f87171;
+            border-color: #ef4444;
+            background: rgba(239, 68, 68, 0.12);
+            box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.35);
+        }
+
+        #statusInactive:checked + .status-inactive {
+            color: #c4b5fd;
+            border-color: #8b5cf6;
+            background: rgba(139, 92, 246, 0.12);
+            box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.35);
+        }
+
+        .action-area {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 14px;
+            padding-top: 8px;
+        }
+
+        .btn-cancel {
+            min-width: 145px;
+            border: 1px solid #3f3f46;
+            color: #ffffff;
+            background: transparent;
+            border-radius: 8px;
+            padding: 11px 24px;
+            font-weight: 600;
+            text-decoration: none;
+            text-align: center;
+        }
+
+            .btn-cancel:hover {
+                color: #ffffff;
+                background-color: #27272a;
+            }
 
         .btn-submit {
-            background-color: #6366f1;
+            min-width: 170px;
             border: none;
-            border-radius: 8px;
-            font-weight: 600;
             color: #ffffff;
+            background-color: #6366f1;
+            border-radius: 8px;
+            padding: 11px 24px;
+            font-weight: 700;
         }
 
             .btn-submit:hover {
                 background-color: #4f46e5;
-                color: #ffffff;
             }
 
-        .btn-cancel {
-            border-radius: 8px;
-            font-weight: 500;
-            border-color: #3f3f46;
-            color: #ffffff;
-        }
-
-            .btn-cancel:hover {
-                background-color: #27272a;
-                color: #ffffff;
-                border-color: #52525b;
+            .btn-submit:disabled {
+                opacity: 0.65;
+                cursor: not-allowed;
             }
 
         @@media (max-width: 991.98px) {
             .ad-main {
                 margin-left: 0;
                 padding: 90px 18px 40px;
+            }
+
+            .status-option {
+                flex: 1;
+                min-width: 130px;
             }
         }
     </style>
@@ -186,8 +284,8 @@
                 Create New Interview Question
             </h1>
 
-            <p class="ad-page-date">
-                Define a high-quality prompt and evaluation criteria for the AI Coach engine.
+            <p class="ad-page-description">
+                Create a new interview question and configure its classification and status.
             </p>
         </header>
 
@@ -196,243 +294,213 @@
               action="/admin/questions/create"
               class="text-white pb-5">
 
-            <div class="row g-4">
-                <div class="col-lg-12">
+            @Html.AntiForgeryToken()
 
-                    <!-- Question Definition -->
-                    <div class="form-card p-4 mb-4">
+            <!-- Question Information -->
+            <section class="form-card">
 
-                        <p class="section-title text-uppercase fw-bold text-white mb-4 d-flex align-items-center gap-2">
-                            <i class="fa-regular fa-file-lines text-indigo"></i>
-                            Question Definition
-                        </p>
+                <div class="section-title">
+                    <i class="fa-regular fa-file-lines"></i>
+                    Question Information
+                </div>
 
-                        <div class="mb-4">
-                            <label class="field-label d-block mb-2 fw-semibold">
-                                QUESTION CONTENT / PROMPT
-                            </label>
+                <!-- Question -->
+                <div class="mb-4">
+                    <label class="field-label"
+                           for="questionInput">
+                        Question content
+                        <span class="required-mark">*</span>
+                    </label>
 
-                            <textarea class="form-control custom-input"
-                                      rows="4"
-                                      maxlength="5000"
-                                      placeholder="e.g., Explain the concept of Eventual Consistency in distributed systems..."
-                                      required
-                                      name="Content"></textarea>
-                        </div>
+                    <textarea id="questionInput"
+                              class="form-control custom-input"
+                              rows="5"
+                              maxlength="5000"
+                              required
+                              name="Question"
+                              placeholder="Enter question content..."></textarea>
+                </div>
 
-                        <div class="row g-3">
+                <!-- Answer -->
+                <div class="mb-4">
+                    <label class="field-label"
+                           for="answerInput">
+                        Answer
+                        <span class="required-mark">*</span>
+                    </label>
 
-                            <!-- Category -->
-                            <div class="col-md-6">
-                                <label class="field-label d-block mb-2 fw-semibold">
-                                    CATEGORY
-                                </label>
+                    <textarea id="answerInput"
+                              class="form-control custom-input"
+                              rows="5"
+                              required
+                              name="Answer"
+                              placeholder="Enter the expected answer or ideal response..."></textarea>
+                </div>
 
-                                <select class="form-select custom-input"
-                                        required
-                                        name="CategoryId">
+                <div class="row g-3">
 
-                                    <option value=""
-                                            disabled
-                                            selected>
-                                        Select Category
+                    <!-- Category -->
+                    <div class="col-md-6">
+                        <label class="field-label"
+                               for="categoryInput">
+                            Category
+                            <span class="required-mark">*</span>
+                        </label>
+
+                        <select id="categoryInput"
+                                class="form-select custom-input"
+                                required
+                                name="CategoryId">
+
+                            <option value=""
+                                    selected
+                                    disabled>
+                                Select Category
+                            </option>
+
+                            @if (Model.Categories != null &&
+                            Model.Categories.Any())
+                            {
+                                foreach (var category in Model.Categories)
+                                {
+                                    <option value="@category.CategoryId">
+                                        @category.Category
                                     </option>
-
-                                    @if (Model?.Categories != null &&
-                                    Model.Categories.Any())
-                                    {
-                                        foreach (var cat in Model.Categories)
-                                        {
-                                            <option value="@cat.CategoryId">
-                                                @cat.Name
-                                            </option>
-                                        }
-                                    }
-                                </select>
-                            </div>
-
-                            <!-- Question Type: Admin tự nhập -->
-                            <div class="col-md-6">
-                                <label class="field-label d-block mb-2 fw-semibold">
-                                    QUESTION TYPE
-                                </label>
-
-                                <input type="text"
-                                       class="form-control custom-input"
-                                       name="QuestionType"
-                                       maxlength="20"
-                                       required
-                                       placeholder="e.g. Theory, Coding, Behavioral..." />
-                            </div>
-
-                        </div>
+                                }
+                            }
+                            else
+                            {
+                                <option value=""
+                                        disabled>
+                                    No active categories available
+                                </option>
+                            }
+                        </select>
                     </div>
 
-                    <!-- Targeting & Complexity -->
-                    <div class="form-card p-4 mb-4">
+                    <!-- Difficulty -->
+                    <div class="col-md-6">
+                        <label class="field-label"
+                               for="difficultyInput">
+                            Difficulty
+                            <span class="required-mark">*</span>
+                        </label>
 
-                        <p class="section-title text-uppercase fw-bold text-white mb-4 d-flex align-items-center gap-2">
-                            <i class="fa-solid fa-layer-group text-indigo"></i>
-                            Targeting & Complexity
-                        </p>
-
-                        <div class="row g-3">
-
-                            <!-- Position -->
-                            <div class="col-md-6">
-                                <label class="field-label d-block mb-2 fw-semibold">
-                                    POSITION
-                                </label>
-
-                                <input type="text"
-                                       class="form-control custom-input"
-                                       name="Position"
-                                       maxlength="50"
-                                       placeholder="e.g. Backend Developer, QA Engineer..." />
-                            </div>
-
-                            <!-- Target Level: Admin tự nhập -->
-                            <div class="col-md-6">
-                                <label class="field-label d-block mb-2 fw-semibold">
-                                    TARGET LEVEL
-                                </label>
-
-                                <input type="text"
-                                       class="form-control custom-input"
-                                       name="Level"
-                                       maxlength="20"
-                                       required
-                                       placeholder="e.g. Intern, Junior, Middle, Senior..." />
-                            </div>
-
-                            <!-- Difficulty -->
-                            <div class="col-12">
-                                <label class="field-label d-block mb-2 fw-semibold">
-                                    DIFFICULTY
-                                </label>
-
-                                <div class="d-flex gap-2 btn-group-toggle flex-wrap">
-
-                                    <input type="radio"
-                                           class="btn-check"
-                                           name="Difficulty"
-                                           id="diffEasy"
-                                           value="Easy"
-                                           checked />
-
-                                    <label class="btn btn-custom-radio px-4"
-                                           for="diffEasy">
-                                        Easy
-                                    </label>
-
-                                    <input type="radio"
-                                           class="btn-check"
-                                           name="Difficulty"
-                                           id="diffMedium"
-                                           value="Medium" />
-
-                                    <label class="btn btn-custom-radio px-4"
-                                           for="diffMedium">
-                                        Medium
-                                    </label>
-
-                                    <input type="radio"
-                                           class="btn-check"
-                                           name="Difficulty"
-                                           id="diffHard"
-                                           value="Hard" />
-
-                                    <label class="btn btn-custom-radio px-4"
-                                           for="diffHard">
-                                        Hard
-                                    </label>
-
-                                </div>
-                            </div>
-
-                        </div>
-                    </div>
-
-                    <!-- Evaluation Criteria -->
-                    <div class="form-card p-4 mb-4">
-
-                        <p class="section-title text-uppercase fw-bold text-white mb-4 d-flex align-items-center gap-2">
-                            <i class="fa-regular fa-circle-check text-indigo"></i>
-                            Evaluation Criteria
-                        </p>
-
-                        <div class="mb-2">
-                            <label class="field-label d-block mb-2 fw-semibold">
-                                EXPECTED ANSWER / IDEAL RESPONSE
-                            </label>
-
-                            <textarea class="form-control custom-input"
-                                      rows="5"
-                                      placeholder="Define the key points the candidate should touch upon. AI will use this as a reference for scoring..."
-                                      required
-                                      name="ExpectedAnswer"></textarea>
-                        </div>
-
-                    </div>
-
-                    <!-- Taxonomy -->
-                    <div class="form-card p-4 mb-4">
-
-                        <p class="section-title text-uppercase fw-bold text-white mb-4 d-flex align-items-center gap-2">
-                            <i class="fa-solid fa-tags text-indigo"></i>
-                            Taxonomy
-                        </p>
-
-                        <div class="row g-3">
-
-                            <!-- Tech Stack: Admin tự nhập -->
-                            <div class="col-md-6">
-                                <label class="field-label d-block mb-2 fw-semibold">
-                                    TECH STACK
-                                </label>
-
-                                <input type="text"
-                                       class="form-control custom-input"
-                                       name="TechStack"
-                                       maxlength="255"
-                                       placeholder="e.g. ASP.NET Core, C#, React, SQL Server..." />
-                            </div>
-
-                            <!-- Tags -->
-                            <div class="col-md-6">
-                                <label class="field-label d-block mb-2 fw-semibold">
-                                    TAGS
-                                </label>
-
-                                <input type="text"
-                                       class="form-control custom-input"
-                                       name="Tags"
-                                       maxlength="500"
-                                       placeholder="Enter tags, e.g. oop, dotnet, logic" />
-                            </div>
-
-                        </div>
-                    </div>
-
-                    <!-- Actions -->
-                    <div class="d-flex justify-content-center align-items-center gap-3 mt-4 pt-2">
-
-                        <a href="/admin/questions"
-                           class="btn btn-outline-secondary btn-cancel px-5">
-                            Cancel
-                        </a>
-
-                        <button type="submit"
-                                class="btn btn-primary btn-submit px-5">
-                            Add Question
-                        </button>
-
+                        <input id="difficultyInput"
+                               type="text"
+                               class="form-control custom-input"
+                               required
+                               maxlength="50"
+                               name="Difficulty"
+                               placeholder="e.g. Intern, Fresher, Junior, Middle, Senior..." />
                     </div>
 
                 </div>
-            </div>
-        </form>
+            </section>
 
+            <!-- Position and Status -->
+            <section class="form-card">
+
+                <div class="section-title">
+                    <i class="fa-solid fa-layer-group"></i>
+                    Position & Status
+                </div>
+
+                <!-- Position -->
+                <div class="mb-4">
+                    <label class="field-label"
+                           for="positionInput">
+                        Position
+                        <span class="required-mark">*</span>
+                    </label>
+
+                    <input id="positionInput"
+                           type="text"
+                           class="form-control custom-input"
+                           required
+                           name="Position"
+                           maxlength="50"
+                           placeholder="e.g. Backend Developer, QA Engineer..." />
+                </div>
+
+                <!-- Status -->
+                <div>
+                    <label class="field-label">
+                        Status
+                        <span class="required-mark">*</span>
+                    </label>
+
+                    <div class="status-options">
+
+                        <input type="radio"
+                               class="btn-check"
+                               name="Status"
+                               id="statusActive"
+                               value="Active"
+                               required
+                               checked />
+
+                        <label class="status-option status-active"
+                               for="statusActive">
+                            Active
+                        </label>
+
+                        <input type="radio"
+                               class="btn-check"
+                               name="Status"
+                               id="statusDraft"
+                               value="Draft" />
+
+                        <label class="status-option status-draft"
+                               for="statusDraft">
+                            Draft
+                        </label>
+
+                        <input type="radio"
+                               class="btn-check"
+                               name="Status"
+                               id="statusArchived"
+                               value="Archived" />
+
+                        <label class="status-option status-archived"
+                               for="statusArchived">
+                            Archived
+                        </label>
+
+                        @* <input type="radio" *@
+                        @*        class="btn-check" *@
+                        @*        name="Status" *@
+                        @*        id="statusInactive" *@
+                        @*        value="Inactive" /> *@
+
+                        @* <label class="status-option status-inactive" *@
+                        @*        for="statusInactive"> *@
+                        @*     Inactive *@
+                        @* </label> *@
+
+                    </div>
+                </div>
+            </section>
+
+
+
+            <!-- Actions -->
+            <div class="action-area">
+
+                <a href="/admin/questions"
+                   class="btn-cancel">
+                    Cancel
+                </a>
+
+                <button type="submit"
+                        id="btnAddQuestion"
+                        class="btn-submit">
+                    Add Question
+                </button>
+
+            </div>
+
+        </form>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@@11"></script>
@@ -440,65 +508,225 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
-        document
-            .getElementById('addQuestionForm')
-            .addEventListener('submit', function (e) {
-                e.preventDefault();
+        const addForm =
+            document.getElementById('addQuestionForm');
 
-                const form = this;
-                const formData = new FormData(form);
+        const addButton =
+            document.getElementById('btnAddQuestion');
 
-                fetch(form.action, {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(async response => {
-                    let result = null;
+        function showValidationError(message, input) {
+            return Swal.fire({
+                title: 'Create Failed!',
+                text: message,
+                icon: 'error',
+                background: '#16161a',
+                color: '#ffffff',
+                confirmButtonColor: '#ef4444'
+            }).then(() => {
+                if (input) {
+                    input.focus();
+                }
+            });
+        }
 
-                    try {
-                        result = await response.json();
-                    } catch (e) {
-                        result = null;
+        if (addForm) {
+            addForm.addEventListener(
+                'submit',
+                async function (event) {
+                    event.preventDefault();
+
+                    const form = this;
+
+                    const questionInput =
+                        form.querySelector('[name="Question"]');
+
+                    const answerInput =
+                        form.querySelector('[name="Answer"]');
+
+                    const categoryInput =
+                        form.querySelector('[name="CategoryId"]');
+
+                    const difficultyInput =
+                        form.querySelector('[name="Difficulty"]');
+
+                    const positionInput =
+                        form.querySelector('[name="Position"]');
+
+                    // const techStackInput =
+                    //     form.querySelector('[name="TechStack"]');
+
+                    // const tagsInput =
+                    //     form.querySelector('[name="Tags"]');
+
+                    const statusInput =
+                        form.querySelector('[name="Status"]:checked');
+
+                    if (!questionInput.value.trim()) {
+                        await showValidationError(
+                            'Vui lòng nhập nội dung câu hỏi.',
+                            questionInput
+                        );
+
+                        return;
                     }
 
-                    if (response.ok &&
-                        result &&
-                        result.success) {
+                    if (!answerInput.value.trim()) {
+                        await showValidationError(
+                            'Vui lòng nhập câu trả lời.',
+                            answerInput
+                        );
 
-                        Swal.fire({
-                            title: 'Success!',
-                            text: result.message ||
+                        return;
+                    }
+
+                    if (!categoryInput.value) {
+                        await showValidationError(
+                            'Vui lòng chọn Category.',
+                            categoryInput
+                        );
+
+                        return;
+                    }
+
+                    if (!difficultyInput.value.trim()) {
+                        await showValidationError(
+                            'Vui lòng nhập Difficulty.',
+                            difficultyInput
+                        );
+
+                        return;
+                    }
+
+                    if (!positionInput.value.trim()) {
+                        await showValidationError(
+                            'Vui lòng nhập Position.',
+                            positionInput
+                        );
+
+                        return;
+                    }
+
+                    if (!statusInput) {
+                        await showValidationError(
+                            'Vui lòng chọn Status.',
+                            null
+                        );
+
+                        return;
+                    }
+
+                    // if (!techStackInput.value.trim()) {
+                    //     await showValidationError(
+                    //         'Vui lòng nhập Tech Stack.',
+                    //         techStackInput
+                    //     );
+
+                    //     return;
+                    // }
+
+                    // if (!tagsInput.value.trim()) {
+                    //     await showValidationError(
+                    //         'Vui lòng nhập Tags.',
+                    //         tagsInput
+                    //     );
+
+                    //     return;
+                    //     return;
+                    // }
+
+                    /*
+                     * Loại bỏ khoảng trắng thừa trước khi gửi.
+                     */
+                    questionInput.value =
+                        questionInput.value.trim();
+
+                    answerInput.value =
+                        answerInput.value.trim();
+
+                    difficultyInput.value =
+                        difficultyInput.value.trim();
+
+                    positionInput.value =
+                        positionInput.value.trim();
+
+                    // techStackInput.value =
+                    //     techStackInput.value.trim();
+
+                    // tagsInput.value =
+                    //     tagsInput.value.trim();
+
+                    const formData =
+                        new FormData(form);
+
+                    try {
+                        addButton.disabled = true;
+                        addButton.textContent = 'Creating...';
+
+                        const response = await fetch(
+                            form.action,
+                            {
+                                method: 'POST',
+                                body: formData,
+                                headers: {
+                                    'X-Requested-With':
+                                        'XMLHttpRequest'
+                                }
+                            }
+                        );
+
+                        let result = null;
+
+                        try {
+                            result = await response.json();
+                        } catch {
+                            result = null;
+                        }
+
+                        if (!response.ok ||
+                            !result?.success) {
+
+                            throw new Error(
+                                result?.message ??
+                                'An error occurred while adding the question.'
+                            );
+                        }
+
+                        await Swal.fire({
+                            title: 'Created Successfully!',
+                            text: result.message ??
                                 'Question has been added successfully.',
                             icon: 'success',
                             background: '#16161a',
                             color: '#ffffff',
                             confirmButtonColor: '#6366f1',
-                            timer: 1800,
+                            timer: 1700,
                             showConfirmButton: false
-                        }).then(() => {
-                            window.location.href =
-                                '/admin/questions';
                         });
 
-                        return;
-                    }
+                        window.location.href =
+                            '/admin/questions';
 
-                    throw new Error(
-                        (result && result.message) ||
-                        'An error occurred while adding the question.'
-                    );
-                })
-                .catch(error => {
-                    Swal.fire({
-                        title: 'Error Failed!',
-                        text: error.message,
-                        icon: 'error',
-                        background: '#16161a',
-                        color: '#ffffff',
-                        confirmButtonColor: '#ef4444'
-                    });
-                });
-            });
+                    } catch (error) {
+
+                        await Swal.fire({
+                            title: 'Create Failed!',
+                            text: error.message ??
+                                'An error occurred while adding the question.',
+                            icon: 'error',
+                            background: '#16161a',
+                            color: '#ffffff',
+                            confirmButtonColor: '#ef4444'
+                        });
+
+                    } finally {
+
+                        addButton.disabled = false;
+                        addButton.textContent =
+                            'Add Question';
+                    }
+                }
+            );
+        }
     </script>
 
 </body>

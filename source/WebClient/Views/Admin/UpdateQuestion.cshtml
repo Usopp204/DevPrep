@@ -5,6 +5,7 @@
     Layout = null;
 
     var qDetail = ViewBag.QuestionDetail as WebClient.Models.Admin.AdminQuestionDetailDto;
+
     var formActionUrl = qDetail != null
         ? $"/admin/questions/edit/{qDetail.QuestionId}"
         : "/admin/questions";
@@ -14,7 +15,9 @@
 <html lang="en">
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0" />
 
     <title>@ViewData["Title"] - DevPrep AI Admin Dashboard</title>
 
@@ -22,17 +25,17 @@
           href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
 
     <link rel="preconnect"
-          href="https://fonts.googleapis.com">
+          href="https://fonts.googleapis.com" />
 
     <link rel="preconnect"
           href="https://fonts.gstatic.com"
-          crossorigin>
+          crossorigin />
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@@100..900&family=JetBrains+Mono:wght@@500&display=swap"
-          rel="stylesheet">
+          rel="stylesheet" />
 
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@@20..48,100..700,0..1,-50..200&display=swap"
-          rel="stylesheet">
+          rel="stylesheet" />
 
     <link rel="stylesheet"
           href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
@@ -46,7 +49,9 @@
             margin: 0;
             padding: 0;
             background-color: #0f0f11;
+            color: #ffffff;
             overflow-x: hidden;
+            font-family: 'Inter', sans-serif;
         }
 
         .admin-main-wrapper {
@@ -56,13 +61,68 @@
             transition: all 0.3s ease;
         }
 
+        .page-container {
+            padding: 28px 30px 60px;
+        }
+
+        .page-title {
+            color: #ffffff;
+            font-size: 1.75rem;
+            font-weight: 800;
+            margin-bottom: 5px;
+        }
+
+        .page-subtitle {
+            color: #a1a1aa;
+            font-size: 0.9rem;
+            margin-bottom: 0;
+        }
+
+        .form-card {
+            background-color: #16161a;
+            border: 1px solid #26262b;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 22px;
+        }
+
+        .section-title {
+            color: #ffffff;
+            font-size: 0.85rem;
+            font-weight: 800;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            border-bottom: 1px solid #26262b;
+            padding-bottom: 11px;
+            margin-bottom: 22px;
+        }
+
+            .section-title i {
+                color: #6366f1;
+            }
+
+        .field-label {
+            display: block;
+            color: #a1a1aa;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
         .custom-input {
+            width: 100%;
             background-color: #0f0f11 !important;
             border: 1px solid #26262b !important;
             color: #ffffff !important;
             border-radius: 8px !important;
             padding: 12px 16px;
             font-size: 0.95rem;
+            box-shadow: none !important;
         }
 
             .custom-input:focus {
@@ -82,36 +142,139 @@
             background-size: 12px 12px !important;
         }
 
-        .btn-custom-radio {
-            background-color: #0f0f11;
-            border: 1px solid #26262b;
-            color: #a1a1aa;
-            border-radius: 8px;
-            padding: 10px 24px;
-            font-weight: 500;
-            transition: all 0.2s ease;
+            select.custom-input option {
+                color: #ffffff;
+                background-color: #16161a;
+            }
+
+        .status-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
         }
 
-            .btn-custom-radio:hover {
-                background-color: #1e1e24;
+        .btn-check {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .status-option {
+            min-width: 118px;
+            background-color: #0f0f11;
+            border: 1px solid #303038;
+            color: #a1a1aa;
+            border-radius: 8px;
+            padding: 11px 18px;
+            font-size: 0.87rem;
+            font-weight: 700;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.18s ease;
+        }
+
+            .status-option:hover {
+                background-color: #202026;
+                border-color: #52525b;
                 color: #ffffff;
             }
 
-        .btn-check:checked + .btn-custom-radio {
-            background-color: #24242b !important;
-            border-color: #6366f1 !important;
-            color: #6366f1 !important;
-            box-shadow: 0 0 0 1px #6366f1;
+            .status-option::before {
+                content: "";
+                width: 9px;
+                height: 9px;
+                border: 2px solid currentColor;
+                border-radius: 50%;
+                display: inline-block;
+                margin-right: 7px;
+                vertical-align: 1px;
+            }
+
+        #statusActive:checked + .status-active {
+            color: #34d399;
+            border-color: #10b981;
+            background: rgba(16, 185, 129, 0.12);
+            box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.35);
         }
 
-        .text-indigo {
-            color: #6366f1;
+        #statusDraft:checked + .status-draft {
+            color: #fbbf24;
+            border-color: #f59e0b;
+            background: rgba(245, 158, 11, 0.12);
+            box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.35);
         }
+
+        #statusArchived:checked + .status-archived {
+            color: #f87171;
+            border-color: #ef4444;
+            background: rgba(239, 68, 68, 0.12);
+            box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.35);
+        }
+
+        #statusInactive:checked + .status-inactive {
+            color: #c4b5fd;
+            border-color: #8b5cf6;
+            background: rgba(139, 92, 246, 0.12);
+            box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.35);
+        }
+
+        .action-area {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 14px;
+            padding-top: 8px;
+        }
+
+        .btn-cancel {
+            min-width: 145px;
+            border: 1px solid #3f3f46;
+            color: #ffffff;
+            background: transparent;
+            border-radius: 8px;
+            padding: 11px 24px;
+            font-weight: 600;
+            text-decoration: none;
+            text-align: center;
+        }
+
+            .btn-cancel:hover {
+                color: #ffffff;
+                background-color: #27272a;
+            }
+
+        .btn-save {
+            min-width: 170px;
+            border: none;
+            color: #ffffff;
+            background-color: #6366f1;
+            border-radius: 8px;
+            padding: 11px 24px;
+            font-weight: 700;
+        }
+
+            .btn-save:hover {
+                background-color: #4f46e5;
+            }
+
+            .btn-save:disabled {
+                opacity: 0.65;
+                cursor: not-allowed;
+            }
 
         @@media (max-width: 991.98px) {
             .admin-main-wrapper {
                 margin-left: 0;
                 padding-top: 80px;
+            }
+
+            .page-container {
+                padding: 20px 15px 50px;
+            }
+
+            .status-option {
+                flex: 1;
+                min-width: 130px;
             }
         }
     </style>
@@ -122,19 +285,16 @@
     @await Html.PartialAsync("_AdminTopbar")
     @await Html.PartialAsync("_AdminSidebar")
 
-    <div class="admin-main-wrapper">
-        <div class="container-fluid text-white py-4"
-             style="font-family: 'Inter', sans-serif;">
+    <main class="admin-main-wrapper">
+        <div class="container-fluid page-container">
 
             <div class="mb-4">
-                <h2 class="fw-bold mb-1"
-                    style="color: #ffffff; font-size: 1.75rem;">
+                <h1 class="page-title">
                     Update Interview Question
-                </h2>
+                </h1>
 
-                <p class="text-muted mb-0"
-                   style="font-size: 0.9rem; color: #a1a1aa !important;">
-                    Modify the high-quality prompt, evaluation criteria, or status for this question.
+                <p class="page-subtitle">
+                    Edit question information, difficulty, status and classification.
                 </p>
             </div>
 
@@ -155,341 +315,253 @@
                       method="post"
                       action="@formActionUrl">
 
-                    <div class="row g-4">
-                        <div class="col-lg-12">
-
-                            <!-- Question Definition -->
-                            <div class="p-4 mb-4"
-                                 style="background-color: #16161a; border-radius: 12px; border: 1px solid #26262b;">
-
-                                <p class="text-uppercase fw-bold text-white mb-4 d-flex align-items-center gap-2"
-                                   style="font-size: 0.85rem; letter-spacing: 0.05em; border-bottom: 1px solid #26262b; padding-bottom: 10px;">
-
-                                    <i class="fa-regular fa-file-lines text-indigo"></i>
-
-                                    Question Definition
-                                </p>
-
-                                <div class="mb-4">
-                                    <label class="d-block mb-2 fw-semibold"
-                                           style="font-size: 0.75rem; color: #a1a1aa; letter-spacing: 0.05em;">
-
-                                        QUESTION CONTENT / PROMPT
-                                    </label>
-
-                                    <textarea class="form-control custom-input"
-                                              rows="4"
-                                              required
-                                              name="Content">@qDetail.Content</textarea>
-                                </div>
-
-                                <div class="row g-3">
-
-                                    <!-- Category -->
-                                    <div class="col-md-4">
-                                        <label class="d-block mb-2 fw-semibold"
-                                               style="font-size: 0.75rem; color: #a1a1aa; letter-spacing: 0.05em;">
-
-                                            CATEGORY
-                                        </label>
-
-                                        <select class="form-select custom-input"
-                                                required
-                                                name="CategoryId">
-
-                                            <option value=""
-                                                    disabled>
-                                                Select Category
-                                            </option>
-
-                                            @if (Model?.Categories != null &&
-                                           Model.Categories.Any())
-                                            {
-                                                foreach (var cat in Model.Categories)
-                                                {
-                                                    <option value="@cat.CategoryId"
-                                                            selected="@(cat.CategoryId == qDetail.CategoryId)">
-                                                        @cat.Name
-                                                    </option>
-                                                }
-                                            }
-                                        </select>
-                                    </div>
-
-                                    <!-- Question Type: Admin tự nhập -->
-                                    <div class="col-md-4">
-                                        <label class="d-block mb-2 fw-semibold"
-                                               style="font-size: 0.75rem; color: #a1a1aa; letter-spacing: 0.05em;">
-
-                                            QUESTION TYPE
-                                        </label>
-
-                                        <input type="text"
-                                               class="form-control custom-input"
-                                               required
-                                               maxlength="20"
-                                               name="QuestionType"
-                                               value="@qDetail.QuestionType"
-                                               placeholder="e.g. Theory, Coding, Behavioral..." />
-                                    </div>
-
-                                    <!-- Status -->
-                                    <div class="col-md-4">
-                                        <label class="d-block mb-2 fw-semibold"
-                                               style="font-size: 0.75rem; color: #a1a1aa; letter-spacing: 0.05em;">
-
-                                            STATUS
-                                        </label>
-
-                                        <select class="form-select custom-input"
-                                                required
-                                                name="Status">
-
-                                            <option value="Active"
-                                                    selected="@(string.Equals(
-                                                        qDetail.Status,
-                                                        "Active",
-                                                        StringComparison.OrdinalIgnoreCase
-                                                    ))">
-                                                Active
-                                            </option>
-
-                                            <option value="Draft"
-                                                    selected="@(string.Equals(
-                                                        qDetail.Status,
-                                                        "Draft",
-                                                        StringComparison.OrdinalIgnoreCase
-                                                    ))">
-                                                Draft
-                                            </option>
-
-                                            <option value="Archived"
-                                                    selected="@(string.Equals(
-                                                        qDetail.Status,
-                                                        "Archived",
-                                                        StringComparison.OrdinalIgnoreCase
-                                                    ))">
-                                                Archived
-                                            </option>
-                                        </select>
-                                    </div>
-
-                                </div>
-                            </div>
-
-                            <!-- Targeting & Complexity -->
-                            <div class="p-4 mb-4"
-                                 style="background-color: #16161a; border-radius: 12px; border: 1px solid #26262b;">
-
-                                <p class="text-uppercase fw-bold text-white mb-4 d-flex align-items-center gap-2"
-                                   style="font-size: 0.85rem; letter-spacing: 0.05em; border-bottom: 1px solid #26262b; padding-bottom: 10px;">
-
-                                    <i class="fa-solid fa-layer-group text-indigo"></i>
-
-                                    Targeting & Complexity
-                                </p>
-
-                                <div class="row g-3 align-items-start">
-
-                                    <!-- Position -->
-                                    <div class="col-md-6">
-                                        <label class="d-block mb-2 fw-semibold"
-                                               style="font-size: 0.75rem; color: #a1a1aa; letter-spacing: 0.05em;">
-
-                                            POSITION
-                                        </label>
-
-                                        <input type="text"
-                                               class="form-control custom-input"
-                                               maxlength="50"
-                                               name="Position"
-                                               value="@qDetail.Position"
-                                               placeholder="e.g. Backend Developer, QA Engineer..." />
-                                    </div>
-
-                                    <!-- Target Level: Admin tự nhập -->
-                                    <div class="col-md-6">
-                                        <label class="d-block mb-2 fw-semibold"
-                                               style="font-size: 0.75rem; color: #a1a1aa; letter-spacing: 0.05em;">
-
-                                            TARGET LEVEL
-                                        </label>
-
-                                        <input type="text"
-                                               class="form-control custom-input"
-                                               required
-                                               maxlength="20"
-                                               name="Level"
-                                               value="@qDetail.Level"
-                                               placeholder="e.g. Intern, Junior, Middle, Senior..." />
-                                    </div>
-
-                                    <!-- Difficulty -->
-                                    <div class="col-12">
-                                        <label class="d-block mb-2 fw-semibold"
-                                               style="font-size: 0.75rem; color: #a1a1aa; letter-spacing: 0.05em;">
-
-                                            DIFFICULTY
-                                        </label>
-
-                                        <div class="d-flex gap-2 btn-group-toggle flex-wrap">
-
-                                            <input type="radio"
-                                                   class="btn-check"
-                                                   name="Difficulty"
-                                                   id="diffEasy"
-                                                   value="Easy"
-                                                   checked="@(string.Equals(
-                                                       qDetail.Difficulty,
-                                                       "Easy",
-                                                       StringComparison.OrdinalIgnoreCase
-                                                   ))">
-
-                                            <label class="btn btn-custom-radio px-4"
-                                                   for="diffEasy">
-                                                Easy
-                                            </label>
-
-                                            <input type="radio"
-                                                   class="btn-check"
-                                                   name="Difficulty"
-                                                   id="diffMedium"
-                                                   value="Medium"
-                                                   checked="@(string.Equals(
-                                                       qDetail.Difficulty,
-                                                       "Medium",
-                                                       StringComparison.OrdinalIgnoreCase
-                                                   ))">
-
-                                            <label class="btn btn-custom-radio px-4"
-                                                   for="diffMedium">
-                                                Medium
-                                            </label>
-
-                                            <input type="radio"
-                                                   class="btn-check"
-                                                   name="Difficulty"
-                                                   id="diffHard"
-                                                   value="Hard"
-                                                   checked="@(string.Equals(
-                                                       qDetail.Difficulty,
-                                                       "Hard",
-                                                       StringComparison.OrdinalIgnoreCase
-                                                   ))">
-
-                                            <label class="btn btn-custom-radio px-4"
-                                                   for="diffHard">
-                                                Hard
-                                            </label>
-
-                                        </div>
-                                    </div>
-
-                                </div>
-                            </div>
-
-                            <!-- Evaluation Criteria -->
-                            <div class="p-4 mb-4"
-                                 style="background-color: #16161a; border-radius: 12px; border: 1px solid #26262b;">
-
-                                <p class="text-uppercase fw-bold text-white mb-4 d-flex align-items-center gap-2"
-                                   style="font-size: 0.85rem; letter-spacing: 0.05em; border-bottom: 1px solid #26262b; padding-bottom: 10px;">
-
-                                    <i class="fa-regular fa-circle-check text-indigo"></i>
-
-                                    Evaluation Criteria
-                                </p>
-
-                                <div class="mb-2">
-                                    <label class="d-block mb-2 fw-semibold"
-                                           style="font-size: 0.75rem; color: #a1a1aa; letter-spacing: 0.05em;">
-
-                                        EXPECTED ANSWER / IDEAL RESPONSE
-                                    </label>
-
-                                    <textarea class="form-control custom-input"
-                                              rows="5"
-                                              required
-                                              name="ExpectedAnswer">@qDetail.ExpectedAnswer</textarea>
-                                </div>
-
-                            </div>
-
-                            <!-- Taxonomy -->
-                            <div class="p-4 mb-4"
-                                 style="background-color: #16161a; border-radius: 12px; border: 1px solid #26262b;">
-
-                                <p class="text-uppercase fw-bold text-white mb-4 d-flex align-items-center gap-2"
-                                   style="font-size: 0.85rem; letter-spacing: 0.05em; border-bottom: 1px solid #26262b; padding-bottom: 10px;">
-
-                                    <i class="fa-solid fa-tags text-indigo"></i>
-
-                                    Taxonomy
-                                </p>
-
-                                <div class="row g-3">
-
-                                    <!-- Tech Stack: Admin tự nhập -->
-                                    <div class="col-md-6">
-                                        <label class="d-block mb-2 fw-semibold"
-                                               style="font-size: 0.75rem; color: #a1a1aa; letter-spacing: 0.05em;">
-
-                                            TECH STACK
-                                        </label>
-
-                                        <input type="text"
-                                               class="form-control custom-input"
-                                               maxlength="255"
-                                               value="@qDetail.TechStack"
-                                               name="TechStack"
-                                               placeholder="e.g. ASP.NET Core, C#, React, SQL Server..." />
-                                    </div>
-
-                                    <!-- Tags -->
-                                    <div class="col-md-6">
-                                        <label class="d-block mb-2 fw-semibold"
-                                               style="font-size: 0.75rem; color: #a1a1aa; letter-spacing: 0.05em;">
-
-                                            TAGS
-                                        </label>
-
-                                        <input type="text"
-                                               class="form-control custom-input"
-                                               maxlength="500"
-                                               value="@qDetail.Tags"
-                                               name="Tags"
-                                               placeholder="e.g. oop, dotnet, logic..." />
-                                    </div>
-
-                                </div>
-                            </div>
-
-                            <!-- Actions -->
-                            <div class="d-flex justify-content-center align-items-center gap-3 mt-4 pt-2">
-
-                                <a href="/admin/questions"
-                                   class="btn btn-outline-secondary px-5"
-                                   style="border-radius: 8px; font-weight: 500; border-color: #3f3f46; color: #ffffff;">
-
-                                    Cancel
-                                </a>
-
-                                <button type="submit"
-                                        class="btn btn-primary px-5"
-                                        style="background-color: #6366f1; border: none; border-radius: 8px; font-weight: 500;">
-
-                                    Save Changes
-                                </button>
-
-                            </div>
-
+                    @Html.AntiForgeryToken()
+
+                    <!-- Question information -->
+                    <section class="form-card">
+                        <div class="section-title">
+                            <i class="fa-regular fa-file-lines"></i>
+                            Question Information
                         </div>
+
+                        <div class="mb-4">
+                            <label class="field-label"
+                                   for="questionInput">
+                                Question content
+                            </label>
+
+                            <!-- QUAN TRỌNG: name phải là Question -->
+                            <textarea id="questionInput"
+                                      class="form-control custom-input"
+                                      rows="5"
+                                      required
+                                      name="Question"
+                                      placeholder="Enter question content...">@qDetail.Question</textarea>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="field-label"
+                                   for="answerInput">
+                                Answer
+                            </label>
+
+                            <textarea id="answerInput"
+                                      class="form-control custom-input"
+                                      rows="5"
+                                      name="Answer"
+                                      placeholder="Enter the expected answer...">@qDetail.Answer</textarea>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="field-label"
+                                       for="categoryInput">
+                                    Category
+                                </label>
+
+                                <select id="categoryInput"
+                                        class="form-select custom-input"
+                                        required
+                                        name="CategoryId">
+
+                                    <option value=""
+                                            disabled>
+                                        Select Category
+                                    </option>
+
+                                    @if (Model.Categories != null)
+                                    {
+                                        foreach (var category in Model.Categories)
+                                        {
+                                            <option value="@category.CategoryId"
+                                                    selected="@(category.CategoryId == qDetail.CategoryId
+                                                        ? "selected"
+                                                        : null)">
+                                                @category.Category
+                                            </option>
+                                        }
+                                    }
+                                </select>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="field-label"
+                                       for="difficultyInput">
+                                    Difficulty
+                                </label>
+
+                                <!-- Difficulty cho admin tự nhập -->
+                                <input id="difficultyInput"
+                                       type="text"
+                                       class="form-control custom-input"
+                                       required
+                                       maxlength="20"
+                                       name="Difficulty"
+                                       value="@qDetail.Difficulty"
+                                       placeholder="e.g. Intern, Fresher, Junior, Middle, Senior..." />
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Position and status -->
+                    <section class="form-card">
+                        <div class="section-title">
+                            <i class="fa-solid fa-layer-group"></i>
+                            Position & Status
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="field-label"
+                                   for="positionInput">
+                                Position
+                            </label>
+
+                            <input id="positionInput"
+                                   type="text"
+                                   class="form-control custom-input"
+                                   maxlength="50"
+                                   name="Position"
+                                   value="@qDetail.Position"
+                                   placeholder="e.g. Backend Developer, QA Engineer..." />
+                        </div>
+
+                        <div>
+                            <label class="field-label">
+                                Status
+                            </label>
+
+                            <div class="status-options">
+
+                                <input type="radio"
+                                       class="btn-check"
+                                       name="Status"
+                                       id="statusActive"
+                                       value="Active"
+                                       checked="@(string.Equals(
+                                           qDetail.Status,
+                                           "Active",
+                                           StringComparison.OrdinalIgnoreCase)
+                                           ? "checked"
+                                           : null)" />
+
+                                <label class="status-option status-active"
+                                       for="statusActive">
+                                    Active
+                                </label>
+
+                                <input type="radio"
+                                       class="btn-check"
+                                       name="Status"
+                                       id="statusDraft"
+                                       value="Draft"
+                                       checked="@(string.Equals(
+                                           qDetail.Status,
+                                           "Draft",
+                                           StringComparison.OrdinalIgnoreCase)
+                                           ? "checked"
+                                           : null)" />
+
+                                <label class="status-option status-draft"
+                                       for="statusDraft">
+                                    Draft
+                                </label>
+
+                                <input type="radio"
+                                       class="btn-check"
+                                       name="Status"
+                                       id="statusArchived"
+                                       value="Archived"
+                                       checked="@(string.Equals(
+                                           qDetail.Status,
+                                           "Archived",
+                                           StringComparison.OrdinalIgnoreCase)
+                                           ? "checked"
+                                           : null)" />
+
+                                <label class="status-option status-archived"
+                                       for="statusArchived">
+                                    Archived
+                                </label>
+
+                                @* <input type="radio" *@
+                                @*        class="btn-check" *@
+                                @*        name="Status" *@
+                                @*        id="statusInactive" *@
+                                @*        value="Inactive" *@
+                                @*        checked="@(string.Equals( *@
+                                @*            qDetail.Status, *@
+                                @*            "Inactive", *@
+                                @*            StringComparison.OrdinalIgnoreCase) *@
+                                @*            ? "checked" *@
+                                @*            : null)" /> *@
+
+                                @* <label class="status-option status-inactive" *@
+                                @*        for="statusInactive"> *@
+                                @*     Inactive *@
+                                @* </label> *@
+
+                            </div>
+                        </div>
+                    </section>
+
+                    @* <!-- Technology and tags --> *@
+                    @* <section class="form-card"> *@
+                    @*     <div class="section-title"> *@
+                    @*         <i class="fa-solid fa-tags"></i> *@
+                    @*         Technology & Tags *@
+                    @*     </div> *@
+
+                    @*     <div class="row g-3"> *@
+                    @*         <div class="col-md-6"> *@
+                    @*             <label class="field-label" *@
+                    @*                    for="techStackInput"> *@
+                    @*                 Tech stack *@
+                    @*             </label> *@
+
+                    @*             <input id="techStackInput" *@
+                    @*                    type="text" *@
+                    @*                    class="form-control custom-input" *@
+                    @*                    maxlength="255" *@
+                    @*                    name="TechStack" *@
+                    @*                    @* value="@qDetail.TechStack" *@ 
+                    @*                    placeholder="e.g. ASP.NET Core, C#, React, SQL Server..." /> *@
+                    @*         </div> *@
+
+                    @*         <div class="col-md-6"> *@
+                    @*             <label class="field-label" *@
+                    @*                    for="tagsInput"> *@
+                    @*                 Tags *@
+                    @*             </label> *@
+
+                    @*             <input id="tagsInput" *@
+                    @*                    type="text" *@
+                    @*                    class="form-control custom-input" *@
+                    @*                    maxlength="500" *@
+                    @*                    name="Tags" *@
+                    @*                    @* value="@qDetail.Tags" *@ 
+                    @*                    placeholder="e.g. oop, dotnet, logic..." /> *@
+                    @*         </div> *@
+                    @*     </div> *@
+                    @* </section> *@
+
+                    <div class="action-area">
+                        <a href="/admin/questions"
+                           class="btn-cancel">
+                            Cancel
+                        </a>
+
+                        <button type="submit"
+                                id="btnSaveQuestion"
+                                class="btn-save">
+                            Save Changes
+                        </button>
                     </div>
+
                 </form>
             }
 
         </div>
-    </div>
+    </main>
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
@@ -499,55 +571,116 @@
 
     <script>
         const updateForm = document.getElementById('updateQuestionForm');
+        const saveButton = document.getElementById('btnSaveQuestion');
 
         if (updateForm) {
-            updateForm.addEventListener('submit', function (e) {
-                e.preventDefault();
+            updateForm.addEventListener('submit', async function (event) {
+                event.preventDefault();
 
                 const form = this;
+                const questionInput = form.querySelector('[name="Question"]');
+                const difficultyInput = form.querySelector('[name="Difficulty"]');
+                const categoryInput = form.querySelector('[name="CategoryId"]');
+                const statusInput = form.querySelector('[name="Status"]:checked');
+
+                if (!questionInput || !questionInput.value.trim()) {
+                    await Swal.fire({
+                        title: 'Update Failed!',
+                        text: 'Vui lòng nhập nội dung câu hỏi.',
+                        icon: 'error',
+                        background: '#16161a',
+                        color: '#ffffff',
+                        confirmButtonColor: '#ef4444'
+                    });
+
+                    questionInput?.focus();
+                    return;
+                }
+
+                if (!difficultyInput || !difficultyInput.value.trim()) {
+                    await Swal.fire({
+                        title: 'Update Failed!',
+                        text: 'Vui lòng nhập Difficulty.',
+                        icon: 'error',
+                        background: '#16161a',
+                        color: '#ffffff',
+                        confirmButtonColor: '#ef4444'
+                    });
+
+                    difficultyInput?.focus();
+                    return;
+                }
+
+                if (!categoryInput || !categoryInput.value) {
+                    await Swal.fire({
+                        title: 'Update Failed!',
+                        text: 'Vui lòng chọn Category.',
+                        icon: 'error',
+                        background: '#16161a',
+                        color: '#ffffff',
+                        confirmButtonColor: '#ef4444'
+                    });
+
+                    categoryInput?.focus();
+                    return;
+                }
+
+                if (!statusInput) {
+                    await Swal.fire({
+                        title: 'Update Failed!',
+                        text: 'Vui lòng chọn Status.',
+                        icon: 'error',
+                        background: '#16161a',
+                        color: '#ffffff',
+                        confirmButtonColor: '#ef4444'
+                    });
+
+                    return;
+                }
+
                 const formData = new FormData(form);
 
-                fetch(form.action, {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(async response => {
+                try {
+                    saveButton.disabled = true;
+                    saveButton.textContent = 'Saving...';
+
+                    const response = await fetch(form.action, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+
                     let result = null;
 
                     try {
                         result = await response.json();
-                    } catch (e) {
+                    } catch {
                         result = null;
                     }
 
-                    if (response.ok &&
-                        result &&
-                        result.success) {
-
-                        Swal.fire({
-                            title: 'Updated Successfully!',
-                            text: result.message ||
-                                'The question has been updated successfully.',
-                            icon: 'success',
-                            background: '#16161a',
-                            color: '#ffffff',
-                            confirmButtonColor: '#6366f1',
-                            timer: 1800,
-                            showConfirmButton: false
-                        }).then(() => {
-                            window.location.href =
-                                '/admin/questions';
-                        });
-
-                        return;
+                    if (!response.ok || !result?.success) {
+                        throw new Error(
+                            result?.message ??
+                            'An error occurred while updating the question.'
+                        );
                     }
 
-                    throw new Error(
-                        (result && result.message) ||
-                        'An error occurred while updating the question.'
-                    );
-                })
-                .catch(error => {
+                    await Swal.fire({
+                        title: 'Updated Successfully!',
+                        text: result.message ??
+                            'The question has been updated successfully.',
+                        icon: 'success',
+                        background: '#16161a',
+                        color: '#ffffff',
+                        confirmButtonColor: '#6366f1',
+                        timer: 1700,
+                        showConfirmButton: false
+                    });
+
+                    window.location.href = '/admin/questions';
+                } catch (error) {
                     Swal.fire({
                         title: 'Update Failed!',
                         text: error.message,
@@ -556,7 +689,10 @@
                         color: '#ffffff',
                         confirmButtonColor: '#ef4444'
                     });
-                });
+                } finally {
+                    saveButton.disabled = false;
+                    saveButton.textContent = 'Save Changes';
+                }
             });
         }
     </script>

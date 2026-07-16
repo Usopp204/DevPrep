@@ -11,7 +11,7 @@ public class QuestionCategory
 
     [Required]
     [MaxLength(100)]
-    public string Name { get; set; } = string.Empty;
+    public string Category { get; set; } = string.Empty;// đôi name 
 
     [MaxLength(500)]
     public string? Description { get; set; }

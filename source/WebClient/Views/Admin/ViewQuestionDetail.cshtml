@@ -6,8 +6,8 @@
 
     string status = Model.Status?.Trim() ?? "Active";
     bool isSoftDeleted = Model.IsDeleted;
-    string categoryName = !string.IsNullOrWhiteSpace(Model.CategoryName)
-        ? Model.CategoryName
+    string categoryName = !string.IsNullOrWhiteSpace(Model.Category)
+        ? Model.Category
         : "General";
 }
 
@@ -159,7 +159,7 @@
             <div class="d-flex flex-column flex-sm-row justify-content-between align-items-stretch align-items-sm-center gap-3 mb-4">
                 <a href="/admin/questions" class="back-to-repository d-flex align-items-center gap-2 text-decoration-none py-2">
                     <i class="fa-solid fa-arrow-left"></i>
-                    Back to Repository
+                    Back to list question
                 </a>
 
                 <div class="d-flex gap-2 justify-content-sm-end">
@@ -235,23 +235,23 @@
 
                         <h2 class="fw-bold mb-3 title-responsive @(isSoftDeleted ? "deleted-title" : "")"
                             style="line-height: 1.4; color: #ffffff;">
-                            @Model.Content
+                            @Model.Question
                         </h2>
 
-                        <div class="d-flex flex-wrap gap-2">
-                            @if (!string.IsNullOrEmpty(Model.TechStack))
-                            {
-                                <span class="badge tag-badge">#@Model.TechStack</span>
-                            }
+                        @* <div class="d-flex flex-wrap gap-2"> *@
+                        @*     @if (!string.IsNullOrEmpty(Model.TechStack)) *@
+                        @*     { *@
+                        @*         <span class="badge tag-badge">#@Model.TechStack</span> *@
+                        @*     } *@
 
-                            @if (!string.IsNullOrEmpty(Model.Tags))
-                            {
-                                foreach (var tag in Model.Tags.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries))
-                                {
-                                    <span class="badge tag-badge">#@tag.Trim()</span>
-                                }
-                            }
-                        </div>
+                        @*     @if (!string.IsNullOrEmpty(Model.Tags)) *@
+                        @*     { *@
+                        @*         foreach (var tag in Model.Tags.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)) *@
+                        @*         { *@
+                        @*             <span class="badge tag-badge">#@tag.Trim()</span> *@
+                        @*         } *@
+                        @*     } *@
+                        @* </div> *@
                     </div>
 
                     <div class="card-custom" style="overflow: hidden;">
@@ -270,7 +270,7 @@
                             </h5>
 
                             <div class="answer-content">
-                                @Model.ExpectedAnswer
+                                @Model.Answer
                             </div>
                         </div>
                     </div>
@@ -308,10 +308,10 @@
                             </div>
                         </div>
 
-                        <div class="mb-4">
-                            <label class="d-block mb-1 meta-label">EXPERIENCE LEVEL</label>
-                            <span class="fw-bold text-white" style="font-size: 1rem;">@Model.Level</span>
-                        </div>
+                        @* <div class="mb-4"> *@
+                        @*     <label class="d-block mb-1 meta-label">EXPERIENCE LEVEL</label> *@
+                        @*     <span class="fw-bold text-white" style="font-size: 1rem;">@Model.Level</span> *@
+                        @* </div> *@
 
                         <div class="mb-4">
                             <label class="d-block mb-2 meta-label">DIFFICULTY LEVEL</label>
@@ -331,25 +331,25 @@
                             </span>
                         </div>
 
-                        <div class="mb-4">
-                            <label class="d-block mb-2 meta-label">TECH STACK</label>
+                        @* <div class="mb-4"> *@
+                        @*     <label class="d-block mb-2 meta-label">TECH STACK</label> *@
 
-                            <span class="badge px-3 py-1 text-white"
-                                  style="background-color: #24242b; border: 1px solid #3f3f46; border-radius: 6px; font-size: 0.8rem;">
-                                <i class="fa-brands fa-microsoft text-info me-1"></i>
-                                @(string.IsNullOrWhiteSpace(Model.TechStack) ? "N/A" : Model.TechStack)
-                            </span>
-                        </div>
+                        @*     <span class="badge px-3 py-1 text-white" *@
+                        @*           style="background-color: #24242b; border: 1px solid #3f3f46; border-radius: 6px; font-size: 0.8rem;"> *@
+                        @*         <i class="fa-brands fa-microsoft text-info me-1"></i> *@
+                        @*         @(string.IsNullOrWhiteSpace(Model.TechStack) ? "N/A" : Model.TechStack) *@
+                        @*     </span> *@
+                        @* </div> *@
 
-                        <div>
-                            <label class="d-block mb-2 meta-label">INTERACTION TYPE</label>
+                        @* <div> *@
+                        @*     <label class="d-block mb-2 meta-label">INTERACTION TYPE</label> *@
 
-                            <span class="text-white d-flex align-items-center gap-2 fw-medium"
-                                  style="font-size: 0.9rem;">
-                                <i class="fa-solid fa-code text-info"></i>
-                                @Model.QuestionType
-                            </span>
-                        </div>
+                        @*     <span class="text-white d-flex align-items-center gap-2 fw-medium" *@
+                        @*           style="font-size: 0.9rem;"> *@
+                        @*         <i class="fa-solid fa-code text-info"></i> *@
+                        @*         @Model.QuestionType *@
+                        @*     </span> *@
+                        @* </div> *@
 
                     </div>
                 </div>

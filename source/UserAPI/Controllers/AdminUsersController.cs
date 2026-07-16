@@ -82,7 +82,6 @@ public class AdminUsersController : ControllerBase
             return BadRequest(ApiResponse<object>.Fail(message));
         }
     }
-
     [HttpPatch("{id:guid}/role")]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -93,7 +92,11 @@ public class AdminUsersController : ControllerBase
     {
         try
         {
-            var success = await _service.UpdateRoleAsync(id, dto);
+            // Lấy AccountId của admin đang đăng nhập hiện tại
+            var adminAccountId = GetCurrentAccountId();
+
+            //Truyền thêm adminAccountId làm tham số thứ 3 vào hàm UpdateRoleAsync
+            var success = await _service.UpdateRoleAsync(id, dto, adminAccountId);
 
             if (!success)
             {

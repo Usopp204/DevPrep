@@ -21,4 +21,7 @@ public interface IAdminQuestionService
     Task<bool> RestoreAsync(Guid id);
 
     Task<List<AdminCategoryDto>> GetAllCategoriesAsync();
+
+    // Thêm hàm đồng bộ lại toàn bộ
+    Task<AdminReindexResultDto> ReindexAllQuestionsAsync();
 }
