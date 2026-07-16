@@ -70,6 +70,18 @@
 
                 <div class="session-info">
                     <div class="info-block">
+                        <span class="info-key">Role</span>
+                        <span class="info-val">@(string.IsNullOrWhiteSpace(Model.Position) ? "—" : Model.Position)</span>
+                    </div>
+                    <div class="info-block">
+                        <span class="info-key">Level</span>
+                        <span class="info-val">@Model.Level</span>
+                    </div>
+                    <div class="info-block">
+                        <span class="info-key">Type</span>
+                        <span class="info-val">@Model.QuestionType</span>
+                    </div>
+                    <div class="info-block">
                         <span class="info-key">Status</span>
                         <span class="info-val" id="status-text">@Model.Status</span>
                     </div>
@@ -173,10 +185,6 @@
                         <div id="camera-placeholder" class="camera-placeholder">
                             <span class="material-symbols-outlined">videocam_off</span>
                             <span>Camera off</span>
-                        </div>
-                        <div class="camera-controls">
-                            <button type="button" class="cam-btn" disabled><span class="material-symbols-outlined">mic_off</span></button>
-                            <button type="button" class="cam-btn" disabled><span class="material-symbols-outlined">videocam_off</span></button>
                         </div>
                     </div>
                     <button id="camera-toggle" class="btn-camera" type="button">Turn On Camera</button>

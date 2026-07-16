@@ -17,5 +17,6 @@ public interface ISessionRepository
     Task<List<InterviewSession>> GetByUserAsync(Guid userId, CancellationToken ct);
     Task<InterviewRoom?> GetRoomBySessionAsync(Guid sessionId, CancellationToken ct);
     Task UpdateRoomAsync(InterviewRoom room, CancellationToken ct);
+    Task<bool> UpdateStatusIfAsync(Guid userId, Guid sessionId, string currentStatus, string newStatus, CancellationToken ct);
     Task SaveChangesAsync(CancellationToken ct);
 }

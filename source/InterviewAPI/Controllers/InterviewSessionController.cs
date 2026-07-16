@@ -15,11 +15,13 @@ public class InterviewSessionController : ControllerBase
 {
     private readonly ISessionService _service;
     private readonly IAiServiceClient _aiServiceClient;
+    private readonly IPaymentApiClient _paymentApiClient;
 
-    public InterviewSessionController(ISessionService service, IAiServiceClient aiServiceClient)
+    public InterviewSessionController(ISessionService service, IAiServiceClient aiServiceClient, IPaymentApiClient paymentApiClient)
     {
         _service = service;
         _aiServiceClient = aiServiceClient;
+        _paymentApiClient = paymentApiClient;
     }
 
     /// <summary>
@@ -390,6 +392,21 @@ public class InterviewSessionController : ControllerBase
         catch (Exception ex)
         {
             return BadRequest(ApiResponse<object>.Fail(ex.Message));
+        }
+    }
+
+    [HttpGet("credit-balance")]
+    public async Task<IActionResult> GetCreditBalance(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var balance = await _paymentApiClient.GetBalanceAsync(userId, cancellationToken);
+            return Ok(ApiResponse<object>.Ok(new { Balance = balance }));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ApiResponse<object>.Fail($"Failed to check credit balance: {ex.Message}"));
         }
     }
 }

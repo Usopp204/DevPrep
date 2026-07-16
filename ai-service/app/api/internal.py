@@ -146,6 +146,12 @@ async def transcribe_audio(
 # ---- 5. Hint (stateless) ----------------------------------------------------
 class HintIn(BaseModel):
     question: str
+    # Defaults to English so existing callers (.NET does not send this field yet) are unaffected.
+    # Extend LANGUAGE_NAMES below when adding another supported language (e.g. "vi").
+    language: str = "en"
+
+
+LANGUAGE_NAMES = {"en": "English"}
 
 
 _HINT_PROMPT = (
@@ -154,8 +160,7 @@ _HINT_PROMPT = (
     "Give ONE short directional hint (1-2 sentences) that nudges them toward the right line of "
     "thinking or the key concept to recall. Do NOT reveal the answer, do NOT give a model answer, "
     "and do NOT list all the points they should mention.\n"
-    "IMPORTANT: reply in the SAME LANGUAGE as the question (e.g. Vietnamese if the question is in "
-    "Vietnamese). Return only the hint text."
+    "IMPORTANT: respond in {language_name} only. Return only the hint text."
 )
 
 
@@ -164,9 +169,11 @@ def get_hint(body: HintIn, x_internal_api_key: str | None = Header(default=None)
     """Return one light, directional hint for a question. Stateless — no session, no reference
     answer (the model uses general knowledge). Falls back to a generic nudge on grader failure."""
     _check_key(x_internal_api_key)
+    language_name = LANGUAGE_NAMES.get(body.language, LANGUAGE_NAMES["en"])
     judge = evaluator.GeminiJudge()
     try:
-        hint = judge(_HINT_PROMPT.format(question=body.question)).strip()
+        prompt = _HINT_PROMPT.format(question=body.question, language_name=language_name)
+        hint = judge(prompt).strip()
     except Exception:
         hint = ""
     if not hint:

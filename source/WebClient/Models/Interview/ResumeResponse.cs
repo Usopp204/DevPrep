@@ -6,6 +6,7 @@ public class ResumeResponse
     public string Status { get; set; } = string.Empty;
     public string? Position { get; set; }
     public string Level { get; set; } = string.Empty;
+    public string QuestionType { get; set; } = string.Empty;
     public int RemainingSeconds { get; set; }
     public NextQuestionDto? CurrentQuestion { get; set; }
     public int TotalQuestions { get; set; }

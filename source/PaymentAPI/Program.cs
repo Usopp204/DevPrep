@@ -63,6 +63,7 @@ builder.Services.AddScoped<ILedgerRepository, LedgerRepository>();
 // ── Services ──────────────────────────────────────────────────────────────────
 builder.Services.AddScoped<ICreditPackageService, CreditPackageService>();
 builder.Services.AddScoped<IVnPayService, VnPayService>();
+builder.Services.AddScoped<InternalCreditService>();
 
 // ── Controllers & Swagger ─────────────────────────────────────────────────────
 builder.Services.AddControllers();

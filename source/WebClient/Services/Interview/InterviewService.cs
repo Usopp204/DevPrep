@@ -134,6 +134,7 @@ public sealed class InterviewService(IApiClient apiClient) : IInterviewService
             Status = resume.Data.Status,
             Position = resume.Data.Position,
             Level = resume.Data.Level,
+            QuestionType = resume.Data.QuestionType,
             RemainingSeconds = resume.Data.RemainingSeconds,
             TotalQuestions = resume.Data.TotalQuestions,
             AnsweredQuestions = resume.Data.AnsweredQuestions,

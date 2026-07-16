@@ -1,3 +1,4 @@
+using InterviewAPI.Helpers;
 using InterviewAPI.Models;
 using InterviewAPI.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -7,10 +8,12 @@ namespace InterviewAPI.Repositories;
 public class SessionRepository : ISessionRepository
 {
     private readonly InterviewDbContext _db;
+    private readonly ILogger<SessionRepository> _logger;
 
-    public SessionRepository(InterviewDbContext db)
+    public SessionRepository(InterviewDbContext db, ILogger<SessionRepository> logger)
     {
         _db = db;
+        _logger = logger;
     }
 
     // Lấy phiên theo id, lọc bỏ đã xoá mềm, tracking để có thể cập nhật.
@@ -97,6 +100,17 @@ public class SessionRepository : ISessionRepository
     // Room đã được tracking bởi GetRoomBySessionAsync; gọi SaveChanges để lưu các thay đổi đã set trên entity.
     public Task UpdateRoomAsync(InterviewRoom room, CancellationToken ct) =>
         _db.SaveChangesAsync(ct);
+
+    public async Task<bool> UpdateStatusIfAsync(Guid userId, Guid sessionId, string currentStatus, string newStatus, CancellationToken ct)
+    {
+        var rowsAffected = await _db.InterviewSessions
+            .Where(s => s.SessionId == sessionId && s.UserId == userId && s.Status == currentStatus && !s.IsDeleted)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.Status, newStatus)
+                                      .SetProperty(x => x.UpdatedAt, VietnamTime.Now), ct);
+        _logger.LogInformation("UpdateStatusIfAsync: rowsAffected={RowsAffected}, params(sessionId={SessionId}, userId={UserId}, currentStatus={CurrentStatus}, newStatus={NewStatus})",
+            rowsAffected, sessionId, userId, currentStatus, newStatus);
+        return rowsAffected > 0;
+    }
 
     public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
 }

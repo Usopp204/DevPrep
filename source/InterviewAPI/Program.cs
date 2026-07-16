@@ -41,6 +41,7 @@ var authBaseUrl = builder.Configuration.GetValue<string>("AUTH_API_BASEURL", "ht
 var userBaseUrl = builder.Configuration.GetValue<string>("USER_API_BASEURL", "http://localhost:7002");
 var aiServiceBaseUrl = builder.Configuration["AiService:BaseUrl"] ?? "http://localhost:8000";
 var aiServiceApiKey = builder.Configuration["AiService:InternalApiKey"] ?? string.Empty;
+var paymentBaseUrl = builder.Configuration.GetValue<string>("PAYMENT_API_BASEURL", "http://localhost:7008");
 var evaluationBaseUrl = builder.Configuration.GetValue<string>("EVALUATION_API_BASEURL", "http://localhost:7006");
 
 builder.Services.AddHttpClient<IAuthApiClient, AuthApiClient>(client =>
@@ -67,6 +68,16 @@ builder.Services.AddHttpClient<IAiServiceClient, AiServiceClient>(client =>
     client.Timeout = TimeSpan.FromSeconds(60);
     if (!string.IsNullOrEmpty(aiServiceApiKey))
         client.DefaultRequestHeaders.Add("X-Internal-Api-Key", aiServiceApiKey);
+})
+.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { UseProxy = false });
+
+// Calls PaymentAPI to deduct/refund credits (internal API key for interview credit system).
+builder.Services.AddHttpClient<IPaymentApiClient, PaymentApiClient>(client =>
+{
+    client.BaseAddress = new Uri(paymentBaseUrl!);
+    client.Timeout = TimeSpan.FromSeconds(30);
+    if (!string.IsNullOrEmpty(internalApiKey))
+        client.DefaultRequestHeaders.Add("X-Internal-Api-Key", internalApiKey);
 })
 .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { UseProxy = false });
 
