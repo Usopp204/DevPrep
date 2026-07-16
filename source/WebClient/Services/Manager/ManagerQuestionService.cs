@@ -80,4 +80,23 @@ public class ManagerQuestionService : IManagerQuestionService
             return null;
         }
     }
+
+    public async Task<List<QuestionBankCategoryViewModel>> GetCategoriesAsync()
+    {
+        try
+        {
+            var httpResponse = await _apiClient.HttpClient.GetAsync("/api/admin/manager/questions/categories");
+            if (!httpResponse.IsSuccessStatusCode)
+            {
+                return [];
+            }
+
+            var response = await httpResponse.Content.ReadFromJsonAsync<ApiResponse<List<QuestionBankCategoryViewModel>>>();
+            return response?.Data ?? [];
+        }
+        catch (HttpRequestException)
+        {
+            return [];
+        }
+    }
 }
