@@ -21,30 +21,30 @@
     <main class="ad-main">
         <header class="mb-4">
             <h1 class="ad-page-title">System Overview</h1>
-            <p class="ad-page-date">Manager read-only workspace</p>
+            <p class="ad-page-date">July 12, 2026</p>
         </header>
 
         <section class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4 mb-4">
             <div class="col">
                 <a class="glass-card ad-stat text-decoration-none d-block h-100" href="/Manager/Users">
                     <div class="ad-stat-top">
-                        <span class="ad-stat-label">User Profiles</span>
-                        <span class="material-symbols-outlined" style="color:#e2dfff; opacity:.6;">group</span>
+                        <span class="ad-stat-label">New Users This Month</span>
+                        <span class="material-symbols-outlined" style="color:#e2dfff; opacity:.6;">person_add</span>
                     </div>
                     <div>
-                        <div class="ad-stat-value">Audit</div>
-                        <div class="ad-stat-delta"><span class="material-symbols-outlined" style="font-size:16px;">visibility</span> Read-only user monitoring</div>
+                        <div class="ad-stat-value">247</div>
+                        <div class="ad-stat-delta"><span class="material-symbols-outlined" style="font-size:16px;">trending_up</span> +12% vs last month</div>
                     </div>
                 </a>
             </div>
             <div class="col">
                 <a class="glass-card ad-stat text-decoration-none d-block h-100" href="/Manager/QuestionBank">
                     <div class="ad-stat-top">
-                        <span class="ad-stat-label">Question Bank</span>
-                        <span class="material-symbols-outlined" style="color:#4cd7f6; opacity:.6;">database</span>
+                        <span class="ad-stat-label">Total Sessions Run</span>
+                        <span class="material-symbols-outlined" style="color:#4cd7f6; opacity:.6;">play_circle</span>
                     </div>
                     <div>
-                        <div class="ad-stat-value">Review</div>
+                        <div class="ad-stat-value">3,842</div>
                         <div class="ad-spark">
                             <span style="height:16px; opacity:.3;"></span>
                             <span style="height:24px; opacity:.5;"></span>
@@ -59,28 +59,28 @@
                 </a>
             </div>
             <div class="col">
-                <a class="glass-card ad-stat text-decoration-none d-block h-100" href="/Manager/Feedback">
+                <a class="glass-card ad-stat text-decoration-none d-block h-100" href="/Manager/Payments">
                     <div class="ad-stat-top">
-                        <span class="ad-stat-label">System Feedback</span>
-                        <span class="material-symbols-outlined" style="color:#c3c0ff; opacity:.6;">forum</span>
+                        <span class="ad-stat-label">VNPay Revenue</span>
+                        <span class="material-symbols-outlined" style="color:#c3c0ff; opacity:.6;">account_balance_wallet</span>
                     </div>
                     <div>
-                        <div class="ad-stat-value" style="font-size:24px; color:#c3c0ff; line-height:1.2;">Quality</div>
-                        <div class="ad-stat-label" style="text-transform:none; margin-top:8px;">Complaints and suggestions</div>
+                        <div class="ad-stat-value" style="font-size:24px; color:#c3c0ff; line-height:1.2;">48,200,000 VND</div>
+                        <div class="ad-stat-label" style="text-transform:none; margin-top:8px;">This month</div>
                     </div>
                 </a>
             </div>
             <div class="col">
-                <a class="glass-card ad-stat text-decoration-none d-block h-100" href="/Manager/News">
+                <a class="glass-card ad-stat text-decoration-none d-block h-100" href="/Manager/Users">
                     <div class="ad-stat-top">
-                        <span class="ad-stat-label">News Tracker</span>
-                        <span class="material-symbols-outlined" style="color:#F9D949; opacity:.6;">newspaper</span>
+                        <span class="ad-stat-label">Active Users Today</span>
+                        <span class="material-symbols-outlined" style="color:#F9D949; opacity:.6;">bolt</span>
                     </div>
                     <div>
-                        <div class="ad-stat-value">Content</div>
+                        <div class="ad-stat-value">89</div>
                         <div class="d-flex align-items-center gap-2 mt-1">
                             <span style="width:8px; height:8px; border-radius:9999px; background:#10B981; display:inline-block;" class="active-pulse"></span>
-                            <span style="color:#10B981; font-size:14px; font-weight:500;">Read-only</span>
+                            <span style="color:#10B981; font-size:14px; font-weight:500;">Live</span>
                         </div>
                     </div>
                 </a>
@@ -89,9 +89,9 @@
 
         <section class="glass-card ad-section">
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h3 class="ad-section-title">Monthly Activity Snapshot</h3>
+                <h3 class="ad-section-title">Monthly Revenue &amp; Sessions</h3>
                 <div class="ad-legend">
-                    <div><span style="width:12px; height:12px; background:#e2dfff; border-radius:2px; display:inline-block;"></span><span class="k">Profiles</span></div>
+                    <div><span style="width:12px; height:12px; background:#e2dfff; border-radius:2px; display:inline-block;"></span><span class="k">Revenue</span></div>
                     <div><span style="width:12px; height:2px; background:#4cd7f6; display:inline-block;"></span><span class="k">Sessions</span></div>
                 </div>
             </div>
@@ -119,41 +119,62 @@
         <div class="ad-lower">
             <section class="glass-card ad-panel ad-lower-main">
                 <div class="ad-panel-head">
-                    <h3><span class="material-symbols-outlined" style="font-size:16px;">list_alt</span> Manager Work Queue</h3>
+                    <h3><span class="material-symbols-outlined" style="font-size:16px;">list_alt</span> Recent Activity</h3>
                 </div>
                 <div class="ad-panel-body">
                     <a class="ad-activity text-decoration-none" href="/Manager/QuestionBank">
                         <div class="ad-activity-left">
-                            <div class="ad-activity-icon"><span class="material-symbols-outlined" style="color:#4cd7f6;">database</span></div>
-                            <div><p class="ad-activity-title">Audit system question bank</p><p class="ad-activity-meta">READ_ONLY_CONTENT</p></div>
+                            <div class="ad-activity-icon"><span class="material-symbols-outlined" style="color:#4cd7f6;">person_add</span></div>
+                            <div><p class="ad-activity-title">New user registered: <span style="color:#4cd7f6;">minh_nguyen</span></p><p class="ad-activity-meta">12:45 PM &bull; SYSTEM_AUTH</p></div>
+                        </div>
+                        <span class="material-symbols-outlined chev">chevron_right</span>
+                    </a>
+                    <a class="ad-activity text-decoration-none" href="/Manager/InterviewSessions">
+                        <div class="ad-activity-left">
+                            <div class="ad-activity-icon"><span class="material-symbols-outlined" style="color:#e2dfff;">task_alt</span></div>
+                            <div><p class="ad-activity-title">Session completed: <span style="color:#e2dfff;">#S-492</span></p><p class="ad-activity-meta">12:30 PM &bull; ENGINE_V2</p></div>
+                        </div>
+                        <span class="material-symbols-outlined chev">chevron_right</span>
+                    </a>
+                    <a class="ad-activity text-decoration-none" href="/Manager/Payments">
+                        <div class="ad-activity-left">
+                            <div class="ad-activity-icon"><span class="material-symbols-outlined" style="color:#10B981;">payments</span></div>
+                            <div><p class="ad-activity-title">Payment received: <span style="color:#10B981;">#P-882</span></p><p class="ad-activity-meta">11:58 AM &bull; VNPAY_GATEWAY</p></div>
                         </div>
                         <span class="material-symbols-outlined chev">chevron_right</span>
                     </a>
                     <a class="ad-activity text-decoration-none" href="/Manager/Users">
                         <div class="ad-activity-left">
-                            <div class="ad-activity-icon"><span class="material-symbols-outlined" style="color:#e2dfff;">group</span></div>
-                            <div><p class="ad-activity-title">Review candidate profile activity</p><p class="ad-activity-meta">USER_MONITORING</p></div>
-                        </div>
-                        <span class="material-symbols-outlined chev">chevron_right</span>
-                    </a>
-                    <a class="ad-activity text-decoration-none" href="/Manager/Feedback">
-                        <div class="ad-activity-left">
-                            <div class="ad-activity-icon"><span class="material-symbols-outlined" style="color:#c3c0ff;">forum</span></div>
-                            <div><p class="ad-activity-title">Check system feedback metrics</p><p class="ad-activity-meta">SERVICE_QUALITY</p></div>
-                        </div>
-                        <span class="material-symbols-outlined chev">chevron_right</span>
-                    </a>
-                    <a class="ad-activity text-decoration-none" href="/Manager/AiFeedback">
-                        <div class="ad-activity-left">
-                            <div class="ad-activity-icon"><span class="material-symbols-outlined" style="color:#F9D949;">smart_toy</span></div>
-                            <div><p class="ad-activity-title">Inspect AI interview feedback</p><p class="ad-activity-meta">AI_QUALITY_SIGNAL</p></div>
+                            <div class="ad-activity-icon"><span class="material-symbols-outlined" style="color:#ffb4ab;">block</span></div>
+                            <div><p class="ad-activity-title">User blocked: <span style="color:#ffb4ab;">spam_bot_01</span></p><p class="ad-activity-meta">11:20 AM &bull; MODERATION_API</p></div>
                         </div>
                         <span class="material-symbols-outlined chev">chevron_right</span>
                     </a>
                     <a class="ad-activity text-decoration-none" href="/Manager/News">
                         <div class="ad-activity-left">
-                            <div class="ad-activity-icon"><span class="material-symbols-outlined" style="color:#10B981;">newspaper</span></div>
-                            <div><p class="ad-activity-title">Review published news and updates</p><p class="ad-activity-meta">CONTENT_TRACKER</p></div>
+                            <div class="ad-activity-icon"><span class="material-symbols-outlined" style="color:#c3c0ff;">forum</span></div>
+                            <div><p class="ad-activity-title">New feedback submitted: <span style="color:#c3c0ff;">#F-102</span></p><p class="ad-activity-meta">10:15 AM &bull; USER_CARE</p></div>
+                        </div>
+                        <span class="material-symbols-outlined chev">chevron_right</span>
+                    </a>
+                    <a class="ad-activity text-decoration-none" href="/Manager/QuestionBank">
+                        <div class="ad-activity-left">
+                            <div class="ad-activity-icon"><span class="material-symbols-outlined" style="color:#F9D949;">update</span></div>
+                            <div><p class="ad-activity-title">Schema update applied: <span style="color:#F9D949;">v2.4.0</span></p><p class="ad-activity-meta">09:00 AM &bull; DEPLOY_BOT</p></div>
+                        </div>
+                        <span class="material-symbols-outlined chev">chevron_right</span>
+                    </a>
+                    <a class="ad-activity text-decoration-none" href="/Manager/Users">
+                        <div class="ad-activity-left">
+                            <div class="ad-activity-icon"><span class="material-symbols-outlined" style="color:#4cd7f6;">database</span></div>
+                            <div><p class="ad-activity-title">Database backup successful</p><p class="ad-activity-meta">04:00 AM &bull; AUTO_CRON</p></div>
+                        </div>
+                        <span class="material-symbols-outlined chev">chevron_right</span>
+                    </a>
+                    <a class="ad-activity text-decoration-none" href="/Manager">
+                        <div class="ad-activity-left">
+                            <div class="ad-activity-icon"><span class="material-symbols-outlined" style="color:#c8c5d0;">history_edu</span></div>
+                            <div><p class="ad-activity-title">Audit logs rotated</p><p class="ad-activity-meta">00:00 AM &bull; SYSTEM_MAINTENANCE</p></div>
                         </div>
                         <span class="material-symbols-outlined chev">chevron_right</span>
                     </a>
@@ -163,20 +184,20 @@
             <section class="ad-lower-side d-flex flex-column gap-4">
                 <div class="glass-card ad-panel" style="padding:24px;">
                     <h3 style="display:flex; align-items:center; gap:8px; margin:0 0 32px; font-family:'JetBrains Mono',monospace; font-size:13px; letter-spacing:.05em; text-transform:uppercase; color:#c8c5d0;">
-                        <span class="material-symbols-outlined" style="font-size:16px;">bolt</span> Quick Access
+                        <span class="material-symbols-outlined" style="font-size:16px;">bolt</span> Quick Actions
                     </h3>
                     <div class="d-flex flex-column gap-3">
                         <a class="ad-action ad-action-primary primary-gradient text-decoration-none" href="/Manager/QuestionBank"><span class="material-symbols-outlined">visibility</span> View Question Bank</a>
-                        <a class="ad-action ad-action-secondary text-decoration-none" href="/Manager/Feedback"><span class="material-symbols-outlined" style="color:#e2dfff;">feedback</span> System Feedback</a>
-                        <a class="ad-action ad-action-secondary text-decoration-none" href="/Manager/News"><span class="material-symbols-outlined" style="color:#4cd7f6;">article</span> News Tracker</a>
+                        <a class="ad-action ad-action-secondary text-decoration-none" href="/Manager/Feedback"><span class="material-symbols-outlined" style="color:#e2dfff;">feedback</span> View Pending Feedbacks</a>
+                        <a class="ad-action ad-action-secondary text-decoration-none" href="/Manager/CreditPackages"><span class="material-symbols-outlined" style="color:#4cd7f6;">inventory_2</span> View Credit Packages</a>
                     </div>
                 </div>
                 <div class="glass-card ad-panel" style="padding:24px;">
-                    <h3 style="margin:0 0 24px; font-family:'JetBrains Mono',monospace; font-size:13px; letter-spacing:.05em; text-transform:uppercase; color:#c8c5d0;">Access Status</h3>
+                    <h3 style="margin:0 0 24px; font-family:'JetBrains Mono',monospace; font-size:13px; letter-spacing:.05em; text-transform:uppercase; color:#c8c5d0;">System Status</h3>
                     <div class="d-flex flex-column gap-2">
-                        <div class="ad-status-row"><div class="left"><span class="material-symbols-outlined" style="color:#10B981;">check_circle</span><span style="font-size:14px;">Manager Workspace</span></div><span class="ok">Separated</span></div>
-                        <div class="ad-status-row"><div class="left"><span class="material-symbols-outlined" style="color:#10B981;">check_circle</span><span style="font-size:14px;">CRUD Controls</span></div><span class="ok">Hidden</span></div>
-                        <div class="ad-status-row"><div class="left"><span class="material-symbols-outlined" style="color:#10B981;">check_circle</span><span style="font-size:14px;">Admin Screens</span></div><span class="ok">Untouched</span></div>
+                        <div class="ad-status-row"><div class="left"><span class="material-symbols-outlined" style="color:#10B981;">check_circle</span><span style="font-size:14px;">API Status</span></div><span class="ok">Operational</span></div>
+                        <div class="ad-status-row"><div class="left"><span class="material-symbols-outlined" style="color:#10B981;">check_circle</span><span style="font-size:14px;">AI Inference Service</span></div><span class="ok">Operational</span></div>
+                        <div class="ad-status-row"><div class="left"><span class="material-symbols-outlined" style="color:#10B981;">check_circle</span><span style="font-size:14px;">VNPay Gateway</span></div><span class="ok">Operational</span></div>
                     </div>
                 </div>
             </section>
