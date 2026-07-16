@@ -401,7 +401,7 @@
                         <label class="filter-label">Category</label>
                         <select name="categoryId" class="form-select admin-select">
                             <option value="">All Categories</option>
-                            @foreach (var category in categories)
+                            @foreach (var category in categories.Where(category => category is not null))
                             {
                                 <option value="@category.CategoryId" selected="@(ViewBag.CategoryId.HasValue && ViewBag.CategoryId == category.CategoryId ? "selected" : null)">@category.Category</option>
                             }
