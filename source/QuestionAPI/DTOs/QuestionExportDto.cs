@@ -7,6 +7,7 @@ namespace QuestionAPI.DTOs;
 /// </summary>
 public class QuestionExportDto
 {
+    public Guid QuestionId { get; set; }
     public string Question { get; set; } = string.Empty;
     public string? Answer { get; set; }
     public string? Position { get; set; }

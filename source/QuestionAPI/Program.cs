@@ -59,11 +59,19 @@ builder.Services.AddScoped<InternalQuestionService>();
 
 
 //------ SỬA LẠI ĐOẠN NÀY -------
+// Calls ai-service to keep the ChromaDB question index in sync with admin CRUD.
+// Same convention as InterviewAPI: AiService:BaseUrl (host access = :8080) + X-Internal-Api-Key.
+var aiServiceBaseUrl = builder.Configuration["AiService:BaseUrl"] ?? "http://localhost:8080";
+var aiServiceApiKey = builder.Configuration["AiService:InternalApiKey"] ?? string.Empty;
+
 builder.Services.AddHttpClient<IQuestionIndexClient, QuestionIndexClient>(client =>
 {
-    client.BaseAddress = new Uri("http://localhost:8000/");
+    client.BaseAddress = new Uri(aiServiceBaseUrl);
     client.Timeout = TimeSpan.FromSeconds(15);
-});
+    if (!string.IsNullOrEmpty(aiServiceApiKey))
+        client.DefaultRequestHeaders.Add("X-Internal-Api-Key", aiServiceApiKey);
+})
+.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { UseProxy = false });
 
 // ── Controllers & Swagger ─────────────────────────────────────────────────────
 builder.Services.AddControllers();

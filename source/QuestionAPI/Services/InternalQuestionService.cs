@@ -22,7 +22,7 @@ public class InternalQuestionService
     public async Task<List<QuestionExportDto>> ExportAllAsync(CancellationToken ct)
     {
         const string sql = @"
-            SELECT q.Question, q.Answer, q.Position, c.Category AS CategoryName, q.Difficulty
+            SELECT q.QuestionId, q.Question, q.Answer, q.Position, c.Category AS CategoryName, q.Difficulty
             FROM Questions q
             INNER JOIN QuestionCategories c ON q.CategoryId = c.CategoryId
             WHERE q.IsDeleted = 0 AND q.Position IS NOT NULL";
@@ -39,11 +39,12 @@ public class InternalQuestionService
         {
             result.Add(new QuestionExportDto
             {
-                Question = reader.GetString(0),
-                Answer = reader.IsDBNull(1) ? null : reader.GetString(1),
-                Position = reader.IsDBNull(2) ? null : reader.GetString(2),
-                Category = reader.GetString(3),
-                Difficulty = reader.GetString(4)
+                QuestionId = reader.GetGuid(0),
+                Question = reader.GetString(1),
+                Answer = reader.IsDBNull(2) ? null : reader.GetString(2),
+                Position = reader.IsDBNull(3) ? null : reader.GetString(3),
+                Category = reader.GetString(4),
+                Difficulty = reader.GetString(5)
             });
         }
 
