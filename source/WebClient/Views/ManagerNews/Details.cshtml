@@ -1,180 +1,56 @@
 @model WebClient.Models.Manager.ManagerNewsDetailViewModel
 @{
     Layout = null;
-    ViewData["Title"] = "News Detail";
-    var displayDate = Model.PublishedAt ?? Model.CreatedAt;
-    var publishedText = Model.PublishedAt.HasValue ? Model.PublishedAt.Value.ToString("dd/MM/yyyy HH:mm") : "Not published";
+    var status = Model.Status?.Trim() ?? "Draft";
+    var isPublished = string.Equals(status, "Published", StringComparison.OrdinalIgnoreCase);
+    var isDraft = string.Equals(status, "Draft", StringComparison.OrdinalIgnoreCase);
+    var publishedAtText = Model.PublishedAt.HasValue ? Model.PublishedAt.Value.ToString("dd/MM/yyyy HH:mm") : "Not published";
 }
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - DevPrep AI Manager Console</title>
+    <title>Article Detail - DevPrep AI Manager</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
     <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
     <style>
-        :root {
-            --bg-main: #0f1424;
-            --bg-panel: #111827;
-            --border-main: #252b3d;
-            --text-main: #ffffff;
-            --text-muted: #9ca3af;
-            --text-blue: #93c5fd;
-            --primary: #6366f1;
-        }
-
-        body {
-            background: var(--bg-main);
-            color: var(--text-main);
-            font-family: 'Inter', sans-serif;
-            min-height: 100vh;
-        }
-
-        .admin-main-wrapper {
-            margin-left: 260px;
-            padding-top: 78px;
-            min-height: 100vh;
-            background: var(--bg-main);
-        }
-
-        .admin-content {
-            padding: 28px 28px 60px;
-        }
-
-        .page-title {
-            font-size: 30px;
-            font-weight: 800;
-            letter-spacing: -0.04em;
-            margin-bottom: 4px;
-        }
-
-        .page-subtitle {
-            color: var(--text-blue);
-            font-size: 14px;
-            margin-bottom: 0;
-        }
-
-        .btn-outline-soft {
-            background: transparent;
-            color: #cbd5e1;
-            border: 1px solid #30384e;
-            border-radius: 9px;
-            padding: 10px 14px;
-            text-decoration: none;
-            font-weight: 800;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .btn-outline-soft:hover {
-            background: rgba(255,255,255,.06);
-            color: #fff;
-        }
-
-        .nd-layout{display:grid;grid-template-columns:minmax(0,2fr) minmax(280px,0.9fr);gap:24px;align-items:start}
-        .nd-hero{overflow:hidden;border-radius:8px;margin-bottom:20px}
-        .nd-banner{height:260px;background:linear-gradient(135deg,#1f2937,#111827);display:flex;align-items:flex-end;padding:28px;border-bottom:1px solid var(--ad-border)}
-        .nd-banner.has-image{background-size:cover;background-position:center}
-        .nd-title{font-size:34px;font-weight:800;color:#fff;max-width:920px;margin:0;text-shadow:0 2px 10px rgba(0,0,0,.45)}
-        .nd-body{padding:24px}
-        .nd-meta{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px}
-        .nd-pill{font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;padding:5px 10px;border-radius:999px;background:rgba(226,223,255,.1);color:var(--ad-primary)}
-        .nd-summary{font-size:16px;color:var(--ad-on-surface-variant);line-height:1.65;margin-bottom:24px}
-        .nd-content{white-space:pre-wrap;font-family:'Inter',sans-serif;font-size:15px;line-height:1.75;color:var(--ad-on-surface);background:var(--ad-surface-container);border:1px solid var(--ad-border);border-radius:8px;padding:20px}
-        .nd-side-card{background:var(--ad-surface-container);border:1px solid var(--ad-border);border-radius:8px;padding:20px;margin-bottom:16px}
-        .nd-side-title{font-family:'JetBrains Mono',monospace;font-size:11px;text-transform:uppercase;color:var(--ad-on-surface-variant);letter-spacing:.06em;margin-bottom:14px}
-        .nd-metric{font-size:28px;font-weight:800;color:var(--ad-on-surface)}
-        .nd-meta-row{display:flex;justify-content:space-between;gap:14px;padding:10px 0;border-bottom:1px solid var(--ad-border);font-size:13px}
-        .nd-meta-row:last-child{border-bottom:none}
-        .nd-meta-label{color:var(--ad-on-surface-variant);font-weight:600}
-        .nd-meta-value{color:var(--ad-on-surface);text-align:right;word-break:break-word}
-        .nd-slug{font-family:'JetBrains Mono',monospace;font-size:12px;background:rgba(255,255,255,.04);border:1px solid var(--ad-border);border-radius:6px;padding:4px 8px;display:inline-block}
-        @@media (max-width: 1100px){.nd-layout{grid-template-columns:1fr}}
+        body.admin-page { background-color:#0f0e17; color:#fffffe; font-family:'Inter',sans-serif; }
+        .admin-main-content { margin-left:260px; padding:40px; }
+        .breadcrumb-custom { font-size:.8rem; font-weight:600; text-transform:uppercase; letter-spacing:.05em; margin-bottom:24px; }
+        .text-muted-custom { color:#94a3b8 !important; }.content-title { font-size:2.35rem; line-height:1.15; font-weight:800; color:#fff; margin-bottom:18px; }
+        .article-meta { color:#94a3b8; font-size:.9rem; display:flex; flex-wrap:wrap; gap:18px; align-items:center; }.article-meta span { display:inline-flex; align-items:center; gap:6px; }
+        .thumbnail-box { width:100%; min-height:360px; background:linear-gradient(135deg,#1e1b2e,#11101d); border:1px solid #232038; border-radius:12px; overflow:hidden; display:flex; align-items:center; justify-content:center; }.thumbnail-box img { width:100%; height:100%; max-height:430px; object-fit:cover; display:block; }.thumbnail-placeholder { color:#6366f1; text-align:center; }.thumbnail-placeholder .material-symbols-outlined { font-size:5rem; opacity:.8; }
+        .article-content { margin-top:28px; color:#e2e8f0; line-height:1.8; font-size:.98rem; white-space:pre-line; }.side-card { background-color:#161426; border:1px solid #232038; border-radius:12px; padding:22px; margin-bottom:18px; }.side-title { color:#94a3b8; font-size:.8rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; margin-bottom:16px; }.metric-value { color:#fff; font-size:1.65rem; font-weight:800; }.summary-text { color:#cbd5e1; font-size:.9rem; line-height:1.65; }.meta-row { display:flex; justify-content:space-between; gap:16px; padding:10px 0; border-bottom:1px solid #232038; font-size:.88rem; }.meta-row:last-child { border-bottom:0; }.meta-label { color:#94a3b8; font-weight:600; }.meta-value { color:#e2e8f0; text-align:right; word-break:break-word; }
+        .badge-published,.badge-draft,.badge-archived { font-weight:700; font-size:.72rem; padding:5px 10px; border-radius:6px; display:inline-block; white-space:nowrap; }.badge-published { background-color:rgba(16,185,129,.15); color:#10b981; }.badge-draft { background-color:rgba(245,158,11,.15); color:#f59e0b; }.badge-archived { background-color:rgba(148,163,184,.15); color:#94a3b8; }.btn-outline-custom { background:transparent; color:#fff; border:1px solid #232038; border-radius:8px; padding:12px 24px; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:8px; }.btn-outline-custom:hover { border-color:#6366f1; color:#fff; }.slug-box { background:#1e1b2e; border:1px solid #2e2a47; color:#cbd5e1; padding:6px 10px; border-radius:6px; font-family:'JetBrains Mono',monospace; font-size:.78rem; display:inline-block; max-width:100%; word-break:break-word; }
+        @@media (max-width:992px) { .admin-main-content { margin-left:0; padding:24px; }.content-title { font-size:1.8rem; } }
     </style>
 </head>
 <body class="admin-page">
     @await Html.PartialAsync("_ManagerTopbar")
     @await Html.PartialAsync("_ManagerSidebar")
-
-    <main class="admin-main-wrapper">
-        <div class="admin-content">
-            <div class="d-flex justify-content-between align-items-start gap-3 mb-4">
-                <div>
-                    <h1 class="page-title">News Detail</h1>
-                    <p class="page-subtitle">Full article content, metadata and performance metrics.</p>
-                </div>
-                <a href="/Manager/News" class="btn-outline-soft">
-                    <i class="fa-solid fa-arrow-left"></i> Back
-                </a>
+    <main class="admin-main-content"><div class="container-fluid">
+        <div class="breadcrumb-custom"><span class="text-muted-custom">Manager</span><span class="text-muted-custom mx-2">&gt;</span><a href="/Manager/News" class="text-decoration-none" style="color:#94a3b8;">News</a><span class="text-muted-custom mx-2">&gt;</span><span style="color:#6366f1;">Article Detail</span></div>
+        <div class="row g-4"><div class="col-lg-8">
+            <div class="mb-3 d-flex align-items-center gap-2 flex-wrap">
+                @if (isPublished) { <span class="badge-published">Published</span> }
+                else if (isDraft) { <span class="badge-draft">Draft</span> }
+                else { <span class="badge-archived">@status</span> }
+                <span class="small" style="color:#a5b4fc;">Category: @(Model.CategoryName ?? "None")</span>
             </div>
-
-        <div class="nd-layout">
-            <article class="glass-card nd-hero">
-                @if (!string.IsNullOrWhiteSpace(Model.ThumbnailUrl))
-                {
-                    <div class="nd-banner has-image" style="background-image:linear-gradient(180deg,rgba(0,0,0,.15),rgba(0,0,0,.76)),url('@Model.ThumbnailUrl')">
-                        <h1 class="nd-title">@Model.Title</h1>
-                    </div>
-                }
-                else
-                {
-                    <div class="nd-banner">
-                        <h1 class="nd-title">@Model.Title</h1>
-                    </div>
-                }
-
-                <div class="nd-body">
-                    <div class="nd-meta">
-                        <span class="nd-pill">@Model.Status</span>
-                        <span class="nd-pill">@(Model.CategoryName ?? "Uncategorized")</span>
-                        <span class="nd-pill">@displayDate.ToString("MMM dd, yyyy")</span>
-                        <span class="nd-pill">@Model.ViewCount views</span>
-                    </div>
-
-                    @if (!string.IsNullOrWhiteSpace(Model.Summary))
-                    {
-                        <div class="nd-summary">@Model.Summary</div>
-                    }
-
-                    <h2 style="font-size:18px;font-weight:700;margin-bottom:12px;color:var(--ad-on-surface);">Raw Article Text</h2>
-                    <div class="nd-content">@Model.Content</div>
-                </div>
-            </article>
-
-            <aside>
-                <div class="nd-side-card">
-                    <div class="nd-side-title">Performance Metrics</div>
-                    <div class="nd-meta-label">Views</div>
-                    <div class="nd-metric">@Model.ViewCount.ToString("N0")</div>
-                </div>
-
-                <div class="nd-side-card">
-                    <div class="nd-side-title">Article Summary</div>
-                    <div class="nd-summary" style="margin-bottom:0;">@(string.IsNullOrWhiteSpace(Model.Summary) ? "No summary provided." : Model.Summary)</div>
-                </div>
-
-                <div class="nd-side-card">
-                    <div class="nd-side-title">Article Metadata</div>
-                    <div class="nd-meta-row"><span class="nd-meta-label">Status</span><span class="nd-meta-value">@Model.Status</span></div>
-                    <div class="nd-meta-row"><span class="nd-meta-label">Slug</span><span class="nd-meta-value"><span class="nd-slug">@Model.Slug</span></span></div>
-                    <div class="nd-meta-row"><span class="nd-meta-label">News ID</span><span class="nd-meta-value">@Model.NewsId</span></div>
-                    <div class="nd-meta-row"><span class="nd-meta-label">Category</span><span class="nd-meta-value">@(Model.CategoryName ?? "Uncategorized")</span></div>
-                    <div class="nd-meta-row"><span class="nd-meta-label">Published At</span><span class="nd-meta-value">@publishedText</span></div>
-                    <div class="nd-meta-row"><span class="nd-meta-label">Created At</span><span class="nd-meta-value">@Model.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span></div>
-                    <div class="nd-meta-row"><span class="nd-meta-label">Updated At</span><span class="nd-meta-value">@Model.UpdatedAt.ToString("dd/MM/yyyy HH:mm")</span></div>
-                </div>
-            </aside>
-        </div>
-        </div>
-    </main>
-
+            <h1 class="content-title">@Model.Title</h1>
+            <div class="article-meta mb-4"><span><span class="material-symbols-outlined fs-6">person</span>Admin Team</span><span><span class="material-symbols-outlined fs-6">calendar_month</span>@Model.CreatedAt.ToString("dd/MM/yyyy HH:mm")</span><span><span class="material-symbols-outlined fs-6">visibility</span>@Model.ViewCount views</span></div>
+            <div class="thumbnail-box">@if (!string.IsNullOrWhiteSpace(Model.ThumbnailUrl)) { <img src="@Model.ThumbnailUrl" alt="@Model.Title" /> } else { <div class="thumbnail-placeholder"><span class="material-symbols-outlined">image</span><div>No thumbnail available</div></div> }</div>
+            <div class="article-content">@Model.Content</div>
+            <div class="d-flex gap-3 mt-5 flex-wrap"><a href="/Manager/News" class="btn-outline-custom"><span class="material-symbols-outlined fs-5">arrow_back</span>Back to List</a></div>
+        </div><div class="col-lg-4">
+            <div class="side-card"><div class="side-title">Performance Metrics</div><div class="text-muted-custom small mb-1">Views</div><div class="metric-value">@Model.ViewCount.ToString("N0")</div></div>
+            <div class="side-card"><div class="side-title">Article Summary</div><div class="summary-text">@(string.IsNullOrWhiteSpace(Model.Summary) ? "No summary provided." : Model.Summary)</div></div>
+            <div class="side-card"><div class="side-title">Article Metadata</div><div class="meta-row"><div class="meta-label">Status</div><div class="meta-value">@if (isPublished) { <span class="badge-published">Published</span> } else if (isDraft) { <span class="badge-draft">Draft</span> } else { <span class="badge-archived">@status</span> }</div></div><div class="meta-row"><div class="meta-label">Slug</div><div class="meta-value"><span class="slug-box">@Model.Slug</span></div></div><div class="meta-row"><div class="meta-label">News ID</div><div class="meta-value">@Model.NewsId</div></div><div class="meta-row"><div class="meta-label">Category</div><div class="meta-value">@(Model.CategoryName ?? "Uncategorized")</div></div><div class="meta-row"><div class="meta-label">Published At</div><div class="meta-value">@publishedAtText</div></div><div class="meta-row"><div class="meta-label">Created At</div><div class="meta-value">@Model.CreatedAt.ToString("dd/MM/yyyy HH:mm")</div></div><div class="meta-row"><div class="meta-label">Updated At</div><div class="meta-value">@Model.UpdatedAt.ToString("dd/MM/yyyy HH:mm")</div></div></div>
+        </div></div>
+    </div></main>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+</body></html>

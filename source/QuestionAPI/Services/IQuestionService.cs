@@ -14,4 +14,6 @@ public interface IQuestionService
         Guid? categoryId);
 
     Task<QuestionDetailDto?> GetByIdAsync(Guid id);
+
+    Task<List<QuestionCategoryDto>> GetCategoriesAsync();
 }

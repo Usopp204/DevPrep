@@ -24,29 +24,29 @@ public class QuestionService : IQuestionService
     {
         var query = _db.Questions
             .Include(q => q.Category)
-            .Where(q => !q.IsDeleted)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(keyword))
         {
             var kw = keyword.Trim().ToLower();
             query = query.Where(q =>
-                q.Content.ToLower().Contains(kw) ||
-                (q.Tags != null && q.Tags.ToLower().Contains(kw)) ||
-                (q.TechStack != null && q.TechStack.ToLower().Contains(kw)));
+                q.QuestionText.ToLower().Contains(kw) ||
+                (q.Answer != null && q.Answer.ToLower().Contains(kw)) ||
+                (q.Position != null && q.Position.ToLower().Contains(kw)) ||
+                (q.Category != null && q.Category.Category.ToLower().Contains(kw)));
         }
-
-        if (!string.IsNullOrWhiteSpace(questionType))
-            query = query.Where(q => q.QuestionType == questionType);
-
-        if (!string.IsNullOrWhiteSpace(level))
-            query = query.Where(q => q.Level == level);
 
         if (!string.IsNullOrWhiteSpace(difficulty))
             query = query.Where(q => q.Difficulty == difficulty);
 
-        if (!string.IsNullOrWhiteSpace(status))
-            query = query.Where(q => q.Status == status);
+        if (string.Equals(status, "Deleted", StringComparison.OrdinalIgnoreCase))
+            query = query.Where(q => q.IsDeleted);
+        else
+        {
+            query = query.Where(q => !q.IsDeleted);
+            if (!string.IsNullOrWhiteSpace(status))
+                query = query.Where(q => q.Status == status);
+        }
 
         if (categoryId.HasValue)
             query = query.Where(q => q.CategoryId == categoryId.Value);
@@ -61,16 +61,13 @@ public class QuestionService : IQuestionService
             {
                 QuestionId   = q.QuestionId,
                 CategoryId   = q.CategoryId,
-                CategoryName = q.Category != null ? q.Category.Name : null,
-                Content      = q.Content,
-                QuestionType = q.QuestionType,
-                Level        = q.Level,
+                Category     = q.Category != null ? q.Category.Category : null,
+                Question     = q.QuestionText,
                 Difficulty   = q.Difficulty,
-                TechStack    = q.TechStack,
-                Tags         = q.Tags,
+                Position     = q.Position,
                 Status       = q.Status,
+                IsDeleted    = q.IsDeleted,
                 CreatedAt    = q.CreatedAt,
-                UpdatedAt    = q.UpdatedAt,
             })
             .ToListAsync();
 
@@ -87,31 +84,42 @@ public class QuestionService : IQuestionService
     {
         var q = await _db.Questions
             .Include(x => x.Category)
-            .FirstOrDefaultAsync(x => x.QuestionId == id && !x.IsDeleted);
+            .FirstOrDefaultAsync(x => x.QuestionId == id);
 
         if (q is null) return null;
 
         return new QuestionDetailDto
         {
             QuestionId   = q.QuestionId,
-            Category     = q.Category is null ? null : new QuestionCategoryDto
-            {
-                CategoryId  = q.Category.CategoryId,
-                Name        = q.Category.Name,
-                Description = q.Category.Description,
-                IsActive    = q.Category.IsActive,
-            },
-            Content        = q.Content,
-            QuestionType   = q.QuestionType,
-            Level          = q.Level,
+            CategoryId     = q.CategoryId,
+            Category       = q.Category?.Category,
+            Question       = q.QuestionText,
             Difficulty     = q.Difficulty,
-            ExpectedAnswer = q.ExpectedAnswer,
-            TechStack      = q.TechStack,
-            Tags           = q.Tags,
+            Answer         = q.Answer,
+            Position       = q.Position,
             Status         = q.Status,
+            IsDeleted      = q.IsDeleted,
             CreatedBy      = q.CreatedBy,
+            DeletedBy      = q.DeletedBy,
+            DeletedAt      = q.DeletedAt,
             CreatedAt      = q.CreatedAt,
             UpdatedAt      = q.UpdatedAt,
         };
+    }
+
+    public Task<List<QuestionCategoryDto>> GetCategoriesAsync()
+    {
+        return _db.QuestionCategories
+            .AsNoTracking()
+            .Where(category => category.IsActive)
+            .OrderBy(category => category.Category)
+            .Select(category => new QuestionCategoryDto
+            {
+                CategoryId = category.CategoryId,
+                Category = category.Category,
+                Description = category.Description,
+                IsActive = category.IsActive
+            })
+            .ToListAsync();
     }
 }

@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
-using WebClient.Services.Manager;
 using WebClient.Services.Shared;
 
 namespace WebClient.Controllers.Manager;
@@ -9,14 +8,13 @@ namespace WebClient.Controllers.Manager;
 // Manager-only area (Admin not allowed).
 [Authorize(Roles = "Manager")]
 public class ManagerController(
-    IManagerService managerService,
     IOptions<ApiGatewayOptions> gatewayOptions) : Controller
 {
     private string ApiBaseUrl => gatewayOptions.Value.BaseUrl?.TrimEnd('/') ?? "http://localhost:7000";
 
     public IActionResult Index()
     {
-        return View(managerService.GetOverview());
+        return RedirectToAction("Index", "ManagerQuestionBank");
     }
 
     public IActionResult Feedback()
