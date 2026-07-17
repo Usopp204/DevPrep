@@ -58,6 +58,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAdminDashboardService, AdminDashboardService>();
         services.AddScoped<IManagerService, ManagerService>();
         services.AddScoped<IManagerQuestionService, ManagerQuestionService>();
+        services.AddScoped<IManagerTechStackService, ManagerTechStackService>();
         services.AddScoped<IManagerUserService, ManagerUserService>();
         services.AddScoped<IManagerNewsService, ManagerNewsService>();
         services.AddScoped<INewsService, NewsService>();
@@ -65,6 +66,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAdminQuestionService, AdminQuestionService>();
         services.AddScoped<IAdminUserService, AdminUserService>();
         services.AddScoped<IPaymentAdminService, PaymentAdminService>();
+        services.AddScoped<IAdminTechStackService, AdminTechStackService>();
         return services;
     }
 }

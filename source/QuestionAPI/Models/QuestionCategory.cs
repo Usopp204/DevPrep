@@ -10,8 +10,8 @@ public class QuestionCategory
     public Guid CategoryId { get; set; }
 
     [Required]
-    [MaxLength(100)]
-    public string Category { get; set; } = string.Empty;// đôi name 
+    [MaxLength(200)]
+    public string Category { get; set; } = string.Empty;
 
     [MaxLength(500)]
     public string? Description { get; set; }

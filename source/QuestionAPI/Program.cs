@@ -55,6 +55,8 @@ builder.Services.AddScoped<IQuestionService, QuestionService>();
 
 builder.Services.AddScoped<IAdminQuestionRepository, AdminQuestionRepository>();
 builder.Services.AddScoped<IAdminQuestionService, AdminQuestionService>();
+builder.Services.AddScoped<ITechStackRepository, TechStackRepository>();
+builder.Services.AddScoped<ITechStackService, TechStackService>();
 
 
 //------ SỬA LẠI ĐOẠN NÀY -------
