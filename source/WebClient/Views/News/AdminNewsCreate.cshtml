@@ -164,6 +164,12 @@
             display: flex;
             gap: 24px;
         }
+
+        .slug-hint {
+            font-size: 0.78rem;
+            color: #6d6a85;
+            margin-top: 6px;
+        }
     </style>
 </head>
 
@@ -197,12 +203,13 @@
 
                         <div class="col-md-6">
                             <label class="form-label-custom">Article Title</label>
-                            <input name="Title" value="@Model.Title" class="form-control form-control-custom" placeholder="Enter article title" />
+                            <input id="titleInput" name="Title" value="@Model.Title" class="form-control form-control-custom" placeholder="Enter article title" />
                         </div>
 
                         <div class="col-md-6">
                             <label class="form-label-custom">Slug (URL Path)</label>
-                            <input name="Slug" value="@Model.Slug" class="form-control form-control-custom" placeholder="enter-article-slug" />
+                            <input id="slugInput" name="Slug" value="@Model.Slug" class="form-control form-control-custom" placeholder="Để trống sẽ tự động tạo từ tiêu đề" />
+                            <div class="slug-hint">Tự động sinh từ Tiêu đề. Bạn có thể sửa lại nếu muốn URL ngắn gọn hơn.</div>
                         </div>
 
                         <div class="col-md-6">
@@ -297,6 +304,53 @@
             const file = this.files[0];
             if (!file) return;
             showPreview(URL.createObjectURL(file));
+        });
+
+        // ============================================
+        // AUTO-GENERATE SLUG FROM TITLE (xử lý tiếng Việt)
+        // ============================================
+        function slugifyClientSide(str) {
+            if (!str) return '';
+
+            str = str.toLowerCase();
+
+            // Xử lý riêng đ/Đ trước, vì ký tự này không tách dấu qua NFD
+            str = str.replace(/đ/g, 'd').replace(/Đ/g, 'd');
+
+            // Tách dấu ra khỏi ký tự gốc rồi loại bỏ (ệ -> e, ư -> u, ă -> a...)
+            str = str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+            // Loại bỏ ký tự không phải chữ/số/khoảng trắng/dấu gạch ngang
+            str = str.replace(/[^a-z0-9\s-]/g, '');
+
+            // Khoảng trắng -> '-'
+            str = str.trim().replace(/\s+/g, '-');
+
+            // Gộp nhiều '-' liên tiếp thành 1
+            str = str.replace(/-+/g, '-');
+
+            return str;
+        }
+
+        const titleInput = document.getElementById('titleInput');
+        const slugInput = document.getElementById('slugInput');
+
+        // Nếu trang Create được load lại sau lỗi validate và Slug đã có giá trị
+        // (do admin đã tự nhập trước đó), đánh dấu để không ghi đè giá trị đó nữa.
+        if (slugInput.value.trim() !== '') {
+            slugInput.dataset.userEdited = 'true';
+        }
+
+        titleInput.addEventListener('input', function () {
+            // Chỉ tự động điền nếu admin CHƯA từng tự tay sửa ô Slug
+            if (!slugInput.dataset.userEdited) {
+                slugInput.value = slugifyClientSide(this.value);
+            }
+        });
+
+        slugInput.addEventListener('input', function () {
+            // Admin đã tự gõ vào ô Slug -> ngừng auto-fill từ giờ
+            this.dataset.userEdited = 'true';
         });
     </script>
 

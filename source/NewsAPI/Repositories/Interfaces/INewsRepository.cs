@@ -10,5 +10,6 @@ public interface INewsRepository
 {
     IQueryable<NewsArticle> QueryPublished();
     Task<NewsArticle?> GetPublishedByIdAsync(Guid id, bool tracking = false);
+    Task<NewsArticle?> GetPublishedBySlugAsync(string slug, bool tracking = false);
     Task SaveChangesAsync();
 }

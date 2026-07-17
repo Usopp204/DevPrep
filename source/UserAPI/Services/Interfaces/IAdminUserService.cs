@@ -8,8 +8,8 @@ public interface IAdminUserService
 
     Task<AdminUserDetailDto?> GetUserDetailAsync(Guid id);
 
+    
     Task<bool> UpdateStatusAsync(Guid id, AdminUpdateUserStatusDto dto, Guid? adminAccountId);
-
-    Task<bool> UpdateRoleAsync(Guid id, AdminUpdateUserRoleDto dto);
+    Task<bool> UpdateRoleAsync(Guid id, AdminUpdateUserRoleDto dto, Guid? adminAccountId);
     Task<AdminAutoBlockInactiveResultDto> AutoBlockInactiveUsersAsync(int inactiveDays);
 }

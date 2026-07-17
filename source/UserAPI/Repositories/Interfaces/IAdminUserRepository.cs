@@ -1,15 +1,14 @@
-﻿using UserAPI.DTOs;
+﻿
+
+using UserAPI.Models;
 
 namespace UserAPI.Repositories.Interfaces;
 
 public interface IAdminUserRepository
 {
-    Task<PagedResult<AdminUserListItemDto>> GetUsersAsync(AdminUserQueryDto query);
-
-    Task<AdminUserDetailDto?> GetUserDetailAsync(Guid id);
-
-    Task<bool> UpdateStatusAsync(Guid id, AdminUpdateUserStatusDto dto, Guid? adminAccountId);
-
-    Task<bool> UpdateRoleAsync(Guid id, AdminUpdateUserRoleDto dto);
-    Task<AdminAutoBlockInactiveResultDto> AutoBlockInactiveUsersAsync(int inactiveDays);
+    Task<UserProfile?> GetProfileByAccountIdAsync(Guid accountId);
+    Task<UserProfile?> GetProfileByUserIdAsync(Guid userId);
+    Task<List<UserProfile>> GetProfilesByAccountIdsAsync(List<Guid> accountIds);
+    
+    Task<IEnumerable<Guid>> GetAccountIdsByNameKeywordAsync(string keyword);
 }

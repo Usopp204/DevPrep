@@ -7,27 +7,39 @@
     var pageIndex = Model.PageIndex > 0 ? Model.PageIndex : 1;
     var pageSize = Model.PageSize > 0 ? Model.PageSize : 10;
     var totalCount = Model.TotalCount;
-    var totalPages = Model.TotalPages > 0 ? Model.TotalPages : 1;
+    var totalPages = Model.TotalPages > 0
+        ? Model.TotalPages
+        : (int)Math.Ceiling((double)totalCount / pageSize);
+
+    if (totalPages <= 0)
+    {
+        totalPages = 1;
+    }
 
     var startItem = totalCount == 0 ? 0 : ((pageIndex - 1) * pageSize) + 1;
     var endItem = Math.Min(pageIndex * pageSize, totalCount);
+    var keyword = ViewBag.Keyword as string;
+    var difficultyFilter = ViewBag.Difficulty as string;
+    var statusFilter = ViewBag.Status as string;
+    Guid? selectedCategoryId = ViewBag.CategoryId is Guid categoryId ? categoryId : null;
 
     string BuildPageUrl(int page)
     {
         var values = new Dictionary<string, string?>
                 {
-                    ["keyword"] = ViewBag.Keyword,
-                    ["questionType"] = ViewBag.QuestionType,
-                    ["level"] = ViewBag.Level,
-                    ["difficulty"] = ViewBag.Difficulty,
-                    ["status"] = ViewBag.Status,
-                    ["categoryId"] = ViewBag.CategoryId?.ToString(),
+                    ["keyword"] = keyword,
+                    ["difficulty"] = difficultyFilter,
+                    ["status"] = statusFilter,
+                    ["categoryId"] = selectedCategoryId?.ToString(),
                     ["page"] = page.ToString(),
                     ["pageSize"] = pageSize.ToString()
                 };
 
         return Microsoft.AspNetCore.WebUtilities.QueryHelpers.AddQueryString("/Manager/QuestionBank", values);
     }
+
+    var categories = ViewBag.Categories as List<WebClient.Models.Manager.QuestionBankCategoryViewModel>
+        ?? [];
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -128,6 +140,11 @@
         .admin-input::placeholder {
             color: #64748b;
         }
+
+        .admin-select option {
+            background: #111827;
+            color: #ffffff;
+        }
         
         .btn-filter {
             height: 42px;
@@ -223,6 +240,15 @@
             color: var(--text-muted);
             font-size: 12px;
             margin-top: 5px;
+        }
+
+        .deleted-row {
+            opacity: 0.68;
+        }
+
+        .deleted-row .question-title {
+            color: #94a3b8;
+            text-decoration: line-through;
         }
 
         .pill {
@@ -361,68 +387,57 @@
         <div class="admin-content">
             <div class="d-flex align-items-start justify-content-between gap-3 mb-4">
                 <div>
-                    <h1 class="page-title">Question Repository</h1>
-                    <p class="page-subtitle">View interview questions, categories, difficulty levels and publishing status.</p>
+                    <h1 class="page-title">Question Bank</h1>
+                    <p class="page-subtitle">Manage interview questions, categories, difficulty levels and publishing status.</p>
                 </div>
             </div>
 
             <form method="get" action="/Manager/QuestionBank" class="filter-card">
+                <input type="hidden" name="page" value="1" />
+                <input type="hidden" name="pageSize" value="@pageSize" />
                 <div class="row g-3 align-items-end">
-                    <div class="col-12 col-lg-4">
+                    <div class="col-12 col-xl-4">
                         <label class="filter-label">Search</label>
-                        <input name="keyword" value="@ViewBag.Keyword" type="text" class="form-control admin-input" placeholder="Search questions..." onkeypress="if(event.key === 'Enter') this.form.submit();" />
+                        <input name="keyword" value="@keyword" type="text" class="form-control admin-input" placeholder="Search questions" />
                     </div>
 
-                    <div class="col-6 col-md-3 col-lg-2">
-                        <label class="filter-label">Level</label>
-                        <select name="level" class="form-select admin-select" onchange="this.form.submit()">
-                            <option value="">All Levels</option>
-                            <option value="Intern" selected="@(ViewBag.Level == "Intern")">Intern</option>
-                            <option value="Fresher" selected="@(ViewBag.Level == "Fresher")">Fresher</option>
-                            <option value="Junior" selected="@(ViewBag.Level == "Junior")">Junior</option>
-                            <option value="Middle" selected="@(ViewBag.Level == "Middle")">Middle</option>
-                            <option value="Senior" selected="@(ViewBag.Level == "Senior")">Senior</option>
-                        </select>
-                    </div>
-
-                    <div class="col-6 col-md-3 col-lg-2">
-                        <label class="filter-label">Tech Stack</label>
-                        <select name="questionType" class="form-select admin-select" onchange="this.form.submit()">
-                            <option value="">All Tech Stacks</option>
-                            <option value="Java" selected="@(ViewBag.QuestionType == "Java")">Java</option>
-                            <option value=".NET" selected="@(ViewBag.QuestionType == ".NET")">.NET</option>
-                            <option value="React" selected="@(ViewBag.QuestionType == "React")">React</option>
-                            <option value="NodeJS" selected="@(ViewBag.QuestionType == "NodeJS")">NodeJS</option>
-                            <option value="AI" selected="@(ViewBag.QuestionType == "AI")">AI</option>
-                        </select>
-                    </div>
-
-                    <div class="col-6 col-md-3 col-lg-2">
+                    <div class="col-12 col-sm-6 col-xl-2">
                         <label class="filter-label">Category</label>
-                        <select name="categoryId" class="form-select admin-select" onchange="this.form.submit()">
+                        <select name="categoryId" class="form-select admin-select">
                             <option value="">All Categories</option>
-                            <option value="00000000-0000-0000-0000-000000000001" selected="@(ViewBag.CategoryId?.ToString() == "00000000-0000-0000-0000-000000000001")">DSA</option>
-                            <option value="00000000-0000-0000-0000-000000000002" selected="@(ViewBag.CategoryId?.ToString() == "00000000-0000-0000-0000-000000000002")">System Design</option>
-                            <option value="00000000-0000-0000-0000-000000000003" selected="@(ViewBag.CategoryId?.ToString() == "00000000-0000-0000-0000-000000000003")">Behavioral</option>
-                            <option value="00000000-0000-0000-0000-000000000004" selected="@(ViewBag.CategoryId?.ToString() == "00000000-0000-0000-0000-000000000004")">Framework</option>
+                            @foreach (var category in categories.Where(category => category is not null))
+                            {
+                                <option value="@category.CategoryId" selected="@(selectedCategoryId == category.CategoryId ? "selected" : null)">@category.Category</option>
+                            }
                         </select>
                     </div>
 
-                    <div class="col-6 col-md-3 col-lg-2">
+                    <div class="col-12 col-sm-6 col-xl-2">
+                        <label class="filter-label">Difficulty</label>
+                        <select name="difficulty" class="form-select admin-select">
+                            <option value="">All Difficulty</option>
+                            @foreach (var difficulty in new[] { "Intern", "Fresher", "Junior", "Middle", "Senior" })
+                            {
+                                <option value="@difficulty" selected="@(string.Equals(difficultyFilter, difficulty, StringComparison.OrdinalIgnoreCase) ? "selected" : null)">@difficulty</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="col-12 col-sm-6 col-xl-2">
                         <label class="filter-label">Status</label>
-                        <select name="status" class="form-select admin-select" onchange="this.form.submit()">
-                            <option value="">All Status</option>
-                            <option value="Active" selected="@(ViewBag.Status == "Active")">Active</option>
-                            <option value="Inactive" selected="@(ViewBag.Status == "Inactive")">Inactive</option>
+                        <select name="status" class="form-select admin-select">
+                            <option value="">All Statuses</option>
+                            @foreach (var status in new[] { "Active", "Draft", "Archived", "Deleted" })
+                            {
+                                <option value="@status" selected="@(string.Equals(statusFilter, status, StringComparison.OrdinalIgnoreCase) ? "selected" : null)">@status</option>
+                            }
                         </select>
                     </div>
-                </div>
 
-                <div class="row g-3 mt-1">
-                    <div class="col-12 col-md-6 col-lg-2 offset-lg-8">
+                    <div class="col-12 col-md-6 col-xl-2">
                         <button class="btn-filter" type="submit">Apply Filter</button>
                     </div>
-                    <div class="col-12 col-md-6 col-lg-2">
+                    <div class="col-12 col-md-6 col-xl-2">
                         <a class="btn-clear" href="/Manager/QuestionBank">Clear</a>
                     </div>
                 </div>
@@ -433,12 +448,10 @@
                     <table class="table admin-table align-middle">
                         <thead>
                             <tr>
-                                <th style="width: 40%;">Question</th>
-                                <th style="width: 10%;">Level</th>
-                                <th style="width: 12%;">Tech Stack</th>
-                                <th style="width: 13%;">Category</th>
-                                <th style="width: 10%;">Status</th>
-                                <th style="width: 8%;" class="text-end">Actions</th>
+                                <th style="width: 46%;">Question</th>
+                                <th style="width: 14%;">Difficulty</th>
+                                <th style="width: 12%;">Status</th>
+                                <th style="width: 12%;" class="text-end">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -446,27 +459,35 @@
                             {
                                 foreach (var item in Model.Items)
                                 {
-                                    var statusClass = (item.Status ?? string.Empty).ToLowerInvariant() switch
+                                    var isSoftDeleted = item.IsDeleted;
+                                    var diffClass = (item.Difficulty ?? string.Empty).ToLowerInvariant() switch
+                                    {
+                                        "senior" => "pill-hard",
+                                        "middle" or "junior" => "pill-medium",
+                                        "fresher" or "intern" => "pill-easy",
+                                        _ => "pill-tech"
+                                    };
+                                    var statusText = isSoftDeleted ? "Deleted" : (item.Status ?? "Unknown");
+                                    var statusClass = statusText.ToLowerInvariant() switch
                                     {
                                         "active" => "status-active",
                                         "draft" => "status-draft",
                                         "archived" => "status-archived",
+                                        "inactive" => "status-archived",
                                         "deleted" => "status-deleted",
                                         _ => "status-draft"
                                     };
 
-                                    <tr>
+                                    <tr class="@(isSoftDeleted ? "deleted-row" : string.Empty)">
                                         <td>
-                                            <div class="question-title">@item.Content</div>
-                                            <div class="question-meta">@(string.IsNullOrEmpty(item.Tags) ? "No tags" : item.Tags)</div>
+                                            <a href="/Manager/QuestionBank/@item.QuestionId" class="question-title text-decoration-none d-block" title="@item.Question">@item.Question</a>
+                                            <div class="question-meta">ID: Q-@item.QuestionId.ToString().Substring(0, 8).ToUpper() &middot; @(string.IsNullOrWhiteSpace(item.Category) ? "Uncategorized" : item.Category)</div>
                                         </td>
-                                        <td><span class="pill pill-level">@item.Level</span></td>
-                                        <td><span class="pill pill-tech">@(string.IsNullOrEmpty(item.TechStack) ? "All" : item.TechStack)</span></td>
-                                        <td>@(string.IsNullOrEmpty(item.CategoryName) ? "N/A" : item.CategoryName)</td>
+                                        <td><span class="pill @diffClass">@(string.IsNullOrWhiteSpace(item.Difficulty) ? "N/A" : item.Difficulty)</span></td>
                                         <td>
                                             <span class="status-badge @statusClass">
                                                 <span style="font-size: 8px;">●</span>
-                                                @(item.Status ?? "Unknown")
+                                                @statusText
                                             </span>
                                         </td>
                                         <td class="text-end">
@@ -482,7 +503,7 @@
                             else
                             {
                                 <tr>
-                                    <td colspan="6" class="empty-row">
+                                    <td colspan="4" class="empty-row">
                                         <i class="fa-regular fa-folder-open d-block mb-2" style="font-size: 28px;"></i>
                                         No questions found.
                                     </td>
@@ -507,7 +528,7 @@
                                 <i class="fa-solid fa-chevron-left"></i>
                             </a>
 
-                            @for (var i = 1; i <= totalPages; i++)
+                            @for (var i = Math.Max(1, pageIndex - 15); i <= Math.Min(totalPages, Math.Max(1, pageIndex - 15) + 29); i++)
                             {
                                 if (i == pageIndex)
                                 {

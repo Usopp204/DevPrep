@@ -43,7 +43,7 @@ public class ManagerQuestionsController : ControllerBase
     }
 
     /// <summary>
-    /// View Question Details (Manager) - read-only with ExpectedAnswer
+    /// View Question Details (Manager) - read-only with reference answer
     /// GET /api/admin/manager/questions/{id}
     /// </summary>
     [HttpGet("{id:guid}")]
@@ -58,5 +58,13 @@ public class ManagerQuestionsController : ControllerBase
             return NotFound(ApiResponse<QuestionDetailDto>.Fail($"Question with id '{id}' not found."));
 
         return Ok(ApiResponse<QuestionDetailDto>.Ok(item));
+    }
+
+    [HttpGet("categories")]
+    [ProducesResponseType(typeof(ApiResponse<List<QuestionCategoryDto>>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetCategories()
+    {
+        var categories = await _service.GetCategoriesAsync();
+        return Ok(ApiResponse<List<QuestionCategoryDto>>.Ok(categories));
     }
 }

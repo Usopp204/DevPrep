@@ -6,21 +6,26 @@ public class AdminQuestionDetailDto
 
     public Guid? CategoryId { get; set; }
 
-    public string? CategoryName { get; set; }
+    public string? Category { get; set; }
 
-    public string Content { get; set; } = string.Empty;
+    public string Question { get; set; } = string.Empty;
 
-    public string QuestionType { get; set; } = string.Empty;
+    // xóa 2 trường 
+    //public string QuestionType { get; set; } = string.Empty;
 
-    public string Level { get; set; } = string.Empty;
+    //public string Level { get; set; } = string.Empty;
 
     public string Difficulty { get; set; } = string.Empty;
 
-    public string? ExpectedAnswer { get; set; }
+    public string? Answer { get; set; } // thay đổi tên 
 
-    public string? TechStack { get; set; }
+    // xóa 2 trường 
+    //public string? TechStack { get; set; }
 
-    public string? Tags { get; set; }
+    //public string? Tags { get; set; }
+    // Bổ sung
+    public string? Position { get; set; }
+
 
     public string Status { get; set; } = string.Empty;
 

@@ -130,7 +130,7 @@ public class AdminQuestionController : Controller
     [HttpPost("create")]
     public async Task<IActionResult> Create([FromForm] AdminCreateQuestionDto dto)
     {
-        if (string.IsNullOrWhiteSpace(dto.Content))
+        if (string.IsNullOrWhiteSpace(dto.Question))
         {
             return BadRequest(new
             {
@@ -195,7 +195,7 @@ public class AdminQuestionController : Controller
     [HttpPost("edit/{id:guid}")]
     public async Task<IActionResult> Edit(Guid id, [FromForm] AdminUpdateQuestionDto dto)
     {
-        if (string.IsNullOrWhiteSpace(dto.Content))
+        if (string.IsNullOrWhiteSpace(dto.Question))
         {
             return BadRequest(new
             {

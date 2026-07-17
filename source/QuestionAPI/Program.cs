@@ -57,6 +57,14 @@ builder.Services.AddScoped<IAdminQuestionRepository, AdminQuestionRepository>();
 builder.Services.AddScoped<IAdminQuestionService, AdminQuestionService>();
 builder.Services.AddScoped<InternalQuestionService>();
 
+
+//------ SỬA LẠI ĐOẠN NÀY -------
+builder.Services.AddHttpClient<IQuestionIndexClient, QuestionIndexClient>(client =>
+{
+    client.BaseAddress = new Uri("http://localhost:8000/");
+    client.Timeout = TimeSpan.FromSeconds(15);
+});
+
 // ── Controllers & Swagger ─────────────────────────────────────────────────────
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

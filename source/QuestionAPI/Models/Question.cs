@@ -11,25 +11,33 @@ public class Question
 
     public Guid? CategoryId { get; set; }
 
-    [Required]
-    public string Content { get; set; } = string.Empty;
+    [Column("Answer")]
+    public string? Answer { get; set; }
 
-    [MaxLength(20)]
-    public string QuestionType { get; set; } = "Theory";
+    //không sài
+    //[MaxLength(20)]
+    //public string QuestionType { get; set; } = "Theory";
 
-    [MaxLength(20)]
-    public string Level { get; set; } = "Junior";
+    //[MaxLength(20)]
+    //public string Level { get; set; } = "Junior";
 
     [MaxLength(10)]
-    public string Difficulty { get; set; } = "Medium";
+    public string Difficulty { get; set; } = "Junior";
 
-    public string? ExpectedAnswer { get; set; }
+    [Required]
+    [Column("Question")]
+    public string QuestionText { get; set; } = string.Empty;
 
-    [MaxLength(255)]
-    public string? TechStack { get; set; }
+    //không sài
+    //[MaxLength(255)]
+    //public string? TechStack { get; set; }
 
-    [MaxLength(500)]
-    public string? Tags { get; set; }
+    //[MaxLength(500)]
+    //public string? Tags { get; set; }
+
+    // Bổ sung Position
+    [MaxLength(50)]
+    public string? Position { get; set; }
 
     [MaxLength(20)]
     public string Status { get; set; } = "Active";
@@ -37,6 +45,8 @@ public class Question
     public bool IsDeleted { get; set; } = false;
 
     public DateTime? DeletedAt { get; set; }
+
+    public Guid? DeletedBy { get; set; }   // <-- THÊM DÒNG NÀY
 
     public Guid? CreatedBy { get; set; }
 

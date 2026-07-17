@@ -29,6 +29,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3.10-venv \
     git \
     build-essential \
+    ffmpeg \
+    libgl1 \
+    libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 # Map the system 'python' command to python3.10 for consistency

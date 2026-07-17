@@ -40,7 +40,8 @@ public sealed class AdminQuestionService : IAdminQuestionService
         _httpContextAccessor = httpContextAccessor;
     }
 
-    public async Task<QuestionApiResponse<AdminPagedResultDto<AdminQuestionListItemDto>>> GetQuestionsAsync(AdminQuestionQueryDto query)
+    public async Task<QuestionApiResponse<AdminPagedResultDto<AdminQuestionListItemDto>>> GetQuestionsAsync(
+    AdminQuestionQueryDto query)
     {
         if (query.PageIndex <= 0)
             query.PageIndex = 1;
@@ -51,10 +52,8 @@ public sealed class AdminQuestionService : IAdminQuestionService
         var queryParams = new Dictionary<string, string?>
         {
             ["Keyword"] = query.Keyword,
-            ["QuestionType"] = query.QuestionType,
-            ["Level"] = query.Level,
             ["Difficulty"] = query.Difficulty,
-            ["TechStack"] = query.TechStack,
+            // ["TechStack"] = query.TechStack,
             ["Status"] = query.Status,
             ["PageIndex"] = query.PageIndex.ToString(),
             ["PageSize"] = query.PageSize.ToString()
@@ -65,7 +64,10 @@ public sealed class AdminQuestionService : IAdminQuestionService
             queryParams["CategoryId"] = query.CategoryId.Value.ToString();
         }
 
-        var url = QueryHelpers.AddQueryString("api/admin/questions", queryParams);
+        var url = QueryHelpers.AddQueryString(
+            "api/admin/questions",
+            queryParams
+        );
 
         return await GetAsync<AdminPagedResultDto<AdminQuestionListItemDto>>(url);
     }

@@ -47,8 +47,10 @@ public static class ServiceCollectionExtensions
 
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IProfileService, ProfileService>();
+        services.AddScoped<IBiometricsService, BiometricsService>();
         services.AddScoped<ICvJdService, CvJdService>();
         services.AddScoped<IInterviewService, InterviewService>();
+        services.AddScoped<IVerificationService, VerificationService>();
         services.AddScoped<IEvaluationService, EvaluationService>();
         services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<IAdminService, AdminService>();

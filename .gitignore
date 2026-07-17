@@ -76,3 +76,8 @@ CLAUDE.md
 infra/cloudflared.deb
 ai-service/chroma_data_docker/
 ai-service/chroma_data_backup/
+infra/*.jpg
+infra/*.json
+infra/scores.csv
+infra/batch_genuine*.ps1
+infra/collect_sample.py

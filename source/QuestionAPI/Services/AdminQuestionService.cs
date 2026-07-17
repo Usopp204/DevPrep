@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using QuestionAPI.Data;
 using QuestionAPI.DTOs;
+using QuestionAPI.Helpers;
 using QuestionAPI.Models;
 using QuestionAPI.Repositories.Interfaces;
 using QuestionAPI.Services.Interfaces;
@@ -9,34 +10,73 @@ namespace QuestionAPI.Services;
 
 public class AdminQuestionService : IAdminQuestionService
 {
+    private const int MaxBrowsePages = 30;
+    private const int DefaultPageSize = 10;
+    private const int MaximumPageSize = 100;
+
+    private static readonly HashSet<string> AllowedStatuses =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            "Active",
+            "Draft",
+            "Archived",
+            "Inactive"
+        };
+
     private readonly IAdminQuestionRepository _repo;
     private readonly QuestionBankDbContext _db;
+    private readonly IQuestionIndexClient _indexClient;
 
-    public AdminQuestionService(IAdminQuestionRepository repo, QuestionBankDbContext db)
+    public AdminQuestionService(
+        IAdminQuestionRepository repo,
+        QuestionBankDbContext db,
+        IQuestionIndexClient indexClient)
     {
         _repo = repo;
         _db = db;
+        _indexClient = indexClient;
     }
 
-    public async Task<AdminPagedResultDto<AdminQuestionListItemDto>> GetAsync(AdminQuestionQueryDto q)
+    public async Task<AdminPagedResultDto<AdminQuestionListItemDto>> GetAsync(
+        AdminQuestionQueryDto queryDto)
     {
-        var query = ApplyFilter(_repo.Query(), q);
+        var query = ApplyFilter(
+            _repo.Query(),
+            queryDto
+        );
 
-        return await PagingAsync(query, q);
+        return await PagingAsync(
+            query,
+            queryDto
+        );
     }
 
-    public async Task<AdminPagedResultDto<AdminQuestionListItemDto>> SearchAsync(AdminQuestionQueryDto q)
+    public async Task<AdminPagedResultDto<AdminQuestionListItemDto>> SearchAsync(
+        AdminQuestionQueryDto queryDto)
     {
-        var query = ApplyFilter(_repo.Query(), q);
+        var query = ApplyFilter(
+            _repo.Query(),
+            queryDto
+        );
 
-        return await PagingAsync(query, q);
+        return await PagingAsync(
+            query,
+            queryDto
+        );
     }
 
-    public async Task<AdminPagedResultDto<AdminQuestionListItemDto>> FilterAsync(AdminQuestionQueryDto q)
+    public async Task<AdminPagedResultDto<AdminQuestionListItemDto>> FilterAsync(
+        AdminQuestionQueryDto queryDto)
     {
-        var query = ApplyFilter(_repo.Query(), q);
+        var query = ApplyFilter(
+            _repo.Query(),
+            queryDto
+        );
 
-        return await PagingAsync(query, q);
+        return await PagingAsync(
+            query,
+            queryDto
+        );
     }
 
     public async Task<AdminQuestionDetailDto?> GetDetailAsync(Guid id)
@@ -51,36 +91,59 @@ public class AdminQuestionService : IAdminQuestionService
         return MapDetail(question);
     }
 
-    public async Task<AdminQuestionDetailDto> CreateAsync(AdminCreateQuestionDto dto, Guid? adminId)
+    public async Task<AdminQuestionDetailDto> CreateAsync(
+        AdminCreateQuestionDto dto,
+        Guid? adminId)
     {
-        if (dto.CategoryId.HasValue)
+        if (!dto.CategoryId.HasValue)
         {
-            var categoryExists = await _db.QuestionCategories
-                .AnyAsync(x => x.CategoryId == dto.CategoryId.Value && x.IsActive);
-
-            if (!categoryExists)
-            {
-                throw new Exception("Question category does not exist or has been disabled.");
-            }
+            throw new Exception("CategoryId is required.");
         }
 
-        var now = DateTime.UtcNow;
+        var categoryExists = await _db.QuestionCategories
+            .AsNoTracking()
+            .AnyAsync(x =>
+                x.CategoryId == dto.CategoryId.Value &&
+                x.IsActive
+            );
+
+        if (!categoryExists)
+        {
+            throw new Exception(
+                "Question category does not exist or has been disabled."
+            );
+        }
+
+        if (string.IsNullOrWhiteSpace(dto.Question))
+        {
+            throw new Exception("Question cannot be empty.");
+        }
+
+        if (string.IsNullOrWhiteSpace(dto.Difficulty))
+        {
+            throw new Exception("Difficulty cannot be empty.");
+        }
+
+        var now = VietnamTime.Now;
 
         var question = new Question
         {
             QuestionId = Guid.NewGuid(),
             CategoryId = dto.CategoryId,
-            Content = dto.Content.Trim(),
-            QuestionType = string.IsNullOrWhiteSpace(dto.QuestionType) ? "Theory" : dto.QuestionType.Trim(),
-            Level = string.IsNullOrWhiteSpace(dto.Level) ? "Junior" : dto.Level.Trim(),
-            Difficulty = string.IsNullOrWhiteSpace(dto.Difficulty) ? "Medium" : dto.Difficulty.Trim(),
-            ExpectedAnswer = dto.ExpectedAnswer,
-            TechStack = dto.TechStack,
-            Tags = dto.Tags,
+
+            QuestionText = dto.Question.Trim(),
+            Difficulty = dto.Difficulty.Trim(),
+
+            Answer = NormalizeNullable(dto.Answer),
+            Position = NormalizeNullable(dto.Position),
+
             Status = "Active",
             IsDeleted = false,
+
             CreatedBy = adminId,
+            DeletedBy = null,
             DeletedAt = null,
+
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -88,12 +151,21 @@ public class AdminQuestionService : IAdminQuestionService
         await _repo.AddAsync(question);
         await _repo.SaveAsync();
 
-        var categoryName = await GetCategoryNameAsync(question.CategoryId);
+        var categoryName = await GetCategoryAsync(question.CategoryId);
 
-        return MapDetail(question, categoryName);
+        // Đồng bộ sang ChromaDB
+        await SyncQuestionIndexAsync(question, categoryName);
+
+        return MapDetail(
+            question,
+            categoryName
+        );
     }
 
-    public async Task<AdminQuestionDetailDto?> UpdateAsync(Guid id, AdminUpdateQuestionDto dto, Guid? adminId)
+    public async Task<AdminQuestionDetailDto?> UpdateAsync(
+        Guid id,
+        AdminUpdateQuestionDto dto,
+        Guid? adminId)
     {
         var question = await _repo.GetTrackedAsync(id);
 
@@ -104,43 +176,46 @@ public class AdminQuestionService : IAdminQuestionService
 
         if (question.IsDeleted)
         {
-            throw new Exception("This question has been soft-deleted. Please restore it before updating.");
+            throw new Exception(
+                "This question has been soft-deleted. " +
+                "Please restore it before updating."
+            );
         }
 
-        if (dto.Content != null && string.IsNullOrWhiteSpace(dto.Content))
+        if (dto.Question != null &&
+            string.IsNullOrWhiteSpace(dto.Question))
         {
-            throw new Exception("Question content cannot be empty.");
+            throw new Exception("Question cannot be empty.");
+        }
+
+        if (dto.Difficulty != null &&
+            string.IsNullOrWhiteSpace(dto.Difficulty))
+        {
+            throw new Exception("Difficulty cannot be empty.");
         }
 
         if (dto.CategoryId.HasValue)
         {
             var categoryExists = await _db.QuestionCategories
-                .AnyAsync(x => x.CategoryId == dto.CategoryId.Value && x.IsActive);
+                .AsNoTracking()
+                .AnyAsync(x =>
+                    x.CategoryId == dto.CategoryId.Value &&
+                    x.IsActive
+                );
 
             if (!categoryExists)
             {
-                throw new Exception("Question category does not exist or has been disabled.");
+                throw new Exception(
+                    "Question category does not exist or has been disabled."
+                );
             }
-        }
 
-        if (dto.CategoryId.HasValue)
-        {
             question.CategoryId = dto.CategoryId;
         }
 
-        if (dto.Content != null)
+        if (dto.Question != null)
         {
-            question.Content = dto.Content.Trim();
-        }
-
-        if (dto.QuestionType != null)
-        {
-            question.QuestionType = dto.QuestionType.Trim();
-        }
-
-        if (dto.Level != null)
-        {
-            question.Level = dto.Level.Trim();
+            question.QuestionText = dto.Question.Trim();
         }
 
         if (dto.Difficulty != null)
@@ -148,36 +223,53 @@ public class AdminQuestionService : IAdminQuestionService
             question.Difficulty = dto.Difficulty.Trim();
         }
 
-        if (dto.ExpectedAnswer != null)
+        if (dto.Answer != null)
         {
-            question.ExpectedAnswer = dto.ExpectedAnswer;
+            question.Answer = NormalizeNullable(dto.Answer);
         }
 
-        if (dto.TechStack != null)
+        if (dto.Position != null)
         {
-            question.TechStack = dto.TechStack;
-        }
-
-        if (dto.Tags != null)
-        {
-            question.Tags = dto.Tags;
+            question.Position = NormalizeNullable(dto.Position);
         }
 
         if (dto.Status != null)
         {
-            question.Status = dto.Status.Trim();
+            var status = dto.Status.Trim();
+
+            if (string.IsNullOrWhiteSpace(status))
+            {
+                throw new Exception("Status cannot be empty.");
+            }
+
+            if (!AllowedStatuses.Contains(status))
+            {
+                throw new Exception(
+                    "Status must be Active, Draft, Archived or Inactive."
+                );
+            }
+
+            question.Status = NormalizeStatus(status);
         }
 
-        question.UpdatedAt = DateTime.UtcNow;
+        question.UpdatedAt = VietnamTime.Now;
 
         await _repo.SaveAsync();
 
-        var categoryName = await GetCategoryNameAsync(question.CategoryId);
+        var categoryName = await GetCategoryAsync(question.CategoryId);
 
-        return MapDetail(question, categoryName);
+        // Đồng bộ hóa thông minh (Thêm/Sửa hoặc Xoá khỏi ChromaDB dựa vào Status mới)
+        await SyncQuestionIndexAsync(question, categoryName);
+
+        return MapDetail(
+            question,
+            categoryName
+        );
     }
 
-    public async Task<bool> DeleteAsync(Guid id, Guid? adminId)
+    public async Task<bool> DeleteAsync(
+        Guid id,
+        Guid? adminId)
     {
         var question = await _repo.GetTrackedAsync(id);
 
@@ -186,11 +278,17 @@ public class AdminQuestionService : IAdminQuestionService
             return false;
         }
 
+        var now = VietnamTime.Now;
+
         question.IsDeleted = true;
-        question.DeletedAt = DateTime.UtcNow;
-        question.UpdatedAt = DateTime.UtcNow;
+        question.DeletedAt = now;
+        question.DeletedBy = adminId;
+        question.UpdatedAt = now;
 
         await _repo.SaveAsync();
+
+        // Gọi thẳng Client Delete vì câu hỏi đã bị soft-delete
+        await _indexClient.DeleteAsync(id);
 
         return true;
     }
@@ -206,10 +304,16 @@ public class AdminQuestionService : IAdminQuestionService
 
         question.IsDeleted = false;
         question.DeletedAt = null;
+        question.DeletedBy = null;
         question.Status = "Active";
-        question.UpdatedAt = DateTime.UtcNow;
+        question.UpdatedAt = VietnamTime.Now;
 
         await _repo.SaveAsync();
+
+        var categoryName = await GetCategoryAsync(question.CategoryId);
+
+        // Đồng bộ lại vào ChromaDB
+        await SyncQuestionIndexAsync(question, categoryName);
 
         return true;
     }
@@ -217,73 +321,113 @@ public class AdminQuestionService : IAdminQuestionService
     public async Task<List<AdminCategoryDto>> GetAllCategoriesAsync()
     {
         return await _db.QuestionCategories
+            .AsNoTracking()
             .Where(x => x.IsActive)
-            .OrderBy(x => x.Name)
+            .OrderBy(x => x.Category)
             .Select(x => new AdminCategoryDto
             {
                 CategoryId = x.CategoryId,
-                Name = x.Name
+                Category = x.Category
             })
             .ToListAsync();
     }
 
-    private IQueryable<Question> ApplyFilter(IQueryable<Question> query, AdminQuestionQueryDto f)
+    public async Task<AdminReindexResultDto> ReindexAllQuestionsAsync()
     {
-        if (!string.IsNullOrWhiteSpace(f.Keyword))
+        // Lấy toàn bộ câu hỏi Active và Chưa bị xoá
+        var activeQuestions = await _db.Questions
+            .AsNoTracking()
+            .Where(q => !q.IsDeleted && q.Status == "Active")
+            .ToListAsync();
+
+        // Lấy danh sách Categories để tối ưu hóa việc map tên thay vì truy vấn lặp trong DB
+        var categories = await _db.QuestionCategories
+            .AsNoTracking()
+            .ToDictionaryAsync(c => c.CategoryId, c => c.Category);
+
+        int successCount = 0;
+        int failCount = 0;
+
+        foreach (var question in activeQuestions)
         {
-            var keyword = f.Keyword.Trim().ToLower();
-
-            query = query.Where(x =>
-                x.Content.ToLower().Contains(keyword) ||
-                (x.Tags != null && x.Tags.ToLower().Contains(keyword)) ||
-                (x.TechStack != null && x.TechStack.ToLower().Contains(keyword)));
-        }
-
-        if (!string.IsNullOrWhiteSpace(f.Level))
-        {
-            var level = f.Level.Trim().ToLower();
-            query = query.Where(x => x.Level.ToLower() == level);
-        }
-
-        if (!string.IsNullOrWhiteSpace(f.QuestionType))
-        {
-            var type = f.QuestionType.Trim().ToLower();
-            query = query.Where(x => x.QuestionType.ToLower() == type);
-        }
-
-        if (!string.IsNullOrWhiteSpace(f.Difficulty))
-        {
-            var difficulty = f.Difficulty.Trim().ToLower();
-            query = query.Where(x => x.Difficulty.ToLower() == difficulty);
-        }
-
-        if (!string.IsNullOrWhiteSpace(f.TechStack))
-        {
-            var techStack = f.TechStack.Trim().ToLower();
-
-            query = query.Where(x =>
-                x.TechStack != null &&
-                x.TechStack.ToLower().Contains(techStack));
-        }
-
-        if (f.CategoryId.HasValue)
-        {
-            query = query.Where(x => x.CategoryId == f.CategoryId.Value);
-        }
-
-        if (!string.IsNullOrWhiteSpace(f.Status))
-        {
-            var status = f.Status.Trim();
-
-            if (status.Equals("Deleted", StringComparison.OrdinalIgnoreCase))
+            string? categoryName = null;
+            if (question.CategoryId.HasValue)
             {
-                query = query.Where(x => x.IsDeleted);
+                categories.TryGetValue(question.CategoryId.Value, out categoryName);
+            }
+
+            var isSuccess = await _indexClient.UpsertAsync(question, categoryName);
+            if (isSuccess)
+            {
+                successCount++;
+            }
+            else
+            {
+                failCount++;
+            }
+        }
+
+        return new AdminReindexResultDto
+        {
+            TotalProcessed = activeQuestions.Count,
+            SuccessCount = successCount,
+            FailCount = failCount
+        };
+    }
+
+    private IQueryable<Question> ApplyFilter(
+        IQueryable<Question> query,
+        AdminQuestionQueryDto filter)
+    {
+        query = query.AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(filter.Keyword))
+        {
+            var keyword = filter.Keyword.Trim();
+
+            query = query.Where(x =>
+                x.QuestionText.Contains(keyword) ||
+                (
+                    x.Position != null &&
+                    x.Position.Contains(keyword)
+                )
+            );
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.Difficulty))
+        {
+            var difficulty = filter.Difficulty.Trim();
+
+            query = query.Where(x =>
+                x.Difficulty == difficulty
+            );
+        }
+
+        if (filter.CategoryId.HasValue)
+        {
+            query = query.Where(x =>
+                x.CategoryId == filter.CategoryId.Value
+            );
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.Status))
+        {
+            var status = filter.Status.Trim();
+
+            if (status.Equals(
+                "Deleted",
+                StringComparison.OrdinalIgnoreCase))
+            {
+                query = query.Where(x =>
+                    x.IsDeleted
+                );
             }
             else
             {
                 query = query.Where(x =>
                     !x.IsDeleted &&
-                    x.Status.ToLower() == status.ToLower());
+                    x.Status == status
+                );
             }
         }
 
@@ -292,57 +436,150 @@ public class AdminQuestionService : IAdminQuestionService
 
     private async Task<AdminPagedResultDto<AdminQuestionListItemDto>> PagingAsync(
         IQueryable<Question> query,
-        AdminQuestionQueryDto f)
+        AdminQuestionQueryDto filter)
     {
-        if (f.PageIndex <= 0)
+        if (filter.PageIndex <= 0)
         {
-            f.PageIndex = 1;
+            filter.PageIndex = 1;
         }
 
-        if (f.PageSize <= 0)
+        if (filter.PageSize <= 0)
         {
-            f.PageSize = 10;
+            filter.PageSize = DefaultPageSize;
         }
 
-        var totalRecords = await query.CountAsync();
+        if (filter.PageSize > MaximumPageSize)
+        {
+            filter.PageSize = MaximumPageSize;
+        }
 
-        var totalPages = (int)Math.Ceiling((double)totalRecords / f.PageSize);
+        var maximumRecords = MaxBrowsePages * filter.PageSize;
 
-        var items = await query
-            .Include(x => x.Category)
+        var limitedKeys = await query
             .OrderByDescending(x => x.CreatedAt)
-            .Skip((f.PageIndex - 1) * f.PageSize)
-            .Take(f.PageSize)
-            .Select(x => new AdminQuestionListItemDto
+            .ThenByDescending(x => x.QuestionId)
+            .Select(x => new
             {
-                QuestionId = x.QuestionId,
-                CategoryId = x.CategoryId,
-                CategoryName = x.Category != null ? x.Category.Name : null,
-                Content = x.Content,
-                QuestionType = x.QuestionType,
-                Level = x.Level,
-                Difficulty = x.Difficulty,
-                TechStack = x.TechStack,
-                Tags = x.Tags,
-                Status = x.Status,
-                IsDeleted = x.IsDeleted,
-                DeletedAt = x.DeletedAt,
-                DeletedBy = null,
-                CreatedAt = x.CreatedAt
+                x.QuestionId,
+                x.CreatedAt
             })
+            .Take(maximumRecords)
             .ToListAsync();
+
+        var totalRecords = limitedKeys.Count;
+
+        var totalPages = totalRecords == 0
+            ? 0
+            : (int)Math.Ceiling((double)totalRecords / filter.PageSize);
+
+        if (totalPages > MaxBrowsePages)
+        {
+            totalPages = MaxBrowsePages;
+        }
+
+        if (totalPages > 0 && filter.PageIndex > totalPages)
+        {
+            filter.PageIndex = totalPages;
+        }
+
+        if (filter.PageIndex <= 0)
+        {
+            filter.PageIndex = 1;
+        }
+
+        var pageKeys = limitedKeys
+            .Skip((filter.PageIndex - 1) * filter.PageSize)
+            .Take(filter.PageSize)
+            .ToList();
+
+        var pageIds = pageKeys
+            .Select(x => x.QuestionId)
+            .ToList();
+
+        List<AdminQuestionListItemDto> questionItems;
+
+        if (pageIds.Count == 0)
+        {
+            questionItems = new List<AdminQuestionListItemDto>();
+        }
+        else
+        {
+            questionItems = await _db.Questions
+                .AsNoTracking()
+                .Where(x => pageIds.Contains(x.QuestionId))
+                .Select(x => new AdminQuestionListItemDto
+                {
+                    QuestionId = x.QuestionId,
+                    CategoryId = x.CategoryId,
+                    Category = null,
+                    Question = x.QuestionText,
+                    Difficulty = x.Difficulty,
+                    Position = x.Position,
+                    Status = x.Status,
+                    IsDeleted = x.IsDeleted,
+                    DeletedAt = x.DeletedAt,
+                    DeletedBy = x.DeletedBy,
+                    CreatedAt = x.CreatedAt
+                })
+                .ToListAsync();
+        }
+
+        var orderMap = pageKeys
+            .Select((x, index) => new
+            {
+                x.QuestionId,
+                Index = index
+            })
+            .ToDictionary(x => x.QuestionId, x => x.Index);
+
+        questionItems = questionItems
+            .OrderBy(x => orderMap.TryGetValue(x.QuestionId, out var index) ? index : int.MaxValue)
+            .ToList();
+
+        var categoryIds = questionItems
+            .Where(x => x.CategoryId.HasValue)
+            .Select(x => x.CategoryId!.Value)
+            .Distinct()
+            .ToList();
+
+        Dictionary<Guid, string> categoryDictionary;
+
+        if (categoryIds.Count == 0)
+        {
+            categoryDictionary = new Dictionary<Guid, string>();
+        }
+        else
+        {
+            categoryDictionary = await _db.QuestionCategories
+                .AsNoTracking()
+                .Where(x => categoryIds.Contains(x.CategoryId))
+                .ToDictionaryAsync(x => x.CategoryId, x => x.Category);
+        }
+
+        foreach (var item in questionItems)
+        {
+            if (!item.CategoryId.HasValue)
+            {
+                continue;
+            }
+
+            if (categoryDictionary.TryGetValue(item.CategoryId.Value, out var categoryName))
+            {
+                item.Category = categoryName;
+            }
+        }
 
         return new AdminPagedResultDto<AdminQuestionListItemDto>
         {
-            PageIndex = f.PageIndex,
-            PageSize = f.PageSize,
+            PageIndex = filter.PageIndex,
+            PageSize = filter.PageSize,
             TotalRecords = totalRecords,
             TotalPages = totalPages,
-            Items = items
+            Items = questionItems
         };
     }
 
-    private async Task<string?> GetCategoryNameAsync(Guid? categoryId)
+    private async Task<string?> GetCategoryAsync(Guid? categoryId)
     {
         if (!categoryId.HasValue)
         {
@@ -350,32 +587,67 @@ public class AdminQuestionService : IAdminQuestionService
         }
 
         return await _db.QuestionCategories
+            .AsNoTracking()
             .Where(x => x.CategoryId == categoryId.Value)
-            .Select(x => x.Name)
+            .Select(x => x.Category)
             .FirstOrDefaultAsync();
     }
 
-    private AdminQuestionDetailDto MapDetail(Question x, string? categoryName = null)
+    private static AdminQuestionDetailDto MapDetail(
+        Question question,
+        string? category = null)
     {
         return new AdminQuestionDetailDto
         {
-            QuestionId = x.QuestionId,
-            CategoryId = x.CategoryId,
-            CategoryName = categoryName ?? x.Category?.Name,
-            Content = x.Content,
-            QuestionType = x.QuestionType,
-            Level = x.Level,
-            Difficulty = x.Difficulty,
-            ExpectedAnswer = x.ExpectedAnswer,
-            TechStack = x.TechStack,
-            Tags = x.Tags,
-            Status = x.Status,
-            IsDeleted = x.IsDeleted,
-            CreatedBy = x.CreatedBy,
-            DeletedBy = null,
-            DeletedAt = x.DeletedAt,
-            CreatedAt = x.CreatedAt,
-            UpdatedAt = x.UpdatedAt
+            QuestionId = question.QuestionId,
+            CategoryId = question.CategoryId,
+            Category = category ?? question.Category?.Category,
+            Question = question.QuestionText,
+            Difficulty = question.Difficulty,
+            Answer = question.Answer,
+            Position = question.Position,
+            Status = question.Status,
+            IsDeleted = question.IsDeleted,
+            CreatedBy = question.CreatedBy,
+            DeletedBy = question.DeletedBy,
+            DeletedAt = question.DeletedAt,
+            CreatedAt = question.CreatedAt,
+            UpdatedAt = question.UpdatedAt
         };
+    }
+
+    private static string? NormalizeNullable(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    private static string NormalizeStatus(string status)
+    {
+        if (status.Equals("Active", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Active";
+        }
+
+        if (status.Equals("Draft", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Draft";
+        }
+
+        if (status.Equals("Archived", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Archived";
+        }
+
+        return "Inactive";
+    }
+
+    private Task SyncQuestionIndexAsync(Question question, string? category)
+    {
+        var shouldIndex = !question.IsDeleted &&
+                          string.Equals(question.Status, "Active", StringComparison.OrdinalIgnoreCase);
+
+        return shouldIndex
+            ? _indexClient.UpsertAsync(question, category)
+            : _indexClient.DeleteAsync(question.QuestionId);
     }
 }

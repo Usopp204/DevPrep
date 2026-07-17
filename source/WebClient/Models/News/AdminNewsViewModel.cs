@@ -110,7 +110,8 @@ public class AdminCreateNewsDto
 
     public string Title { get; set; } = string.Empty;
 
-    public string Slug { get; set; } = string.Empty;
+    // KHÔNG bắt buộc nữa — để trống thì backend tự sinh từ Title
+    public string? Slug { get; set; }
 
     public string? Summary { get; set; }
 
@@ -127,7 +128,8 @@ public class AdminUpdateNewsDto
 
     public string Title { get; set; } = string.Empty;
 
-    public string Slug { get; set; } = string.Empty;
+    // KHÔNG bắt buộc nữa — để trống thì backend tự sinh từ Title
+    public string? Slug { get; set; }
 
     public string? Summary { get; set; }
 
@@ -163,7 +165,8 @@ public class AdminNewsFormViewModel
 
     public string Title { get; set; } = string.Empty;
 
-    public string Slug { get; set; } = string.Empty;
+    // KHÔNG bắt buộc nữa — admin có thể để trống, backend tự sinh từ Title
+    public string? Slug { get; set; }
 
     public string? Summary { get; set; }
 

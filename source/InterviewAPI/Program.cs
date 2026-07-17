@@ -31,6 +31,11 @@ builder.Services.AddScoped<IInterviewRepository, InterviewRepository>();
 builder.Services.AddScoped<IInterviewService, InterviewService>();
 builder.Services.AddScoped<ISessionRepository, SessionRepository>();
 builder.Services.AddScoped<ISessionService, SessionService>();
+builder.Services.AddScoped<IProfileBiometricsRepository, ProfileBiometricsRepository>();
+builder.Services.AddScoped<IProfileBiometricsService, ProfileBiometricsService>();
+builder.Services.AddScoped<ISessionVerificationChallengeRepository, SessionVerificationChallengeRepository>();
+builder.Services.AddScoped<ISessionVerificationEventRepository, SessionVerificationEventRepository>();
+builder.Services.AddScoped<IBiometricVerificationService, BiometricVerificationService>();
 
 // Giao tiếp liên service qua HTTP (resolve danh tính người dùng của phiên phỏng vấn):
 //   - AuthAPI: lấy Email theo AccountId.
