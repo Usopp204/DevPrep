@@ -42,4 +42,7 @@ public interface IAuthService
 
     /// <summary>Đăng xuất: thu hồi refresh token.</summary>
     Task<LogoutResponse> LogoutAsync(LogoutRequest request);
+
+    /// <summary>Trạng thái + role hiện tại của tài khoản (null nếu không tồn tại) — cho WebClient check block giữa phiên.</summary>
+    Task<AccountStatusResponse?> GetAccountStatusAsync(Guid accountId);
 }

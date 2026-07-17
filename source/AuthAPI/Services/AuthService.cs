@@ -507,6 +507,18 @@ public class AuthService : IAuthService
         return new LogoutResponse { Message = "Logged out successfully." };
     }
 
+    public async Task<AccountStatusResponse?> GetAccountStatusAsync(Guid accountId)
+    {
+        var account = await _accountRepository.GetByIdAsync(accountId);
+        if (account is null) return null;
+
+        return new AccountStatusResponse
+        {
+            Status = account.Status,
+            Role = account.Role
+        };
+    }
+
     /// <summary>
     /// Xử lý đăng nhập SSO dùng chung cho mọi nhà cung cấp: tìm liên kết sẵn có,
     /// hoặc liên kết vào tài khoản trùng email, hoặc tạo tài khoản mới.

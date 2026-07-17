@@ -32,7 +32,12 @@ public class SystemFeedbackService : ISystemFeedbackService
         var pageSize = Math.Clamp(query.PageSize, 1, MaxPageSize);
         var skip = (page - 1) * pageSize;
 
-        var q = _repository.Query();
+        // OnlyDeleted = true  -> CHỈ bản ghi đã xoá mềm (trang "Show deleted" của admin).
+        // IncludeDeleted = true -> kèm cả bản ghi đã xoá mềm.
+        // mặc định -> chỉ bản ghi chưa xoá.
+        var q = query.OnlyDeleted
+            ? _repository.QueryIncludingDeleted().Where(f => f.IsDeleted)
+            : query.IncludeDeleted ? _repository.QueryIncludingDeleted() : _repository.Query();
 
         if (!string.IsNullOrWhiteSpace(query.Keyword))
         {
@@ -122,6 +127,18 @@ public class SystemFeedbackService : ISystemFeedbackService
 
         f.IsDeleted = true;
         f.DeletedAt = VietnamTime.Now;
+        f.UpdatedAt = VietnamTime.Now;
+        await _repository.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<bool> RestoreAsync(Guid id)
+    {
+        var f = await _repository.GetByIdAsync(id, tracking: true);
+        if (f is null || !f.IsDeleted) return false;
+
+        f.IsDeleted = false;
+        f.DeletedAt = null;
         f.UpdatedAt = VietnamTime.Now;
         await _repository.SaveChangesAsync();
         return true;

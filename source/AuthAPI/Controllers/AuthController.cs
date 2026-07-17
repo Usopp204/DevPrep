@@ -199,6 +199,35 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
+    /// Trạng thái + role hiện tại của tài khoản đang đăng nhập. WebClient poll endpoint này
+    /// (cache ngắn) để tự đăng xuất ngay khi tài khoản bị block giữa phiên.
+    /// </summary>
+    [Authorize]
+    [HttpGet("me/status")]
+    [ProducesResponseType(typeof(ApiResponse<AccountStatusResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> MyStatus()
+    {
+        var accountIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+
+        if (!Guid.TryParse(accountIdValue, out var accountId))
+        {
+            return Unauthorized();
+        }
+
+        var status = await _authService.GetAccountStatusAsync(accountId);
+        if (status is null)
+        {
+            // Tài khoản không còn tồn tại -> coi như blocked để client đăng xuất.
+            return Ok(ApiResponse<AccountStatusResponse>.Ok(
+                new AccountStatusResponse { Status = "Blocked", Role = string.Empty }));
+        }
+
+        return Ok(ApiResponse<AccountStatusResponse>.Ok(status));
+    }
+
+    /// <summary>
     /// Đăng xuất: thu hồi refresh token để không thể refresh tiếp.
     /// </summary>
     [HttpPost("logout")]

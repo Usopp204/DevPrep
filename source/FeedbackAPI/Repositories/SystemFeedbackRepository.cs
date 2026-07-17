@@ -17,6 +17,10 @@ public class SystemFeedbackRepository : ISystemFeedbackRepository
     public IQueryable<SystemFeedback> Query() =>
         _db.SystemFeedbacks.AsNoTracking().Where(f => !f.IsDeleted);
 
+    // Kèm cả bản ghi đã xoá mềm — cho admin xem/khôi phục.
+    public IQueryable<SystemFeedback> QueryIncludingDeleted() =>
+        _db.SystemFeedbacks.AsNoTracking();
+
     public Task<SystemFeedback?> GetByIdAsync(Guid id, bool includeReplies = false, bool tracking = false)
     {
         IQueryable<SystemFeedback> query = _db.SystemFeedbacks;

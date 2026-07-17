@@ -229,4 +229,36 @@ public class ProfileController(
         var model = await paymentService.GetTransactionHistoryAsync(userId.Value, page, ct: ct);
         return View(model);
     }
+
+    // ============================ Credit History ============================
+    // Lịch sử trừ/cộng credit (CreditLedger): Usage (trừ khi phỏng vấn) / Purchase / Refund.
+    public async Task<IActionResult> CreditHistory(int page = 1, string? type = null, CancellationToken ct = default)
+    {
+        if (string.IsNullOrEmpty(Request.Cookies["access_token"]))
+            return RedirectToAction("Login", "Auth");
+
+        var role = Request.Cookies["user_role"] ?? string.Empty;
+        if (string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(role, "Manager", StringComparison.OrdinalIgnoreCase))
+            return RedirectToAction("Index", "Admin");
+
+        var userId = JwtUserId.FromToken(Request.Cookies["access_token"]);
+        if (userId is null)
+            return RedirectToAction("Login", "Auth");
+
+        var model = await paymentService.GetCreditHistoryAsync(userId.Value, page, type: type, ct: ct);
+        return View(model);
+    }
+
+    // ============================ Credit Balance (JSON cho dropdown navbar) ============================
+    // Dropdown avatar ở _Navbar fetch endpoint này để hiện số credit hiện có (same-origin, khỏi CORS).
+    [HttpGet]
+    public async Task<IActionResult> CreditBalance(CancellationToken ct = default)
+    {
+        var userId = JwtUserId.FromToken(Request.Cookies["access_token"]);
+        if (userId is null) return Unauthorized();
+
+        var balance = await paymentService.GetCreditBalanceAsync(userId.Value, ct);
+        return Json(new { balance = balance.Balance });
+    }
 }

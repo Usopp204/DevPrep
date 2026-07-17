@@ -21,6 +21,9 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Tài khoản bị block giữa phiên -> tự đăng xuất + đá về Login (check status qua AuthAPI, cache 30s).
+app.UseMiddleware<WebClient.Middlewares.BlockedAccountMiddleware>();
+
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");

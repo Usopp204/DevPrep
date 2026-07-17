@@ -32,7 +32,12 @@ public class InterviewService : IInterviewService
         var pageSize = Math.Clamp(query.PageSize, 1, MaxPageSize);
         var skip = (page - 1) * pageSize;
 
-        var q = _repository.Query();
+        // OnlyDeleted = true  -> CHỈ phiên đã xoá mềm (trang "Show deleted" của admin).
+        // IncludeDeleted = true -> kèm cả phiên đã xoá mềm (dashboard đếm tổng).
+        // mặc định -> chỉ phiên chưa xoá.
+        var q = query.OnlyDeleted
+            ? _repository.QueryIncludingDeleted().Where(s => s.IsDeleted)
+            : query.IncludeDeleted ? _repository.QueryIncludingDeleted() : _repository.Query();
 
         if (!string.IsNullOrWhiteSpace(query.Keyword))
         {
@@ -308,6 +313,18 @@ public class InterviewService : IInterviewService
 
         s.IsDeleted = true;
         s.DeletedAt = VietnamTime.Now;
+        s.UpdatedAt = VietnamTime.Now;
+        await _repository.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    public async Task<bool> RestoreAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var s = await _repository.GetByIdAsync(id, tracking: true, cancellationToken);
+        if (s is null || !s.IsDeleted) return false;
+
+        s.IsDeleted = false;
+        s.DeletedAt = null;
         s.UpdatedAt = VietnamTime.Now;
         await _repository.SaveChangesAsync(cancellationToken);
         return true;

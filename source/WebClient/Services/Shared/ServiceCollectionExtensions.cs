@@ -25,6 +25,7 @@ public static class ServiceCollectionExtensions
 
         services.Configure<ApiGatewayOptions>(configuration.GetSection("ApiGateway"));
         services.AddHttpContextAccessor();
+        services.AddMemoryCache(); // BlockedAccountMiddleware cache trạng thái account 30s
         services.AddTransient<JwtDelegatingHandler>();
 
         // Cho ProfileService đọc cookie access_token để gắn Bearer khi gọi API.
@@ -54,6 +55,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IEvaluationService, EvaluationService>();
         services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<IAdminService, AdminService>();
+        services.AddScoped<IAdminDashboardService, AdminDashboardService>();
         services.AddScoped<IManagerService, ManagerService>();
         services.AddScoped<IManagerQuestionService, ManagerQuestionService>();
         services.AddScoped<IManagerUserService, ManagerUserService>();

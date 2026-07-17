@@ -34,6 +34,12 @@ public class InterviewQuery
     // End date for filtering sessions
     public DateTime? DateTo { get; set; }
     
+    // true = include soft-deleted sessions in the list (for admin recovery + dashboard totals)
+    public bool IncludeDeleted { get; set; } = false;
+
+    // true = list ONLY soft-deleted sessions (admin "Show deleted" view). Takes precedence over IncludeDeleted.
+    public bool OnlyDeleted { get; set; } = false;
+
     // Current page number for pagination, default is 1
     public int Page { get; set; } = 1;
     
