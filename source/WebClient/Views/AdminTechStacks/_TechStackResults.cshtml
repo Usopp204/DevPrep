@@ -1,0 +1,161 @@
+@using Microsoft.AspNetCore.WebUtilities
+@model WebClient.Models.Admin.TechStacks.AdminTechStackListViewModel
+@{
+    string PageUrl(int page) => QueryHelpers.AddQueryString("/Admin/TechStacks", new Dictionary<string, string?>
+    {
+        ["search"] = Model.Search,
+        ["status"] = Model.Status,
+        ["pageIndex"] = page.ToString()
+    });
+
+    var pagination = Model.Pagination;
+}
+<section class="tech-stacks-card tech-stacks-results" id="techStackResults"
+         data-page-index="@Model.PageIndex" data-search="@Model.Search" data-status="@Model.Status"
+         aria-live="polite" aria-busy="false">
+    <div class="tech-stacks-card-header">
+        <div>
+            <h2>Tech Stacks</h2>
+            <p>@Model.TotalRecords result@(Model.TotalRecords == 1 ? string.Empty : "s")</p>
+        </div>
+        @if (!Model.HasApiError && Model.TotalRecords > 0)
+        {
+            <span class="tech-stacks-page-count">Page @Model.PageIndex of @Model.TotalPages</span>
+        }
+    </div>
+
+    @if (Model.HasApiError)
+    {
+        <div class="tech-stacks-state tech-stacks-state-error" role="alert">
+            <span class="material-symbols-outlined">cloud_off</span>
+            <h3>Unable to load Tech Stacks</h3>
+            <p>@Model.ApiErrorMessage</p>
+            <a class="ts-button ts-button-secondary" href="@PageUrl(Model.PageIndex)">Try again</a>
+        </div>
+    }
+    else if (Model.TotalRecords == 0)
+    {
+        <div class="tech-stacks-state">
+            <span class="material-symbols-outlined">stacks</span>
+            @if (Model.IsFiltered)
+            {
+                <h3>No matching Tech Stacks</h3>
+                <p>Try changing the search text or status filter.</p>
+                <a class="ts-button ts-button-secondary js-reset-tech-stack-filters" href="/Admin/TechStacks">Clear filters</a>
+            }
+            else
+            {
+                <h3>No Tech Stacks yet</h3>
+                <p>Create the first Tech Stack to start classifying questions.</p>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="tech-stacks-table">
+                <thead>
+                    <tr>
+                        <th scope="col" class="tech-stack-display-heading">ID</th>
+                        <th scope="col">Tech Stack Name</th>
+                        <th scope="col">Description</th>
+                        <th scope="col" class="tech-stack-status-column">Status</th>
+                        <th scope="col">Created At</th>
+                        <th scope="col" class="tech-stack-actions-column">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.Items)
+                    {
+                        <tr>
+                            <td class="tech-stack-display-id">@item.DisplayId</td>
+                            <td><span class="tech-stack-name">@item.Name</span></td>
+                            <td>
+                                <span class="tech-stack-description" title="@item.Description">
+                                    @(string.IsNullOrWhiteSpace(item.Description) ? "No description" : item.Description)
+                                </span>
+                            </td>
+                            <td class="tech-stack-status-column">
+                                <span class="tech-stack-status @(item.IsActive ? "is-active" : "is-inactive")">
+                                    <span class="material-symbols-outlined">@(item.IsActive ? "check_circle" : "pause_circle")</span>
+                                    @(item.IsActive ? "Active" : "Inactive")
+                                </span>
+                            </td>
+                            <td>
+                                <time datetime="@item.CreatedAt.ToString("O")">
+                                    @item.CreatedAt.ToString("dd/MM/yyyy")<br />
+                                    <span>@item.CreatedAt.ToString("HH:mm")</span>
+                                </time>
+                            </td>
+                            <td class="tech-stack-actions-column">
+                                <div class="tech-stack-actions">
+                                    <button type="button" class="ts-button ts-button-small ts-button-secondary tech-stack-edit-action js-edit-tech-stack"
+                                            data-tech-stack-id="@item.TechStackId">
+                                        <span class="material-symbols-outlined">edit</span>Edit
+                                    </button>
+                                    @if (item.IsActive)
+                                    {
+                                        <button type="button" class="ts-button ts-button-small ts-button-danger js-deactivate-tech-stack"
+                                                data-tech-stack-id="@item.TechStackId" data-tech-stack-name="@item.Name">
+                                            <span class="material-symbols-outlined">block</span>Deactivate
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" class="ts-button ts-button-small ts-button-success js-reactivate-tech-stack"
+                                                data-tech-stack-id="@item.TechStackId" data-tech-stack-name="@item.Name">
+                                            <span class="material-symbols-outlined">restart_alt</span>Reactivate
+                                        </button>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (Model.TotalPages > 1)
+        {
+            <nav class="tech-stacks-pagination" aria-label="Tech Stack pages">
+                <a class="tech-stacks-page-link @(!pagination.HasPreviousPage ? "disabled" : string.Empty)"
+                   href="@(pagination.HasPreviousPage ? PageUrl(Model.PageIndex - 1) : null)"
+                   aria-disabled="@(!pagination.HasPreviousPage)" aria-label="Go to previous page">Previous</a>
+
+                @if (pagination.FirstPageShortcut is int firstPage)
+                {
+                    <a class="tech-stacks-page-link tech-stacks-edge-link" href="@PageUrl(firstPage)"
+                       title="Go to first page @firstPage" aria-label="Go to first page @firstPage">@firstPage</a>
+                }
+
+                @if (pagination.LeadingEllipsisTarget is int leadingTarget)
+                {
+                    <a class="tech-stacks-page-link tech-stacks-page-jump" href="@PageUrl(leadingTarget)"
+                       title="@pagination.LeadingTooltip" aria-label="@pagination.LeadingTooltip">&hellip;</a>
+                }
+
+                @foreach (var page in pagination.Pages)
+                {
+                    <a class="tech-stacks-page-link @(page == Model.PageIndex ? "active" : string.Empty)"
+                       href="@PageUrl(page)" aria-current="@(page == Model.PageIndex ? "page" : null)">@(page)</a>
+                }
+
+                @if (pagination.TrailingEllipsisTarget is int trailingTarget)
+                {
+                    <a class="tech-stacks-page-link tech-stacks-page-jump" href="@PageUrl(trailingTarget)"
+                       title="@pagination.TrailingTooltip" aria-label="@pagination.TrailingTooltip">&hellip;</a>
+                }
+
+                @if (pagination.LastPageShortcut is int lastPage)
+                {
+                    <a class="tech-stacks-page-link tech-stacks-edge-link" href="@PageUrl(lastPage)"
+                       title="Go to final page @lastPage" aria-label="Go to final page @lastPage">@lastPage</a>
+                }
+
+                <a class="tech-stacks-page-link @(!pagination.HasNextPage ? "disabled" : string.Empty)"
+                   href="@(pagination.HasNextPage ? PageUrl(Model.PageIndex + 1) : null)"
+                   aria-disabled="@(!pagination.HasNextPage)" aria-label="Go to next page">Next</a>
+            </nav>
+        }
+    }
+</section>
