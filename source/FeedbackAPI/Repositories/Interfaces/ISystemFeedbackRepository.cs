@@ -9,6 +9,10 @@ namespace FeedbackAPI.Repositories.Interfaces;
 public interface ISystemFeedbackRepository
 {
     IQueryable<SystemFeedback> Query();
+
+    /// <summary>Như Query() nhưng KÈM cả bản ghi đã xoá mềm (cho admin xem/khôi phục).</summary>
+    IQueryable<SystemFeedback> QueryIncludingDeleted();
+
     Task<SystemFeedback?> GetByIdAsync(Guid id, bool includeReplies = false, bool tracking = false);
 
     Task AddReplyAsync(FeedbackReply reply);

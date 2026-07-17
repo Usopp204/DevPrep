@@ -9,6 +9,9 @@ public interface IInterviewRepository
 {
     IQueryable<InterviewSession> Query();
 
+    /// <summary>Như Query() nhưng KÈM cả bản ghi đã xoá mềm (cho admin recovery + thống kê tổng).</summary>
+    IQueryable<InterviewSession> QueryIncludingDeleted();
+
     /// <summary>Lấy 1 phiên (không kèm chat) — dùng cho soft delete.</summary>
     Task<InterviewSession?> GetByIdAsync(Guid id, bool tracking = false, CancellationToken cancellationToken = default);
 

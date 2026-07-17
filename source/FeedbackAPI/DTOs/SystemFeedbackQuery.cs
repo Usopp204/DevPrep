@@ -13,6 +13,13 @@ public class SystemFeedbackQuery
     public Guid? UserId { get; set; }
     public DateTime? DateFrom { get; set; }
     public DateTime? DateTo { get; set; }
+
+    /// <summary>true = kèm cả bản ghi đã xoá mềm (cho admin xem/khôi phục).</summary>
+    public bool IncludeDeleted { get; set; } = false;
+
+    /// <summary>true = CHỈ lấy bản ghi đã xoá mềm (trang "Show deleted" của admin). Ưu tiên hơn IncludeDeleted.</summary>
+    public bool OnlyDeleted { get; set; } = false;
+
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 20;
 }

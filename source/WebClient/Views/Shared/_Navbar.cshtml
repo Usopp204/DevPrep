@@ -49,6 +49,15 @@
                             <span class="hm-dropdown-avatar">@navInitial</span>
                             <span class="hm-dropdown-email">@navEmail</span>
                         </div>
+                        @if (!navIsAdmin)
+                        {
+                            @* Số credit hiện có — JS fetch /Profile/CreditBalance mỗi lần mở dropdown. Bấm vào -> Credit History. *@
+                            <a class="hm-dropdown-item hm-dropdown-credits" asp-controller="Profile" asp-action="CreditHistory" role="menuitem">
+                                <span class="material-symbols-outlined" style="color:#F9D949; font-variation-settings:'FILL' 1;">toll</span>
+                                Credits
+                                <span class="hm-credit-value" id="hm-credit-value">…</span>
+                            </a>
+                        }
                         <a class="hm-dropdown-item" asp-controller="Profile" asp-action="Index" role="menuitem">
                             <span class="material-symbols-outlined">person</span> View Profile
                         </a>
@@ -88,11 +97,23 @@
         // Dropdown avatar
         const btn = document.getElementById('hm-avatar-btn');
         const menu = document.getElementById('hm-user-menu');
+
+        // Nạp số credit vào dropdown (user thường mới có dòng Credits).
+        function loadCredits() {
+            const el = document.getElementById('hm-credit-value');
+            if (!el) return;
+            fetch('/Profile/CreditBalance', { headers: { 'Accept': 'application/json' } })
+                .then(r => r.ok ? r.json() : Promise.reject())
+                .then(d => { el.textContent = Number(d.balance).toLocaleString('en-US'); })
+                .catch(() => { el.textContent = '—'; });
+        }
+
         if (btn && menu) {
             btn.addEventListener('click', function (e) {
                 e.stopPropagation();
                 const open = menu.classList.toggle('open');
                 btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+                if (open) loadCredits(); // refresh mỗi lần mở (credit đổi sau mỗi phiên phỏng vấn)
             });
             document.addEventListener('click', function (e) {
                 if (!menu.contains(e.target)) { menu.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); }

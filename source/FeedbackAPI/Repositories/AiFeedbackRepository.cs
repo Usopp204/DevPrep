@@ -17,6 +17,10 @@ public class AiFeedbackRepository : IAiFeedbackRepository
     public IQueryable<InterviewFeedback> Query() =>
         _db.InterviewFeedbacks.AsNoTracking().Where(f => !f.IsDeleted);
 
+    // Kèm cả bản ghi đã xoá mềm — cho admin xem/khôi phục.
+    public IQueryable<InterviewFeedback> QueryIncludingDeleted() =>
+        _db.InterviewFeedbacks.AsNoTracking();
+
     public Task<InterviewFeedback?> GetByIdAsync(Guid id, bool tracking = false)
     {
         IQueryable<InterviewFeedback> query = _db.InterviewFeedbacks;

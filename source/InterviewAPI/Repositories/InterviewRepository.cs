@@ -17,6 +17,10 @@ public class InterviewRepository : IInterviewRepository
     public IQueryable<InterviewSession> Query() =>
         _db.InterviewSessions.AsNoTracking().Where(s => !s.IsDeleted);
 
+    // Kèm cả bản ghi đã xoá mềm — cho admin xem/khôi phục và đếm tổng phiên.
+    public IQueryable<InterviewSession> QueryIncludingDeleted() =>
+        _db.InterviewSessions.AsNoTracking();
+
     public Task<InterviewSession?> GetByIdAsync(Guid id, bool tracking = false, CancellationToken cancellationToken = default)
     {
         IQueryable<InterviewSession> query = _db.InterviewSessions;
@@ -24,10 +28,11 @@ public class InterviewRepository : IInterviewRepository
         return query.FirstOrDefaultAsync(s => s.SessionId == id, cancellationToken);
     }
 
+    // KHÔNG lọc IsDeleted: admin cần xem lại chi tiết phiên đã xoá trước khi khôi phục
+    // (DTO trả về có sẵn cờ IsDeleted/DeletedAt để UI phân biệt).
     public Task<InterviewSession?> GetDetailAsync(Guid id, CancellationToken cancellationToken = default) =>
         _db.InterviewSessions
             .AsNoTracking()
-            .Where(s => !s.IsDeleted)
             .Include(s => s.InterviewRoom)
             .Include(s => s.SessionQuestions)
                 .ThenInclude(q => q.ChatMessages)

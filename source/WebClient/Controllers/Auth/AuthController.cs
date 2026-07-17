@@ -11,8 +11,13 @@ public class AuthController(IAuthService authService) : Controller
 {
     // ============================ Login ============================
     [HttpGet]
-    public IActionResult Login()
+    public IActionResult Login(string? blocked = null)
     {
+        // ?blocked=1: BlockedAccountMiddleware vừa đăng xuất cưỡng bức vì tài khoản bị khoá giữa phiên.
+        if (blocked == "1")
+        {
+            ModelState.AddModelError(string.Empty, "Your account has been blocked. Please contact support.");
+        }
         return View(new LoginViewModel());
     }
 

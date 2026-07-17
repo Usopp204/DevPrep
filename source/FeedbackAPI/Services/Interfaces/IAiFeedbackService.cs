@@ -12,4 +12,7 @@ public interface IAiFeedbackService
 
     /// <summary>Xoá mềm (IsDeleted = true). Trả false nếu không tìm thấy hoặc đã xoá.</summary>
     Task<bool> SoftDeleteAsync(Guid id);
+
+    /// <summary>Khôi phục bản ghi đã xoá mềm (IsDeleted = false). Trả false nếu không tìm thấy hoặc chưa bị xoá.</summary>
+    Task<bool> RestoreAsync(Guid id);
 }

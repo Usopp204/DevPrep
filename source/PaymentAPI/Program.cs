@@ -183,6 +183,57 @@ app.MapGet("/credits/balance", async (HttpContext ctx, IWalletRepository walletR
     });
 });
 
+// --- GET /credits/ledger ---
+// Lịch sử biến động credit của user (bảng CreditLedger): Usage (trừ khi phỏng vấn, CreditChange âm),
+// Purchase (mua gói, dương), Refund (hoàn, dương). Lọc ?type=Usage|Purchase|Refund, phân trang.
+app.MapGet("/credits/ledger", async (
+    HttpContext ctx, PaymentDbContext db,
+    string? type = null, int page = 1, int pageSize = 10) =>
+{
+    var userIdStr = ctx.Request.Headers["X-User-Id"].FirstOrDefault();
+    if (!Guid.TryParse(userIdStr, out var userId))
+        return Results.BadRequest("Missing or invalid X-User-Id header.");
+
+    page = Math.Max(page, 1);
+    pageSize = Math.Clamp(pageSize, 1, 50);
+
+    var query = db.Set<CreditLedgerEntry>().AsNoTracking().Where(l => l.UserId == userId);
+    if (!string.IsNullOrWhiteSpace(type))
+        query = query.Where(l => l.EntryType == type);
+
+    var totalCount = await query.CountAsync();
+
+    // Tổng theo loại (trên TOÀN BỘ ledger của user, không theo filter) cho các stat card.
+    var allOfUser = db.Set<CreditLedgerEntry>().AsNoTracking().Where(l => l.UserId == userId);
+    var totalUsed = await allOfUser.Where(l => l.EntryType == "Usage").SumAsync(l => (int?)-l.CreditChange) ?? 0;
+    var totalRefunded = await allOfUser.Where(l => l.EntryType == "Refund").SumAsync(l => (int?)l.CreditChange) ?? 0;
+
+    var items = await query
+        .OrderByDescending(l => l.CreatedAt)
+        .Skip((page - 1) * pageSize).Take(pageSize)
+        .Select(l => new
+        {
+            l.LedgerId,
+            l.EntryType,
+            l.CreditChange,
+            l.BalanceAfter,
+            l.ReferenceId,
+            l.Description,
+            l.CreatedAt
+        })
+        .ToListAsync();
+
+    return Results.Ok(new
+    {
+        TotalCount = totalCount,
+        Page = page,
+        PageSize = pageSize,
+        TotalUsed = totalUsed,
+        TotalRefunded = totalRefunded,
+        Items = items
+    });
+});
+
 // --- Admin: GET /admin/credit-packages ---
 app.MapGet("/admin/credit-packages", async (ICreditPackageRepository repo) =>
 {
@@ -365,6 +416,44 @@ app.MapGet("/admin/payments/revenue-report", async (
         PackagesSold = packagesSold,
         TotalRevenue = totalRevenue,
         TotalCredits = totalCredits
+    });
+});
+
+// --- Admin: GET /admin/payments/revenue-daily ---
+// Doanh thu theo TỪNG NGÀY trong khoảng [from..to] (yyyy-MM-dd, inclusive) — phục vụ chart dashboard.
+// Cùng quy ước với revenue-report: chỉ tính Orders Status='Paid', mốc thời gian theo PaidAt (giờ VN).
+app.MapGet("/admin/payments/revenue-daily", async (
+    PaymentDbContext db,
+    DateTime? from = null, DateTime? to = null) =>
+{
+    var now = DateTime.UtcNow.AddHours(7); // giờ Việt Nam, khớp quy ước chung của codebase
+    var rangeFrom = (from ?? now.Date.AddDays(-29)).Date;   // mặc định: 30 ngày gần nhất
+    var rangeToInclusive = (to ?? now.Date).Date;
+    if (rangeToInclusive < rangeFrom)
+        (rangeFrom, rangeToInclusive) = (rangeToInclusive, rangeFrom);
+    var rangeTo = rangeToInclusive.AddDays(1);              // exclusive
+
+    var days = await db.Orders.AsNoTracking()
+        .Where(o => o.Status == "Paid" && o.PaidAt >= rangeFrom && o.PaidAt < rangeTo)
+        .GroupBy(o => o.PaidAt!.Value.Date)
+        .Select(g => new
+        {
+            Date = g.Key,
+            Revenue = g.Sum(x => x.Amount),
+            Orders = g.Count(),
+            Credits = g.Sum(x => x.Credits)
+        })
+        .OrderBy(d => d.Date)
+        .ToListAsync();
+
+    return Results.Ok(new
+    {
+        From = rangeFrom,
+        To = rangeToInclusive,
+        TotalRevenue = days.Sum(d => d.Revenue),
+        TotalOrders = days.Sum(d => d.Orders),
+        TotalCredits = days.Sum(d => d.Credits),
+        Days = days
     });
 });
 

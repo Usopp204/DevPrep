@@ -5,12 +5,12 @@ using WebClient.Services.Admin;
 
 namespace WebClient.Controllers.Admin;
 
-public class AdminController(IAdminService adminService) : Controller
+public class AdminController(IAdminService adminService, IAdminDashboardService dashboardService) : Controller
 {
     // Claim role trong JWT do AuthAPI phát (chuẩn ClaimTypes.Role).
     private const string RoleClaim = "http://schemas.microsoft.com/ws/2008/06/identity/claims/role";
 
-    public IActionResult Index()
+    public async Task<IActionResult> Index()
     {
         // Chỉ tài khoản Admin mới vào được khu Admin (Manager KHÔNG được vào).
         if (!IsAdminRole())
@@ -19,7 +19,26 @@ public class AdminController(IAdminService adminService) : Controller
             return RedirectToAction("Login", "Auth");
         }
 
-        return View();
+        // Số liệu thật (best-effort: nguồn nào lỗi thì card hiện "—").
+        var model = await dashboardService.GetStatsAsync(HttpContext.RequestAborted);
+        return View(model);
+    }
+
+    // AJAX same-origin cho chart doanh thu theo khoảng ngày (from/to yyyy-MM-dd).
+    [HttpGet]
+    public async Task<IActionResult> RevenueSeries(DateTime? from, DateTime? to)
+    {
+        if (!IsAdminRole()) return Unauthorized(new { success = false, message = "Admin only." });
+
+        var nowVn = DateTime.UtcNow.AddHours(7).Date;
+        var f = (from ?? new DateTime(nowVn.Year, nowVn.Month, 1)).Date;
+        var t = (to ?? nowVn).Date;
+
+        var result = await dashboardService.GetRevenueDailyAsync(f, t, HttpContext.RequestAborted);
+        if (result is null)
+            return StatusCode(502, new { success = false, message = "Cannot reach PaymentAPI. Make sure the gateway and PaymentAPI are running." });
+
+        return Json(new { success = true, data = result });
     }
 
     // Trang quản lý AI / Interview Feedback. Guard UI: chỉ Admin/Manager; backend cũng tự chặn quyền.

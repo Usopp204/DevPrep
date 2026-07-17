@@ -49,4 +49,14 @@ public class AdminInterviewController : ControllerBase
         if (!ok) return NotFound(ApiResponse<object>.Fail("Interview session not found or already deleted."));
         return Ok(ApiResponse<object>.Ok(new { id }, "Interview session deleted (soft) successfully."));
     }
+
+    /// <summary>Khôi phục một phiên phỏng vấn đã xoá mềm. Chỉ Admin.</summary>
+    [HttpPost("{id:guid}/restore")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Restore(Guid id, CancellationToken cancellationToken)
+    {
+        var ok = await _service.RestoreAsync(id, cancellationToken);
+        if (!ok) return NotFound(ApiResponse<object>.Fail("Interview session not found or not deleted."));
+        return Ok(ApiResponse<object>.Ok(new { id }, "Interview session restored successfully."));
+    }
 }
