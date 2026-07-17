@@ -55,6 +55,7 @@ builder.Services.AddScoped<IQuestionService, QuestionService>();
 
 builder.Services.AddScoped<IAdminQuestionRepository, AdminQuestionRepository>();
 builder.Services.AddScoped<IAdminQuestionService, AdminQuestionService>();
+builder.Services.AddScoped<InternalQuestionService>();
 
 // ── Controllers & Swagger ─────────────────────────────────────────────────────
 builder.Services.AddControllers();

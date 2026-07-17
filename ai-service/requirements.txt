@@ -15,6 +15,9 @@ pytesseract
 # --- Retrieval / embeddings (chroma_store.py) ---
 chromadb>=0.5
 sentence-transformers>=3.0
+# Question source: QuestionAPI internal export (chroma_store.index_from_api).
+# Was only a transitive dep before — declared explicitly now that our code imports it.
+requests>=2.31
 
 # --- Models (interviewer.py, CV/JD parser) ---
 # Install torch matching your CUDA build, e.g. from https://pytorch.org for WSL+NVIDIA.

@@ -75,3 +75,4 @@ ai-service/chroma_data/
 CLAUDE.md
 infra/cloudflared.deb
 ai-service/chroma_data_docker/
+ai-service/chroma_data_backup/
