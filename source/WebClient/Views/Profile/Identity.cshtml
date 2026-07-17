@@ -1,0 +1,215 @@
+@model WebClient.Models.Profile.BiometricsViewModel
+@{
+    Layout = null;
+    ViewData["ProfileActive"] = "identity";
+    var bothEnrolled = Model.Status.FaceEnrolled && Model.Status.VoiceEnrolled;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Identity Verification | DevPrep AI</title>
+    <link rel="stylesheet" href="~/css/biometric-wizard.css" asp-append-version="true" />
+</head>
+<body class="bw-page">
+<div id="wizard-app"
+     data-enroll-face-url="@Url.Action("EnrollFace", "Profile")"
+     data-enroll-voice-url="@Url.Action("EnrollVoice", "Profile")"
+     data-challenge-url="@Url.Action("Challenge", "Verification")"
+     data-verify-face-url="@Url.Action("VerifyFace", "Verification")"
+     data-verify-voice-url="@Url.Action("VerifyVoice", "Verification")"
+     data-profile-url="@Url.Action("Index", "Profile")">
+
+    <div class="stage">
+
+        <!-- ════════════ SCREEN 0 · GUIDE (light centered card) ════════════ -->
+        <section class="screen" id="screen-guide">
+            <div class="card">
+                <div class="brand"><div class="logo">D</div><span>DevPrep</span></div>
+
+                <div class="g-hero" aria-hidden="true">
+                    <div class="orbit"></div>
+                    <div class="ic">
+                        <svg width="30" height="30" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="#4F46E5" stroke-width="2"/><path d="M4 20c0-3.3 3.6-5 8-5s8 1.7 8 5" stroke="#4F46E5" stroke-width="2" stroke-linecap="round"/></svg>
+                    </div>
+                    <div class="arrow">→</div>
+                    <div class="ic">
+                        <svg width="30" height="30" viewBox="0 0 24 24" fill="none"><rect x="9" y="3" width="6" height="12" rx="3" stroke="#7C3AED" stroke-width="2"/><path d="M6 11a6 6 0 0 0 12 0M12 17v3" stroke="#7C3AED" stroke-width="2" stroke-linecap="round"/></svg>
+                    </div>
+                </div>
+
+                <h1 id="guide-title" tabindex="-1">Verify your identity</h1>
+                <p class="sub">Two quick steps to confirm it's really you. Takes about a minute.</p>
+
+                @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+                {
+                    <div class="banner-error" role="alert">@Model.ErrorMessage</div>
+                }
+
+                <div class="steps2">
+                    <div class="s">
+                        <div class="n">1</div>
+                        <div>
+                            <div class="t">Face scan</div>
+                            <div class="d">@(Model.Status.FaceEnrolled ? "Enrolled ✓ — redo replaces it" : "Look at the camera")</div>
+                        </div>
+                    </div>
+                    <div class="s">
+                        <div class="n">2</div>
+                        <div>
+                            <div class="t">Voice check</div>
+                            <div class="d">@(Model.Status.VoiceEnrolled ? "Enrolled ✓ — redo replaces it" : "Read a short phrase")</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pills">
+                    <div class="pill" id="perm-camera" data-state="pending"><span class="k"></span><span id="perm-camera-label">Camera…</span></div>
+                    <div class="pill" id="perm-mic" data-state="pending"><span class="k"></span><span id="perm-mic-label">Microphone…</span></div>
+                </div>
+                <button type="button" class="btn ghost grant" id="grant-btn" hidden>Allow camera &amp; microphone</button>
+                <p class="perm-help" id="perm-help" role="status" hidden></p>
+
+                <label class="consent" for="consent-checkbox">
+                    <input type="checkbox" id="consent-checkbox" />
+                    <span class="box" aria-hidden="true">✓</span>
+                    <p>Only your biometric signature (a mathematical vector) is stored — never your photo
+                       or recording. Complies with Decree 13/2023/ND-CP. You can re-enroll at any time.</p>
+                </label>
+
+                <button type="button" class="btn" id="start-btn" disabled>Get started</button>
+                <a class="back" href="@Url.Action("Index", "Profile")">← Back to profile</a>
+            </div>
+
+            @if (bothEnrolled)
+            {
+                <!-- TEMPORARY (Milestone 2): drives verification mode for testing.
+                     Removed in Milestone 4 when the wizard is wired into the Room entry gate. -->
+                <div class="card test-card">
+                    <div class="test-head">
+                        <span class="t">Test verification</span>
+                        <span class="tag">temporary · M2</span>
+                    </div>
+                    @if (Model.RecentSessions.Count == 0)
+                    {
+                        <p class="test-note">No interview sessions yet — start one first, then come back to test.</p>
+                    }
+                    else
+                    {
+                        <p class="test-note">Runs the live face + voice challenge against one of your sessions.</p>
+                        <div class="test-row">
+                            <select id="verify-session-select" class="select" aria-label="Interview session">
+                                @foreach (var session in Model.RecentSessions)
+                                {
+                                    <option value="@session.SessionId">
+                                        @(string.IsNullOrWhiteSpace(session.Title) ? session.Position : session.Title)
+                                        — @session.Status (@session.CreatedAt.ToString("dd/MM HH:mm"))
+                                    </option>
+                                }
+                            </select>
+                            <button type="button" class="btn ghost small" id="verify-start-btn">Run test</button>
+                        </div>
+                    }
+                </div>
+            }
+        </section>
+
+        <!-- ════════════ SCREEN 1 · FACE (dark immersive camera) ════════════ -->
+        <section class="screen" id="screen-face" hidden>
+            <div class="face">
+                <div class="topbar">
+                    <div class="stepper on-dark">
+                        <div class="dot"><span class="bead now">1</span><span class="lbl">Face</span></div>
+                        <span class="seg"></span>
+                        <div class="dot"><span class="bead">2</span></div>
+                    </div>
+                    <button type="button" class="x" id="face-exit-btn" aria-label="Exit to guide">✕</button>
+                </div>
+                <h1 class="sr-only" id="face-title" tabindex="-1">Face check</h1>
+
+                <div class="camera">
+                    <video id="bw-video" autoplay playsinline muted></video>
+                    <div class="mask"></div>
+                    <div class="oval" id="face-oval"></div>
+                    <div class="scanline" id="face-scanline" hidden></div>
+                    <div class="count" id="face-countdown" hidden>3</div>
+                    <div class="cam-overlay" id="face-processing" hidden>
+                        <div class="spinner" aria-hidden="true"></div>
+                        <p>Analyzing…</p>
+                    </div>
+                    <div class="guide-pill" id="face-guidance" role="status" aria-live="polite">Preparing camera…</div>
+                </div>
+
+                <p class="err" id="face-error" role="alert" hidden></p>
+                <div class="cta-row">
+                    <button type="button" class="btn" id="face-action-btn">I'm ready</button>
+                </div>
+                <p class="hint-dark">Keep your face inside the oval and hold steady</p>
+            </div>
+        </section>
+
+        <!-- ════════════ SCREEN 2 · VOICE (audio world) ════════════ -->
+        <section class="screen" id="screen-voice" hidden>
+            <div class="voice" id="voice-card">
+                <div class="topbar">
+                    <div class="stepper on-dark">
+                        <div class="dot"><span class="bead done">✓</span><span class="lbl">Face</span></div>
+                        <span class="seg done"></span>
+                        <div class="dot"><span class="bead now">2</span><span class="lbl">Voice</span></div>
+                    </div>
+                    <button type="button" class="x" id="voice-exit-btn" aria-label="Exit to guide">✕</button>
+                </div>
+                <h1 class="sr-only" id="voice-title" tabindex="-1">Voice check</h1>
+
+                <div class="phrase">
+                    <div class="lab" id="voice-phrase-label">Read this aloud</div>
+                    <div class="txt" id="voice-phrase">…</div>
+                </div>
+
+                <div class="orb-wrap">
+                    <span class="ring r1"></span><span class="ring r2"></span><span class="ring r3"></span>
+                    <div class="orb">
+                        <div class="bars" id="voice-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+                    </div>
+                </div>
+
+                <div class="timer">
+                    <span id="voice-timer-value">0:00</span>
+                    <small id="voice-timer-note">/ ready</small>
+                </div>
+                <p class="voice-note" id="voice-guidance" role="status" aria-live="polite"></p>
+                <p class="err" id="voice-error" role="alert" hidden></p>
+
+                <button type="button" class="btn" id="voice-record-btn">Start recording</button>
+                <button type="button" class="btn dark" id="voice-stop-btn" hidden>Stop &amp; submit</button>
+
+                <div class="cam-overlay card-overlay" id="voice-processing" hidden>
+                    <div class="spinner" aria-hidden="true"></div>
+                    <p>Analyzing…</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ════════════ SCREEN 3 · COMPLETION (light success) ════════════ -->
+        <section class="screen" id="screen-done" hidden>
+            <div class="done">
+                <div class="check" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+                </div>
+                <h1 id="done-title" tabindex="-1">You're verified</h1>
+                <p class="sub done-sub" id="done-message">Your identity has been confirmed successfully.</p>
+                <div class="chips">
+                    <span class="chip">Face ✓</span>
+                    <span class="chip">Voice ✓</span>
+                </div>
+                <div class="heard" id="done-transcript" hidden></div>
+                <button type="button" class="btn" id="done-cta">Continue</button>
+            </div>
+        </section>
+
+    </div>
+</div>
+<script src="~/js/pages/biometric-wizard.js" asp-append-version="true"></script>
+</body>
+</html>

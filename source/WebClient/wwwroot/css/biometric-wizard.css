@@ -1,0 +1,738 @@
+/* ============================================================================
+   Biometric verification wizard — ported from .claude/biometric-wizard-mockup.html
+   (design source of truth). Four deliberately distinct full screens:
+   Guide (light card) → Face (dark camera) → Voice (audio orb) → Done (light success).
+   Only one .screen is rendered at a time ([hidden] => display:none).
+   ============================================================================ */
+
+:root {
+    --indigo: #4F46E5; --violet: #7C3AED; --indigo-600: #4338CA;
+    --navy: #0B1020; --navy-2: #0F1530; --navy-3: #161d3d;
+    --ink: #0F172A; --muted: #64748B; --line: #E6E8F0;
+    --surface: #FFFFFF; --app: #F5F6FB;
+    --emerald: #10B981; --rose: #F43F5E; --amber: #F59E0B;
+    --on-dark: #E8ECF6; --on-dark-muted: #9AA3C4;
+    --radius: 24px; --radius-sm: 14px;
+    --shadow: 0 20px 50px -20px rgba(31, 38, 89, .35);
+    --grad: linear-gradient(135deg, var(--indigo), var(--violet));
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+.bw-page {
+    font-family: var(--font);
+    background: var(--app);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+}
+
+.stage {
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+}
+
+/* One screen at a time; unhiding restarts the entrance animation. */
+.screen { display: none; width: 100%; max-width: 460px; }
+
+.screen:not([hidden]) {
+    display: block;
+    animation: rise .4s cubic-bezier(.2, .7, .2, 1);
+}
+
+@keyframes rise {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: none; }
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    margin: -1px; padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+    outline: none;
+}
+
+/* ---------------- shared stepper ---------------- */
+
+.stepper { display: flex; align-items: center; gap: 10px; }
+
+.stepper .dot { display: flex; align-items: center; gap: 8px; font: 600 12.5px/1 var(--font); }
+
+.stepper .bead {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    display: grid; place-items: center;
+    font: 700 11px/1 var(--font);
+    border: 2px solid var(--line);
+    color: var(--muted);
+    background: #fff;
+}
+
+.stepper .bead.done { background: var(--emerald); border-color: var(--emerald); color: #fff; }
+
+.stepper .bead.now {
+    background: var(--grad);
+    border-color: transparent;
+    color: #fff;
+    box-shadow: 0 6px 16px -4px rgba(79, 70, 229, .6);
+}
+
+.stepper .seg { width: 34px; height: 2px; background: var(--line); border-radius: 2px; }
+.stepper .seg.done { background: var(--emerald); }
+
+.stepper.on-dark .bead { background: transparent; border-color: #33406f; color: var(--on-dark-muted); }
+.stepper.on-dark .bead.done { background: var(--emerald); border-color: var(--emerald); color: #fff; }
+.stepper.on-dark .bead.now { background: var(--grad); border-color: transparent; color: #fff; }
+.stepper.on-dark .seg { background: #2a355e; }
+.stepper.on-dark .seg.done { background: var(--emerald); }
+.stepper.on-dark .lbl { color: var(--on-dark); }
+
+/* ---------------- buttons ---------------- */
+
+.btn {
+    width: 100%;
+    border: 0;
+    border-radius: 16px;
+    padding: 16px;
+    font: 700 15px/1 var(--font);
+    cursor: pointer;
+    background: var(--grad);
+    color: #fff;
+    box-shadow: 0 14px 30px -12px rgba(79, 70, 229, .7);
+    transition: transform .15s, filter .15s;
+}
+
+.btn:hover { filter: brightness(1.05); }
+.btn:active { transform: translateY(1px); }
+.btn:focus-visible { outline: 3px solid rgba(79, 70, 229, .4); outline-offset: 2px; }
+
+.btn[disabled] {
+    background: #E2E5F0;
+    color: #9AA1B8;
+    box-shadow: none;
+    cursor: not-allowed;
+}
+
+.btn.ghost { background: #fff; color: var(--ink); border: 1.5px solid var(--line); box-shadow: none; }
+
+.btn.dark {
+    background: rgba(255, 255, 255, .1);
+    color: #fff;
+    border: 1.5px solid rgba(255, 255, 255, .22);
+    box-shadow: none;
+    backdrop-filter: blur(6px);
+}
+
+.btn.dark[disabled] { background: rgba(255, 255, 255, .05); color: #5d6795; border-color: rgba(255, 255, 255, .1); }
+
+.btn.grant { margin-bottom: 14px; padding: 13px; font-size: 13.5px; }
+
+.btn.small { width: auto; padding: 12px 18px; font-size: 13px; border-radius: 12px; }
+
+/* ================= SCREEN 0 — GUIDE ================= */
+
+.card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 30px 26px;
+}
+
+.brand { display: flex; align-items: center; gap: 9px; justify-content: center; margin-bottom: 20px; }
+
+.brand .logo {
+    width: 30px; height: 30px;
+    border-radius: 9px;
+    background: var(--grad);
+    display: grid; place-items: center;
+    color: #fff;
+    font: 800 15px/1 var(--font);
+}
+
+.brand span { font: 700 15px/1 var(--font); letter-spacing: -.01em; }
+
+.g-hero {
+    height: 150px;
+    border-radius: 18px;
+    background:
+        radial-gradient(120px 90px at 30% 40%, rgba(124, 58, 237, .16), transparent 70%),
+        radial-gradient(120px 90px at 72% 60%, rgba(79, 70, 229, .16), transparent 70%),
+        #F3F1FE;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 26px;
+    margin-bottom: 22px;
+    position: relative;
+    overflow: hidden;
+}
+
+.g-hero .orbit {
+    position: absolute;
+    inset: 0;
+    background: conic-gradient(from 0deg, transparent, rgba(124, 58, 237, .08), transparent 40%);
+    animation: spin 8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.g-hero .ic {
+    width: 64px; height: 64px;
+    border-radius: 18px;
+    background: #fff;
+    box-shadow: 0 12px 26px -12px rgba(31, 38, 89, .4);
+    display: grid; place-items: center;
+    position: relative;
+    z-index: 1;
+    animation: bob 3s ease-in-out infinite;
+}
+
+.g-hero .ic:nth-child(4) { animation-delay: .6s; }
+
+@keyframes bob {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-7px); }
+}
+
+.g-hero .arrow { color: #B9B4E8; font-size: 20px; z-index: 1; }
+
+.card h1 {
+    font: 800 24px/1.15 var(--font);
+    letter-spacing: -.02em;
+    text-align: center;
+    margin-bottom: 8px;
+    outline: none;
+}
+
+.sub { color: var(--muted); text-align: center; font-size: 14.5px; line-height: 1.5; margin-bottom: 22px; }
+
+.banner-error {
+    background: #FFF1F2;
+    border: 1px solid #fecdd3;
+    color: #be123c;
+    border-radius: 12px;
+    padding: 11px 13px;
+    font: 500 12.5px/1.4 var(--font);
+    margin-bottom: 16px;
+}
+
+.steps2 { display: flex; gap: 12px; margin-bottom: 20px; }
+
+.steps2 .s {
+    flex: 1;
+    border: 1.5px solid var(--line);
+    border-radius: 16px;
+    padding: 14px;
+    display: flex;
+    gap: 11px;
+    align-items: center;
+}
+
+.steps2 .n {
+    width: 26px; height: 26px;
+    border-radius: 8px;
+    background: #EEF0FB;
+    color: var(--indigo);
+    font: 800 12px/1 var(--font);
+    display: grid; place-items: center;
+    flex: none;
+}
+
+.steps2 .t { font: 700 13px/1.2 var(--font); }
+.steps2 .d { font: 500 11.5px/1.3 var(--font); color: var(--muted); margin-top: 3px; }
+
+.pills { display: flex; gap: 8px; margin-bottom: 16px; }
+
+.pill {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-radius: 12px;
+    padding: 10px 12px;
+    font: 600 12.5px/1 var(--font);
+}
+
+.pill .k { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; }
+
+.pill[data-state="ready"]   { background: #F0FDF6; color: #0f9d63; border: 1px solid #CFF3E0; }
+.pill[data-state="pending"] { background: #F4F5FA; color: var(--muted); border: 1px solid var(--line); }
+.pill[data-state="blocked"] { background: #FFF1F2; color: #e11d48; border: 1px solid #fecdd3; }
+
+.perm-help { font: 500 11.5px/1.5 var(--font); color: #be123c; margin: -6px 0 14px; }
+
+.consent {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    background: #FAFAFF;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 12px;
+    margin-bottom: 18px;
+    cursor: pointer;
+}
+
+.consent input {
+    position: absolute;
+    width: 1px; height: 1px;
+    opacity: 0;
+}
+
+.consent .box {
+    width: 18px; height: 18px;
+    border-radius: 6px;
+    background: #E9EBF5;
+    border: 1.5px solid #d5d9ec;
+    flex: none;
+    display: grid; place-items: center;
+    color: transparent;
+    font-size: 11px;
+    margin-top: 1px;
+    transition: background .15s, color .15s;
+}
+
+.consent input:checked ~ .box {
+    background: var(--grad);
+    border-color: transparent;
+    color: #fff;
+}
+
+.consent input:focus-visible ~ .box { outline: 3px solid rgba(79, 70, 229, .4); outline-offset: 1px; }
+
+.consent p { font: 500 11.5px/1.5 var(--font); color: var(--muted); }
+
+.back {
+    display: block;
+    text-align: center;
+    margin-top: 14px;
+    color: var(--muted);
+    font: 600 12.5px/1 var(--font);
+    text-decoration: none;
+}
+
+.back:hover { color: var(--ink); }
+
+/* Temporary M2 test card (below the guide card) */
+.test-card { margin-top: 16px; padding: 20px 22px; }
+
+.test-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.test-head .t { font: 700 13.5px/1 var(--font); }
+
+.test-head .tag {
+    font: 700 10px/1 var(--font);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--amber);
+    border: 1px solid rgba(245, 158, 11, .4);
+    border-radius: 999px;
+    padding: 4px 9px;
+}
+
+.test-note { font: 500 12px/1.5 var(--font); color: var(--muted); margin-bottom: 12px; }
+
+.test-row { display: flex; gap: 8px; align-items: stretch; }
+
+.select {
+    flex: 1;
+    min-width: 0;
+    border: 1.5px solid var(--line);
+    border-radius: 12px;
+    padding: 10px 12px;
+    font: 500 12.5px/1.3 var(--font);
+    color: var(--ink);
+    background: #fff;
+}
+
+.select:focus-visible { outline: 3px solid rgba(79, 70, 229, .4); outline-offset: 1px; }
+
+/* ================= SCREEN 1 — FACE (dark, immersive) ================= */
+
+.face {
+    background: radial-gradient(120% 90% at 50% -10%, #1a2350, var(--navy));
+    border-radius: var(--radius);
+    padding: 22px;
+    color: var(--on-dark);
+    box-shadow: var(--shadow);
+    position: relative;
+    overflow: hidden;
+}
+
+.topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+
+.topbar .x {
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .08);
+    border: 1px solid rgba(255, 255, 255, .14);
+    color: #fff;
+    display: grid; place-items: center;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.topbar .x:focus-visible { outline: 3px solid rgba(124, 58, 237, .6); outline-offset: 2px; }
+
+.camera {
+    position: relative;
+    height: 360px;
+    border-radius: 20px;
+    overflow: hidden;
+    background: radial-gradient(70% 60% at 50% 42%, #3a4680, #141a3a 75%);
+}
+
+.camera video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1); /* mirror the preview like a selfie camera */
+}
+
+.camera .mask {
+    position: absolute;
+    inset: 0;
+    background: rgba(11, 16, 32, .55);
+    -webkit-mask: radial-gradient(120px 155px at 50% 45%, transparent 98%, #000 100%);
+    mask: radial-gradient(120px 155px at 50% 45%, transparent 98%, #000 100%);
+}
+
+.oval {
+    position: absolute;
+    left: 50%; top: 45%;
+    transform: translate(-50%, -50%);
+    width: 236px; height: 306px;
+    border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, .35);
+    box-shadow: 0 0 0 2px rgba(124, 58, 237, .25);
+    pointer-events: none;
+}
+
+.oval.scanning {
+    border-color: var(--violet);
+    box-shadow: 0 0 30px rgba(124, 58, 237, .55);
+    animation: pulse 1.6s ease-in-out infinite;
+}
+
+.oval.success { border-color: var(--emerald); box-shadow: 0 0 30px rgba(16, 185, 129, .55); animation: none; }
+.oval.error   { border-color: var(--rose); box-shadow: 0 0 24px rgba(244, 63, 94, .45); animation: none; }
+
+@keyframes pulse {
+    0%, 100% { box-shadow: 0 0 24px rgba(124, 58, 237, .4); }
+    50%      { box-shadow: 0 0 44px rgba(124, 58, 237, .75); }
+}
+
+.scanline {
+    position: absolute;
+    left: 50%; top: 45%;
+    transform: translate(-50%, -50%);
+    width: 230px; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--violet), transparent);
+    animation: scan 2s ease-in-out infinite;
+    border-radius: 2px;
+    pointer-events: none;
+}
+
+@keyframes scan {
+    0%, 100% { margin-top: -150px; opacity: .2; }
+    50%      { margin-top: 150px; opacity: 1; }
+}
+
+.count {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    font: 800 64px/1 var(--font);
+    color: #fff;
+    text-shadow: 0 4px 30px rgba(0, 0, 0, .6);
+    pointer-events: none;
+    animation: countpop .8s cubic-bezier(.2, .7, .2, 1) infinite;
+}
+
+@keyframes countpop {
+    0%   { transform: scale(1.2); opacity: 0; }
+    30%  { transform: scale(1); opacity: 1; }
+    100% { transform: scale(.97); opacity: .9; }
+}
+
+.guide-pill {
+    position: absolute;
+    left: 50%; bottom: 18px;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    max-width: calc(100% - 24px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    background: rgba(255, 255, 255, .12);
+    border: 1px solid rgba(255, 255, 255, .2);
+    backdrop-filter: blur(8px);
+    padding: 9px 16px;
+    border-radius: 999px;
+    font: 600 13px/1 var(--font);
+    z-index: 2;
+}
+
+.face .cta-row { margin-top: 18px; }
+
+.hint-dark { color: var(--on-dark-muted); text-align: center; font-size: 12.5px; margin-top: 12px; }
+
+.err {
+    color: #fda4af;
+    text-align: center;
+    font: 500 12.5px/1.5 var(--font);
+    margin-top: 14px;
+}
+
+/* Processing overlay (used inside .camera and over the voice card). */
+.cam-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    background: rgba(11, 16, 32, .78);
+    backdrop-filter: blur(6px);
+    font: 600 13.5px/1 var(--font);
+    color: var(--on-dark);
+}
+
+/* .cam-overlay sets display:flex unconditionally, which as an author-level rule
+   otherwise beats the UA [hidden]{display:none} rule regardless of the hidden
+   attribute — restore it explicitly so show()/hide() (JS toggling `hidden`) works. */
+.cam-overlay[hidden] { display: none; }
+
+.card-overlay { border-radius: var(--radius); }
+
+.spinner {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    border: 3px solid rgba(154, 163, 196, .3);
+    border-top-color: var(--violet);
+    animation: spinner .8s linear infinite;
+}
+
+@keyframes spinner { to { transform: rotate(360deg); } }
+
+/* ================= SCREEN 2 — VOICE (audio world, distinct) ================= */
+
+.voice {
+    background: radial-gradient(120% 90% at 50% 120%, #241a4d, var(--navy-2));
+    border-radius: var(--radius);
+    padding: 24px;
+    color: var(--on-dark);
+    box-shadow: var(--shadow);
+    position: relative;
+    overflow: hidden;
+}
+
+.phrase {
+    background: rgba(255, 255, 255, .06);
+    border: 1px solid rgba(255, 255, 255, .12);
+    border-radius: 18px;
+    padding: 18px;
+    text-align: center;
+    margin: 6px 0 26px;
+}
+
+.phrase .lab {
+    font: 700 11px/1 var(--font);
+    letter-spacing: .12em;
+    color: var(--on-dark-muted);
+    text-transform: uppercase;
+    margin-bottom: 9px;
+}
+
+.phrase .txt { font: 600 19px/1.4 var(--font); }
+
+.orb-wrap {
+    display: grid;
+    place-items: center;
+    height: 220px;
+    position: relative;
+}
+
+.ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 1.5px solid rgba(124, 58, 237, .35);
+    width: 150px; height: 150px;
+    opacity: .25;
+}
+
+/* Rings ripple only while actually recording. */
+.voice.recording .ring.r1 { animation: ripple 2.4s ease-out infinite; }
+.voice.recording .ring.r2 { animation: ripple 2.4s ease-out infinite .8s; }
+.voice.recording .ring.r3 { animation: ripple 2.4s ease-out infinite 1.6s; }
+
+@keyframes ripple {
+    0%   { transform: scale(.7); opacity: .8; }
+    100% { transform: scale(1.9); opacity: 0; }
+}
+
+.orb {
+    width: 118px; height: 118px;
+    border-radius: 50%;
+    background: var(--grad);
+    display: grid;
+    place-items: center;
+    box-shadow: 0 20px 50px -12px rgba(124, 58, 237, .7);
+    z-index: 1;
+}
+
+.bars { display: flex; gap: 4px; align-items: flex-end; height: 44px; }
+
+.bars i {
+    width: 5px;
+    height: 10px;             /* JS drives the height from the live analyser */
+    background: #fff;
+    border-radius: 3px;
+    opacity: .9;
+    transition: height .08s linear;
+}
+
+.timer {
+    text-align: center;
+    font: 700 15px/1 var(--font);
+    color: var(--on-dark);
+    margin: 20px 0 6px;
+    letter-spacing: .04em;
+}
+
+.timer small { color: var(--on-dark-muted); font-weight: 500; }
+
+.voice-note {
+    text-align: center;
+    color: var(--on-dark-muted);
+    font: 500 12.5px/1.5 var(--font);
+    min-height: 19px;
+    margin-bottom: 14px;
+}
+
+.voice .btn { margin-top: 4px; }
+.voice .btn + .btn { margin-top: 10px; }
+
+/* ================= SCREEN 3 — COMPLETION ================= */
+
+.done {
+    background: var(--surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 38px 26px;
+    text-align: center;
+}
+
+.done h1 {
+    font: 800 24px/1.15 var(--font);
+    letter-spacing: -.02em;
+    margin-bottom: 8px;
+    outline: none;
+}
+
+.done-sub { margin-bottom: 0; }
+
+.check {
+    width: 96px; height: 96px;
+    border-radius: 50%;
+    margin: 0 auto 22px;
+    background: linear-gradient(135deg, #10B981, #059669);
+    display: grid;
+    place-items: center;
+    box-shadow: 0 18px 40px -12px rgba(16, 185, 129, .6);
+    position: relative;
+}
+
+.check::after {
+    content: "";
+    position: absolute;
+    inset: -8px;
+    border-radius: 50%;
+    border: 2px solid rgba(16, 185, 129, .3);
+    animation: pop 1.8s ease-out infinite;
+}
+
+@keyframes pop {
+    0%   { transform: scale(.9); opacity: .7; }
+    100% { transform: scale(1.25); opacity: 0; }
+}
+
+.check svg { width: 48px; height: 48px; }
+
+.check path {
+    stroke: #fff;
+    stroke-width: 5;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 48;
+    stroke-dashoffset: 48;
+    animation: draw .6s .2s forwards ease-out;
+}
+
+@keyframes draw { to { stroke-dashoffset: 0; } }
+
+.chips { display: flex; gap: 10px; justify-content: center; margin: 20px 0 26px; }
+
+.chip {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    background: #F0FDF6;
+    color: #0f9d63;
+    border: 1px solid #CFF3E0;
+    border-radius: 999px;
+    padding: 8px 14px;
+    font: 700 12.5px/1 var(--font);
+}
+
+.heard {
+    background: #FAFAFF;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 11px;
+    margin-bottom: 22px;
+    font: 500 12.5px/1.4 var(--font);
+    color: var(--muted);
+}
+
+/* ---------------- lifecycle & preferences ---------------- */
+
+/* Looping animations pause while the tab is hidden (JS toggles the class). */
+.bw-anim-paused .orbit,
+.bw-anim-paused .ic,
+.bw-anim-paused .ring,
+.bw-anim-paused .oval,
+.bw-anim-paused .scanline,
+.bw-anim-paused .check::after { animation-play-state: paused !important; }
+
+@media (max-width: 500px) {
+    .stage { padding: 12px; }
+    .camera { height: 300px; }
+    .oval { width: 200px; height: 260px; }
+    .scanline { width: 194px; }
+    .camera .mask {
+        -webkit-mask: radial-gradient(100px 130px at 50% 45%, transparent 98%, #000 100%);
+        mask: radial-gradient(100px 130px at 50% 45%, transparent 98%, #000 100%);
+    }
+    .test-row { flex-direction: column; }
+    .test-row .btn.small { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .screen:not([hidden]),
+    .orbit, .ic, .ring, .oval, .scanline, .count,
+    .check::after, .check path, .spinner {
+        animation: none !important;
+    }
+    .check path { stroke-dashoffset: 0; }
+}

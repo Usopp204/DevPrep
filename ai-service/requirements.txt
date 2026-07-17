@@ -32,3 +32,18 @@ google-genai>=1.0
 deepgram-sdk>=6.0
 elevenlabs>=1.0
 
+# --- Biometrics (biometrics/) ---
+# Torch is already installed above; insightface runs on onnxruntime (CPU provider).
+insightface==0.7.3
+onnxruntime==1.19.2
+opencv-python-headless==4.10.0.84
+Pillow>=10.0.0
+numpy>=1.24
+# 1.1.0+ guards its torchaudio.list_audio_backends() call with hasattr(), which is
+# required on torchaudio 2.9+ (the base image's torchaudio is newer; that function was
+# removed there in favor of the torchcodec backend). 1.0.2 crashes on import without it.
+speechbrain>=1.1.0
+librosa==0.10.2.post1
+soundfile>=0.12.1
+scikit-learn>=1.3            # offline calibration script (Milestone 3)
+

@@ -20,4 +20,23 @@ public interface IAiServiceClient
 
     // Gets the roles + technologies catalog via ai-service GET /catalog (drives the dashboard).
     Task<AiCatalogResponse> GetCatalogAsync(CancellationToken ct = default);
+
+    // Extracts a face embedding via ai-service POST /internal/biometrics/face/embed.
+    // Throws BiometricQualityException when the sample is rejected (HTTP 422).
+    Task<BiometricEmbeddingResult> EmbedFaceAsync(IFormFile file, CancellationToken ct = default);
+
+    // Extracts a voice embedding via ai-service POST /internal/biometrics/voice/embed.
+    // Throws BiometricQualityException when the sample is rejected (HTTP 422).
+    Task<BiometricEmbeddingResult> EmbedVoiceAsync(IFormFile file, CancellationToken ct = default);
+
+    // Face liveness + identity check via POST /internal/biometrics/face/verify-live.
+    // challengeJson is the stored server-side expected value, e.g. {"type":"turn_head","direction":"right"}.
+    Task<AiFaceVerifyLiveResponse> VerifyFaceLiveAsync(
+        IReadOnlyList<IFormFile> frames, float[] storedEmbedding, string challengeJson,
+        CancellationToken ct = default);
+
+    // Voice speaker + challenge-phrase check via POST /internal/biometrics/voice/verify-challenge.
+    Task<AiVoiceVerifyChallengeResponse> VerifyVoiceChallengeAsync(
+        IFormFile file, float[] storedEmbedding, string expectedPhrase,
+        CancellationToken ct = default);
 }
