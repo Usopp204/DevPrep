@@ -7,9 +7,16 @@
     var displayName = string.IsNullOrWhiteSpace(Model.FullName) ? "Unknown User" : Model.FullName;
     var email = string.IsNullOrWhiteSpace(Model.Email) ? "No email" : Model.Email;
     var status = Model.Status ?? "Unknown";
+    var role = Model.Role ?? "User";
     var isBlocked = string.Equals(status, "Blocked", StringComparison.OrdinalIgnoreCase);
     var isActive = string.Equals(status, "Active", StringComparison.OrdinalIgnoreCase);
     var initial = string.IsNullOrEmpty(Model.FullName) ? "?" : Model.FullName[0].ToString().ToUpper();
+    var roleClass = role.ToLowerInvariant() switch
+    {
+        "admin" => "badge-active",
+        "manager" => "badge-pending",
+        _ => "badge-blocked"
+    };
 }
 
 <!DOCTYPE html>
@@ -234,6 +241,7 @@
                                 <h3 class="mb-1 fw-bold">@displayName</h3>
                                 <div class="muted-text">@email</div>
                                 <div class="mt-2 d-flex gap-2">
+                                    <span class="badge-soft @roleClass">@role</span>
                                     @if (isBlocked)
                                     {
                                         <span class="badge-soft badge-blocked">Blocked</span>
@@ -275,6 +283,45 @@
                                 <div class="label">Registered At</div>
                                 <div class="value">@Model.RegistrationTimestamp.ToString("dd/MM/yyyy HH:mm")</div>
                             </div>
+
+                            @if (Model.LastLoginAt.HasValue)
+                            {
+                                <div class="col-12">
+                                    <div class="label">Last Login</div>
+                                    <div class="value">@Model.LastLoginAt.Value.ToString("dd/MM/yyyy HH:mm")</div>
+                                </div>
+                            }
+
+                            @if (Model.UpdatedAt.HasValue)
+                            {
+                                <div class="col-12">
+                                    <div class="label">Updated At</div>
+                                    <div class="value">@Model.UpdatedAt.Value.ToString("dd/MM/yyyy HH:mm")</div>
+                                </div>
+                            }
+
+                            <div class="col-12">
+                                <div class="label">Verification</div>
+                                <div class="d-flex gap-3 flex-wrap">
+                                    <span class="badge-soft @(Model.IsEmailVerified ? "badge-active" : "badge-blocked")">
+                                        @(Model.IsEmailVerified ? "Email ✓" : "Email ✗")
+                                    </span>
+                                    <span class="badge-soft @(Model.IsFaceVerified ? "badge-active" : "badge-blocked")">
+                                        @(Model.IsFaceVerified ? "Face ✓" : "Face ✗")
+                                    </span>
+                                    <span class="badge-soft @(Model.IsVoiceVerified ? "badge-active" : "badge-blocked")">
+                                        @(Model.IsVoiceVerified ? "Voice ✓" : "Voice ✗")
+                                    </span>
+                                </div>
+                            </div>
+
+                            @if (isBlocked && !string.IsNullOrWhiteSpace(Model.BlockedReason))
+                            {
+                                <div class="col-12">
+                                    <div class="label">Blocked Reason</div>
+                                    <div class="value text-danger">@Model.BlockedReason</div>
+                                </div>
+                            }
                         </div>
                     </div>
                 </div>
@@ -307,9 +354,11 @@
                                 <thead>
                                     <tr>
                                         <th>Title</th>
-                                        <th>Type</th>
+                                        <th>Level</th>
+                                        <th>Mode</th>
+                                        <th>Status</th>
                                         <th>Started</th>
-                                        <th>Ended</th>
+                                        <th>Duration</th>
                                         <th>Questions</th>
                                         <th>Credit</th>
                                     </tr>
@@ -318,7 +367,7 @@
                                     @if (Model.CompletedSessions.Count == 0)
                                     {
                                         <tr>
-                                            <td colspan="6" class="text-center py-5 text-secondary">
+                                            <td colspan="8" class="text-center py-5 text-secondary">
                                                 No interview sessions found.
                                             </td>
                                         </tr>
@@ -331,9 +380,11 @@
                                                 <td>
                                                     <div class="fw-bold text-white">@(s.Title ?? "Untitled Session")</div>
                                                 </td>
-                                                <td>@(s.QuestionType ?? "N/A")</td>
-                                                <td>@(s.StartedAt.ToString("dd/MM/yyyy HH:mm"))</td>
-                                                <td>@(s.EndedAt.ToString("dd/MM/yyyy HH:mm"))</td>
+                                                <td>@(s.Level ?? "N/A")</td>
+                                                <td>@(s.InteractionMode ?? "N/A")</td>
+                                                <td>@(s.Status ?? "N/A")</td>
+                                                <td>@(s.StartedAt.HasValue ? s.StartedAt.Value.ToString("dd/MM/yyyy HH:mm") : "N/A")</td>
+                                                <td>@(s.DurationMinutes.HasValue ? s.DurationMinutes + " min" : "N/A")</td>
                                                 <td>@s.AnsweredQuestions / @s.TotalQuestions</td>
                                                 <td>@s.CreditCost</td>
                                             </tr>

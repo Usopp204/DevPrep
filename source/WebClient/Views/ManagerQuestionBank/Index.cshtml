@@ -150,7 +150,7 @@
             width: 100%;
             border: none;
             border-radius: 7px;
-            background: #2e2a47;
+            background: #35304f;
             color: #ffffff;
             font-weight: 800;
         }
@@ -229,7 +229,7 @@
         .question-title {
             color: #ffffff;
             font-weight: 800;
-            max-width: 560px;
+            max-width: 650px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -391,17 +391,17 @@
                 </div>
             </div>
 
-            <form method="get" action="/Manager/QuestionBank" class="filter-card">
-                <input type="hidden" name="page" value="1" />
+            <form method="get" action="/Manager/QuestionBank" id="managerFilterForm" class="filter-card" onsubmit="document.getElementById('pageIdxInput').value = 1;">
+                <input type="hidden" name="page" id="pageIdxInput" value="@pageIndex" />
                 <input type="hidden" name="pageSize" value="@pageSize" />
                 <div class="row g-3 align-items-end">
                     <div class="col-12 col-xl-4">
-                        <label class="filter-label">Search</label>
+                        <div class="filter-label">Search</div>
                         <input name="keyword" value="@keyword" type="text" class="form-control admin-input" placeholder="Search questions" />
                     </div>
 
                     <div class="col-12 col-sm-6 col-xl-2">
-                        <label class="filter-label">Category</label>
+                        <div class="filter-label">Category</div>
                         <select name="categoryId" class="form-select admin-select">
                             <option value="">All Categories</option>
                             @foreach (var category in categories.Where(c => c is not null))
@@ -412,7 +412,7 @@
                     </div>
 
                     <div class="col-12 col-sm-6 col-xl-2">
-                        <label class="filter-label">Difficulty</label>
+                        <div class="filter-label">Difficulty</div>
                         <select name="difficulty" class="form-select admin-select">
                             <option value="">All Difficulty</option>
                             @foreach (var diff in new[] { "Intern", "Fresher", "Junior", "Middle", "Senior" })
@@ -423,7 +423,7 @@
                     </div>
 
                     <div class="col-12 col-sm-6 col-xl-2">
-                        <label class="filter-label">Status</label>
+                        <div class="filter-label">Status</div>
                         <select name="status" class="form-select admin-select">
                             <option value="">All Statuses</option>
                             @foreach (var st in new[] { "Active", "Draft", "Archived", "Deleted" })
@@ -433,10 +433,10 @@
                         </select>
                     </div>
 
-                    <div class="col-12 col-md-6 col-xl-1">
-                        <button class="btn-filter" type="submit">Filter</button>
+                    <div class="col-12 col-md-6 col-xl-2">
+                        <button class="btn-filter" type="submit">Apply Filter</button>
                     </div>
-                    <div class="col-12 col-md-6 col-xl-1">
+                    <div class="col-12 col-md-6 col-xl-2">
                         <a class="btn-clear" href="/Manager/QuestionBank">Clear</a>
                     </div>
                 </div>
@@ -480,7 +480,16 @@
                                     <tr class="@(isSoftDeleted ? "deleted-row" : string.Empty)">
                                         <td>
                                             <a href="/Manager/QuestionBank/@item.QuestionId" class="question-title text-decoration-none d-block" title="@item.Question">@item.Question</a>
-                                            <div class="question-meta">ID: Q-@item.QuestionId.ToString().Substring(0, 8).ToUpper() &middot; @(string.IsNullOrWhiteSpace(item.Category) ? "Uncategorized" : item.Category)</div>
+                                            <div class="question-meta">
+                                                ID:
+                                                @(item.QuestionId.ToString().Length > 8
+                                                    ? "Q-" + item.QuestionId.ToString().Substring(0, 8).ToUpper()
+                                                    : item.QuestionId.ToString())
+                                                @if (!string.IsNullOrWhiteSpace(item.Category))
+                                                {
+                                                    <span class="ms-2">Category: @item.Category</span>
+                                                }
+                                            </div>
                                         </td>
                                         <td><span class="pill @diffClass">@(string.IsNullOrWhiteSpace(item.Difficulty) ? "N/A" : item.Difficulty)</span></td>
                                         <td>
@@ -527,7 +536,17 @@
                                 <i class="fa-solid fa-chevron-left"></i>
                             </a>
 
-                            @for (var i = Math.Max(1, pageIndex - 15); i <= Math.Min(totalPages, Math.Max(1, pageIndex - 15) + 29); i++)
+                            @{
+                                var maxVisiblePages = 30;
+                                var startPage = Math.Max(1, pageIndex - (maxVisiblePages / 2));
+                                var endPage = Math.Min(totalPages, startPage + maxVisiblePages - 1);
+                                if (endPage - startPage + 1 < maxVisiblePages)
+                                {
+                                    startPage = Math.Max(1, endPage - maxVisiblePages + 1);
+                                }
+                            }
+
+                            @for (var i = startPage; i <= endPage; i++)
                             {
                                 if (i == pageIndex)
                                 {

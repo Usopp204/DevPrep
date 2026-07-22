@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using PaymentAPI.Data;
 using PaymentAPI.DTOs;
 using PaymentAPI.Services;
 
@@ -11,10 +13,12 @@ namespace PaymentAPI.Controllers;
 public class ManagerCreditPackagesController : ControllerBase
 {
     private readonly ICreditPackageService _service;
+    private readonly PaymentDbContext _db;
 
-    public ManagerCreditPackagesController(ICreditPackageService service)
+    public ManagerCreditPackagesController(ICreditPackageService service, PaymentDbContext db)
     {
         _service = service;
+        _db = db;
     }
 
     /// <summary>
@@ -35,6 +39,8 @@ public class ManagerCreditPackagesController : ControllerBase
         if (pageSize < 1 || pageSize > 100) pageSize = 10;
 
         var result = await _service.GetListAsync(page, pageSize, keyword, isActive);
+        result.ActiveCount = await _db.CreditPackages.CountAsync(p => p.IsActive);
+        result.InactiveCount = await _db.CreditPackages.CountAsync(p => !p.IsActive);
         return Ok(ApiResponse<PagedResult<CreditPackageDto>>.Ok(result));
     }
 

@@ -229,15 +229,16 @@
                 </div>
             </div>
 
-            <form method="get" action="/Manager/News" class="filter-card">
+            <form method="get" action="/Manager/News" id="managerFilterForm" class="filter-card" onsubmit="document.getElementById('pageIdxInput').value = 1;">
+                <input type="hidden" name="page" id="pageIdxInput" value="@pageIndex" />
                 <div class="row g-3 align-items-end">
                     <div class="col-12 col-lg-8">
-                        <label class="filter-label">Search</label>
-                        <input name="keyword" value="@ViewBag.Keyword" type="text" class="form-control admin-input" placeholder="Search title, slug, or summary..." onkeypress="if(event.key === 'Enter') this.form.submit();" />
+                        <div class="filter-label">Search</div>
+                        <input name="keyword" value="@ViewBag.Keyword" type="text" class="form-control admin-input" placeholder="Search title, slug, or summary..." />
                     </div>
                     <div class="col-6 col-lg-2">
-                        <label class="filter-label">Status</label>
-                        <select name="status" class="form-select admin-select" onchange="this.form.submit()">
+                        <div class="filter-label">Status</div>
+                        <select name="status" class="form-select admin-select">
                             <option value="">All Status</option>
                             <option value="Published" selected="@(ViewBag.Status == "Published")">Published</option>
                             <option value="Draft" selected="@(ViewBag.Status == "Draft")">Draft</option>
@@ -327,7 +328,17 @@
 
                         <div class="pager">
                             <a href="@BuildPageUrl(prevPage)"><i class="fa-solid fa-chevron-left"></i></a>
-                            @for (var i = 1; i <= totalPages; i++)
+                            @{
+                                var maxVisiblePages = 30;
+                                var startPage = Math.Max(1, pageIndex - (maxVisiblePages / 2));
+                                var endPage = Math.Min(totalPages, startPage + maxVisiblePages - 1);
+                                if (endPage - startPage + 1 < maxVisiblePages)
+                                {
+                                    startPage = Math.Max(1, endPage - maxVisiblePages + 1);
+                                }
+                            }
+
+                            @for (var i = startPage; i <= endPage; i++)
                             {
                                 if (i == pageIndex)
                                 {

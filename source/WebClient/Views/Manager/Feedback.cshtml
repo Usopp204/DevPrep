@@ -216,8 +216,8 @@
 <th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">User</th>
 <th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">Rating</th>
 <th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">Comment</th>
-<th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">Date</th>
 <th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">@(feedbackKind == "ai" ? "Helpful" : "Status")</th>
+<th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">Date</th>
 <th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant text-right">Actions</th>
 </tr>
 </thead>
@@ -432,10 +432,10 @@
                         ${FEEDBACK_KIND === 'system' ? `<div class="flex items-center gap-xs mb-1">${getTypeBadge(getFeedbackType(item))}${item.replyCount ? `<span class="text-on-surface-variant text-[11px] font-code-label">Replies ${item.replyCount}</span>` : ''}</div>` : ''}
                         <p class="truncate opacity-80 italic text-on-surface">"${escapeHtml(fixText(item.content || item.subject || ''))}"</p>
                     </td>
-                    <td class="px-lg py-lg font-code-label text-on-surface-variant">${formatDate(item.createdAt)}</td>
                     <td class="px-lg py-lg">
                         ${FEEDBACK_KIND === 'ai' ? helpfulBadge(item.isHelpful) : getStatusBadge(item.status)}
                     </td>
+                    <td class="px-lg py-lg font-code-label text-on-surface-variant">${formatDate(item.createdAt)}</td>
                     <td class="px-lg py-lg text-right">
                         <div class="flex justify-end gap-md">
                             <button class="text-on-surface-variant hover:text-primary transition-colors" onclick="event.stopPropagation(); openFeedbackDetail('${item.id}')" title="View details"><span class="material-symbols-outlined text-[20px]">visibility</span></button>
@@ -605,7 +605,7 @@
             const end = Math.min(page * size, totalItems);
 
             document.getElementById('feedback-summary').innerText = `Showing ${start}-${end} of ${totalItems} feedback entries`;
-            document.getElementById('feedback-page').innerText = `${page}`;
+            document.getElementById('feedback-page').innerText = `${page} / ${totalPages}`;
             document.getElementById('feedback-prev').disabled = page <= 1;
             document.getElementById('feedback-next').disabled = page >= totalPages;
         }

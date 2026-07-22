@@ -15,6 +15,10 @@
         var values = new Dictionary<string, string?>
         {
             ["keyword"] = ViewBag.Keyword as string,
+            ["role"] = ViewBag.Role as string,
+            ["status"] = ViewBag.Status as string,
+            ["createdFrom"] = ViewBag.CreatedFrom as string,
+            ["createdTo"] = ViewBag.CreatedTo as string,
             ["page"] = page.ToString(),
             ["pageSize"] = pageSize.ToString()
         };
@@ -106,21 +110,30 @@
             height: 42px;
             border-radius: 7px;
             border: 1px solid #30384e;
-            background: #0f1322;
-            color: #ffffff;
+            background: #0f1322 !important;
+            color: #ffffff !important;
             font-size: 14px;
             box-shadow: none !important;
         }
 
         .admin-input:focus,
         .admin-select:focus {
-            border-color: var(--primary);
-            background: #0f1322;
-            color: #ffffff;
+            border-color: var(--primary) !important;
+            background: #161824 !important;
+            color: #ffffff !important;
         }
 
         .admin-input::placeholder {
             color: #64748b;
+        }
+
+        .admin-select option {
+            background-color: #11121a !important;
+            color: #ffffff !important;
+        }
+
+        input[type="date"].admin-input {
+            color-scheme: dark;
         }
 
         .btn-filter {
@@ -312,8 +325,10 @@
             justify-content: space-between;
             gap: 16px;
             padding: 14px 16px;
-            color: var(--text-muted);
-            font-size: 12px;
+            color: #cbd5e1;
+            font-size: 13px;
+            border-top: 1px solid #242b3e;
+            background: #111827;
         }
 
         .pager {
@@ -378,23 +393,55 @@
                 </div>
             </div>
 
-            <form method="get" action="/Manager/Users" class="filter-card">
+            <form method="get" action="/Manager/Users" id="managerFilterForm" class="filter-card" onsubmit="document.getElementById('pageIdxInput').value = 1;">
+                <input type="hidden" name="page" id="pageIdxInput" value="@pageIndex" />
                 <div class="row g-3 align-items-end">
-                    <div class="col-12 col-lg-7">
-                        <label class="filter-label">Search</label>
+                    <div class="col-12 col-xl-4">
+                        <div class="filter-label">Search</div>
                         <input name="keyword"
                                value="@ViewBag.Keyword"
                                type="text"
                                class="form-control admin-input"
-                               placeholder="Search users by name or email..."
-                               onkeypress="if(event.key==='Enter') this.form.submit();" />
+                               placeholder="Search by name or email..." />
                     </div>
 
-                    <div class="col-12 col-md-6 col-lg-2">
+                    <div class="col-12 col-sm-6 col-xl-2">
+                        <div class="filter-label">Role</div>
+                        <select name="role" class="form-select admin-select">
+                            <option value="">All Roles</option>
+                            @foreach (var r in new[] { "Admin", "Manager", "User" })
+                            {
+                                <option value="@r" selected="@(string.Equals(ViewBag.Role as string, r, StringComparison.OrdinalIgnoreCase) ? "selected" : null)">@r</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="col-12 col-sm-6 col-xl-2">
+                        <div class="filter-label">Status</div>
+                        <select name="status" class="form-select admin-select">
+                            <option value="">All Statuses</option>
+                            @foreach (var st in new[] { "Active", "Blocked", "Pending" })
+                            {
+                                <option value="@st" selected="@(string.Equals(ViewBag.Status as string, st, StringComparison.OrdinalIgnoreCase) ? "selected" : null)">@st</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="col-12 col-sm-6 col-xl-2">
+                        <div class="filter-label">Created From</div>
+                        <input name="createdFrom" value="@ViewBag.CreatedFrom" type="date" class="form-control admin-input" />
+                    </div>
+
+                    <div class="col-12 col-sm-6 col-xl-2">
+                        <div class="filter-label">Created To</div>
+                        <input name="createdTo" value="@ViewBag.CreatedTo" type="date" class="form-control admin-input" />
+                    </div>
+
+                    <div class="col-12 col-md-6 col-xl-2">
                         <button class="btn-filter" type="submit">Apply Filter</button>
                     </div>
 
-                    <div class="col-12 col-md-6 col-lg-2">
+                    <div class="col-12 col-md-6 col-xl-2">
                         <a class="btn-clear" href="/Manager/Users">Clear</a>
                     </div>
                 </div>
@@ -405,11 +452,11 @@
                     <table class="table admin-table align-middle">
                         <thead>
                             <tr>
-                                <th style="width: 32%;">User Information</th>
-                                <th style="width: 18%;">Registered</th>
-                                <th style="width: 12%;">Sessions</th>
+                                <th style="width: 30%;">User Information</th>
+                                <th style="width: 12%;">Role</th>
+                                <th style="width: 15%;">Registered</th>
                                 <th style="width: 13%;">Status</th>
-                                <th style="width: 12%;" class="text-end">Actions</th>
+                                <th style="width: 10%;" class="text-end">Actions</th>
                             </tr>
                         </thead>
 
@@ -428,6 +475,13 @@
                                 foreach (var user in Model.Items)
                                 {
                                     var displayName = string.IsNullOrWhiteSpace(user.FullName) ? "Unknown User" : user.FullName;
+                                    var role = user.Role ?? "User";
+                                    var roleClass = role.ToLowerInvariant() switch
+                                    {
+                                        "admin" => "role-admin",
+                                        "manager" => "role-manager",
+                                        _ => "role-user"
+                                    };
                                     var statusClass = (user.Status ?? string.Empty).ToLowerInvariant() switch
                                     {
                                         "active" => "status-active",
@@ -446,12 +500,15 @@
                                         </td>
 
                                         <td>
-                                            <div class="metric-strong">@user.RegistrationTimestamp.ToString("dd/MM/yyyy")</div>
-                                            <div class="muted-small">@user.RegistrationTimestamp.ToString("HH:mm")</div>
+                                            <span class="role-badge @roleClass">
+                                                <span style="font-size: 8px;">●</span>
+                                                @role
+                                            </span>
                                         </td>
 
                                         <td>
-                                            <span class="metric-strong">@user.TotalInterviewCount</span>
+                                            <div class="metric-strong">@user.RegistrationTimestamp.ToString("dd/MM/yyyy")</div>
+                                            <div class="muted-small">@user.RegistrationTimestamp.ToString("HH:mm")</div>
                                         </td>
 
                                         <td>
@@ -490,7 +547,17 @@
                                 <i class="fa-solid fa-chevron-left"></i>
                             </a>
 
-                            @for (var i = 1; i <= totalPages; i++)
+                            @{
+                                var maxVisiblePages = 30;
+                                var startPage = Math.Max(1, pageIndex - (maxVisiblePages / 2));
+                                var endPage = Math.Min(totalPages, startPage + maxVisiblePages - 1);
+                                if (endPage - startPage + 1 < maxVisiblePages)
+                                {
+                                    startPage = Math.Max(1, endPage - maxVisiblePages + 1);
+                                }
+                            }
+
+                            @for (var i = startPage; i <= endPage; i++)
                             {
                                 if (i == pageIndex)
                                 {

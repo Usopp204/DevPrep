@@ -145,7 +145,7 @@
             <div class="d-flex flex-column flex-sm-row justify-content-between align-items-stretch align-items-sm-center gap-3 mb-4">
                 <a href="/Manager/QuestionBank" class="back-to-repository d-flex align-items-center gap-2 text-decoration-none py-2">
                     <i class="fa-solid fa-arrow-left"></i>
-                    Back to Question Bank
+                    Back to list question
                 </a>
             </div>
 
@@ -244,7 +244,7 @@
 
                                     <small class="text-muted d-block"
                                            style="font-size: 0.75rem; color: #71717a !important;">
-                                        Question category
+                                        Chuyên mục câu hỏi
                                     </small>
                                 </div>
                             </div>
@@ -266,19 +266,6 @@
                                   style="border-radius: 6px; font-size: 0.75rem; letter-spacing: 0.05em;">
                                 @(string.IsNullOrWhiteSpace(Model.Difficulty) ? "N/A" : Model.Difficulty)
                             </span>
-                        </div>
-
-                        @if (!string.IsNullOrWhiteSpace(Model.Position))
-                        {
-                            <div class="mb-4">
-                                <label class="d-block mb-2 meta-label">POSITION</label>
-                                <span class="fw-bold text-white">@Model.Position</span>
-                            </div>
-                        }
-
-                        <div>
-                            <label class="d-block mb-2 meta-label">LAST UPDATED</label>
-                            <span class="fw-bold text-white">@Model.UpdatedAt.ToString("MMM dd, yyyy")</span>
                         </div>
 
                     </div>

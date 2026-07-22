@@ -31,6 +31,8 @@ public class ManagerPaymentListItemDto
     public Guid OrderId { get; set; }
     public string OrderCode { get; set; } = string.Empty;
     public Guid UserId { get; set; }
+    public string? FullName { get; set; }
+    public string? Email { get; set; }
     public Guid PackageId { get; set; }
     public decimal Amount { get; set; }
     public int Credits { get; set; }
