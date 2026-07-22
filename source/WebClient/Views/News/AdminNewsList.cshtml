@@ -1,4 +1,4 @@
-﻿@model WebClient.Models.News.AdminNewsViewModel
+@model WebClient.Models.News.AdminNewsViewModel
 
 @{
     Layout = null;
@@ -136,8 +136,15 @@
             }
 
             .form-select-custom option {
-                background-color: #11121a;
-                color: #ffffff;
+                background-color: #11121a !important;
+                color: #ffffff !important;
+            }
+
+            input[type="date"], input[type="datetime-local"] {
+                color-scheme: dark !important;
+                background-color: #11121a !important;
+                color: #ffffff !important;
+                border-color: #292c3d !important;
             }
 
         .btn-filter {

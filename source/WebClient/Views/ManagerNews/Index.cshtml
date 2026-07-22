@@ -115,9 +115,14 @@
         }
 
         .admin-input:focus, .admin-select:focus {
-            border-color: var(--primary);
-            background: #0f1322;
-            color: #ffffff;
+            border-color: var(--primary) !important;
+            background: #161824 !important;
+            color: #ffffff !important;
+        }
+
+        .admin-select option {
+            background-color: #11121a !important;
+            color: #ffffff !important;
         }
 
         .admin-input::placeholder { color: #64748b; }
@@ -292,7 +297,7 @@
                                         <td>@((item.PublishedAt ?? item.CreatedAt).ToString("MMM dd, yyyy"))</td>
                                         <td class="text-end">
                                             <a class="action-btn action-view" href="/Manager/News/@item.NewsId" title="View details">
-                                                <i class="fa-regular fa-eye"></i>
+                                                <span class="material-symbols-outlined fs-5">visibility</span>
                                             </a>
                                         </td>
                                     </tr>

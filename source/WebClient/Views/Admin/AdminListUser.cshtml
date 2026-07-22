@@ -1,4 +1,4 @@
-﻿@model WebClient.Models.Admin.AdminUserViewModel
+@model WebClient.Models.Admin.AdminUserViewModel
 
 @{
     Layout = null;
@@ -119,21 +119,33 @@
             height: 42px;
             border-radius: 7px;
             border: 1px solid #30384e;
-            background: #0f1322;
-            color: #ffffff;
+            background: #0f1322 !important;
+            color: #ffffff !important;
             font-size: 14px;
             box-shadow: none !important;
         }
 
             .admin-input:focus,
             .admin-select:focus {
-                border-color: var(--primary);
-                background: #0f1322;
-                color: #ffffff;
+                border-color: var(--primary) !important;
+                background: #161824 !important;
+                color: #ffffff !important;
             }
 
             .admin-input::placeholder {
                 color: #64748b;
+            }
+
+            .admin-select option {
+                background-color: #11121a !important;
+                color: #ffffff !important;
+            }
+
+            input[type="date"], input[type="datetime-local"] {
+                color-scheme: dark !important;
+                background-color: #11121a !important;
+                color: #ffffff !important;
+                border-color: #292c3d !important;
             }
 
         .btn-filter {
@@ -546,17 +558,17 @@
                                         </td>
 
                                         <td class="text-end">
-                                            <a class="action-btn action-view"
-                                               href="/Admin/User/Detail/@user.UserId"
-                                               title="View details">
-                                                <i class="fa-regular fa-eye"></i>
-                                            </a>
+                                             <a class="action-btn action-view"
+                                                href="/Admin/User/Detail/@user.UserId"
+                                                title="View details">
+                                                 <span class="material-symbols-outlined fs-5">visibility</span>
+                                             </a>
 
-                                            <a class="action-btn action-edit"
-                                               href="/Admin/User/Edit/@user.UserId"
-                                               title="Edit role">
-                                                <i class="fa-regular fa-pen-to-square"></i>
-                                            </a>
+                                             <a class="action-btn action-edit"
+                                                href="/Admin/User/Edit/@user.UserId"
+                                                title="Edit role">
+                                                 <span class="material-symbols-outlined fs-5">edit</span>
+                                             </a>
 
                                             @if (isBlocked)
                                             {

@@ -1,4 +1,4 @@
-﻿@model WebClient.Models.Admin.AdminQuestionViewModel
+@model WebClient.Models.Admin.AdminQuestionViewModel
 
 @{
     Layout = null;
@@ -230,9 +230,14 @@
 
             .admin-input:focus,
             .admin-select:focus {
-                border-color: var(--primary);
-                background: #0f1322;
-                color: #ffffff;
+                border-color: var(--primary) !important;
+                background: #161824 !important;
+                color: #ffffff !important;
+            }
+
+            .admin-select option {
+                background-color: #11121a !important;
+                color: #ffffff !important;
             }
 
             .admin-input::placeholder {
@@ -870,7 +875,7 @@
                                             <a href="/admin/questions/detail/@item.QuestionId"
                                                class="action-btn action-view"
                                                title="View detail">
-                                                <i class="fa-regular fa-eye"></i>
+                                                <span class="material-symbols-outlined fs-5">visibility</span>
                                             </a>
 
                                             @if (!item.IsDeleted)
@@ -878,7 +883,7 @@
                                                 <a href="/admin/questions/edit/@item.QuestionId"
                                                    class="action-btn action-edit"
                                                    title="Edit question">
-                                                    <i class="fa-regular fa-pen-to-square"></i>
+                                                    <span class="material-symbols-outlined fs-5">edit</span>
                                                 </a>
                                             }
 
@@ -888,7 +893,7 @@
                                                         onclick="restoreQuestion('@item.QuestionId')"
                                                         class="action-btn action-restore"
                                                         title="Restore question">
-                                                    <i class="fa-solid fa-trash-arrow-up"></i>
+                                                    <span class="material-symbols-outlined fs-5">restore_from_trash</span>
                                                 </button>
                                             }
                                             else
@@ -897,7 +902,7 @@
                                                         onclick="deleteQuestion('@item.QuestionId')"
                                                         class="action-btn action-delete"
                                                         title="Delete question">
-                                                    <i class="fa-regular fa-trash-can"></i>
+                                                    <span class="material-symbols-outlined fs-5 text-danger">delete</span>
                                                 </button>
                                             }
                                         </td>
