@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -14,10 +14,15 @@ namespace PaymentAPI.Controllers;
 public class ManagerPaymentsController : ControllerBase
 {
     private readonly PaymentDbContext _db;
+    private readonly ILogger<ManagerPaymentsController> _logger;
+    private readonly string _connString;
 
-    public ManagerPaymentsController(PaymentDbContext db)
+    public ManagerPaymentsController(PaymentDbContext db, ILogger<ManagerPaymentsController> logger, IConfiguration config)
     {
         _db = db;
+        _logger = logger;
+        _connString = config.GetValue<string>("PAYMENT_DB_CONNECTION_STRING")
+            ?? db.Database.GetDbConnection().ConnectionString;
     }
 
     [HttpGet]
@@ -187,36 +192,56 @@ public class ManagerPaymentsController : ControllerBase
         if (items.Count == 0) return;
         try
         {
-            var userIds = items.Select(i => i.UserId).Distinct().ToList();
-            var connString = _db.Database.GetDbConnection().ConnectionString;
+            // Order.UserId chứa AccountId (lấy từ header X-User-Id do ApiGateway forward từ JWT sub = AccountId)
+            var accountIds = items.Select(i => i.UserId).Distinct().ToList();
+            var connString = _connString;
+            _logger.LogInformation("EnrichWithUserNames: connString starts with = {Start}", connString[..Math.Min(50, connString.Length)]);
             var nameMap = new Dictionary<Guid, (string? FullName, string? Email)>();
 
             using var conn = new SqlConnection(connString);
             await conn.OpenAsync(ct);
-            var idList = string.Join(",", userIds.Select(id => $"'{id}'"));
-            var sql = $@"SELECT p.UserId, p.FullName, a.Email FROM DevPrep_User.dbo.UserProfiles p LEFT JOIN DevPrep_Auth.dbo.Accounts a ON p.AccountId = a.AccountId WHERE p.UserId IN ({idList})";
+            var idList = string.Join(",", accountIds.Select(id => $"'{id}'"));
+            // Order.UserId = UserProfile.UserId (bảng DevPrep_User), KHÔNG phải AccountId
+            var sql = $@"
+                SELECT 
+                    p.UserId, 
+                    p.FullName, 
+                    a.Email 
+                FROM DevPrep_User.dbo.UserProfiles p
+                LEFT JOIN DevPrep_Auth.dbo.Accounts a ON a.AccountId = p.AccountId
+                WHERE p.UserId IN ({idList})";
+
+            _logger.LogInformation("EnrichWithUserNames: querying {Count} accountIds. SQL = {Sql}", accountIds.Count, sql);
+
             using var cmd = new SqlCommand(sql, conn);
             using var reader = await cmd.ExecuteReaderAsync(ct);
             while (await reader.ReadAsync(ct))
             {
-                var uid = reader.GetGuid(0);
+                var accId = reader.GetGuid(0);
                 var name = reader.IsDBNull(1) ? null : reader.GetString(1);
                 var email = reader.IsDBNull(2) ? null : reader.GetString(2);
-                nameMap[uid] = (name, email);
+                nameMap[accId] = (name, email);
             }
+
+            _logger.LogInformation("EnrichWithUserNames: found {Count} user records", nameMap.Count);
 
             foreach (var item in items)
             {
                 if (nameMap.TryGetValue(item.UserId, out var info))
                 {
-                    item.FullName = info.FullName;
+                    item.FullName = !string.IsNullOrWhiteSpace(info.FullName) ? info.FullName : info.Email;
                     item.Email = info.Email;
+                }
+                else
+                {
+                    _logger.LogWarning("EnrichWithUserNames: no user found for UserId (AccountId) = {UserId}", item.UserId);
                 }
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Graceful fallback: user enrichment failure won't crash the payment listing endpoint
+            // Log lỗi để debug, không crash endpoint
+            _logger.LogError(ex, "EnrichWithUserNamesAsync failed");
         }
     }
 }
