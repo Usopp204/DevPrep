@@ -36,6 +36,8 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();
 builder.Services.AddSingleton<ITokenService, TokenService>();
 builder.Services.AddScoped<IGoogleTokenValidator, GoogleTokenValidator>();
+// Job nền dọn account Pending hết hạn xác thực email (giải phóng email đăng ký lại).
+builder.Services.AddHostedService<PendingAccountCleanupService>();
 builder.Services.AddHttpClient<IGitHubOAuthClient, GitHubOAuthClient>();
 // Verify Firebase ID token: gọi internet lấy khóa công khai của Google nên KHÔNG tắt proxy.
 builder.Services.AddHttpClient<IFirebaseTokenValidator, FirebaseTokenValidator>();

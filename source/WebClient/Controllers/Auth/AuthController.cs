@@ -149,6 +149,40 @@ public class AuthController(IAuthService authService) : Controller
         return RedirectToAction(nameof(VerifyEmail), new { email });
     }
 
+    // ============================ Confirm Email (link trong email) ============================
+    // GET chỉ hiện trang có nút xác nhận; verify thật chạy ở POST — tránh việc trình quét
+    // email (SafeLinks, antivirus...) tự truy cập link làm account bị kích hoạt ngoài ý muốn.
+    [HttpGet]
+    public IActionResult ConfirmEmail(string? token)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            ModelState.AddModelError(string.Empty, "The verification link is invalid or has expired.");
+        }
+
+        return View(new ConfirmEmailViewModel { Token = token ?? string.Empty });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ConfirmEmail(ConfirmEmailViewModel model)
+    {
+        if (!ModelState.IsValid)
+        {
+            return View(model);
+        }
+
+        var result = await authService.ConfirmEmailAsync(model.Token);
+        if (result.Success)
+        {
+            TempData["Message"] = "Your email has been verified. Please log in.";
+            return RedirectToAction(nameof(Login));
+        }
+
+        ModelState.AddModelError(string.Empty, result.Message);
+        return View(model);
+    }
+
     // ============================ Forgot Password ============================
     [HttpGet]
     public IActionResult ForgotPassword()

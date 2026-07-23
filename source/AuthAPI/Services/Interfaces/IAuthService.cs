@@ -10,6 +10,9 @@ public interface IAuthService
 
     Task<ResendEmailOtpResponse> ResendEmailOtpAsync(ResendEmailOtpRequest request);
 
+    /// <summary>Xác thực email bằng token trong link (người dùng bấm nút xác nhận trong email).</summary>
+    Task<VerifyEmailOtpResponse> VerifyEmailByLinkAsync(VerifyEmailLinkRequest request);
+
     /// <summary>Đăng nhập thường (mọi role).</summary>
     Task<LoginResponse> LoginAsync(LoginRequest request);
 

@@ -50,6 +50,19 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
+    /// Xác thực email bằng token trong link (người dùng bấm nút xác nhận ở trang ConfirmEmail).
+    /// Không cần email/OTP — token dài trong link là đủ định danh lượt đăng ký.
+    /// </summary>
+    [HttpPost("verify-email-link")]
+    [ProducesResponseType(typeof(ApiResponse<VerifyEmailOtpResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> VerifyEmailLink([FromBody] VerifyEmailLinkRequest request)
+    {
+        var result = await _authService.VerifyEmailByLinkAsync(request);
+        return Ok(ApiResponse<VerifyEmailOtpResponse>.Ok(result, "Email verified successfully."));
+    }
+
+    /// <summary>
     /// Gửi lại mã OTP xác thực email. Các OTP cũ chưa dùng sẽ bị vô hiệu hoá.
     /// </summary>
     [HttpPost("resend-otp")]

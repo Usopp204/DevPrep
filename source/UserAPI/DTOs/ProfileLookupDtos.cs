@@ -8,3 +8,6 @@ public record ProfileLookupItem(Guid AccountId, string? FullName);
 
 /// <summary>Yêu cầu tìm AccountId theo tên (FullName chứa keyword).</summary>
 public record ProfileSearchRequest(string Keyword);
+
+/// <summary>Yêu cầu xoá hồ sơ theo danh sách AccountId (AuthAPI gọi khi dọn account Pending hết hạn xác thực).</summary>
+public record ProfileDeleteRequest(List<Guid> AccountIds);
