@@ -4,6 +4,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using PaymentAPI.Data;
 using PaymentAPI.DTOs;
+using PaymentAPI.Models;
 
 namespace PaymentAPI.Controllers;
 
@@ -64,13 +65,30 @@ public class ManagerPaymentsController : ControllerBase
             .SumAsync(o => (decimal?)o.Amount, cancellationToken) ?? 0m;
         var paidCount = await orders.CountAsync(o => o.Status == "Paid", cancellationToken);
 
-        var items = await (
-            from order in orders
-            join tx in _db.PaymentTransactions.AsNoTracking()
-                on order.OrderId equals tx.OrderId into txGroup
-            from tx in txGroup.OrderByDescending(t => t.CreatedAt).Take(1).DefaultIfEmpty()
-            orderby order.CreatedAt descending, order.OrderId descending
-            select new ManagerPaymentListItemDto
+        var pageOrders = await orders
+            .OrderByDescending(o => o.CreatedAt)
+            .ThenByDescending(o => o.OrderId)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        var orderIds = pageOrders.Select(o => o.OrderId).ToList();
+
+        var transactions = orderIds.Count > 0
+            ? await _db.PaymentTransactions.AsNoTracking()
+                .Where(t => orderIds.Contains(t.OrderId))
+                .OrderByDescending(t => t.CreatedAt)
+                .ToListAsync(cancellationToken)
+            : new List<PaymentTransaction>();
+
+        var txDict = transactions
+            .GroupBy(t => t.OrderId)
+            .ToDictionary(g => g.Key, g => g.First());
+
+        var items = pageOrders.Select(order =>
+        {
+            txDict.TryGetValue(order.OrderId, out var tx);
+            return new ManagerPaymentListItemDto
             {
                 OrderId = order.OrderId,
                 OrderCode = order.OrderCode,
@@ -83,14 +101,12 @@ public class ManagerPaymentsController : ControllerBase
                 Status = order.Status,
                 PaidAt = order.PaidAt,
                 CreatedAt = order.CreatedAt,
-                VnpTransactionNo = tx == null ? null : tx.VnpTransactionNo,
-                VnpBankCode = tx == null ? null : tx.VnpBankCode,
-                VnpResponseCode = tx == null ? null : tx.VnpResponseCode,
-                TransactionStatus = tx == null ? null : tx.Status
-            })
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync(cancellationToken);
+                VnpTransactionNo = tx?.VnpTransactionNo,
+                VnpBankCode = tx?.VnpBankCode,
+                VnpResponseCode = tx?.VnpResponseCode,
+                TransactionStatus = tx?.Status
+            };
+        }).ToList();
 
         await EnrichWithUserNamesAsync(items, cancellationToken);
 
@@ -169,31 +185,38 @@ public class ManagerPaymentsController : ControllerBase
     private async Task EnrichWithUserNamesAsync(List<ManagerPaymentListItemDto> items, CancellationToken ct)
     {
         if (items.Count == 0) return;
-        var userIds = items.Select(i => i.UserId).Distinct().ToList();
-        var connString = _db.Database.GetDbConnection().ConnectionString;
-        var nameMap = new Dictionary<Guid, (string? FullName, string? Email)>();
-
-        using var conn = new SqlConnection(connString);
-        await conn.OpenAsync(ct);
-        var idList = string.Join(",", userIds.Select(id => $"'{id}'"));
-        var sql = $@"SELECT p.UserId, p.FullName, a.Email FROM DevPrep_User.dbo.UserProfiles p LEFT JOIN DevPrep_Auth.dbo.Accounts a ON p.AccountId = a.AccountId WHERE p.UserId IN ({idList})";
-        using var cmd = new SqlCommand(sql, conn);
-        using var reader = await cmd.ExecuteReaderAsync(ct);
-        while (await reader.ReadAsync(ct))
+        try
         {
-            var uid = reader.GetGuid(0);
-            var name = reader.IsDBNull(1) ? null : reader.GetString(1);
-            var email = reader.IsDBNull(2) ? null : reader.GetString(2);
-            nameMap[uid] = (name, email);
-        }
+            var userIds = items.Select(i => i.UserId).Distinct().ToList();
+            var connString = _db.Database.GetDbConnection().ConnectionString;
+            var nameMap = new Dictionary<Guid, (string? FullName, string? Email)>();
 
-        foreach (var item in items)
-        {
-            if (nameMap.TryGetValue(item.UserId, out var info))
+            using var conn = new SqlConnection(connString);
+            await conn.OpenAsync(ct);
+            var idList = string.Join(",", userIds.Select(id => $"'{id}'"));
+            var sql = $@"SELECT p.UserId, p.FullName, a.Email FROM DevPrep_User.dbo.UserProfiles p LEFT JOIN DevPrep_Auth.dbo.Accounts a ON p.AccountId = a.AccountId WHERE p.UserId IN ({idList})";
+            using var cmd = new SqlCommand(sql, conn);
+            using var reader = await cmd.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
             {
-                item.FullName = info.FullName;
-                item.Email = info.Email;
+                var uid = reader.GetGuid(0);
+                var name = reader.IsDBNull(1) ? null : reader.GetString(1);
+                var email = reader.IsDBNull(2) ? null : reader.GetString(2);
+                nameMap[uid] = (name, email);
             }
+
+            foreach (var item in items)
+            {
+                if (nameMap.TryGetValue(item.UserId, out var info))
+                {
+                    item.FullName = info.FullName;
+                    item.Email = info.Email;
+                }
+            }
+        }
+        catch (Exception)
+        {
+            // Graceful fallback: user enrichment failure won't crash the payment listing endpoint
         }
     }
 }
