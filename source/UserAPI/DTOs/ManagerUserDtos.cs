@@ -8,6 +8,7 @@ public class ManagerUserListItemDto
     public Guid UserId { get; set; }
     public string? FullName { get; set; }
     public string? Email { get; set; }
+    public string? Role { get; set; }
     public string? Status { get; set; }
     public DateTime RegistrationTimestamp { get; set; }
     public int TotalInterviewCount { get; set; }
@@ -20,8 +21,16 @@ public class ManagerUserDetailsDto
     public string? FullName { get; set; }
     public string? AvatarUrl { get; set; }
     public string? Email { get; set; }
+    public string? Role { get; set; }
     public string? Status { get; set; }
+    public bool IsEmailVerified { get; set; }
+    public bool IsFaceVerified { get; set; }
+    public bool IsVoiceVerified { get; set; }
     public DateTime RegistrationTimestamp { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public DateTime? LastLoginAt { get; set; }
+    public string? BlockedReason { get; set; }
+    public DateTime? BlockedAt { get; set; }
     public int CreditBalance { get; set; }
     public List<CreditTransactionDto> CreditTransactions { get; set; } = new();
     public List<CompletedSessionDto> CompletedSessions { get; set; } = new();
@@ -41,9 +50,12 @@ public class CompletedSessionDto
 {
     public Guid SessionId { get; set; }
     public string? Title { get; set; }
+    public string? Level { get; set; }
+    public string? InteractionMode { get; set; }
+    public string? Status { get; set; }
     public string? QuestionType { get; set; }
-    public DateTime StartedAt { get; set; }
-    public DateTime EndedAt { get; set; }
+    public DateTime? StartedAt { get; set; }
+    public int? DurationMinutes { get; set; }
     public int TotalQuestions { get; set; }
     public int AnsweredQuestions { get; set; }
     public int CreditCost { get; set; }

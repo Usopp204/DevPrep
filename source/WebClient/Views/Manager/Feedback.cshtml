@@ -203,6 +203,10 @@
                         </div>
                     </div>
                 }
+                <button id="feedback-deleted" type="button" title="Show only soft-deleted feedback"
+                        class="chip px-md py-1 rounded-full bg-surface-container border border-border-subtle text-on-surface-variant text-[10px] uppercase font-code-label hover:text-error transition-all">
+                    <span class="material-symbols-outlined text-[14px] align-middle">delete_history</span> Show deleted
+                </button>
                 <div class="ml-auto relative min-w-[300px]">
                     <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
                     <input id="feedback-search" class="w-full bg-surface-container border-border-subtle border rounded-xl pl-4 pr-10 py-1.5 font-body-sm focus:ring-1 focus:ring-primary-container" placeholder="Search comments..." type="text" />
@@ -216,8 +220,8 @@
 <th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">User</th>
 <th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">Rating</th>
 <th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">Comment</th>
-<th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">Date</th>
 <th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">@(feedbackKind == "ai" ? "Helpful" : "Status")</th>
+<th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">Date</th>
 <th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant text-right">Actions</th>
 </tr>
 </thead>
@@ -319,6 +323,7 @@
         let currentRating = '';
         let currentHelpful = '';
         let currentStatus = '';
+        let showDeleted = false;
 
         document.addEventListener("DOMContentLoaded", () => {
             document.getElementById('feedback-prev').addEventListener('click', () => {
@@ -347,6 +352,18 @@
             chipGroup('feedback-helpful', v => { currentHelpful = v; });
             chipGroup('feedback-status', v => { currentStatus = v; });
 
+            const delBtn = document.getElementById('feedback-deleted');
+            if (delBtn) {
+                delBtn.addEventListener('click', () => {
+                    showDeleted = !showDeleted;
+                    delBtn.classList.toggle('active', showDeleted);
+                    delBtn.classList.toggle('text-error', showDeleted);
+                    delBtn.classList.toggle('border-error', showDeleted);
+                    currentPage = 1;
+                    fetchFeedbackList();
+                });
+            }
+
             fetchFeedbackList();
         });
 
@@ -374,6 +391,7 @@
                 if (currentRating) query.set('rating', currentRating);
                 if (FEEDBACK_KIND === 'ai' && currentHelpful !== '') query.set('isHelpful', currentHelpful);
                 if (FEEDBACK_KIND === 'system' && currentStatus) query.set('status', currentStatus);
+                if (showDeleted) query.set('onlyDeleted', 'true');
 
                 const res = await fetch(`${API_BASE}?${query}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
@@ -432,10 +450,10 @@
                         ${FEEDBACK_KIND === 'system' ? `<div class="flex items-center gap-xs mb-1">${getTypeBadge(getFeedbackType(item))}${item.replyCount ? `<span class="text-on-surface-variant text-[11px] font-code-label">Replies ${item.replyCount}</span>` : ''}</div>` : ''}
                         <p class="truncate opacity-80 italic text-on-surface">"${escapeHtml(fixText(item.content || item.subject || ''))}"</p>
                     </td>
-                    <td class="px-lg py-lg font-code-label text-on-surface-variant">${formatDate(item.createdAt)}</td>
                     <td class="px-lg py-lg">
                         ${FEEDBACK_KIND === 'ai' ? helpfulBadge(item.isHelpful) : getStatusBadge(item.status)}
                     </td>
+                    <td class="px-lg py-lg font-code-label text-on-surface-variant">${formatDate(item.createdAt)}</td>
                     <td class="px-lg py-lg text-right">
                         <div class="flex justify-end gap-md">
                             <button class="text-on-surface-variant hover:text-primary transition-colors" onclick="event.stopPropagation(); openFeedbackDetail('${item.id}')" title="View details"><span class="material-symbols-outlined text-[20px]">visibility</span></button>
@@ -605,7 +623,7 @@
             const end = Math.min(page * size, totalItems);
 
             document.getElementById('feedback-summary').innerText = `Showing ${start}-${end} of ${totalItems} feedback entries`;
-            document.getElementById('feedback-page').innerText = `${page}`;
+            document.getElementById('feedback-page').innerText = `${page} / ${totalPages}`;
             document.getElementById('feedback-prev').disabled = page <= 1;
             document.getElementById('feedback-next').disabled = page >= totalPages;
         }

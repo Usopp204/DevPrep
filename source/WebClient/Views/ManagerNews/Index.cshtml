@@ -115,9 +115,14 @@
         }
 
         .admin-input:focus, .admin-select:focus {
-            border-color: var(--primary);
-            background: #0f1322;
-            color: #ffffff;
+            border-color: var(--primary) !important;
+            background: #161824 !important;
+            color: #ffffff !important;
+        }
+
+        .admin-select option {
+            background-color: #11121a !important;
+            color: #ffffff !important;
         }
 
         .admin-input::placeholder { color: #64748b; }
@@ -185,7 +190,8 @@
             border-radius: 8px; transition: 0.15s ease; text-decoration: none;
         }
         .action-btn:hover { background: rgba(255,255,255,.08); }
-        .action-view { color: #93c5fd; }
+        .action-view { color: #94a3b8; }
+        .action-view:hover { color: #ffffff; }
 
         .empty-row { height: 140px; color: #cbd5e1; text-align: center; font-weight: 600; }
 
@@ -224,15 +230,16 @@
                 </div>
             </div>
 
-            <form method="get" action="/Manager/News" class="filter-card">
+            <form method="get" action="/Manager/News" id="managerFilterForm" class="filter-card" onsubmit="document.getElementById('pageIdxInput').value = 1;">
+                <input type="hidden" name="page" id="pageIdxInput" value="@pageIndex" />
                 <div class="row g-3 align-items-end">
                     <div class="col-12 col-lg-8">
-                        <label class="filter-label">Search</label>
-                        <input name="keyword" value="@ViewBag.Keyword" type="text" class="form-control admin-input" placeholder="Search title, slug, or summary..." onkeypress="if(event.key === 'Enter') this.form.submit();" />
+                        <div class="filter-label">Search</div>
+                        <input name="keyword" value="@ViewBag.Keyword" type="text" class="form-control admin-input" placeholder="Search title, slug, or summary..." />
                     </div>
                     <div class="col-6 col-lg-2">
-                        <label class="filter-label">Status</label>
-                        <select name="status" class="form-select admin-select" onchange="this.form.submit()">
+                        <div class="filter-label">Status</div>
+                        <select name="status" class="form-select admin-select">
                             <option value="">All Status</option>
                             <option value="Published" selected="@(ViewBag.Status == "Published")">Published</option>
                             <option value="Draft" selected="@(ViewBag.Status == "Draft")">Draft</option>
@@ -292,7 +299,7 @@
                                         <td>@((item.PublishedAt ?? item.CreatedAt).ToString("MMM dd, yyyy"))</td>
                                         <td class="text-end">
                                             <a class="action-btn action-view" href="/Manager/News/@item.NewsId" title="View details">
-                                                <i class="fa-regular fa-eye"></i>
+                                                <span class="material-symbols-outlined fs-5">visibility</span>
                                             </a>
                                         </td>
                                     </tr>
@@ -322,7 +329,17 @@
 
                         <div class="pager">
                             <a href="@BuildPageUrl(prevPage)"><i class="fa-solid fa-chevron-left"></i></a>
-                            @for (var i = 1; i <= totalPages; i++)
+                            @{
+                                var maxVisiblePages = 30;
+                                var startPage = Math.Max(1, pageIndex - (maxVisiblePages / 2));
+                                var endPage = Math.Min(totalPages, startPage + maxVisiblePages - 1);
+                                if (endPage - startPage + 1 < maxVisiblePages)
+                                {
+                                    startPage = Math.Max(1, endPage - maxVisiblePages + 1);
+                                }
+                            }
+
+                            @for (var i = startPage; i <= endPage; i++)
                             {
                                 if (i == pageIndex)
                                 {
