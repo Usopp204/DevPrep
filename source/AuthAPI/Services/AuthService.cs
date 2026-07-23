@@ -24,6 +24,14 @@ public class AuthService : IAuthService
     private const int MaxFailedAttempts = 5;
     private const int LockoutMinutes = 15;
     private const string DefaultResetPasswordUrl = "http://localhost:5130/Auth/ResetPassword";
+    private const string DefaultConfirmEmailUrl = "http://localhost:5130/Auth/ConfirmEmail";
+    // Token link xác thực là base64url 32 byte (~43 ký tự); OTP chỉ 6 số. Ngưỡng này để
+    // endpoint verify theo link không bao giờ tra nhầm sang OTP của account khác.
+    private const int MinLinkTokenLength = 20;
+    private const string PendingVerificationMessage =
+        "This email was registered recently and is pending verification. " +
+        "Please check your inbox (including spam) for the verification email, " +
+        "or register again after the code expires.";
     private const string PasswordMethod = "Password";
     private const string AdminMethod = "Admin";
     private const string SsoMethod = "SSO";
@@ -86,9 +94,31 @@ public class AuthService : IAuthService
         // Chuẩn hoá email để so sánh và lưu trữ nhất quán.
         var email = request.Email.Trim().ToLowerInvariant();
 
-        if (await _accountRepository.ExistsByEmailAsync(email))
+        var existing = await _accountRepository.GetByEmailAsync(email);
+        if (existing is not null)
         {
-            throw new ConflictException("An account with this email already exists.");
+            // Đã xác thực (hoặc không còn Pending, vd bị Block) -> email đã có chủ thật sự.
+            if (existing.IsEmailVerified || existing.Status != PendingStatus)
+            {
+                throw new ConflictException("An account with this email already exists.");
+            }
+
+            // Account Pending còn OTP/link hợp lệ -> lần đăng ký trước vẫn đang chờ xác thực.
+            // Không đè password; lối thoát của người dùng là email đã gửi (OTP + link).
+            if (await _emailTokenRepository.HasValidTokenAsync(existing.AccountId))
+            {
+                throw new ConflictException(PendingVerificationMessage);
+            }
+
+            // Account Pending đã hết hạn xác thực -> xoá để đăng ký lại từ đầu (DELETE có điều
+            // kiện nguyên tử, an toàn khi chạy đua với request register khác hoặc sweeper).
+            // Không xoá được + vẫn còn token hợp lệ = account vừa được lượt khác cứu sống -> 409;
+            // còn nếu bên khác đã xoá hộ thì cứ tiếp tục đăng ký như thường.
+            if (!await TryRemoveExpiredPendingAccountAsync(existing) &&
+                await _emailTokenRepository.HasValidTokenAsync(existing.AccountId))
+            {
+                throw new ConflictException(PendingVerificationMessage);
+            }
         }
 
         var account = new Account
@@ -101,18 +131,26 @@ public class AuthService : IAuthService
         };
         await _accountRepository.AddAsync(account);
 
-        // Sinh OTP xác thực email. Gán navigation property để EF tự điền AccountId
-        // sau khi insert Account (cả hai được lưu trong cùng một transaction).
+        // Sinh OTP + token link xác thực (2 dòng token cùng hạn, dùng đường nào cũng được).
+        // Gán navigation property để EF tự điền AccountId sau khi insert Account
+        // (tất cả được lưu trong cùng một transaction).
         var otp = GenerateOtp();
+        var linkToken = GenerateSecureToken();
         var expiresAt = VietnamTime.Now.AddMinutes(OtpExpiryMinutes);
-        var verificationToken = new EmailVerificationToken
+        await _emailTokenRepository.AddAsync(new EmailVerificationToken
         {
             Account = account,
             Token = otp,
             ExpiresAt = expiresAt,
             IsUsed = false
-        };
-        await _emailTokenRepository.AddAsync(verificationToken);
+        });
+        await _emailTokenRepository.AddAsync(new EmailVerificationToken
+        {
+            Account = account,
+            Token = linkToken,
+            ExpiresAt = expiresAt,
+            IsUsed = false
+        });
 
         try
         {
@@ -125,8 +163,8 @@ public class AuthService : IAuthService
             throw new ConflictException("An account with this email already exists.");
         }
 
-        // Phát sự kiện để NotificationAPI gửi email chứa OTP (qua RabbitMQ/MassTransit).
-        await PublishEmailVerificationAsync(account.AccountId, email, otp, expiresAt);
+        // Phát sự kiện để NotificationAPI gửi email chứa OTP + link xác thực.
+        await PublishEmailVerificationAsync(account.AccountId, email, otp, linkToken, expiresAt);
 
         // Phát sự kiện để UserAPI tạo hồ sơ (UserProfiles) cho tài khoản mới.
         await PublishAccountRegisteredAsync(account.AccountId, email, request.FullName);
@@ -147,6 +185,12 @@ public class AuthService : IAuthService
         var account = await _accountRepository.GetByEmailAsync(email)
             ?? throw new NotFoundException("Account not found.");
 
+        // Account bị admin khoá thì không cho verify kích hoạt lại (đồng bộ với reset-password).
+        if (account.Status == BlockedStatus)
+        {
+            throw new ForbiddenException("This account has been blocked.");
+        }
+
         if (account.IsEmailVerified)
         {
             throw new BadRequestException("This email has already been verified.");
@@ -155,8 +199,14 @@ public class AuthService : IAuthService
         var token = await _emailTokenRepository.GetValidTokenAsync(account.AccountId, request.Otp)
             ?? throw new BadRequestException("The OTP is invalid or has expired.");
 
-        // Đánh dấu OTP đã dùng và kích hoạt tài khoản.
+        // Đánh dấu OTP đã dùng và kích hoạt tài khoản. Vô hiệu hoá luôn các token còn lại
+        // (token link đi kèm) để mỗi lượt xác thực chỉ dùng được một lần.
         token.IsUsed = true;
+        var remainingTokens = await _emailTokenRepository.GetUnusedTokensByAccountAsync(account.AccountId);
+        foreach (var remaining in remainingTokens)
+        {
+            remaining.IsUsed = true;
+        }
         account.IsEmailVerified = true;
         account.Status = ActiveStatus;
         account.UpdatedAt = VietnamTime.Now;
@@ -181,12 +231,18 @@ public class AuthService : IAuthService
         var account = await _accountRepository.GetByEmailAsync(email)
             ?? throw new NotFoundException("Account not found.");
 
+        // Account bị admin khoá thì không cấp thêm token xác thực.
+        if (account.Status == BlockedStatus)
+        {
+            throw new ForbiddenException("This account has been blocked.");
+        }
+
         if (account.IsEmailVerified)
         {
             throw new BadRequestException("This email has already been verified.");
         }
 
-        // Vô hiệu hoá các OTP cũ chưa dùng để chỉ còn duy nhất một OTP hợp lệ.
+        // Vô hiệu hoá các OTP/link cũ chưa dùng để chỉ còn duy nhất một bộ token hợp lệ.
         var unusedTokens = await _emailTokenRepository.GetUnusedTokensByAccountAsync(account.AccountId);
         foreach (var oldToken in unusedTokens)
         {
@@ -194,25 +250,90 @@ public class AuthService : IAuthService
         }
 
         var otp = GenerateOtp();
+        var linkToken = GenerateSecureToken();
         var expiresAt = VietnamTime.Now.AddMinutes(OtpExpiryMinutes);
-        var newToken = new EmailVerificationToken
+        await _emailTokenRepository.AddAsync(new EmailVerificationToken
         {
             AccountId = account.AccountId,
             Token = otp,
             ExpiresAt = expiresAt,
             IsUsed = false
-        };
-        await _emailTokenRepository.AddAsync(newToken);
+        });
+        await _emailTokenRepository.AddAsync(new EmailVerificationToken
+        {
+            AccountId = account.AccountId,
+            Token = linkToken,
+            ExpiresAt = expiresAt,
+            IsUsed = false
+        });
 
-        await _accountRepository.SaveChangesAsync();
+        try
+        {
+            await _accountRepository.SaveChangesAsync();
+        }
+        catch (DbUpdateException)
+        {
+            // Account vừa bị dọn giữa chừng (hết hạn xác thực, sweeper/register khác xoá)
+            // -> insert token vi phạm FK. Trả 404 như account không tồn tại.
+            throw new NotFoundException("Account not found.");
+        }
 
-        // Phát sự kiện để NotificationAPI gửi lại email chứa OTP.
-        await PublishEmailVerificationAsync(account.AccountId, email, otp, expiresAt);
+        // Phát sự kiện để NotificationAPI gửi lại email chứa OTP + link xác thực.
+        await PublishEmailVerificationAsync(account.AccountId, email, otp, linkToken, expiresAt);
 
         return new ResendEmailOtpResponse
         {
             Email = account.Email,
             ExpiresAt = expiresAt
+        };
+    }
+
+    public async Task<VerifyEmailOtpResponse> VerifyEmailByLinkAsync(VerifyEmailLinkRequest request)
+    {
+        var tokenValue = request.Token.Trim();
+        if (tokenValue.Length < MinLinkTokenLength)
+        {
+            throw new BadRequestException("The verification link is invalid or has expired.");
+        }
+
+        var token = await _emailTokenRepository.GetValidByTokenValueAsync(tokenValue)
+            ?? throw new BadRequestException("The verification link is invalid or has expired.");
+
+        var account = token.Account;
+
+        // Account bị admin khoá thì không cho verify kích hoạt lại (đồng bộ với reset-password).
+        if (account.Status == BlockedStatus)
+        {
+            throw new ForbiddenException("This account has been blocked.");
+        }
+
+        if (account.IsEmailVerified)
+        {
+            throw new BadRequestException("This email has already been verified.");
+        }
+
+        // Đánh dấu token đã dùng và kích hoạt tài khoản. Vô hiệu hoá luôn OTP đi kèm
+        // để mỗi lượt xác thực chỉ dùng được một lần.
+        token.IsUsed = true;
+        var remainingTokens = await _emailTokenRepository.GetUnusedTokensByAccountAsync(account.AccountId);
+        foreach (var remaining in remainingTokens)
+        {
+            remaining.IsUsed = true;
+        }
+        account.IsEmailVerified = true;
+        account.Status = ActiveStatus;
+        account.UpdatedAt = VietnamTime.Now;
+
+        await _accountRepository.SaveChangesAsync();
+
+        _logger.LogInformation("Email verified successfully (via link) for {Email}.", account.Email);
+
+        return new VerifyEmailOtpResponse
+        {
+            AccountId = account.AccountId,
+            Email = account.Email,
+            IsEmailVerified = account.IsEmailVerified,
+            Status = account.Status
         };
     }
 
@@ -643,14 +764,22 @@ public class AuthService : IAuthService
     }
 
     /// <summary>
-    /// Phát sự kiện yêu cầu gửi email OTP. Nếu broker lỗi, vẫn cho luồng đăng ký thành công
-    /// (OTP đã lưu DB, người dùng có thể gọi resend). Đồng thời log OTP để tiện kiểm thử.
+    /// Phát sự kiện yêu cầu gửi email xác thực (OTP + link bấm trực tiếp). Nếu broker lỗi,
+    /// vẫn cho luồng đăng ký thành công (token đã lưu DB, người dùng có thể gọi resend).
+    /// Đồng thời log OTP + link để tiện kiểm thử.
     /// </summary>
-    private async Task PublishEmailVerificationAsync(Guid accountId, string email, string otp, DateTime expiresAt)
+    private async Task PublishEmailVerificationAsync(Guid accountId, string email, string otp, string linkToken, DateTime expiresAt)
     {
+        var baseUrl = _configuration.GetValue<string>("FRONTEND_CONFIRM_EMAIL_URL");
+        if (string.IsNullOrWhiteSpace(baseUrl))
+        {
+            baseUrl = DefaultConfirmEmailUrl;
+        }
+        var verifyUrl = $"{baseUrl}?token={Uri.EscapeDataString(linkToken)}";
+
         _logger.LogInformation(
-            "Email verification OTP for {Email}: {Otp} (expires in {Minutes} minutes)",
-            email, otp, OtpExpiryMinutes);
+            "Email verification OTP for {Email}: {Otp} — link: {VerifyUrl} (expires in {Minutes} minutes)",
+            email, otp, verifyUrl, OtpExpiryMinutes);
 
         try
         {
@@ -659,12 +788,49 @@ public class AuthService : IAuthService
                 AccountId = accountId,
                 Email = email,
                 Otp = otp,
+                VerifyUrl = verifyUrl,
                 ExpiresAt = expiresAt
             });
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to call NotificationAPI (email verification) for {Email}.", email);
+        }
+    }
+
+    /// <summary>
+    /// Thử xoá cứng một account Pending đã hết hạn xác thực để giải phóng email cho lần đăng ký
+    /// mới (DELETE có điều kiện nguyên tử — xem TryDeleteExpiredPendingAsync). Trả về true nếu
+    /// chính lượt gọi này xoá được. DB cascade tự xoá token con; hồ sơ bên UserAPI xoá best-effort.
+    /// </summary>
+    private async Task<bool> TryRemoveExpiredPendingAccountAsync(Account account)
+    {
+        if (!await _accountRepository.TryDeleteExpiredPendingAsync(account.AccountId))
+        {
+            return false;
+        }
+
+        _logger.LogInformation(
+            "Đã xoá account Pending hết hạn xác thực: {Email} ({AccountId}).",
+            account.Email, account.AccountId);
+
+        await DeleteProfilesBestEffortAsync(new[] { account.AccountId });
+        return true;
+    }
+
+    /// <summary>
+    /// Gọi UserAPI xoá hồ sơ của các account đã bị dọn. Best-effort: lỗi chỉ log,
+    /// không chặn luồng (hồ sơ mồ côi vô hại, có thể dọn lại sau).
+    /// </summary>
+    private async Task DeleteProfilesBestEffortAsync(IReadOnlyCollection<Guid> accountIds)
+    {
+        try
+        {
+            await _userApiClient.DeleteProfilesAsync(accountIds);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to call UserAPI (delete profiles) for {Count} account(s).", accountIds.Count);
         }
     }
 

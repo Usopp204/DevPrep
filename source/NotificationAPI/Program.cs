@@ -89,27 +89,44 @@ static bool IsInternalCallAuthorized(HttpRequest request, string? configuredKey)
 
 static async Task SeedEmailTemplatesAsync(WebApplication app)
 {
+    // Nội dung mặc định của VERIFY_EMAIL (OTP + nút link xác thực) — giữ đồng bộ với
+    // DefaultBodyHtml trong NotificationService.
+    const string verifyEmailBodyHtml = """
+        <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto">
+          <h2>DevPrep – Xác thực email</h2>
+          <p>Mã OTP xác thực tài khoản của bạn là:</p>
+          <p style="font-size:28px;font-weight:bold;letter-spacing:4px">{{otp}}</p>
+          <p>Hoặc nhấn nút bên dưới để xác thực trực tiếp, không cần nhập mã:</p>
+          <p style="margin:24px 0">
+            <a href="{{verifyUrl}}" style="background:#1f883d;color:#fff;text-decoration:none;padding:12px 20px;border-radius:6px;font-weight:bold">Xác thực email</a>
+          </p>
+          <p style="font-size:12px;color:#555">Hoặc mở liên kết: <br/>{{verifyUrl}}</p>
+          <p>Mã và liên kết có hiệu lực trong <b>{{minutes}} phút</b>. Vui lòng không chia sẻ cho bất kỳ ai.</p>
+          <hr/>
+          <p style="color:#888;font-size:12px">Nếu bạn không đăng ký tài khoản DevPrep, hãy bỏ qua email này — tài khoản chưa xác thực sẽ tự động bị xoá sau khi mã hết hạn.</p>
+        </div>
+        """;
+
     using var scope = app.Services.CreateScope();
     var templates = scope.ServiceProvider.GetRequiredService<IEmailTemplateRepository>();
 
-    if (!await templates.ExistsByCodeAsync("VERIFY_EMAIL"))
+    // VERIFY_EMAIL: tạo mới nếu chưa có; nếu DB còn bản cũ (chưa có link xác thực)
+    // thì nâng cấp body để email chứa cả OTP lẫn nút link.
+    var verifyTemplate = await templates.GetByCodeAsync("VERIFY_EMAIL");
+    if (verifyTemplate is null)
     {
         await templates.AddAsync(new EmailTemplate
         {
             Code = "VERIFY_EMAIL",
             Subject = "Xác thực email DevPrep của bạn",
-            BodyHtml = """
-                <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto">
-                  <h2>DevPrep – Xác thực email</h2>
-                  <p>Mã OTP xác thực tài khoản của bạn là:</p>
-                  <p style="font-size:28px;font-weight:bold;letter-spacing:4px">{{otp}}</p>
-                  <p>Mã có hiệu lực trong <b>{{minutes}} phút</b>. Vui lòng không chia sẻ mã này cho bất kỳ ai.</p>
-                  <hr/>
-                  <p style="color:#888;font-size:12px">Nếu bạn không yêu cầu, hãy bỏ qua email này.</p>
-                </div>
-                """,
+            BodyHtml = verifyEmailBodyHtml,
             IsActive = true
         });
+        await templates.SaveChangesAsync();
+    }
+    else if (!verifyTemplate.BodyHtml.Contains("{{verifyUrl}}"))
+    {
+        verifyTemplate.BodyHtml = verifyEmailBodyHtml;
         await templates.SaveChangesAsync();
     }
 

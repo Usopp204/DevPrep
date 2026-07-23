@@ -41,6 +41,7 @@ public class NotificationService : INotificationService
 
         var body = bodyTemplate
             .Replace("{{otp}}", message.Otp)
+            .Replace("{{verifyUrl}}", message.VerifyUrl ?? string.Empty)
             .Replace("{{email}}", message.Email)
             .Replace("{{minutes}}", minutes.ToString());
 
@@ -116,9 +117,14 @@ public class NotificationService : INotificationService
           <h2>DevPrep – Xác thực email</h2>
           <p>Mã OTP xác thực tài khoản của bạn là:</p>
           <p style="font-size:28px;font-weight:bold;letter-spacing:4px">{{otp}}</p>
-          <p>Mã có hiệu lực trong <b>{{minutes}} phút</b>. Vui lòng không chia sẻ mã này cho bất kỳ ai.</p>
+          <p>Hoặc nhấn nút bên dưới để xác thực trực tiếp, không cần nhập mã:</p>
+          <p style="margin:24px 0">
+            <a href="{{verifyUrl}}" style="background:#1f883d;color:#fff;text-decoration:none;padding:12px 20px;border-radius:6px;font-weight:bold">Xác thực email</a>
+          </p>
+          <p style="font-size:12px;color:#555">Hoặc mở liên kết: <br/>{{verifyUrl}}</p>
+          <p>Mã và liên kết có hiệu lực trong <b>{{minutes}} phút</b>. Vui lòng không chia sẻ cho bất kỳ ai.</p>
           <hr/>
-          <p style="color:#888;font-size:12px">Nếu bạn không yêu cầu, hãy bỏ qua email này.</p>
+          <p style="color:#888;font-size:12px">Nếu bạn không đăng ký tài khoản DevPrep, hãy bỏ qua email này — tài khoản chưa xác thực sẽ tự động bị xoá sau khi mã hết hạn.</p>
         </div>
         """;
 

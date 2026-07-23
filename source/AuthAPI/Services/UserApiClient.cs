@@ -22,4 +22,10 @@ public class UserApiClient : IUserApiClient
         var response = await _httpClient.PostAsJsonAsync("/internal/profiles", message, cancellationToken);
         response.EnsureSuccessStatusCode();
     }
+
+    public async Task DeleteProfilesAsync(IReadOnlyCollection<Guid> accountIds, CancellationToken cancellationToken = default)
+    {
+        var response = await _httpClient.PostAsJsonAsync("/internal/profiles/delete", new { accountIds }, cancellationToken);
+        response.EnsureSuccessStatusCode();
+    }
 }
