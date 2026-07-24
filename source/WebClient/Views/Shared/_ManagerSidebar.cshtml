@@ -1,7 +1,7 @@
-@{
+﻿@{
     var path = Context.Request.Path.Value ?? string.Empty;
     bool IsActive(string href) => path.Equals(href, StringComparison.OrdinalIgnoreCase)
-        || (href != "/Manager/Index" && path.StartsWith(href, StringComparison.OrdinalIgnoreCase));
+        || (href != "/Manager/Index" && path.StartsWith(href + "/", StringComparison.OrdinalIgnoreCase));
 }
 <aside class="ad-sidebar">
     <div class="ad-sidebar-head">
@@ -13,6 +13,9 @@
     </div>
 
     <nav class="ad-nav">
+        <a class="ad-nav-item @((path.Equals("/Manager", StringComparison.OrdinalIgnoreCase) || path.Equals("/Manager/Index", StringComparison.OrdinalIgnoreCase)) ? "active" : "")" href="/Manager/Index">
+            <span class="material-symbols-outlined">dashboard</span><span class="label">Dashboard</span>
+        </a>
         <a class="ad-nav-item @(IsActive("/Manager/QuestionBank") ? "active" : "")" href="/Manager/QuestionBank">
             <span class="material-symbols-outlined">database</span><span class="label">Question Bank</span>
         </a>
@@ -23,7 +26,7 @@
             <span class="material-symbols-outlined">group</span><span class="label">Users</span>
         </a>
         <a class="ad-nav-item @(IsActive("/Manager/InterviewSessions") ? "active" : "")" href="/Manager/InterviewSessions">
-            <span class="material-symbols-outlined">history</span><span class="label">InterviewSessions</span>
+            <span class="material-symbols-outlined">history</span><span class="label">Interview Sessions</span>
         </a>
         <a class="ad-nav-item @(IsActive("/Manager/Payments") ? "active" : "")" href="/Manager/Payments">
             <span class="material-symbols-outlined">payments</span><span class="label">Payments</span>
@@ -31,11 +34,11 @@
         <a class="ad-nav-item @(IsActive("/Manager/CreditPackages") ? "active" : "")" href="/Manager/CreditPackages">
             <span class="material-symbols-outlined">account_balance_wallet</span><span class="label">Credit Packages</span>
         </a>
-        <a class="ad-nav-item @(IsActive("/Manager/Feedback") ? "active" : "")" href="/Manager/Feedback">
-            <span class="material-symbols-outlined">chat_bubble</span><span class="label">System Feedback</span>
-        </a>
         <a class="ad-nav-item @(IsActive("/Manager/AiFeedback") ? "active" : "")" href="/Manager/AiFeedback">
             <span class="material-symbols-outlined">smart_toy</span><span class="label">AI Feedback</span>
+        </a>
+        <a class="ad-nav-item @(IsActive("/Manager/Feedback") ? "active" : "")" href="/Manager/Feedback">
+            <span class="material-symbols-outlined">forum</span><span class="label">System Feedback</span>
         </a>
         <a class="ad-nav-item @(IsActive("/Manager/ReportedFeedback") ? "active" : "")" href="/Manager/ReportedFeedback">
             <span class="material-symbols-outlined">flag</span><span class="label">Reported Feedback</span>

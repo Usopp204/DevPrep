@@ -9,4 +9,7 @@ namespace AuthAPI.Services.Interfaces;
 public interface IUserApiClient
 {
     Task CreateProfileAsync(AccountRegistered message, CancellationToken cancellationToken = default);
+
+    /// <summary>Xoá hồ sơ của các account đã bị dọn (account Pending hết hạn xác thực).</summary>
+    Task DeleteProfilesAsync(IReadOnlyCollection<Guid> accountIds, CancellationToken cancellationToken = default);
 }

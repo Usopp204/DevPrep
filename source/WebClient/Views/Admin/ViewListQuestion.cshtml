@@ -1,4 +1,4 @@
-﻿@model WebClient.Models.Admin.AdminQuestionViewModel
+@model WebClient.Models.Admin.AdminQuestionViewModel
 
 @{
     Layout = null;
@@ -230,9 +230,14 @@
 
             .admin-input:focus,
             .admin-select:focus {
-                border-color: var(--primary);
-                background: #0f1322;
-                color: #ffffff;
+                border-color: var(--primary) !important;
+                background: #161824 !important;
+                color: #ffffff !important;
+            }
+
+            .admin-select option {
+                background-color: #11121a !important;
+                color: #ffffff !important;
             }
 
             .admin-input::placeholder {
@@ -428,18 +433,34 @@
             }
 
         .action-view {
-            color: #93c5fd;
+            color: #94a3b8;
+        }
+
+        .action-view:hover {
+            color: #ffffff;
         }
 
         .action-edit {
-            color: #a78bfa;
+            color: #cbd5e1;
+        }
+
+        .action-edit:hover {
+            color: #c084fc;
         }
 
         .action-delete {
-            color: #fb7185;
+            color: #f87171;
+        }
+
+        .action-delete:hover {
+            color: #ef4444;
         }
 
         .action-restore {
+            color: #94a3b8;
+        }
+
+        .action-restore:hover {
             color: #10b981;
         }
 
@@ -871,7 +892,7 @@
                                             <a href="/admin/questions/detail/@item.QuestionId"
                                                class="action-btn action-view"
                                                title="View detail">
-                                                <i class="fa-regular fa-eye"></i>
+                                                <span class="material-symbols-outlined fs-5">visibility</span>
                                             </a>
 
                                             @if (!item.IsDeleted)
@@ -879,7 +900,7 @@
                                                 <a href="/admin/questions/edit/@item.QuestionId"
                                                    class="action-btn action-edit"
                                                    title="Edit question">
-                                                    <i class="fa-regular fa-pen-to-square"></i>
+                                                    <span class="material-symbols-outlined fs-5">edit</span>
                                                 </a>
                                             }
 
@@ -889,7 +910,7 @@
                                                         onclick="restoreQuestion('@item.QuestionId')"
                                                         class="action-btn action-restore"
                                                         title="Restore question">
-                                                    <i class="fa-solid fa-trash-arrow-up"></i>
+                                                    <span class="material-symbols-outlined fs-5">restore_from_trash</span>
                                                 </button>
                                             }
                                             else
@@ -898,7 +919,7 @@
                                                         onclick="deleteQuestion('@item.QuestionId')"
                                                         class="action-btn action-delete"
                                                         title="Delete question">
-                                                    <i class="fa-regular fa-trash-can"></i>
+                                                    <span class="material-symbols-outlined fs-5 text-danger">delete</span>
                                                 </button>
                                             }
                                         </td>

@@ -1,8 +1,9 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using WebClient.Models.Feedback;
 using WebClient.Services.Feedback;
+using WebClient.Services.Manager;
 using WebClient.Services.Shared;
 
 namespace WebClient.Controllers.Manager;
@@ -11,13 +12,29 @@ namespace WebClient.Controllers.Manager;
 [Authorize(Roles = "Manager")]
 public class ManagerController(
     IOptions<ApiGatewayOptions> gatewayOptions,
-    IFeedbackService feedbackService) : Controller
+    IFeedbackService feedbackService,
+    IManagerDashboardService dashboardService) : Controller
 {
     private string ApiBaseUrl => gatewayOptions.Value.BaseUrl?.TrimEnd('/') ?? "http://localhost:7000";
 
-    public IActionResult Index()
+    public async Task<IActionResult> Index()
     {
-        return RedirectToAction("Index", "ManagerQuestionBank");
+        var model = await dashboardService.GetStatsAsync(HttpContext.RequestAborted);
+        return View(model);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> RevenueSeries(DateTime? from, DateTime? to)
+    {
+        var nowVn = DateTime.UtcNow.AddHours(7).Date;
+        var f = (from ?? new DateTime(nowVn.Year, nowVn.Month, 1)).Date;
+        var t = (to ?? nowVn).Date;
+
+        var result = await dashboardService.GetRevenueDailyAsync(f, t, HttpContext.RequestAborted);
+        if (result is null)
+            return StatusCode(502, new { success = false, message = "Cannot reach PaymentAPI. Make sure the gateway and PaymentAPI are running." });
+
+        return Json(new { success = true, data = result });
     }
 
     public IActionResult Feedback()

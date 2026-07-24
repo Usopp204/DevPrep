@@ -55,6 +55,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAdminService, AdminService>();
         services.AddScoped<IAdminDashboardService, AdminDashboardService>();
         services.AddScoped<IManagerService, ManagerService>();
+        services.AddScoped<IManagerDashboardService, ManagerDashboardService>();
         services.AddScoped<IManagerQuestionService, ManagerQuestionService>();
         services.AddScoped<IManagerTechStackService, ManagerTechStackService>();
         services.AddScoped<IManagerUserService, ManagerUserService>();

@@ -21,5 +21,8 @@ public interface IUserProfileRepository
 
     Task AddAsync(UserProfile profile);
 
+    /// <summary>Xoá hồ sơ theo danh sách AccountId (AuthAPI dọn account Pending hết hạn). Trả về số dòng đã xoá.</summary>
+    Task<int> DeleteByAccountIdsAsync(IReadOnlyCollection<Guid> accountIds);
+
     Task<int> SaveChangesAsync();
 }

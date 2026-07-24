@@ -38,6 +38,32 @@ body.admin-page {
     margin: 0;
 }
 
+/* ============ Global Select, Option & Date Input Dark Theme ============ */
+select, option, .form-select, .form-control, .admin-select, .admin-input, .iv-select {
+    background-color: #11121a !important;
+    color: #ffffff !important;
+    border-color: #292c3d !important;
+}
+
+select option, .form-select option, .admin-select option, .iv-select option {
+    background-color: #11121a !important;
+    color: #ffffff !important;
+}
+
+select:focus, input:focus, .form-select:focus, .form-control:focus, .admin-select:focus, .admin-input:focus, .iv-select:focus {
+    background-color: #161824 !important;
+    border-color: #6366f1 !important;
+    color: #ffffff !important;
+    box-shadow: none !important;
+}
+
+input[type="date"], input[type="datetime-local"] {
+    color-scheme: dark !important;
+    background-color: #11121a !important;
+    color: #ffffff !important;
+    border-color: #292c3d !important;
+}
+
 .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; line-height: 1; vertical-align: middle; }
 
 .glass-card {
