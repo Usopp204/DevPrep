@@ -27,7 +27,7 @@ public class QuestionIndexClient : IQuestionIndexClient
                 answer = question.Answer,
                 category = categoryName,
                 difficulty = question.Difficulty,
-                position = question.Position
+                position = question.Position?.Name
             };
 
             var response = await _http.PostAsJsonAsync("internal/questions/index/upsert", payload);

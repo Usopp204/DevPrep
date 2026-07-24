@@ -23,12 +23,14 @@ public class AdminQuestionRepository : IAdminQuestionRepository
     {
         return _db.Questions
             .Include(x => x.Category)
+            .Include(x => x.Position)
             .FirstOrDefaultAsync(x => x.QuestionId == id);
     }
 
     public Task<Question?> GetTrackedAsync(Guid id)
     {
         return _db.Questions
+            .Include(x => x.Position)
             .FirstOrDefaultAsync(x => x.QuestionId == id);
     }
 

@@ -126,6 +126,9 @@ public class AdminQuestionService : IAdminQuestionService
 
         var now = VietnamTime.Now;
 
+        // Đổi tên position (text từ form) thành entity danh mục Positions (map name -> FK).
+        var position = await ResolvePositionAsync(dto.Position);
+
         var question = new Question
         {
             QuestionId = Guid.NewGuid(),
@@ -135,7 +138,7 @@ public class AdminQuestionService : IAdminQuestionService
             Difficulty = dto.Difficulty.Trim(),
 
             Answer = NormalizeNullable(dto.Answer),
-            Position = NormalizeNullable(dto.Position),
+            Position = position,
 
             Status = "Active",
             IsDeleted = false,
@@ -230,7 +233,8 @@ public class AdminQuestionService : IAdminQuestionService
 
         if (dto.Position != null)
         {
-            question.Position = NormalizeNullable(dto.Position);
+            question.Position = await ResolvePositionAsync(dto.Position);
+            question.PositionId = question.Position?.PositionId;
         }
 
         if (dto.Status != null)
@@ -334,9 +338,10 @@ public class AdminQuestionService : IAdminQuestionService
 
     public async Task<AdminReindexResultDto> ReindexAllQuestionsAsync()
     {
-        // Lấy toàn bộ câu hỏi Active và Chưa bị xoá
+        // Lấy toàn bộ câu hỏi Active và Chưa bị xoá (kèm Position để index tên position)
         var activeQuestions = await _db.Questions
             .AsNoTracking()
+            .Include(q => q.Position)
             .Where(q => !q.IsDeleted && q.Status == "Active")
             .ToListAsync();
 
@@ -389,7 +394,7 @@ public class AdminQuestionService : IAdminQuestionService
                 x.QuestionText.Contains(keyword) ||
                 (
                     x.Position != null &&
-                    x.Position.Contains(keyword)
+                    x.Position.Name.Contains(keyword)
                 )
             );
         }
@@ -481,7 +486,7 @@ public class AdminQuestionService : IAdminQuestionService
                 Category = null,
                 Question = x.QuestionText,
                 Difficulty = x.Difficulty,
-                Position = x.Position,
+                Position = x.Position != null ? x.Position.Name : null,
                 Status = x.Status,
                 IsDeleted = x.IsDeleted,
                 DeletedAt = x.DeletedAt,
@@ -559,7 +564,7 @@ public class AdminQuestionService : IAdminQuestionService
             Question = question.QuestionText,
             Difficulty = question.Difficulty,
             Answer = question.Answer,
-            Position = question.Position,
+            Position = question.Position?.Name,
             Status = question.Status,
             IsDeleted = question.IsDeleted,
             CreatedBy = question.CreatedBy,
@@ -573,6 +578,49 @@ public class AdminQuestionService : IAdminQuestionService
     private static string? NormalizeNullable(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    /// <summary>
+    /// Đổi tên position (text từ form câu hỏi) thành entity danh mục Positions:
+    /// tìm theo tên (chưa xoá); chỉ có bản đã xoá mềm cùng tên -> khôi phục;
+    /// chưa có -> tạo mới (danh mục tự mở rộng — form câu hỏi không phải đổi).
+    /// Tên rỗng/trắng -> null (câu hỏi không gắn position).
+    /// </summary>
+    private async Task<Position?> ResolvePositionAsync(string? name)
+    {
+        var normalized = NormalizeNullable(name);
+        if (normalized is null)
+        {
+            return null;
+        }
+
+        var active = await _db.Positions
+            .FirstOrDefaultAsync(p => p.Name == normalized && !p.IsDeleted);
+        if (active is not null)
+        {
+            return active;
+        }
+
+        var deleted = await _db.Positions
+            .FirstOrDefaultAsync(p => p.Name == normalized && p.IsDeleted);
+        if (deleted is not null)
+        {
+            deleted.IsDeleted = false;
+            deleted.DeletedAt = null;
+            deleted.UpdatedAt = VietnamTime.Now;
+            return deleted;
+        }
+
+        var now = VietnamTime.Now;
+        var position = new Position
+        {
+            PositionId = Guid.NewGuid(),
+            Name = normalized,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        await _db.Positions.AddAsync(position);
+        return position;
     }
 
     private static string NormalizeStatus(string status)
