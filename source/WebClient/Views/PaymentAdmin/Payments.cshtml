@@ -118,6 +118,7 @@
         .revenue-range { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
     </style>
     <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/components/pagination.css" asp-append-version="true" />
 </head>
 <body class="admin-page">
 @await Html.PartialAsync("_AdminTopbar")
@@ -364,36 +365,26 @@
                         <span class="pager-info">
                             @((Model.Page - 1) * Model.PageSize + 1)–@(Math.Min(Model.Page * Model.PageSize, Model.TotalCount)) of @Model.TotalCount
                         </span>
-                        <nav class="pager-nav">
-                            @if (Model.Page > 1)
+                        @{
+                            string PageUrl(int pageNumber) => Url.Action("Payments", "PaymentAdmin", new
                             {
-                                <a asp-controller="PaymentAdmin" asp-action="Payments" asp-route-page="@(Model.Page - 1)"
-                                   asp-route-keyword="@Model.Keyword" asp-route-status="@Model.Status" asp-route-paymentMethod="@Model.PaymentMethod"
-                                   asp-route-dateFrom="@(Model.DateFrom?.ToString("yyyy-MM-dd"))" asp-route-dateTo="@(Model.DateTo?.ToString("yyyy-MM-dd"))"
-                                   asp-route-minAmount="@Model.MinAmount" asp-route-maxAmount="@Model.MaxAmount" asp-route-period="@period"
-                                   class="pager-btn">
-                                    <span class="material-symbols-outlined">chevron_left</span>
-                                </a>
-                            }
-                            @for (int p = Math.Max(1, Model.Page - 2); p <= Math.Min(Model.TotalPages, Model.Page + 2); p++)
-                            {
-                                <a asp-controller="PaymentAdmin" asp-action="Payments" asp-route-page="@p"
-                                   asp-route-keyword="@Model.Keyword" asp-route-status="@Model.Status" asp-route-paymentMethod="@Model.PaymentMethod"
-                                   asp-route-dateFrom="@(Model.DateFrom?.ToString("yyyy-MM-dd"))" asp-route-dateTo="@(Model.DateTo?.ToString("yyyy-MM-dd"))"
-                                   asp-route-minAmount="@Model.MinAmount" asp-route-maxAmount="@Model.MaxAmount" asp-route-period="@period"
-                                   class="pager-btn @(p == Model.Page ? "now" : "")">@p</a>
-                            }
-                            @if (Model.Page < Model.TotalPages)
-                            {
-                                <a asp-controller="PaymentAdmin" asp-action="Payments" asp-route-page="@(Model.Page + 1)"
-                                   asp-route-keyword="@Model.Keyword" asp-route-status="@Model.Status" asp-route-paymentMethod="@Model.PaymentMethod"
-                                   asp-route-dateFrom="@(Model.DateFrom?.ToString("yyyy-MM-dd"))" asp-route-dateTo="@(Model.DateTo?.ToString("yyyy-MM-dd"))"
-                                   asp-route-minAmount="@Model.MinAmount" asp-route-maxAmount="@Model.MaxAmount" asp-route-period="@period"
-                                   class="pager-btn">
-                                    <span class="material-symbols-outlined">chevron_right</span>
-                                </a>
-                            }
-                        </nav>
+                                page = pageNumber,
+                                keyword = Model.Keyword,
+                                status = Model.Status,
+                                paymentMethod = Model.PaymentMethod,
+                                dateFrom = Model.DateFrom?.ToString("yyyy-MM-dd"),
+                                dateTo = Model.DateTo?.ToString("yyyy-MM-dd"),
+                                minAmount = Model.MinAmount,
+                                maxAmount = Model.MaxAmount,
+                                period
+                            }) ?? "#";
+                        }
+                        <partial name="_Pagination" model="new WebClient.Models.Shared.PaginationViewModel
+                        {
+                            CurrentPage = Model.Page,
+                            TotalPages = Model.TotalPages,
+                            PageUrl = PageUrl
+                        }" />
                     </div>
                 }
             }

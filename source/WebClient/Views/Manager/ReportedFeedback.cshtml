@@ -1,0 +1,50 @@
+﻿@using WebClient.Models.Feedback
+@model ReportedFeedbackPageViewModel
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reported Feedback - DevPrep Manager</title>
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/components/pagination.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/components/safe-text.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/components/star-rating.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/pages/reported-feedback.css" asp-append-version="true" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@@100..700,0..1&display=swap" rel="stylesheet" />
+</head>
+<body class="reported-feedback-manager-page">
+    @await Html.PartialAsync("_ManagerTopbar")
+    @await Html.PartialAsync("_ManagerSidebar")
+
+    <main class="reported-feedback-main">
+        <header class="reported-feedback-page-header">
+            <div>
+                <p>Feedback management Â· Read only</p>
+                <h1>Reported Feedback</h1>
+                <span>Monitor community reports and resolution history. Report actions are available only to administrators.</span>
+            </div>
+        </header>
+
+        <nav class="feedback-management-tabs" aria-label="Feedback management sections">
+            <a asp-controller="Manager" asp-action="AiFeedback">AI Feedback</a>
+            <a asp-controller="Manager" asp-action="Feedback">System Feedback</a>
+            <a class="active" asp-controller="Manager" asp-action="ReportedFeedback" aria-current="page">Reported Feedback</a>
+        </nav>
+
+        @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+        {
+            <div class="reported-feedback-alert error" role="alert">@Model.ErrorMessage</div>
+        }
+
+        <partial name="_ReportedFeedbackList" model="Model" />
+    </main>
+
+    <partial name="_ReportedFeedbackDetails" model="Model" />
+    <script src="~/js/components/pagination.js" asp-append-version="true"></script>
+</body>
+</html>

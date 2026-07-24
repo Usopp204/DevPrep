@@ -1,3 +1,4 @@
+using InterviewAPI.DTOs;
 using InterviewAPI.DTOs.Session;
 
 namespace InterviewAPI.Services.Interfaces;
@@ -12,6 +13,7 @@ public interface ISessionService
     Task<MessageResponse> SendMessageAsync(Guid userId, Guid sessionId, SendMessageRequest req, CancellationToken ct);
     Task<TimerResponse>   GetTimerAsync(Guid userId, Guid sessionId, CancellationToken ct);
     Task                  TrackTimeAsync(Guid userId, Guid sessionId, TrackTimeRequest req, CancellationToken ct);
+    Task<EndResponse>     CompleteSessionAsync(Guid userId, Guid sessionId, CancellationToken ct);
     Task<EndResponse>     EndSessionAsync(Guid userId, Guid sessionId, CancellationToken ct);
     Task<ResumeResponse>  ResumeSessionAsync(Guid userId, Guid sessionId, CancellationToken ct);
     Task<PauseResponse>   PauseSessionAsync(Guid userId, Guid sessionId, CancellationToken ct);
@@ -22,6 +24,13 @@ public interface ISessionService
 
     Task                  SoftDeleteAsync(Guid userId, Guid sessionId, CancellationToken ct);
     Task<List<SessionListItemDto>> GetMySessionsAsync(Guid userId, CancellationToken ct);
+    Task<SessionHistoryResult> GetSessionHistoryAsync(
+        Guid userId,
+        SessionHistoryQuery query,
+        CancellationToken ct);
+    Task<SessionChatLogResponse> GetSessionChatLogAsync(Guid userId, Guid sessionId, CancellationToken ct);
+    Task<FeedbackEligibilityResponse> GetFeedbackEligibilityAsync(Guid userId, CancellationToken ct);
+    Task<SessionFeedbackEligibilityResponse> GetSessionFeedbackEligibilityAsync(Guid userId, Guid sessionId, CancellationToken ct);
     Task<TranscriptResponse>       GetTranscriptAsync(Guid userId, Guid sessionId, CancellationToken ct);
 
     // True if the session exists (not soft-deleted) and belongs to the user. Used by EvaluationAPI

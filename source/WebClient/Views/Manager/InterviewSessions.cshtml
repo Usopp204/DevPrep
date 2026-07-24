@@ -43,6 +43,7 @@
         .iv-main { margin-left: 250px; padding-top: 80px; padding-left: 24px; padding-right: 24px; min-height: 100vh; background: #0e1323; }
         .iv-select { background: #353438; border: none; border-radius: 10px; padding: 6px 12px; color: #e5e1e7; font-size: 13px; }
     </style>
+    <link rel="stylesheet" href="~/css/components/pagination.css" asp-append-version="true" />
 </head>
 <body class="font-body-md overflow-x-hidden">
     @await Html.PartialAsync("_ManagerTopbar")
@@ -89,9 +90,7 @@
                 <div class="px-lg py-md flex items-center justify-between border-t border-border-subtle bg-surface-container/20">
                     <p id="iv-summary" class="font-code-label text-[11px] text-on-surface-variant uppercase">Loading...</p>
                     <div class="flex gap-xs items-center">
-                        <button id="iv-prev" class="p-1 rounded bg-surface-container border border-border-subtle text-on-surface-variant hover:text-primary" type="button"><span class="material-symbols-outlined">chevron_left</span></button>
-                        <span id="iv-page" class="px-3 py-1 rounded bg-primary-container text-on-primary-container font-code-label text-[11px] font-bold">1</span>
-                        <button id="iv-next" class="p-1 rounded bg-surface-container border border-border-subtle text-on-surface-variant hover:text-primary" type="button"><span class="material-symbols-outlined">chevron_right</span></button>
+                        <nav id="iv-pages" class="devprep-pagination devprep-pagination-inline" aria-label="Pagination"></nav>
                     </div>
                 </div>
             </section>
@@ -123,8 +122,6 @@
             fillSelect('iv-status', STATUSES); fillSelect('iv-level', LEVELS); fillSelect('iv-mode', MODES); fillSelect('iv-type', TYPES);
             ['iv-status', 'iv-level', 'iv-mode', 'iv-type'].forEach(id => document.getElementById(id).addEventListener('change', () => { currentPage = 1; fetchList(); }));
             document.getElementById('iv-search').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => { currentPage = 1; fetchList(); }, 300); });
-            document.getElementById('iv-prev').addEventListener('click', () => { if (currentPage > 1) { currentPage--; fetchList(); } });
-            document.getElementById('iv-next').addEventListener('click', () => { if (currentPage < totalPages) { currentPage++; fetchList(); } });
             fetchList();
         });
 
@@ -256,10 +253,9 @@
             totalPages = Math.max(data.totalPages || 1, 1);
             const ti = data.totalItems || data.totalCount || 0, pg = data.page || currentPage, sz = data.pageSize || pageSize;
             const start = ti === 0 ? 0 : ((pg - 1) * sz) + 1, end = Math.min(pg * sz, ti);
+            currentPage = pg;
             document.getElementById('iv-summary').innerText = `Showing ${start}-${end} of ${ti} sessions`;
-            document.getElementById('iv-page').innerText = `${pg}`;
-            document.getElementById('iv-prev').disabled = pg <= 1;
-            document.getElementById('iv-next').disabled = pg >= totalPages;
+            DevPrepPagination.render({ container: 'iv-pages', currentPage, totalPages, onPageChange: pageNumber => { currentPage = pageNumber; fetchList(); } });
         }
         function fmtDate(d) { if (!d) return '-'; const x = new Date(d); const m = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"]; return `${m[x.getMonth()]} ${x.getDate().toString().padStart(2,'0')}`; }
         function fmtDateTime(d) { if (!d) return '-'; const x = new Date(d); return x.toLocaleString(); }
@@ -299,5 +295,6 @@
             else { drawer.classList.add('drawer-hidden'); overlay.classList.remove('opacity-100'); setTimeout(() => { overlay.classList.add('hidden'); document.body.style.overflow = 'auto'; }, 300); }
         }
     </script>
+    <script src="~/js/components/pagination.js" asp-append-version="true"></script>
 </body>
 </html>

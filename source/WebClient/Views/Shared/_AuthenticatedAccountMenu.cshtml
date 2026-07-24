@@ -1,0 +1,102 @@
+@{
+    var accountEmail = Context.Request.Cookies["user_email"];
+    var accountInitial = string.IsNullOrWhiteSpace(accountEmail)
+        ? "U"
+        : accountEmail.Trim().Substring(0, 1).ToUpperInvariant();
+    var accountRole = Context.Request.Cookies["user_role"] ?? string.Empty;
+    var accountIsAdmin = string.Equals(accountRole, "Admin", StringComparison.OrdinalIgnoreCase)
+                      || string.Equals(accountRole, "Manager", StringComparison.OrdinalIgnoreCase);
+}
+
+<div class="hm-user-menu" id="hm-user-menu">
+    <button class="hm-avatar"
+            id="hm-avatar-btn"
+            type="button"
+            aria-haspopup="menu"
+            aria-controls="hm-dropdown"
+            aria-expanded="false"
+            title="@accountEmail">
+        @accountInitial
+    </button>
+    <div class="hm-dropdown" id="hm-dropdown" role="menu">
+        <div class="hm-dropdown-head">
+            <span class="hm-dropdown-avatar">@accountInitial</span>
+            <span class="hm-dropdown-email">@accountEmail</span>
+        </div>
+        @if (!accountIsAdmin)
+        {
+            <a class="hm-dropdown-item hm-dropdown-credits" asp-controller="Profile" asp-action="CreditHistory" role="menuitem">
+                <span class="material-symbols-outlined" style="color:#F9D949; font-variation-settings:'FILL' 1;">toll</span>
+                Credits
+                <span class="hm-credit-value" id="hm-credit-value">&hellip;</span>
+            </a>
+        }
+        <a class="hm-dropdown-item" asp-controller="Profile" asp-action="Index" role="menuitem">
+            <span class="material-symbols-outlined">person</span> View Profile
+        </a>
+        <form asp-controller="Auth" asp-action="Logout" method="post" class="m-0">
+            <button type="submit" class="hm-dropdown-item hm-dropdown-logout" role="menuitem">
+                <span class="material-symbols-outlined">logout</span> Logout
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+    (function () {
+        const btn = document.getElementById('hm-avatar-btn');
+        const menu = document.getElementById('hm-user-menu');
+
+        if (!btn || !menu || menu.dataset.accountMenuInitialized === 'true') {
+            return;
+        }
+        menu.dataset.accountMenuInitialized = 'true';
+
+        const loadCredits = function () {
+            const creditValue = document.getElementById('hm-credit-value');
+            if (!creditValue) return;
+
+            fetch('/Profile/CreditBalance', { headers: { 'Accept': 'application/json' } })
+                .then(response => response.ok ? response.json() : Promise.reject())
+                .then(data => { creditValue.textContent = Number(data.balance).toLocaleString('en-US'); })
+                .catch(() => { creditValue.textContent = '—'; });
+        };
+
+        const closeMenu = function (restoreFocus) {
+            const wasOpen = menu.classList.contains('open');
+            menu.classList.remove('open');
+            btn.setAttribute('aria-expanded', 'false');
+
+            if (restoreFocus && wasOpen) {
+                btn.focus();
+            }
+        };
+
+        btn.addEventListener('click', function (event) {
+            event.stopPropagation();
+            const open = menu.classList.toggle('open');
+            btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+            if (open) loadCredits();
+        });
+
+        document.addEventListener('click', function (event) {
+            if (!menu.contains(event.target)) {
+                closeMenu(false);
+            }
+        });
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                closeMenu(true);
+            }
+        });
+
+        window.addEventListener('pagehide', function () {
+            closeMenu(false);
+        });
+
+        window.addEventListener('pageshow', function (event) {
+            if (event.persisted) closeMenu(false);
+        });
+    })();
+</script>

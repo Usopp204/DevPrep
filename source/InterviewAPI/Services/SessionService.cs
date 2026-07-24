@@ -1,3 +1,4 @@
+using InterviewAPI.DTOs;
 using InterviewAPI.Clients;
 using InterviewAPI.DTOs.AiService;
 using InterviewAPI.DTOs.Evaluation;
@@ -7,15 +8,18 @@ using InterviewAPI.Models;
 using InterviewAPI.Repositories.Interfaces;
 using InterviewAPI.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace InterviewAPI.Services;
 
 public class SessionService : ISessionService
 {
+
     private static readonly int[] ValidDurations = { 15, 30, 45, 60 };
     private static readonly string[] ValidLevels = { "Intern", "Fresher", "Junior", "Middle", "Senior", "Lead" };
     private static readonly string[] ValidModes = { "Text", "Voice" };
+
+    private static bool IsTerminalStatus(string status) =>
+        status is "Completed" or "Cancelled" or "Expired";
 
     // Idle-reminder / auto-advance thresholds (seconds since AskedAt), by question difficulty.
     // NOTE: SessionQuestion has no persisted Difficulty column (ai-service's plan-time
@@ -347,9 +351,10 @@ public class SessionService : ISessionService
             }
 
             // Update session with credit cost.
-            session = await _repo.GetByIdAsync(sessionId, ct);
-            if (session != null)
+            var refreshedSession = await _repo.GetByIdAsync(sessionId, ct);
+            if (refreshedSession is not null)
             {
+                session = refreshedSession;
                 session.CreditCost = creditCost;
                 await _repo.SaveChangesAsync(ct);
             }
@@ -448,9 +453,6 @@ public class SessionService : ISessionService
         session.UpdatedAt = VietnamTime.Now;
         await _repo.SaveChangesAsync(ct);
 
-        // Step E.1: Grade this answer in the background so the interview turn stays fast and the
-        // report is ready by the time the user reaches it. Empty content (Skip) is graded as
-        // score 0 "No answer provided." by ai-service — no special handling needed here.
         ScheduleGrading(sessionId, currentQuestion, req.Content);
 
         // Step F: Tìm câu hỏi tiếp theo chưa được trả lời.
@@ -490,7 +492,8 @@ public class SessionService : ISessionService
         }
 
         // Step H: Đã trả lời hết — đóng phiên và phòng phỏng vấn.
-        session.Status = "Completed";
+        var hasSubstantiveAnswer = await _repo.HasSubstantiveAnswerAsync(sessionId, ct);
+        session.Status = hasSubstantiveAnswer ? "Completed" : "Expired";
         session.EndedAt = VietnamTime.Now;
         session.UpdatedAt = VietnamTime.Now;
 
@@ -564,23 +567,57 @@ public class SessionService : ISessionService
         }
     }
 
+    public async Task<EndResponse> CompleteSessionAsync(Guid userId, Guid sessionId, CancellationToken ct)
+    {
+        var session = await _repo.GetByIdAsync(sessionId, ct);
+        if (session is null || session.UserId != userId)
+            throw new InvalidOperationException("Session not found.");
+        if (IsTerminalStatus(session.Status))
+            return new EndResponse { Status = session.Status, EndedAt = session.EndedAt };
+        if (session.Status != "InProgress")
+            throw new InvalidOperationException("Session cannot complete from its current state.");
+
+        var elapsedSeconds = session.StartedAt is null
+            ? 0
+            : (VietnamTime.Now - session.StartedAt.Value).TotalSeconds - GetEffectivePausedSeconds(session);
+        if (session.StartedAt is null || elapsedSeconds < session.DurationMinutes * 60)
+            throw new InvalidOperationException("Session cannot complete before its deadline.");
+
+        var room = await _repo.GetRoomBySessionAsync(sessionId, ct);
+        var hasSubstantiveAnswer = await _repo.HasSubstantiveAnswerAsync(sessionId, ct);
+        var candidateWasActiveAtDeadline = hasSubstantiveAnswer &&
+                                           string.Equals(room?.Status, "Active", StringComparison.OrdinalIgnoreCase);
+        session.Status = candidateWasActiveAtDeadline
+            ? "Completed"
+            : "Expired";
+        session.EndedAt = VietnamTime.Now;
+        session.UpdatedAt = session.EndedAt.Value;
+
+        if (room is not null)
+        {
+            room.Status = "Closed";
+            room.ClosedAt = session.EndedAt;
+            await _repo.UpdateRoomAsync(room, ct);
+        }
+        else
+        {
+            await _repo.SaveChangesAsync(ct);
+        }
+
+        return new EndResponse { Status = session.Status, EndedAt = session.EndedAt };
+    }
+
     public async Task<EndResponse> EndSessionAsync(Guid userId, Guid sessionId, CancellationToken ct)
     {
         var session = await _repo.GetByIdAsync(sessionId, ct);
         if (session is null || session.UserId != userId)
             throw new InvalidOperationException("Session not found.");
-        if (session.Status != "Initialized" && session.Status != "InProgress")
-            throw new InvalidOperationException("Session already ended.");
+        if (IsTerminalStatus(session.Status))
+            return new EndResponse { Status = session.Status, EndedAt = session.EndedAt };
+        if (session.Status is not ("Initialized" or "InProgress" or "Paused"))
+            throw new InvalidOperationException("Session cannot be cancelled from its current state.");
 
-        // Hết giờ → Expired; kết thúc sớm → Completed. Trừ effective paused seconds, không thì
-        // thời gian Pause bị tính nhầm là đã trôi qua và phiên bị đánh dấu Expired oan.
-        var elapsedSeconds = session.StartedAt is null
-            ? 0
-            : (VietnamTime.Now - session.StartedAt.Value).TotalSeconds - GetEffectivePausedSeconds(session);
-        if (session.StartedAt is not null && elapsedSeconds >= session.DurationMinutes * 60)
-            session.Status = "Expired";
-        else
-            session.Status = "Completed";
+        session.Status = "Cancelled";
 
         session.EndedAt = VietnamTime.Now;
         session.UpdatedAt = VietnamTime.Now;
@@ -798,6 +835,114 @@ public class SessionService : ISessionService
         }).ToList();
     }
 
+
+
+    public async Task<SessionHistoryResult> GetSessionHistoryAsync(
+        Guid userId,
+        SessionHistoryQuery query,
+        CancellationToken ct)
+    {
+        var normalized = SessionHistoryQueryNormalizer.Normalize(query);
+        var (sessions, totalItems, positionOptions) = await _repo.GetHistoryAsync(userId, normalized, ct);
+
+        return new SessionHistoryResult
+        {
+            Items = sessions.Select(s => new SessionHistoryItemDto
+            {
+                SessionId = s.SessionId,
+                Title = s.Title,
+                Position = s.Position,
+                Level = s.Level,
+                InteractionMode = s.InteractionMode,
+                QuestionType = s.QuestionType,
+                Status = s.Status,
+                DurationMinutes = s.DurationMinutes,
+                TotalQuestions = s.TotalQuestions,
+                AnsweredQuestions = s.AnsweredQuestions,
+                StartedAt = s.StartedAt,
+                EndedAt = s.EndedAt,
+                CreatedAt = s.CreatedAt
+            }).ToList(),
+            Page = normalized.Page,
+            PageSize = normalized.PageSize,
+            TotalItems = totalItems,
+            TotalPages = totalItems == 0 ? 0 : (int)Math.Ceiling(totalItems / (double)normalized.PageSize),
+            PositionOptions = positionOptions
+        };
+    }
+
+    public async Task<SessionChatLogResponse> GetSessionChatLogAsync(Guid userId, Guid sessionId, CancellationToken ct)
+    {
+        var session = await _repo.GetChatLogAsync(userId, sessionId, ct);
+        if (session is null)
+            throw new KeyNotFoundException("Session not found.");
+
+        if (!IsTerminalStatus(session.Status))
+            throw new InvalidOperationException("Session is not eligible for chat log.");
+
+        var questions = session.SessionQuestions
+            .Where(q => q.ChatMessages.Any())
+            .OrderBy(q => q.OrderIndex)
+            .ThenBy(q => q.SessionQuestionId)
+            .Select(q => new SessionChatLogQuestionDto
+            {
+                QuestionIndex = q.OrderIndex,
+                QuestionText = q.Content,
+                Messages = q.ChatMessages
+                    .OrderBy(m => m.SentAt)
+                    .ThenBy(m => m.MessageId)
+                    .Select(m => new SessionChatLogMessageDto
+                    {
+                        MessageId = m.MessageId,
+                        SenderRole = m.SenderType,
+                        MessageType = m.MessageType,
+                        Content = m.Content,
+                        SentAt = m.SentAt,
+                        ResponseDurationMs = m.ResponseTimeMs
+                    })
+                    .ToList()
+            })
+            .ToList();
+
+        return new SessionChatLogResponse
+        {
+            SessionId = session.SessionId,
+            SessionStatus = session.Status,
+            Questions = questions
+        };
+    }
+
+    public async Task<FeedbackEligibilityResponse> GetFeedbackEligibilityAsync(Guid userId, CancellationToken ct)
+    {
+        var count = await _repo.CountFeedbackEligibleSessionsAsync(userId, ct);
+        return new FeedbackEligibilityResponse
+        {
+            Eligible = count > 0,
+            QualifyingSessionCount = count
+        };
+    }
+
+    public async Task<SessionFeedbackEligibilityResponse> GetSessionFeedbackEligibilityAsync(
+        Guid userId,
+        Guid sessionId,
+        CancellationToken ct)
+    {
+        var session = await _repo.GetFeedbackEligibilitySessionAsync(userId, sessionId, ct);
+        if (session is null)
+            throw new KeyNotFoundException("Session not found.");
+
+        return new SessionFeedbackEligibilityResponse
+        {
+            SessionId = session.SessionId,
+            Status = session.Status,
+            Eligible = session.Status == "Completed"
+        };
+    }
+
+
+
+
+
     public async Task<TranscriptResponse> GetTranscriptAsync(Guid userId, Guid sessionId, CancellationToken ct)
     {
         // Dùng lại GetWithFullHistoryAsync (đã load câu hỏi + chat) — phương thức đã tồn tại, dùng cho resume.
@@ -873,10 +1018,7 @@ public class SessionService : ISessionService
         return session is not null && session.UserId == userId;
     }
 
-    // Fire-and-forget grading of one answer via EvaluationAPI. Runs in its own DI scope (the request
-    // scope is gone once the response returns), forwards the caller's bearer token, and swallows
-    // errors (grading is best-effort; a missed answer is simply omitted from the report).
-    // Category/Difficulty are left empty here — categorization is handled by the report step (Part D).
+
     private void ScheduleGrading(Guid sessionId, SessionQuestion question, string userAnswer)
     {
         // Capture the token synchronously — HttpContext is not available inside the background task.
@@ -907,4 +1049,5 @@ public class SessionService : ISessionService
             }
         });
     }
+
 }

@@ -1,0 +1,64 @@
+@model WebClient.Models.Interview.InterviewSidebarViewModel
+
+<nav class="dash-sidebar">
+    <a class="btn-gradient dash-new-btn"
+       asp-controller="Interview"
+       asp-action="Index">
+        <span class="material-symbols-outlined">add</span>
+        <span>New Interview</span>
+    </a>
+
+    <a class="dash-nav-link @(Model.ActiveItem == "History" ? "active is-active" : "")"
+       asp-controller="Interview"
+       asp-action="History"
+       aria-current="@(Model.ActiveItem == "History" ? "page" : null)">
+        <span class="material-symbols-outlined">history</span>
+        <span>Interview History</span>
+    </a>
+
+    <div class="dash-sidebar-label">Recent Sessions</div>
+
+    <div class="dash-session-list"
+         id="recent-session-list"
+         data-url="@Url.Action("RecentSessions", "Interview")"
+         data-next-page="2"
+         data-has-more="@(Model.RecentSessions.Count >= 6 ? "true" : "false")">
+        @if (Model.RecentSessions.Count == 0)
+        {
+            <div class="dash-sidebar-empty" id="recent-empty">No final sessions yet.</div>
+        }
+        else
+        {
+            @foreach (var session in Model.RecentSessions)
+            {
+                var time = WebClient.Helpers.TimeFormat.RelativeTime(session.EndedAt ?? session.StartedAt ?? session.CreatedAt);
+                var isCurrent = Model.ActiveSessionId == session.SessionId;
+                var activeClass = isCurrent ? "active is-active" : string.Empty;
+
+                <a class="dash-session-item @activeClass"
+                   href="@Url.Action("Details", "Interview", new { id = session.SessionId })"
+                   data-session-id="@session.SessionId"
+                   aria-current="@(isCurrent ? "page" : null)">
+                    <span class="dash-session-title">@session.DisplayTitle</span>
+                    <span class="dash-session-meta">@session.Level &middot; @session.DisplayStatus &middot; @time</span>
+                </a>
+            }
+        }
+    </div>
+
+    <div class="dash-recent-state" id="recent-session-state" aria-live="polite">@Model.RecentError</div>
+
+    <div class="dash-sidebar-spacer"></div>
+
+    <div class="dash-sidebar-footer">
+        <a class="dash-footer-item" asp-controller="Home" asp-action="Index">
+            <span class="material-symbols-outlined">home</span>
+            <span>Home</span>
+        </a>
+
+        <a class="dash-footer-item" asp-controller="Feedback" asp-action="System">
+            <span class="material-symbols-outlined">help</span>
+            <span>Support</span>
+        </a>
+    </div>
+</nav>

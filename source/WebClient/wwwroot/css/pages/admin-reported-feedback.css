@@ -1,0 +1,88 @@
+.admin-reported-feedback-page,
+.admin-reported-feedback-page *,
+.admin-reported-feedback-page *::before,
+.admin-reported-feedback-page *::after {
+    box-sizing: border-box;
+}
+
+.admin-reported-feedback-page {
+    overflow-x: visible;
+}
+
+.admin-reported-feedback-page .reported-feedback-main {
+    width: auto;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.admin-reported-feedback-page .reported-feedback-page-header,
+.admin-reported-feedback-page .feedback-management-tabs,
+.admin-reported-feedback-page .reported-feedback-filters,
+.admin-reported-feedback-page .reported-feedback-list-card,
+.admin-reported-feedback-page .reported-feedback-alert {
+    width: 100%;
+    min-width: 0;
+    max-width: 1440px;
+}
+
+.admin-reported-feedback-page .reported-feedback-filters {
+    grid-template-columns:
+        minmax(0, 0.75fr)
+        minmax(0, 0.9fr)
+        minmax(0, 1fr)
+        minmax(0, 1.45fr)
+        max-content;
+}
+
+.admin-reported-feedback-page .reported-feedback-filters > *,
+.admin-reported-feedback-page .reported-feedback-search-control,
+.admin-reported-feedback-page .reported-feedback-filters select,
+.admin-reported-feedback-page .reported-feedback-filters input,
+.admin-reported-feedback-page .reported-feedback-filter-submit {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.admin-reported-feedback-page .reported-feedback-table-wrap {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+}
+
+.admin-reported-feedback-page .reported-feedback-table {
+    width: 100%;
+    min-width: 1050px;
+    max-width: none;
+}
+
+.admin-reported-feedback-page .reported-feedback-table td:nth-child(4),
+.admin-reported-feedback-page .reported-feedback-table td:nth-child(5),
+.admin-reported-feedback-page .report-detail-section .safe-long-text,
+.admin-reported-feedback-page .related-report-list .safe-long-text {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+@media (max-width: 1280px) and (min-width: 1181px) {
+    .admin-reported-feedback-page .reported-feedback-filters {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .admin-reported-feedback-page .reported-feedback-filter-submit {
+        justify-self: start;
+    }
+}
+
+@media (max-width: 1180px) {
+    .admin-reported-feedback-page .reported-feedback-table {
+        min-width: 0;
+    }
+}
+
+@media (max-width: 760px) {
+    .admin-reported-feedback-page .reported-feedback-filters {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}

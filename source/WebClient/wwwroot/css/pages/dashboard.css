@@ -1,5 +1,5 @@
-/* Interview Dashboard — reproduces ai-service/test-ui/interviewdashboard.html.
-   Uses the shared tokens from theme.css. Self-contained (view is Layout=null). */
+/* Interview Dashboard, loaded within the shared Interview layout.
+   Uses the shared tokens from theme.css. */
 
 * {
     box-sizing: border-box;
@@ -8,8 +8,7 @@
 body.dashboard-page {
     margin: 0;
     min-height: 100vh;
-    display: flex;
-    overflow-x: hidden;
+    display: block;
     font-family: var(--font-geist);
     font-size: var(--text-body-md-size);
     line-height: var(--text-body-md-line);
@@ -21,11 +20,13 @@ body.dashboard-page {
 
 /* ---- Left sidebar ---- */
 .dash-sidebar {
-    position: fixed;
-    left: 0;
-    top: 0;
+    position: sticky;
+    align-self: flex-start;
+    flex: 0 0 260px;
+    top: var(--interview-header-height);
     width: 260px;
-    height: 100%;
+    height: calc(100vh - var(--interview-header-height));
+    max-height: calc(100vh - var(--interview-header-height));
     padding: 24px 16px;
     display: flex;
     flex-direction: column;
@@ -33,7 +34,11 @@ body.dashboard-page {
     border-right: 1px solid rgba(70, 69, 85, 0.3);
     background: rgba(19, 19, 24, 0.4);
     backdrop-filter: blur(20px);
-    z-index: 50;
+    z-index: var(--interview-sidebar-z-index);
+    font-family: var(--font-geist);
+    font-size: var(--text-body-md-size);
+    line-height: var(--text-body-md-line);
+    color: var(--color-on-surface);
 }
 
 .dash-brand {
@@ -98,12 +103,60 @@ body.dashboard-page {
     color: var(--color-on-surface);
 }
 
+.dash-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    border-left: 2px solid transparent;
+    border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+    color: var(--color-on-surface-variant);
+    text-decoration: none;
+    transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.dash-nav-link:hover,
+.dash-nav-link.active,
+.dash-nav-link.is-active,
+.dash-nav-link[aria-current="page"] {
+    background: rgba(42, 41, 47, 0.5);
+    border-left-color: var(--color-primary);
+    color: var(--color-on-surface);
+}
+
 /* ---- Recent Sessions list (sidebar) ---- */
 .dash-session-list {
+    flex: 1 1 auto;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     gap: 2px;
     margin-bottom: 4px;
+    padding-right: 4px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+}
+
+.dash-session-list:hover,
+.dash-session-list:focus-within {
+    scrollbar-color: rgba(196, 192, 255, 0.28) transparent;
+}
+
+.dash-session-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.dash-session-list::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: transparent;
+}
+
+.dash-session-list:hover::-webkit-scrollbar-thumb,
+.dash-session-list:focus-within::-webkit-scrollbar-thumb {
+    background: rgba(196, 192, 255, 0.28);
 }
 
 .dash-session-item {
@@ -118,6 +171,13 @@ body.dashboard-page {
 }
 
 .dash-session-item:hover {
+    background: rgba(42, 41, 47, 0.5);
+    border-left-color: var(--color-primary);
+}
+
+.dash-session-item.active,
+.dash-session-item.is-active,
+.dash-session-item[aria-current="page"] {
     background: rgba(42, 41, 47, 0.5);
     border-left-color: var(--color-primary);
 }
@@ -142,11 +202,19 @@ body.dashboard-page {
     color: var(--color-on-surface-variant);
 }
 
+.dash-recent-state {
+    min-height: 18px;
+    padding: 0 16px;
+    font-size: 12px;
+    color: var(--color-on-surface-variant);
+}
+
 .dash-sidebar-spacer {
-    flex: 1;
+    display: none;
 }
 
 .dash-sidebar-footer {
+    flex-shrink: 0;
     margin-top: auto;
     padding-top: 16px;
     border-top: 1px solid rgba(70, 69, 85, 0.3);
@@ -195,9 +263,9 @@ body.dashboard-page {
 /* ---- Main content ---- */
 .dash-main {
     flex: 1;
-    margin-left: 260px;
-    min-height: 100vh;
-    overflow-y: auto;
+    min-width: 0;
+    margin-left: 0;
+    min-height: calc(100vh - var(--interview-header-height));
     position: relative;
 }
 
@@ -449,4 +517,34 @@ textarea.dash-input {
     -webkit-font-smoothing: antialiased;
     font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
     vertical-align: middle;
+}
+
+@media (max-width: 860px) {
+    .dash-sidebar {
+        position: relative;
+        align-self: stretch;
+        top: auto;
+        width: 100%;
+        height: auto;
+        max-height: none;
+        min-height: 0;
+        padding: 16px;
+        overflow: visible;
+        border-right: 0;
+        border-bottom: 1px solid rgba(70, 69, 85, 0.3);
+        z-index: auto;
+    }
+
+    .dash-session-list {
+        max-height: 240px;
+    }
+
+    .dash-main {
+        width: 100%;
+        min-height: 0;
+    }
+
+    .dash-main-inner {
+        padding: 32px 20px 64px;
+    }
 }

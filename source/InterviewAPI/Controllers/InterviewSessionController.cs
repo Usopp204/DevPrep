@@ -76,8 +76,77 @@ public class InterviewSessionController : ControllerBase
             return BadRequest(ApiResponse<object>.Fail(ex.Message));
         }
     }
+    [HttpGet("history")]
+    [Authorize(Roles = "User")]
+    public async Task<IActionResult> GetSessionHistory(
+        [FromQuery] SessionHistoryQuery query,
+        CancellationToken cancellationToken)
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(userIdClaim, out var userId))
+            return Unauthorized(ApiResponse<object>.Fail("Unauthorized."));
 
-    /// <summary>Lấy toàn bộ lịch sử chat và danh sách câu hỏi của một phiên (dùng để review sau khi xong).</summary>
+        try
+        {
+            var result = await _service.GetSessionHistoryAsync(userId, query, cancellationToken);
+            return Ok(ApiResponse<SessionHistoryResult>.Ok(result));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+        }
+    }
+    [HttpGet("{sessionId:guid}/chat-log")]
+    [Authorize(Roles = "User")]
+    public async Task<IActionResult> GetChatLog(Guid sessionId, CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out var userId))
+            return Unauthorized(ApiResponse<object>.Fail("Unauthorized."));
+
+        try
+        {
+            var result = await _service.GetSessionChatLogAsync(userId, sessionId, cancellationToken);
+            return Ok(ApiResponse<SessionChatLogResponse>.Ok(result));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<object>.Fail(ex.Message));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ApiResponse<object>.Fail(ex.Message));
+        }
+    }
+
+    [HttpGet("feedback-eligibility")]
+    [Authorize(Roles = "User")]
+    public async Task<IActionResult> GetFeedbackEligibility(CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out var userId))
+            return Unauthorized(ApiResponse<object>.Fail("Unauthorized."));
+
+        var result = await _service.GetFeedbackEligibilityAsync(userId, cancellationToken);
+        return Ok(ApiResponse<FeedbackEligibilityResponse>.Ok(result));
+    }
+
+    [HttpGet("{sessionId:guid}/feedback-eligibility")]
+    [Authorize(Roles = "User")]
+    public async Task<IActionResult> GetSessionFeedbackEligibility(Guid sessionId, CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out var userId))
+            return Unauthorized(ApiResponse<object>.Fail("Unauthorized."));
+
+        try
+        {
+            var result = await _service.GetSessionFeedbackEligibilityAsync(userId, sessionId, cancellationToken);
+            return Ok(ApiResponse<SessionFeedbackEligibilityResponse>.Ok(result));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<object>.Fail(ex.Message));
+        }
+    }
+
     [HttpGet("{id:guid}/transcript")]
     public async Task<IActionResult> GetTranscript(Guid id, CancellationToken cancellationToken)
     {
@@ -140,8 +209,26 @@ public class InterviewSessionController : ControllerBase
         }
     }
 
-    /// <summary>Kết thúc phiên phỏng vấn (Completed hoặc Expired nếu hết giờ), đóng phòng.</summary>
+    /// <summary>Finalizes a naturally elapsed session as Completed or Expired and closes its room.</summary>
+    [HttpPost("{id:guid}/complete")]
+    [Authorize(Roles = "User")]
+    public async Task<IActionResult> CompleteSession(Guid id, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var result = await _service.CompleteSessionAsync(userId, id, cancellationToken);
+            return Ok(ApiResponse<EndResponse>.Ok(result));
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+        }
+    }
+
+    /// <summary>Cancels a session when the Candidate explicitly ends the interview and closes its room.</summary>
     [HttpPost("{id:guid}/end")]
+    [Authorize(Roles = "User")]
     public async Task<IActionResult> EndSession(Guid id, CancellationToken cancellationToken)
     {
         try
@@ -393,6 +480,11 @@ public class InterviewSessionController : ControllerBase
         {
             return BadRequest(ApiResponse<object>.Fail(ex.Message));
         }
+    }
+    private bool TryGetAuthenticatedUserId(out Guid userId)
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return Guid.TryParse(userIdClaim, out userId);
     }
 
     [HttpGet("credit-balance")]

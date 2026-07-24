@@ -37,7 +37,7 @@ public class AiServiceClient : IAiServiceClient
         try
         {
             var response = await _httpClient.PostAsJsonAsync("/internal/evaluate-answer", request, ct);
-            response.EnsureSuccessStatusCode();
+            EnsureSuccess(response, "/internal/evaluate-answer");
             return await response.Content.ReadFromJsonAsync<AiEvaluateAnswerResponse>(ct)
                    ?? new AiEvaluateAnswerResponse();
         }
@@ -54,7 +54,7 @@ public class AiServiceClient : IAiServiceClient
         try
         {
             var response = await _httpClient.PostAsJsonAsync("/internal/report", request, ct);
-            response.EnsureSuccessStatusCode();
+            EnsureSuccess(response, "/internal/report");
             return await response.Content.ReadFromJsonAsync<AiBuildReportResponse>(ct)
                    ?? new AiBuildReportResponse();
         }
@@ -63,5 +63,20 @@ public class AiServiceClient : IAiServiceClient
             _logger.LogWarning(ex, "Call to ai-service POST /internal/report failed.");
             throw;
         }
+    }
+    private void EnsureSuccess(HttpResponseMessage response, string endpoint)
+    {
+        if (response.IsSuccessStatusCode)
+            return;
+
+        _logger.LogWarning(
+            "AI-Service call failed. Endpoint: {Endpoint}; StatusCode: {StatusCode}; Summary: {Summary}",
+            endpoint,
+            (int)response.StatusCode,
+            response.ReasonPhrase ?? "No reason provided");
+        throw new HttpRequestException(
+            $"AI-Service request failed ({(int)response.StatusCode}).",
+            inner: null,
+            response.StatusCode);
     }
 }

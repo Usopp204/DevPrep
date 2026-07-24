@@ -1,12 +1,14 @@
 using System.Security.Claims;
 using System.Text;
 using DotNetEnv;
+using FeedbackAPI.DTOs;
 using FeedbackAPI.Models;
 using FeedbackAPI.Repositories;
 using FeedbackAPI.Repositories.Interfaces;
 using FeedbackAPI.Services;
 using FeedbackAPI.Services.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -27,8 +29,10 @@ builder.Services.AddDbContext<FeedbackDbContext>(options => options.UseSqlServer
 // Repositories + Services (kiến trúc phân lớp). Tách riêng AI feedback và System feedback.
 builder.Services.AddScoped<IAiFeedbackRepository, AiFeedbackRepository>();
 builder.Services.AddScoped<ISystemFeedbackRepository, SystemFeedbackRepository>();
+builder.Services.AddScoped<IFeedbackReportRepository, FeedbackReportRepository>();
 builder.Services.AddScoped<IAiFeedbackService, AiFeedbackService>();
 builder.Services.AddScoped<ISystemFeedbackService, SystemFeedbackService>();
+builder.Services.AddScoped<IFeedbackReportService, FeedbackReportService>();
 
 // Client nội bộ resolve Tên (UserAPI) + Email (AuthAPI) cho AI feedback. UseProxy=false + header khoá nội bộ.
 var internalApiKey = builder.Configuration.GetValue<string>("INTERNAL_API_KEY", string.Empty);
@@ -48,6 +52,13 @@ builder.Services.AddHttpClient<FeedbackAPI.Clients.IAuthApiClient, FeedbackAPI.C
     client.Timeout = TimeSpan.FromSeconds(15);
     if (!string.IsNullOrEmpty(internalApiKey))
         client.DefaultRequestHeaders.Add("X-Internal-Api-Key", internalApiKey);
+}).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { UseProxy = false });
+
+var interviewBaseUrl = builder.Configuration.GetValue<string>("INTERVIEW_API_BASEURL", "http://localhost:7005");
+builder.Services.AddHttpClient<FeedbackAPI.Clients.IInterviewApiClient, FeedbackAPI.Clients.InterviewApiClient>(client =>
+{
+    client.BaseAddress = new Uri(interviewBaseUrl!);
+    client.Timeout = TimeSpan.FromSeconds(15);
 })
 .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { UseProxy = false });
 
@@ -74,7 +85,20 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            var message = context.ModelState.Values
+                .SelectMany(entry => entry.Errors)
+                .Select(error => error.ErrorMessage)
+                .FirstOrDefault(error => !string.IsNullOrWhiteSpace(error))
+                ?? "The request is invalid.";
+
+            return new BadRequestObjectResult(ApiResponse<object>.Fail(message));
+        };
+    });
 
 builder.Services.AddCors(options =>
 {

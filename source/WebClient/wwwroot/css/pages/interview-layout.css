@@ -1,0 +1,88 @@
+:root {
+    --interview-header-height: 64px;
+    --interview-content-z-index: 0;
+    --interview-sidebar-z-index: 30;
+    --interview-navbar-z-index: 50;
+}
+
+.interview-layout-root,
+.interview-layout-root * {
+    box-sizing: border-box;
+}
+
+.interview-layout-root {
+    width: 100%;
+    min-width: 0;
+    min-height: 100vh;
+    padding-top: var(--interview-header-height);
+}
+
+.interview-page-region {
+    position: relative;
+    min-width: 0;
+    min-height: calc(100vh - var(--interview-header-height));
+    overflow: visible;
+    z-index: var(--interview-content-z-index);
+}
+
+.interview-shell-body {
+    min-width: 0;
+    min-height: calc(100vh - var(--interview-header-height));
+}
+
+body.dashboard-page .interview-shell-body {
+    display: flex;
+    align-items: flex-start;
+}
+
+body.history-page:not(.history-list-page) .interview-shell-body {
+    height: calc(100vh - var(--interview-header-height));
+    overflow: visible;
+}
+
+@media (max-width: 860px) {
+    body.dashboard-page .interview-shell-body {
+        display: block;
+    }
+
+
+    body.history-page:not(.history-list-page) .interview-shell-body {
+        height: auto;
+        min-height: calc(100vh - var(--interview-header-height));
+        overflow: visible;
+    }
+}
+/* Interview-only navbar geometry: align shell edges without changing the shared navbar markup. */
+body.interview-layout-page .hm-navbar {
+    z-index: var(--interview-navbar-z-index);
+    overflow: visible;
+}
+
+body.interview-layout-page .hm-footer {
+    margin-top: 0;
+}
+
+body.interview-layout-page .hm-navbar-inner {
+    max-width: none;
+    padding-inline: 16px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+}
+
+body.interview-layout-page .hm-brand {
+    justify-self: start;
+}
+
+body.interview-layout-page .hm-nav-links {
+    justify-self: center;
+}
+
+body.interview-layout-page .hm-nav-actions {
+    justify-self: end;
+}
+
+@media (max-width: 767px) {
+    body.interview-layout-page .hm-navbar-inner {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+}

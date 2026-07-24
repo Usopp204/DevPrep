@@ -516,6 +516,7 @@
             }
         }
     </style>
+    <link rel="stylesheet" href="~/css/components/pagination.css" asp-append-version="true" />
 </head>
 
 <body class="admin-page">
@@ -941,34 +942,12 @@
                         ? totalPages
                         : pageIndex + 1;
 
-                        <div class="pager">
-
-                            <a href="@BuildPageUrl(prevPage)"
-                               title="Previous page">
-                                <i class="fa-solid fa-chevron-left"></i>
-                            </a>
-
-                            @for (var i = startPage; i <= endPage; i++)
-                            {
-                                if (i == pageIndex)
-                                {
-                                    <span class="active-page">
-                                        @i
-                                    </span>
-                                }
-                                else
-                                {
-                                    <a href="@BuildPageUrl(i)">
-                                        @i
-                                    </a>
-                                }
-                            }
-
-                            <a href="@BuildPageUrl(nextPage)"
-                               title="Next page">
-                                <i class="fa-solid fa-chevron-right"></i>
-                            </a>
-                        </div>
+                        <partial name="_Pagination" model="new WebClient.Models.Shared.PaginationViewModel
+                        {
+                            CurrentPage = pageIndex,
+                            TotalPages = totalPages,
+                            PageUrl = BuildPageUrl
+                        }" />
                     }
                 </div>
             </div>

@@ -1,0 +1,460 @@
+.feedback-page {
+    min-height: 100vh;
+    background:
+        radial-gradient(circle at 16% 10%, rgba(108, 99, 255, 0.18), transparent 34%),
+        radial-gradient(circle at 92% 22%, rgba(56, 189, 248, 0.10), transparent 32%),
+        linear-gradient(180deg, #11111B 0%, #0A0A0F 58%, #09090E 100%);
+    color: #F4F4F5;
+}
+
+.feedback-page .feedback-shell {
+    max-width: var(--hm-container-max, 1200px);
+    margin: 0 auto;
+    padding: 112px var(--hm-container-gutter, 24px) 56px;
+    display: grid;
+    grid-template-columns: 260px minmax(0, 1fr);
+    gap: 24px;
+}
+
+.feedback-page .feedback-nav {
+    position: sticky;
+    top: 88px;
+    align-self: start;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border: 1px solid rgba(196, 192, 255, 0.13);
+    border-radius: 16px;
+    background: rgba(17, 17, 24, 0.76);
+    backdrop-filter: blur(16px);
+    box-shadow: 0 18px 52px rgba(0, 0, 0, 0.24);
+}
+
+.feedback-page .feedback-nav a {
+    min-height: 54px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    border-radius: 11px;
+    color: #A1A1AA;
+    text-decoration: none;
+    transition: background-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.feedback-page .feedback-nav a:hover,
+.feedback-page .feedback-nav a.active {
+    color: #F4F4F5;
+    background: rgba(196, 192, 255, 0.12);
+}
+
+.feedback-page .feedback-content {
+    min-width: 0;
+}
+
+.feedback-page .feedback-header {
+    margin-bottom: 24px;
+}
+
+.feedback-page .feedback-header p,
+.feedback-page .feedback-panel-eyebrow {
+    margin: 0 0 8px;
+    color: #38BDF8;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+.feedback-page .feedback-header h1 {
+    margin: 0;
+    color: #FFFFFF;
+    font-family: "Geist", "Inter", sans-serif;
+    font-size: 42px;
+    line-height: 1.1;
+    font-weight: 800;
+    letter-spacing: -0.045em;
+}
+
+.feedback-page .feedback-header > span {
+    display: block;
+    margin-top: 10px;
+    max-width: 680px;
+    color: #A1A1AA;
+}
+
+.feedback-page .feedback-alert {
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    font-weight: 600;
+}
+
+.feedback-page .feedback-alert.success {
+    color: #22C55E;
+    background: rgba(34, 197, 94, 0.10);
+    border: 1px solid rgba(34, 197, 94, 0.26);
+}
+
+.feedback-page .feedback-alert.error {
+    color: #FFB4AB;
+    background: rgba(239, 68, 68, 0.10);
+    border: 1px solid rgba(239, 68, 68, 0.26);
+}
+
+.feedback-page .feedback-system-stack {
+    display: grid;
+    gap: 24px;
+}
+
+.feedback-page .feedback-results {
+    min-width: 0;
+}
+
+.feedback-page .feedback-results-title {
+    margin: 0 0 16px;
+    color: #FFFFFF;
+    font-family: "Geist", "Inter", sans-serif;
+    font-size: 24px;
+    line-height: 1.25;
+}
+
+.feedback-page .review-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.feedback-page .review-list-wide {
+    max-width: none;
+}
+
+.feedback-page .review-card,
+.feedback-page .feedback-submit-panel,
+.feedback-page .feedback-empty {
+    border: 1px solid rgba(196, 192, 255, 0.13);
+    background: rgba(17, 17, 24, 0.74);
+    backdrop-filter: blur(14px);
+    border-radius: 16px;
+    box-shadow: 0 18px 55px rgba(0, 0, 0, 0.20);
+}
+
+.feedback-page .review-card {
+    position: relative;
+    overflow: hidden;
+    padding: 22px;
+    transition: border-color 0.18s ease, transform 0.18s ease, background-color 0.18s ease;
+}
+
+.feedback-page .review-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    background: linear-gradient(180deg, #6C63FF, #38BDF8);
+    opacity: 0.85;
+}
+
+.feedback-page .review-card:hover {
+    transform: translateY(-1px);
+    border-color: rgba(196, 192, 255, 0.30);
+    background: rgba(31, 31, 38, 0.76);
+}
+
+.feedback-page .review-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.feedback-page .review-source,
+.feedback-page .review-date {
+    display: block;
+    color: #A1A1AA;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.feedback-page .review-card-head strong {
+    display: block;
+    margin-top: 4px;
+    color: #F4F4F5;
+    font-family: "Geist", "Inter", sans-serif;
+    font-size: 18px;
+    line-height: 1.25;
+}
+
+.feedback-page .review-rating-pill {
+    flex: 0 0 auto;
+    min-width: 58px;
+    min-height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(196, 192, 255, 0.24);
+    background: rgba(108, 99, 255, 0.18);
+    color: #FFFFFF;
+    font-weight: 800;
+}
+
+.feedback-page .review-comment {
+    margin: 0 0 16px;
+    color: #E4E4E7;
+    font-size: 15px;
+    line-height: 1.65;
+    overflow-wrap: anywhere;
+}
+
+.feedback-page .review-metrics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.feedback-page .review-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.feedback-page .review-metrics > span {
+    border: 1px solid rgba(196, 192, 255, 0.13);
+    border-radius: 999px;
+    padding: 6px 10px;
+    background: rgba(10, 10, 15, 0.46);
+    color: #A1A1AA;
+    font-size: 12px;
+}
+
+.feedback-page .review-metrics > span > strong {
+    color: #F4F4F5;
+}
+
+.feedback-page .review-metrics > span > .star-rating {
+    margin-left: 4px;
+}
+
+.feedback-page .review-card-head > .star-rating {
+    flex: 0 0 auto;
+}
+
+.feedback-page .feedback-submit-panel {
+    width: 100%;
+    padding: 24px;
+    background: radial-gradient(circle at 100% 0%, rgba(108, 99, 255, 0.14), transparent 36%), rgba(17, 17, 24, 0.78);
+}
+
+.feedback-page .feedback-submit-panel h2 {
+    margin: 0 0 10px;
+    color: #FFFFFF;
+    font-family: "Geist", "Inter", sans-serif;
+    font-size: 24px;
+    line-height: 1.2;
+    letter-spacing: -0.03em;
+}
+
+.feedback-page .feedback-submit-panel p {
+    color: #A1A1AA;
+}
+
+.feedback-page .feedback-primary-link,
+.feedback-page .feedback-form button {
+    min-height: 46px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 20px;
+    border: 0;
+    border-radius: 11px;
+    background: linear-gradient(135deg, #6C63FF, #8B5CF6);
+    color: #FFFFFF;
+    font-weight: 800;
+    text-decoration: none;
+    box-shadow: 0 14px 34px rgba(108, 99, 255, 0.24);
+}
+
+.feedback-page .feedback-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px 24px;
+}
+
+.feedback-page .feedback-form > label[for="system-comment"],
+.feedback-page .feedback-form > textarea,
+.feedback-page .feedback-form > button {
+    grid-column: 1 / -1;
+}
+
+.feedback-page .feedback-form label,
+.feedback-page .star-rating-field legend {
+    color: #A1A1AA;
+    font-size: 12px;
+}
+
+.feedback-page .feedback-form textarea {
+    min-height: 126px;
+    width: 100%;
+    resize: vertical;
+    border-radius: 12px;
+    border: 1px solid rgba(196, 192, 255, 0.14);
+    background: rgba(10, 10, 15, 0.70);
+    color: #F4F4F5;
+    padding: 13px 14px;
+}
+
+.feedback-page .feedback-form textarea:focus {
+    outline: none;
+    border-color: rgba(196, 192, 255, 0.44);
+    box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.14);
+}
+
+.feedback-page .rating-field {
+    border: 0;
+    padding: 0;
+    margin: 0;
+}
+
+.feedback-page .rating-choice-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.feedback-page .rating-choice-row label {
+    cursor: pointer;
+    position: relative;
+}
+
+.feedback-page .rating-choice-row input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.feedback-page .rating-choice-row span {
+    width: 38px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    border: 1px solid rgba(196, 192, 255, 0.16);
+    background: rgba(10, 10, 15, 0.55);
+    color: #A1A1AA;
+    font-weight: 800;
+    transition: all 0.18s ease;
+}
+
+.feedback-page .rating-choice-row span:hover {
+    color: #F4F4F5;
+    background: rgba(31, 31, 38, 0.86);
+    border-color: rgba(196, 192, 255, 0.36);
+}
+
+.feedback-page .rating-choice-row input:checked + span {
+    color: #FFFFFF;
+    border-color: rgba(196, 192, 255, 0.48);
+    background: linear-gradient(135deg, #6C63FF, #8B5CF6);
+    box-shadow: 0 10px 28px rgba(108, 99, 255, 0.20);
+}
+
+.feedback-page .feedback-form button {
+    justify-self: start;
+    cursor: pointer;
+}
+
+.feedback-page .feedback-form button:hover,
+.feedback-page .feedback-primary-link:hover {
+    color: #FFFFFF;
+    filter: brightness(1.08);
+    transform: translateY(-1px);
+}
+
+.feedback-page .feedback-empty {
+    min-height: 260px;
+    display: grid;
+    place-items: center;
+    text-align: center;
+    padding: 48px 24px;
+}
+
+.feedback-page .feedback-empty .material-symbols-outlined {
+    color: #38BDF8;
+    font-size: 42px;
+}
+
+.feedback-page .feedback-empty h2 {
+    color: #FFFFFF;
+    margin: 12px 0 8px;
+}
+
+.feedback-page .feedback-empty p {
+    color: #A1A1AA;
+    margin: 0;
+}
+
+.feedback-page .feedback-pagination > .devprep-pagination {
+    margin-top: 28px;
+}
+
+@media (max-width: 980px) {
+    .feedback-page .feedback-shell {
+        grid-template-columns: 1fr;
+    }
+
+    .feedback-page .feedback-shell {
+        padding: 96px var(--hm-container-gutter, 24px) 40px;
+    }
+
+    .feedback-page .feedback-nav {
+        position: static;
+        flex-direction: row;
+        overflow-x: auto;
+    }
+}
+
+@media (max-width: 620px) {
+    .feedback-page .feedback-form {
+        grid-template-columns: 1fr;
+    }
+
+
+    .feedback-page .feedback-header h1 {
+        font-size: 34px;
+    }
+
+    .feedback-page .review-card-head,
+    .feedback-page .review-metrics-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .feedback-page .review-card-head {
+        flex-direction: column;
+    }
+}
+
+/* Scoped feedback validation and long-content containment. */
+.feedback-page .feedback-form > .feedback-field-meta {
+    grid-column: 1 / -1;
+}
+
+.feedback-page .review-card,
+.feedback-page .review-card-head > div,
+.feedback-page .review-metrics,
+.feedback-page .feedback-pagination {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.feedback-page .feedback-pagination {
+    position: relative;
+    z-index: 1;
+    padding-bottom: 24px;
+}
