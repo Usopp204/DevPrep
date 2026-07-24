@@ -10,7 +10,6 @@ public class InterviewListItemDto
     public string? UserEmail { get; set; }
     public string? UserFullName { get; set; }
 
-    public string? Title { get; set; }
     public string Level { get; set; } = null!;
     public string InteractionMode { get; set; } = null!;
     public string QuestionType { get; set; } = null!;

@@ -32,7 +32,7 @@ public class QuestionService : IQuestionService
             query = query.Where(q =>
                 q.QuestionText.ToLower().Contains(kw) ||
                 (q.Answer != null && q.Answer.ToLower().Contains(kw)) ||
-                (q.Position != null && q.Position.ToLower().Contains(kw)) ||
+                (q.Position != null && q.Position.Name.ToLower().Contains(kw)) ||
                 (q.Category != null && q.Category.Category.ToLower().Contains(kw)));
         }
 
@@ -64,7 +64,7 @@ public class QuestionService : IQuestionService
                 Category     = q.Category != null ? q.Category.Category : null,
                 Question     = q.QuestionText,
                 Difficulty   = q.Difficulty,
-                Position     = q.Position,
+                Position     = q.Position != null ? q.Position.Name : null,
                 Status       = q.Status,
                 IsDeleted    = q.IsDeleted,
                 CreatedAt    = q.CreatedAt,
@@ -84,6 +84,7 @@ public class QuestionService : IQuestionService
     {
         var q = await _db.Questions
             .Include(x => x.Category)
+            .Include(x => x.Position)
             .FirstOrDefaultAsync(x => x.QuestionId == id);
 
         if (q is null) return null;
@@ -96,7 +97,7 @@ public class QuestionService : IQuestionService
             Question       = q.QuestionText,
             Difficulty     = q.Difficulty,
             Answer         = q.Answer,
-            Position       = q.Position,
+            Position       = q.Position?.Name,
             Status         = q.Status,
             IsDeleted      = q.IsDeleted,
             CreatedBy      = q.CreatedBy,

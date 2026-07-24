@@ -1,13 +1,13 @@
 namespace InterviewAPI.DTOs;
 
 /// <summary>
-/// Filter and search parameters for the interview session list. 
+/// Filter and search parameters for the interview session list.
 /// All fields are optional (leaving them empty means no filter is applied).
-/// The Keyword field is used to search within the Title.
+/// The Keyword field searches by user name/email (admin) plus Position/channel (manager).
 /// </summary>
 public class InterviewQuery
 {
-    // Search term for filtering by title
+    // Search term (user name/email; manager list also matches Position/channel)
     public string? Keyword { get; set; }
 
     // Combined status from both local and remote branches, including 'Paused'

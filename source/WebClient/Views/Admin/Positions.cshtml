@@ -1,0 +1,263 @@
+@{
+    var token = Context.Request.Cookies["access_token"];
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Positions - DevPrep AI</title>
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@@400;500;600;700;800;900&family=JetBrains+Mono:wght@@500&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@@100..700,0..1&display=swap" rel="stylesheet" />
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#e2dfff", "on-primary": "#2c2a5e", "primary-container": "#c3c0ff",
+                        "on-primary-container": "#4e4c83", "secondary": "#4cd7f6", "secondary-container": "#03b5d4",
+                        "on-secondary-container": "#00424e", "tertiary": "#e9ddff", "tertiary-container": "#d0bcff",
+                        "success": "#10B981", "warning": "#F9D949", "error": "#ffb4ab",
+                        "surface": "#131317", "surface-container": "#201f23", "surface-container-low": "#1c1b1f",
+                        "surface-container-high": "#2a292d", "surface-container-highest": "#353438",
+                        "on-surface": "#e5e1e7", "on-surface-variant": "#c8c5d0",
+                        "border-subtle": "rgba(255,255,255,0.08)", "background": "#0e1323", "outline": "#928f9a"
+                    },
+                    borderRadius: { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" },
+                    spacing: { "sm": "12px", "md": "16px", "lg": "24px", "xl": "32px", "gutter": "24px", "xs": "8px", "max-width": "1280px" },
+                    fontFamily: { "display-lg": ["Inter"], "code-label": ["JetBrains Mono"], "headline-md": ["Inter"], "body-sm": ["Inter"], "body-md": ["Inter"] }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #0e1323; color: #e5e1e7; }
+        .glass-card { background: rgba(32,31,35,0.4); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); border-top: 1px solid rgba(255,255,255,0.15); }
+        .ad-sidebar h2, .ad-sidebar p, .ad-sidebar a { margin-bottom: 0; }
+        .pos-main { margin-left: 250px; padding-top: 80px; padding-left: 24px; padding-right: 24px; min-height: 100vh; background: #0e1323; }
+        .pos-input { background: #11121a !important; border: 1px solid #292c3d !important; border-radius: 10px; padding: 8px 12px; color: #ffffff !important; font-size: 13px; width: 100%; }
+        .pos-input:focus { outline: none; border-color: #c3c0ff !important; }
+    </style>
+</head>
+<body class="font-body-md overflow-x-hidden">
+    @await Html.PartialAsync("_AdminTopbar")
+    @await Html.PartialAsync("_AdminSidebar")
+
+    <main class="pos-main">
+        <div class="mb-6 flex items-center justify-between">
+            <h1 class="font-display-lg text-[24px] font-bold text-primary tracking-tight">Positions</h1>
+            <button id="pos-create" type="button" class="px-lg py-2 rounded-xl bg-primary-container text-on-primary-container font-bold text-[13px] hover:brightness-110 transition-all">
+                <span class="material-symbols-outlined text-[16px] align-middle">add</span> Create Position
+            </button>
+        </div>
+
+        <div class="max-w-max-width mx-auto">
+            <!-- Filter Bar -->
+            <section class="glass-card rounded-2xl p-md mb-lg flex flex-wrap items-center gap-md">
+                <button id="pos-deleted" type="button" title="Show only soft-deleted positions (to restore)"
+                        class="px-md py-1 rounded-full bg-surface-container border border-border-subtle text-on-surface-variant text-[10px] uppercase font-code-label hover:text-error transition-all">
+                    <span class="material-symbols-outlined text-[14px] align-middle">delete_history</span> Show deleted
+                </button>
+                <div class="ml-auto relative flex-1 min-w-[160px] max-w-[320px]">
+                    <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+                    <input id="pos-search" class="w-full bg-surface-container border-border-subtle border rounded-xl pl-4 pr-10 py-1.5 font-body-sm focus:ring-1 focus:ring-primary-container" placeholder="Search name..." type="text" />
+                </div>
+            </section>
+
+            <!-- Table -->
+            <section class="glass-card rounded-2xl overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse min-w-[760px]">
+                        <thead>
+                            <tr class="bg-surface-container-high/50 border-b border-border-subtle">
+                                <th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">Name</th>
+                                <th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">Questions</th>
+                                <th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">Created</th>
+                                <th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">Status</th>
+                                <th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pos-table-body" class="font-body-sm text-on-surface">
+                            <tr><td colspan="5" class="text-center py-4">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="px-lg py-md flex items-center justify-between border-t border-border-subtle bg-surface-container/20">
+                    <span id="pos-total" class="font-code-label text-[11px] text-on-surface-variant"></span>
+                    <div class="flex gap-xs items-center">
+                        <button id="pos-prev" class="p-1 rounded bg-surface-container border border-border-subtle text-on-surface-variant hover:text-primary" type="button"><span class="material-symbols-outlined">chevron_left</span></button>
+                        <span id="pos-page" class="px-3 py-1 rounded bg-primary-container text-on-primary-container font-code-label text-[11px] font-bold">1 / 1</span>
+                        <button id="pos-next" class="p-1 rounded bg-surface-container border border-border-subtle text-on-surface-variant hover:text-primary" type="button"><span class="material-symbols-outlined">chevron_right</span></button>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Create / Edit modal -->
+    <div id="pos-modal" class="fixed inset-0 z-[80] hidden items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div class="glass-card rounded-2xl p-lg w-[420px]">
+            <h3 id="pos-modal-title" class="font-headline-md text-primary mb-4">Create Position</h3>
+            <div class="mb-2">
+                <label class="font-code-label text-[11px] uppercase text-on-surface-variant block mb-1" for="pos-name">Name <span class="text-error">*</span></label>
+                <input id="pos-name" class="pos-input" type="text" maxlength="50" placeholder="e.g. Backend" />
+                <div class="text-right text-[10px] text-on-surface-variant mt-1"><span id="pos-name-count">0</span>/50</div>
+            </div>
+            <p id="pos-modal-error" class="text-error font-body-sm mb-3 hidden"></p>
+            <div class="flex justify-end gap-sm">
+                <button id="pos-modal-cancel" class="px-lg py-sm rounded-xl border border-border-subtle text-on-surface hover:bg-surface-container-high" type="button">Cancel</button>
+                <button id="pos-modal-save" class="px-lg py-sm rounded-xl bg-primary-container text-on-primary-container font-bold hover:brightness-110" type="button">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm modal -->
+    <div id="confirm-modal" class="fixed inset-0 z-[90] hidden items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div class="glass-card rounded-2xl p-lg w-[360px]">
+            <h3 class="font-headline-md text-primary mb-2">Confirm</h3>
+            <p id="confirm-msg" class="text-on-surface-variant font-body-sm mb-lg">Are you sure?</p>
+            <div class="flex justify-end gap-sm">
+                <button id="confirm-cancel" class="px-lg py-sm rounded-xl border border-border-subtle text-on-surface hover:bg-surface-container-high" type="button">Cancel</button>
+                <button id="confirm-ok" class="px-lg py-sm rounded-xl bg-error/90 text-white font-bold hover:bg-error" type="button">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:7004/api/admin/positions';
+        const token = '@token';
+        let currentPage = 1, pageSize = 10, totalPages = 1, searchTimer = null, confirmCb = null;
+        let showDeleted = false;   // true = CHỈ hiện position đã xoá mềm (kèm nút Restore)
+        let editingId = null;      // null = create, khác null = edit
+
+        document.addEventListener("DOMContentLoaded", () => {
+            document.getElementById('pos-deleted').addEventListener('click', () => {
+                showDeleted = !showDeleted;
+                const b = document.getElementById('pos-deleted');
+                b.classList.toggle('text-error', showDeleted);
+                b.classList.toggle('border-error', showDeleted);
+                currentPage = 1; fetchList();
+            });
+            document.getElementById('pos-search').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => { currentPage = 1; fetchList(); }, 300); });
+            document.getElementById('pos-prev').addEventListener('click', () => { if (currentPage > 1) { currentPage--; fetchList(); } });
+            document.getElementById('pos-next').addEventListener('click', () => { if (currentPage < totalPages) { currentPage++; fetchList(); } });
+            document.getElementById('pos-create').addEventListener('click', () => openModal(null));
+            document.getElementById('pos-modal-cancel').addEventListener('click', closeModal);
+            document.getElementById('pos-modal-save').addEventListener('click', saveModal);
+            document.getElementById('pos-name').addEventListener('input', updateCounters);
+            document.getElementById('confirm-ok').addEventListener('click', () => { const cb = confirmCb; hideConfirm(); if (cb) cb(); });
+            document.getElementById('confirm-cancel').addEventListener('click', hideConfirm);
+            fetchList();
+        });
+
+        function escapeHtml(s) { return (s ?? '').toString().replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+        function fmtDate(s) { if (!s) return '—'; const d = new Date(s); return d.toLocaleDateString('en-GB') + ' ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }); }
+        function showConfirm(msg, cb) { document.getElementById('confirm-msg').innerText = msg; confirmCb = cb; const m = document.getElementById('confirm-modal'); m.classList.remove('hidden'); m.classList.add('flex'); }
+        function hideConfirm() { const m = document.getElementById('confirm-modal'); m.classList.add('hidden'); m.classList.remove('flex'); confirmCb = null; }
+        function deletedBadge() { return `<span class="ml-2 px-xs py-0.5 rounded text-[9px] uppercase font-code-label bg-error/20 text-error">Deleted</span>`; }
+
+        async function fetchList() {
+            const tbody = document.getElementById('pos-table-body');
+            try {
+                const q = new URLSearchParams({ pageIndex: currentPage, pageSize, status: showDeleted ? 'Deleted' : 'Active' });
+                const kw = document.getElementById('pos-search').value.trim(); if (kw) q.set('search', kw);
+                const res = await fetch(`${API_BASE}?${q}`, { headers: { 'Authorization': `Bearer ${token}` } });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const json = await res.json();
+                if (json.success) { renderTable(json.data.items || []); renderPagination(json.data); }
+                else tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-error">Failed: ${escapeHtml(json.message)}</td></tr>`;
+            } catch (e) { tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-error">Failed to load data. Please sign in again or check QuestionAPI (:7004).</td></tr>`; }
+        }
+
+        function renderTable(items) {
+            const tbody = document.getElementById('pos-table-body');
+            if (!items.length) { tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-on-surface-variant">No positions found.</td></tr>`; return; }
+            tbody.innerHTML = items.map(it => `
+                <tr class="border-b border-border-subtle/50 hover:bg-surface-container-high/30">
+                    <td class="px-lg py-md font-semibold text-on-surface">${escapeHtml(it.name)}</td>
+                    <td class="px-lg py-md font-code-label text-on-surface-variant">${it.questionCount}</td>
+                    <td class="px-lg py-md font-code-label text-on-surface-variant">${fmtDate(it.createdAt)}</td>
+                    <td class="px-lg py-md">${it.isDeleted ? deletedBadge() : '<span class="px-xs py-0.5 rounded text-[9px] uppercase font-code-label bg-success/20 text-success">Active</span>'}</td>
+                    <td class="px-lg py-md text-right">
+                        <div class="flex justify-end gap-md">
+                            ${it.isDeleted
+                                ? `<button class="text-on-surface-variant hover:text-success" onclick="restorePosition('${it.positionId}', '${escapeHtml(it.name)}')" title="Restore"><span class="material-symbols-outlined text-[20px]">restore_from_trash</span></button>`
+                                : `<button class="text-on-surface-variant hover:text-primary" onclick='openModal(${JSON.stringify(it).replace(/'/g, "&#39;")})' title="Edit"><span class="material-symbols-outlined text-[20px]">edit</span></button>
+                                   <button class="text-on-surface-variant hover:text-error" onclick="deletePosition('${it.positionId}', '${escapeHtml(it.name)}', ${it.questionCount})" title="Delete"><span class="material-symbols-outlined text-[20px]">delete</span></button>`}
+                        </div>
+                    </td>
+                </tr>`).join('');
+        }
+
+        function renderPagination(data) {
+            totalPages = Math.max(1, data.totalPages || 1);
+            if (currentPage > totalPages) currentPage = totalPages;
+            document.getElementById('pos-page').innerText = `${currentPage} / ${totalPages}`;
+            document.getElementById('pos-total').innerText = `${data.totalRecords} position(s)`;
+        }
+
+        // ----- Create / Edit modal -----
+        function openModal(item) {
+            editingId = item ? item.positionId : null;
+            document.getElementById('pos-modal-title').innerText = item ? 'Edit Position' : 'Create Position';
+            document.getElementById('pos-name').value = item ? item.name : '';
+            hideModalError(); updateCounters();
+            const m = document.getElementById('pos-modal'); m.classList.remove('hidden'); m.classList.add('flex');
+            document.getElementById('pos-name').focus();
+        }
+        function closeModal() { const m = document.getElementById('pos-modal'); m.classList.add('hidden'); m.classList.remove('flex'); editingId = null; }
+        function showModalError(msg) { const e = document.getElementById('pos-modal-error'); e.innerText = msg; e.classList.remove('hidden'); }
+        function hideModalError() { document.getElementById('pos-modal-error').classList.add('hidden'); }
+        function updateCounters() {
+            document.getElementById('pos-name-count').innerText = document.getElementById('pos-name').value.length;
+        }
+
+        async function saveModal() {
+            const name = document.getElementById('pos-name').value.trim();
+            if (!name) { showModalError('Name is required.'); return; }
+            const body = JSON.stringify({ name });
+            const opts = { headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body };
+            try {
+                const res = editingId
+                    ? await fetch(`${API_BASE}/${editingId}`, { ...opts, method: 'PUT' })
+                    : await fetch(API_BASE, { ...opts, method: 'POST' });
+                const json = await res.json().catch(() => null);
+                if (res.ok && json && json.success) { closeModal(); fetchList(); return; }
+                if (res.status === 403) { showModalError('Only Admin can manage positions.'); return; }
+                showModalError((json && json.message) || `Request failed (HTTP ${res.status}).`);
+            } catch (e) { showModalError('Cannot reach QuestionAPI (:7004).'); }
+        }
+
+        // ----- Soft delete / Restore -----
+        function deletePosition(id, name, questionCount) {
+            const warn = questionCount > 0
+                ? ` ${questionCount} question(s) currently use it — they will keep showing this position name.`
+                : '';
+            showConfirm(`Delete position "${name}"?${warn} You can restore it later via "Show deleted".`, async () => {
+                try {
+                    const res = await fetch(`${API_BASE}/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+                    if (res.status === 204) { fetchList(); return; }
+                    if (res.status === 403) { alert('Only Admin can delete positions.'); return; }
+                    alert('Delete failed.');
+                } catch (e) { alert('Operation failed. Check QuestionAPI (:7004).'); }
+            });
+        }
+
+        function restorePosition(id, name) {
+            showConfirm(`Restore position "${name}"?`, async () => {
+                try {
+                    const res = await fetch(`${API_BASE}/${id}/restore`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+                    const json = await res.json().catch(() => null);
+                    if (res.ok && json && json.success) { fetchList(); return; }
+                    if (res.status === 403) { alert('Only Admin can restore positions.'); return; }
+                    alert((json && json.message) || 'Restore failed.');
+                } catch (e) { alert('Operation failed. Check QuestionAPI (:7004).'); }
+            });
+        }
+    </script>
+</body>
+</html>

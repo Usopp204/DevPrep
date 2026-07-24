@@ -58,6 +58,18 @@ public class AdminController(
         return View();
     }
 
+    // Trang quản lý Positions (CRUD + xoá mềm/khôi phục). Guard UI: chỉ Admin; backend tự chặn quyền.
+    public IActionResult Positions()
+    {
+        if (!IsAdminRole())
+        {
+            TempData["Error"] = "You must sign in with an Admin account to access the dashboard.";
+            return RedirectToAction("Login", "Auth");
+        }
+
+        return View();
+    }
+
     // Trang quản lý System Feedback (list + reply). Guard UI: chỉ Admin/Manager; backend tự chặn quyền.
     public IActionResult SystemFeedback()
     {
