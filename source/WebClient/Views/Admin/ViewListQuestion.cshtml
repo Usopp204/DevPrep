@@ -1,4 +1,4 @@
-﻿@model WebClient.Models.Admin.AdminQuestionViewModel
+@model WebClient.Models.Admin.AdminQuestionViewModel
 
 @{
     Layout = null;
@@ -427,12 +427,13 @@
                 background: rgba(255, 255,255, 0.08);
             }
 
-        .action-view {
-            color: #93c5fd;
+        .action-view,
+        .action-edit {
+            color: #94a3b8;
         }
 
-        .action-edit {
-            color: #a78bfa;
+        .action-btn:hover {
+            color: #ffffff;
         }
 
         .action-delete {
@@ -516,6 +517,7 @@
             }
         }
     </style>
+    <link rel="stylesheet" href="~/css/components/pagination.css" asp-append-version="true" />
 </head>
 
 <body class="admin-page">
@@ -878,17 +880,23 @@
                                                 <a href="/admin/questions/edit/@item.QuestionId"
                                                    class="action-btn action-edit"
                                                    title="Edit question">
-                                                    <i class="fa-regular fa-pen-to-square"></i>
+                                                    <span class="material-symbols-outlined fs-5">edit</span>
                                                 </a>
                                             }
 
                                             @if (item.IsDeleted)
                                             {
+                                                @* <button type="button" *@
+                                                @*         onclick="restoreQuestion('@item.QuestionId')" *@
+                                                @*         class="action-btn action-restore" *@
+                                                @*         title="Restore question"> *@
+                                                @*     <i class="fa-solid fa-trash-arrow-up"></i> *@
+                                                @* </button> *@
                                                 <button type="button"
                                                         onclick="restoreQuestion('@item.QuestionId')"
                                                         class="action-btn action-restore"
                                                         title="Restore question">
-                                                    <i class="fa-solid fa-trash-arrow-up"></i>
+                                                    <span class="material-symbols-outlined fs-5">settings_backup_restore</span>
                                                 </button>
                                             }
                                             else
@@ -941,34 +949,12 @@
                         ? totalPages
                         : pageIndex + 1;
 
-                        <div class="pager">
-
-                            <a href="@BuildPageUrl(prevPage)"
-                               title="Previous page">
-                                <i class="fa-solid fa-chevron-left"></i>
-                            </a>
-
-                            @for (var i = startPage; i <= endPage; i++)
-                            {
-                                if (i == pageIndex)
-                                {
-                                    <span class="active-page">
-                                        @i
-                                    </span>
-                                }
-                                else
-                                {
-                                    <a href="@BuildPageUrl(i)">
-                                        @i
-                                    </a>
-                                }
-                            }
-
-                            <a href="@BuildPageUrl(nextPage)"
-                               title="Next page">
-                                <i class="fa-solid fa-chevron-right"></i>
-                            </a>
-                        </div>
+                        <partial name="_Pagination" model="new WebClient.Models.Shared.PaginationViewModel
+                        {
+                            CurrentPage = pageIndex,
+                            TotalPages = totalPages,
+                            PageUrl = BuildPageUrl
+                        }" />
                     }
                 </div>
             </div>

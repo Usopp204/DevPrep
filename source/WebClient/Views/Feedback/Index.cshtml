@@ -1,0 +1,356 @@
+@using WebClient.Models.Feedback
+@model WebClient.Models.Feedback.FeedbackPageViewModel
+
+@{
+    Layout = null;
+    var isSystem = string.Equals(Model.ActiveSection, "System", StringComparison.OrdinalIgnoreCase);
+    var title = isSystem ? "System Feedback" : "AI Feedback";
+    string Iso(DateTime value) => value.ToString("O");
+    var currentPage = isSystem ? Math.Max(1, Model.SystemReviews.Page) : Math.Max(1, Model.AiReviews.Page);
+    var totalPages = isSystem ? Math.Max(1, Model.SystemReviews.TotalPages) : Math.Max(1, Model.AiReviews.TotalPages);
+    var pageAction = isSystem ? "System" : "Ai";
+    string PageUrl(int page) => Url.Action(pageAction, "Feedback", new { page }) ?? "#";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@title - DevPrep</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=Inter:wght@100..900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="~/css/home.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/pages/feedback.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/components/safe-text.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/components/feedback-report.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/components/star-rating.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/components/pagination.css" asp-append-version="true" />
+</head>
+<body class="home-page feedback-page">
+    <div class="hm-ambient">
+        <div class="hm-blob hm-blob-1"></div>
+        <div class="hm-blob hm-blob-2"></div>
+    </div>
+
+    @await Html.PartialAsync("_Navbar")
+
+    <main class="feedback-shell">
+        <aside class="feedback-nav glass-card">
+            <a class="@(isSystem ? "active" : "")" asp-controller="Feedback" asp-action="System">
+                <span class="material-symbols-outlined">rate_review</span>
+                <span>System Feedback</span>
+            </a>
+            <a class="@(!isSystem ? "active" : "")" asp-controller="Feedback" asp-action="Ai">
+                <span class="material-symbols-outlined">smart_toy</span>
+                <span>AI Feedback</span>
+            </a>
+        </aside>
+
+        <section class="feedback-content">
+            <header class="feedback-header">
+                <p>@(isSystem ? "Platform experience" : "Interview experience")</p>
+                <h1>@title</h1>
+                <span>@(isSystem ? "Public reviews from candidates using DevPrep." : "Published interview feedback about AI questions, scoring, and coaching quality.")</span>
+            </header>
+
+            @if (!string.IsNullOrEmpty(Model.SuccessMessage))
+            {
+                <div class="feedback-alert success">@Model.SuccessMessage</div>
+            }
+            @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+            {
+                <div class="feedback-alert error">@Model.ErrorMessage</div>
+            }
+
+            @if (isSystem)
+            {
+                <section class="feedback-system-stack">
+                    <aside class="feedback-submit-panel glass-card">
+                        <p class="feedback-panel-eyebrow">Candidate feedback</p>
+                        <h2>Submit System Feedback</h2>
+                        @if (!Model.IsAuthenticatedUser)
+                        {
+                            <p>Log in as a candidate user to submit system feedback.</p>
+                            <a class="feedback-primary-link" asp-controller="Auth" asp-action="Login">Login to submit</a>
+                        }
+                        else if (Model.Eligibility?.QualifyingSessionCount < 1)
+                        {
+                            <p>You need at least one completed or expired interview before submitting system feedback.</p>
+                            <a class="feedback-primary-link" asp-controller="Interview" asp-action="Index">Start an interview</a>
+                        }
+                        else
+                        {
+                            <form method="post" asp-controller="Feedback" asp-action="SubmitSystem" class="feedback-form" data-feedback-form>
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="returnUrl" value="@Url.Action("System", "Feedback", new { page = 1 })" />
+                                @foreach (var field in new[]
+                                {
+                                    new { Name = "OverallRating", Label = "Overall", Value = Model.SystemForm.OverallRating },
+                                    new { Name = "UiUxRating", Label = "UI/UX", Value = Model.SystemForm.UiUxRating },
+                                    new { Name = "UsabilityRating", Label = "Usability", Value = Model.SystemForm.UsabilityRating },
+                                    new { Name = "FeatureQualityRating", Label = "Feature quality", Value = Model.SystemForm.FeatureQualityRating }
+                                })
+                                {
+                                    @await Html.PartialAsync("_StarRating", new WebClient.Models.Shared.StarRatingViewModel
+                                    {
+                                        Name = field.Name,
+                                        Label = field.Label,
+                                        Value = Model.FeedbackFormWasSubmitted ? field.Value : 5,
+                                        Editable = true,
+                                        Required = true
+                                    })
+                                }
+                                <label for="system-comment">Comment <span>(optional)</span></label>
+                                <textarea id="system-comment"
+                                          class="feedback-comment-input @(string.IsNullOrWhiteSpace(Model.FeedbackValidationMessage) ? null : "is-invalid")"
+                                          name="Comment"
+                                          rows="4"
+                                          maxlength="@SystemFeedbackRules.MaxCommentLength"
+                                          aria-describedby="system-comment-error system-comment-counter"
+                                          aria-invalid="@(!string.IsNullOrWhiteSpace(Model.FeedbackValidationMessage)).ToString().ToLowerInvariant()"
+                                          data-feedback-comment
+                                          data-server-invalid="@(!string.IsNullOrWhiteSpace(Model.FeedbackValidationMessage)).ToString().ToLowerInvariant()"
+                                          placeholder="What should we improve?">@Model.SystemForm.Comment</textarea>
+                                <div class="feedback-field-meta">
+                                    <span id="system-comment-error" class="feedback-field-error" data-feedback-error>@Model.FeedbackValidationMessage</span>
+                                    <span id="system-comment-counter" class="feedback-character-counter" data-feedback-counter>@(Model.SystemForm.Comment?.Length ?? 0) / @SystemFeedbackRules.MaxCommentLength</span>
+                                </div>
+                                <button type="submit" data-feedback-submit data-pending-text="Publishing...">Publish Feedback</button>
+                            </form>
+                        }
+                    </aside>
+
+                    <section class="feedback-results" aria-labelledby="published-system-feedback-title">
+                        <h2 id="published-system-feedback-title" class="feedback-results-title">Published System Feedback</h2>
+                        <div class="review-list">
+                        @if (Model.SystemReviews.Items.Count == 0)
+                        {
+                            <div class="feedback-empty glass-card">
+                                <span class="material-symbols-outlined">rate_review</span>
+                                <h2>No public system reviews yet</h2>
+                                <p>Published system feedback will appear here after users submit it.</p>
+                            </div>
+                        }
+                        else
+                        {
+                            @foreach (var review in Model.SystemReviews.Items)
+                            {
+                                <article class="review-card glass-card">
+                                    <div class="review-card-head">
+                                        <div>
+                                            <span class="review-source">System feedback by</span>
+                                            <strong>@review.AuthorDisplayName</strong>
+                                        </div>
+                                        @await Html.PartialAsync("_StarRating", new WebClient.Models.Shared.StarRatingViewModel
+                                        {
+                                            Label = "Overall rating",
+                                            Value = review.OverallRating,
+                                            Compact = true
+                                        })
+                                    </div>
+                                    <p id="system-review-@review.FeedbackId.ToString("N")" class="review-comment feedback-expandable safe-long-text" data-expandable-text data-lines="6">@(string.IsNullOrWhiteSpace(review.Comment) ? "No written comment." : review.Comment)</p>
+                                    <button type="button" class="feedback-expand-toggle" data-expand-toggle aria-controls="system-review-@review.FeedbackId.ToString("N")" aria-expanded="false" hidden>Show more</button>
+                                    <div class="review-metrics">
+                                        <span>UI/UX @await Html.PartialAsync("_StarRating", new WebClient.Models.Shared.StarRatingViewModel { Label = "UI/UX", Value = review.UiUxRating, Compact = true, ShowNumericValue = false })</span>
+                                        <span>Usability @await Html.PartialAsync("_StarRating", new WebClient.Models.Shared.StarRatingViewModel { Label = "Usability", Value = review.UsabilityRating, Compact = true, ShowNumericValue = false })</span>
+                                        <span>Features @await Html.PartialAsync("_StarRating", new WebClient.Models.Shared.StarRatingViewModel { Label = "Feature quality", Value = review.FeatureQualityRating, Compact = true, ShowNumericValue = false })</span>
+                                    </div>
+                                    <div class="review-card-footer">
+                                        <time class="review-date" datetime="@Iso(review.CreatedAt)">@review.CreatedAt.ToString("MMM d, yyyy")</time>
+                                        @if (review.HasReported)
+                                        {
+                                            <button type="button" class="feedback-report-action is-reported" disabled aria-label="Feedback already reported">
+                                                <span class="material-symbols-outlined" aria-hidden="true">flag</span>
+                                                <span>Reported</span>
+                                            </button>
+                                        }
+                                        else if (review.CanReport)
+                                        {
+                                            <button type="button"
+                                                    class="feedback-report-action"
+                                                    data-report-trigger
+                                                    data-feedback-id="@review.FeedbackId"
+                                                    data-feedback-type="@FeedbackReportRules.SystemType"
+                                                    data-feedback-author="@review.AuthorDisplayName"
+                                                    data-feedback-type-label="System Feedback"
+                                                    data-preview-id="system-review-@review.FeedbackId.ToString("N")"
+                                                    aria-label="Report this system feedback">
+                                                <span class="material-symbols-outlined" aria-hidden="true">flag</span>
+                                                <span>Report</span>
+                                            </button>
+                                        }
+                                    </div>
+                                </article>
+                            }
+                        }
+                        </div>
+                    </section>
+                </section>
+            }
+            else
+            {
+                <section class="review-list review-list-wide">
+                    @if (Model.AiReviews.Items.Count == 0)
+                    {
+                        <div class="feedback-empty glass-card">
+                            <span class="material-symbols-outlined">smart_toy</span>
+                            <h2>No public AI reviews yet</h2>
+                            <p>Published interview feedback will appear here after candidates submit it.</p>
+                        </div>
+                    }
+                    else
+                    {
+                        @foreach (var review in Model.AiReviews.Items)
+                        {
+                            <article class="review-card ai-review-card glass-card">
+                                <div class="review-card-head">
+                                    <div>
+                                        <span class="review-source">AI feedback by</span>
+                                        <strong>@review.AuthorDisplayName</strong>
+                                    </div>
+                                    @await Html.PartialAsync("_StarRating", new WebClient.Models.Shared.StarRatingViewModel
+                                    {
+                                        Label = "Overall rating",
+                                        Value = review.OverallRating,
+                                        Compact = true
+                                    })
+                                </div>
+                                <p id="ai-review-@review.FeedbackId.ToString("N")" class="review-comment feedback-expandable safe-long-text" data-expandable-text data-lines="6">@(string.IsNullOrWhiteSpace(review.Comment) ? "No written comment." : review.Comment)</p>
+                                    <button type="button" class="feedback-expand-toggle" data-expand-toggle aria-controls="ai-review-@review.FeedbackId.ToString("N")" aria-expanded="false" hidden>Show more</button>
+                                <div class="review-metrics review-metrics-grid">
+                                    <span>Questions @await Html.PartialAsync("_StarRating", new WebClient.Models.Shared.StarRatingViewModel { Label = "Question quality", Value = review.QuestionQualityRating, Compact = true, ShowNumericValue = false })</span>
+                                    <span>AI accuracy @await Html.PartialAsync("_StarRating", new WebClient.Models.Shared.StarRatingViewModel { Label = "AI accuracy", Value = review.AiAccuracyRating, Compact = true, ShowNumericValue = false })</span>
+                                    <span>Scoring @await Html.PartialAsync("_StarRating", new WebClient.Models.Shared.StarRatingViewModel { Label = "Scoring fairness", Value = review.ScoringFairnessRating, Compact = true, ShowNumericValue = false })</span>
+                                    <span>Usefulness @await Html.PartialAsync("_StarRating", new WebClient.Models.Shared.StarRatingViewModel { Label = "Feedback usefulness", Value = review.FeedbackUsefulnessRating, Compact = true, ShowNumericValue = false })</span>
+                                </div>
+                                <div class="review-card-footer">
+                                    <time class="review-date" datetime="@Iso(review.CreatedAt)">@review.CreatedAt.ToString("MMM d, yyyy")</time>
+                                    @if (review.HasReported)
+                                    {
+                                        <button type="button" class="feedback-report-action is-reported" disabled aria-label="Feedback already reported">
+                                            <span class="material-symbols-outlined" aria-hidden="true">flag</span>
+                                            <span>Reported</span>
+                                        </button>
+                                    }
+                                    else if (review.CanReport)
+                                    {
+                                        <button type="button"
+                                                class="feedback-report-action"
+                                                data-report-trigger
+                                                data-feedback-id="@review.FeedbackId"
+                                                data-feedback-type="@FeedbackReportRules.InterviewType"
+                                                data-feedback-author="@review.AuthorDisplayName"
+                                                data-feedback-type-label="AI Feedback"
+                                                data-preview-id="ai-review-@review.FeedbackId.ToString("N")"
+                                                aria-label="Report this AI feedback">
+                                            <span class="material-symbols-outlined" aria-hidden="true">flag</span>
+                                            <span>Report</span>
+                                        </button>
+                                    }
+                                </div>
+                            </article>
+                        }
+                    }
+                </section>
+            }
+
+            <div class="feedback-pagination">
+                <partial name="_Pagination" model="new WebClient.Models.Shared.PaginationViewModel
+                {
+                    CurrentPage = currentPage,
+                    TotalPages = totalPages,
+                    PageUrl = PageUrl
+                }" />
+            </div>
+        </section>
+    </main>
+
+    <div class="feedback-report-toast" data-report-toast role="status" aria-live="polite" hidden></div>
+
+    <div class="feedback-report-modal" data-report-modal hidden>
+        <div class="feedback-report-backdrop" data-report-close></div>
+        <section class="feedback-report-dialog"
+                 role="dialog"
+                 aria-modal="true"
+                 aria-labelledby="feedback-report-title"
+                 aria-describedby="feedback-report-description">
+            <header class="feedback-report-dialog-header">
+                <div>
+                    <p>Community standards</p>
+                    <h2 id="feedback-report-title">Report feedback</h2>
+                </div>
+                <button type="button" class="feedback-report-close" data-report-close aria-label="Close report dialog">
+                    <span class="material-symbols-outlined" aria-hidden="true">close</span>
+                </button>
+            </header>
+
+            <p id="feedback-report-description" class="feedback-report-description">
+                Tell us why this public feedback may violate the community standards. Reports are reviewed by an administrator.
+            </p>
+
+            <div class="feedback-report-preview safe-text-container">
+                <span data-report-type>Feedback preview</span>
+                <strong class="feedback-report-author">Feedback posted by <span data-report-author></span></strong>
+                <p class="safe-long-text" data-report-preview></p>
+            </div>
+
+            <form method="post" asp-controller="Feedback" asp-action="SubmitReport" data-report-form novalidate>
+                @Html.AntiForgeryToken()
+                <input type="hidden" data-report-feedback-id />
+                <input type="hidden" data-report-feedback-type />
+                <input type="hidden" data-report-return-url value="@(Context.Request.Path + Context.Request.QueryString)" />
+
+                <fieldset class="feedback-report-reasons">
+                    <legend>Why are you reporting this feedback?</legend>
+                    <div class="feedback-report-reason-grid">
+                        @foreach (var reason in FeedbackReportRules.Reasons)
+                        {
+                            <label class="feedback-report-reason-card">
+                                <input type="radio" name="ReasonCode" value="@reason.Key" required data-report-reason />
+                                <span class="material-symbols-outlined" aria-hidden="true">flag</span>
+                                <strong>@reason.Value</strong>
+                            </label>
+                        }
+                    </div>
+                    <span class="feedback-report-field-error" data-report-reason-error role="alert"></span>
+                </fieldset>
+
+                <div class="feedback-report-details-field">
+                    <label for="feedback-report-details">
+                        Additional details <span data-report-details-mode>(optional)</span>
+                    </label>
+                    <textarea id="feedback-report-details"
+                              name="Details"
+                              rows="4"
+                              maxlength="@FeedbackReportRules.MaxDetailsLength"
+                              aria-describedby="feedback-report-details-help feedback-report-error feedback-report-counter"
+                              data-report-details
+                              placeholder="Share any context that will help the review."></textarea>
+                    <div class="feedback-field-meta">
+                        <span id="feedback-report-details-help" class="feedback-report-help">Required only when you choose Other.</span>
+                        <span id="feedback-report-counter" class="feedback-character-counter" data-report-counter>0 / @FeedbackReportRules.MaxDetailsLength</span>
+                    </div>
+                    <span class="feedback-report-field-error" data-report-details-error role="alert"></span>
+                </div>
+
+                <div id="feedback-report-error" class="feedback-report-error" data-report-error role="alert" hidden></div>
+                <div class="feedback-report-actions">
+                    <button type="button" class="feedback-report-cancel" data-report-close>Cancel</button>
+                    <button type="submit" class="feedback-report-submit" data-report-submit>
+                        <span class="material-symbols-outlined" aria-hidden="true">flag</span>
+                        <span data-report-submit-label>Submit Report</span>
+                    </button>
+                </div>
+            </form>
+        </section>
+    </div>
+
+    @await Html.PartialAsync("_Footer")
+    <script src="~/js/components/feedback-content.js" asp-append-version="true"></script>
+    <script src="~/js/components/star-rating.js" asp-append-version="true"></script>
+    <script src="~/js/components/feedback-report.js" asp-append-version="true"></script>
+</body>
+</html>

@@ -28,4 +28,18 @@ public class EmailVerificationTokenRepository : IEmailVerificationTokenRepositor
         _context.EmailVerificationTokens
             .Where(t => t.AccountId == accountId && !t.IsUsed)
             .ToListAsync();
+
+    public Task<EmailVerificationToken?> GetValidByTokenValueAsync(string token) =>
+        _context.EmailVerificationTokens
+            .Include(t => t.Account)
+            .FirstOrDefaultAsync(t =>
+                t.Token == token &&
+                !t.IsUsed &&
+                t.ExpiresAt > VietnamTime.Now);
+
+    public Task<bool> HasValidTokenAsync(Guid accountId) =>
+        _context.EmailVerificationTokens.AnyAsync(t =>
+            t.AccountId == accountId &&
+            !t.IsUsed &&
+            t.ExpiresAt > VietnamTime.Now);
 }

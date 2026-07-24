@@ -1,0 +1,173 @@
+@using WebClient.Models.Feedback
+@model ReportedFeedbackPageViewModel
+
+@{
+    var controller = Model.IsAdmin ? "Admin" : "Manager";
+    var action = "ReportedFeedback";
+    var totalPages = Math.Max(1, Model.Reports.TotalPages);
+    string PageUrl(int page) => Url.Action(action, controller, new
+    {
+        page,
+        feedbackType = Model.FeedbackType,
+        status = Model.Status,
+        reasonCode = Model.ReasonCode,
+        keyword = Model.Keyword
+    }) ?? "#";
+}
+
+<form method="get" action="@Url.Action(action, controller)" class="reported-feedback-filters">
+    <label>
+        <span>Feedback type</span>
+        <select name="feedbackType">
+            <option value="All" selected="@(Model.FeedbackType == "All")">All</option>
+            <option value="System" selected="@(Model.FeedbackType == FeedbackReportRules.SystemType)">System</option>
+            <option value="Interview" selected="@(Model.FeedbackType == FeedbackReportRules.InterviewType)">AI Feedback</option>
+        </select>
+    </label>
+    <label>
+        <span>Status</span>
+        <select name="status">
+            <option value="All" selected="@(Model.Status == "All")">All</option>
+            <option value="Pending" selected="@(Model.Status == FeedbackReportRules.PendingStatus)">Pending</option>
+            <option value="Dismissed" selected="@(Model.Status == FeedbackReportRules.DismissedStatus)">Dismissed</option>
+            <option value="ResolvedByFeedbackDeletion" selected="@(Model.Status == FeedbackReportRules.ResolvedStatus)">Resolved by Feedback Deletion</option>
+        </select>
+    </label>
+    <label>
+        <span>Reason</span>
+        <select name="reasonCode">
+            <option value="All" selected="@(Model.ReasonCode == "All")">All reasons</option>
+            @foreach (var reason in FeedbackReportRules.Reasons)
+            {
+                <option value="@reason.Key" selected="@(Model.ReasonCode == reason.Key)">@reason.Value</option>
+            }
+        </select>
+    </label>
+    <label class="reported-feedback-search">
+        <span>Keyword</span>
+        <span class="reported-feedback-search-control">
+            <input type="search" name="keyword" value="@Model.Keyword" placeholder="Search content or report details" />
+            <span class="material-symbols-outlined" aria-hidden="true">search</span>
+        </span>
+    </label>
+    <button type="submit" class="reported-feedback-filter-submit">Apply filters</button>
+</form>
+
+<section class="reported-feedback-list-card" aria-labelledby="reported-feedback-list-title">
+    <header class="reported-feedback-list-header">
+        <div>
+            <p>Moderation queue</p>
+            <h2 id="reported-feedback-list-title">Feedback reports</h2>
+        </div>
+        <span>@Model.Reports.TotalItems total</span>
+    </header>
+
+    @if (Model.Reports.Items.Count == 0)
+    {
+        <div class="reported-feedback-empty">
+            <span class="material-symbols-outlined" aria-hidden="true">flag</span>
+            <h3>No reports found</h3>
+            <p>Try another filter, or return to Pending reports.</p>
+        </div>
+    }
+    else
+    {
+        <div class="reported-feedback-table-wrap">
+            <table class="reported-feedback-table">
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th>Reason</th>
+                        <th>Status</th>
+                        <th>Feedback</th>
+                        <th>Report details</th>
+                        <th>Date</th>
+                        <th>Reports</th>
+                        <th class="reported-feedback-actions-heading">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var report in Model.Reports.Items)
+                    {
+                        string feedbackState;
+                        if (report.IsFeedbackDeleted)
+                        {
+                            feedbackState = "Deleted";
+                        }
+                        else if (report.IsFeedbackVisible)
+                        {
+                            feedbackState = "Public";
+                        }
+                        else
+                        {
+                            feedbackState = "Hidden";
+                        }
+                        <tr>
+                            <td data-label="Type">
+                                <span class="report-badge report-type-@report.FeedbackType.ToLowerInvariant()">
+                                    @(report.FeedbackType == FeedbackReportRules.InterviewType ? "AI Feedback" : "System")
+                                </span>
+                            </td>
+                            <td data-label="Reason">
+                                <strong class="report-reason safe-long-text">@report.ReasonLabel</strong>
+                            </td>
+                            <td data-label="Status">
+                                <span class="report-badge report-status-@report.Status.ToLowerInvariant()">@report.Status</span>
+                                <small class="report-target-state">@feedbackState</small>
+                            </td>
+                            <td data-label="Feedback">
+                                <p class="report-content-preview safe-long-text">@(string.IsNullOrWhiteSpace(report.FeedbackContent) ? "No written content." : report.FeedbackContent)</p>
+                            </td>
+                            <td data-label="Report details">
+                                <p class="report-content-preview safe-long-text">@(string.IsNullOrWhiteSpace(report.Details) ? "No additional details." : report.Details)</p>
+                            </td>
+                            <td data-label="Date"><time datetime="@report.CreatedAt.ToString("O")">@report.CreatedAt.ToString("MMM d, yyyy")</time></td>
+                            <td data-label="Reports"><span class="report-count">@report.RelatedReportCount</span></td>
+                            <td data-label="Actions" class="reported-feedback-actions-cell">
+                                <div class="reported-feedback-row-actions">
+                                    <a class="report-icon-action report-view-action"
+                                       href="@Url.Action(action, controller, new { page = Model.Reports.Page, feedbackType = Model.FeedbackType, status = Model.Status, reasonCode = Model.ReasonCode, keyword = Model.Keyword, reportId = report.ReportId })"
+                                       title="View Details"
+                                       aria-label="View details for report @report.ReportId">
+                                        <span class="material-symbols-outlined" aria-hidden="true">visibility</span>
+                                    </a>
+                                    @if (Model.IsAdmin && report.Status == FeedbackReportRules.PendingStatus)
+                                    {
+                                        <button type="button"
+                                                class="report-icon-action report-dismiss-action"
+                                                data-report-dismiss
+                                                data-report-id="@report.ReportId"
+                                                data-report-reason="@report.ReasonLabel"
+                                                title="Dismiss Report"
+                                                aria-label="Dismiss report @report.ReportId">
+                                            <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
+                                        </button>
+                                        <button type="button"
+                                                class="report-icon-action report-delete-action"
+                                                data-report-delete
+                                                data-report-id="@report.ReportId"
+                                                data-report-reason="@report.ReasonLabel"
+                                                title="Delete Feedback"
+                                                aria-label="Delete feedback reported by report @report.ReportId">
+                                            <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+                                        </button>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    <footer class="reported-feedback-list-footer">
+        <span>Page @Math.Max(1, Model.Reports.Page) of @totalPages</span>
+        <partial name="_Pagination" model="new WebClient.Models.Shared.PaginationViewModel
+        {
+            CurrentPage = Math.Max(1, Model.Reports.Page),
+            TotalPages = totalPages,
+            PageUrl = PageUrl
+        }" />
+    </footer>
+</section>

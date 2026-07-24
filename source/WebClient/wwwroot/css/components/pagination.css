@@ -1,0 +1,89 @@
+.devprep-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 24px;
+}
+
+.devprep-pagination-inline {
+    justify-content: flex-end;
+    margin-top: 0;
+}
+
+.devprep-page-link,
+.devprep-page-ellipsis {
+    min-width: 38px;
+    height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    font: 600 13px/1 "Inter", system-ui, sans-serif;
+}
+
+.devprep-page-link {
+    padding: 0 12px;
+    border: 1px solid rgba(196, 192, 255, 0.18);
+    background: rgba(31, 31, 38, 0.82);
+    color: #c7c4d8;
+    text-decoration: none;
+    cursor: pointer;
+    transition: border-color 0.2s, background-color 0.2s, color 0.2s, transform 0.1s;
+}
+
+.devprep-page-link:hover {
+    border-color: rgba(196, 192, 255, 0.48);
+    background: rgba(108, 99, 255, 0.2);
+    color: #e4e1eb;
+}
+
+.devprep-page-link:active {
+    transform: translateY(1px);
+}
+
+.devprep-page-link:focus-visible {
+    outline: 2px solid #c4c0ff;
+    outline-offset: 2px;
+}
+
+.devprep-page-link.active {
+    border-color: #8781ff;
+    background: #8781ff;
+    color: #100069;
+}
+
+.devprep-page-link.disabled {
+    opacity: 0.38;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.devprep-page-direction {
+    min-width: 76px;
+}
+
+.devprep-page-ellipsis {
+    color: #918fa1;
+}
+
+@media (max-width: 620px) {
+    .devprep-pagination {
+        gap: 6px;
+    }
+
+    .devprep-page-link,
+    .devprep-page-ellipsis {
+        min-width: 34px;
+        height: 34px;
+    }
+
+    .devprep-page-link {
+        padding: 0 9px;
+    }
+
+    .devprep-page-direction {
+        min-width: 68px;
+    }
+}

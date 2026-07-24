@@ -3,6 +3,7 @@ using WebClient.Services.Admin;
 using WebClient.Services.Auth;
 using WebClient.Services.CvJd;
 using WebClient.Services.Evaluation;
+using WebClient.Services.Feedback;
 using WebClient.Services.Interview;
 using WebClient.Services.Manager;
 using WebClient.Services.News;
@@ -28,9 +29,6 @@ public static class ServiceCollectionExtensions
         services.AddMemoryCache(); // BlockedAccountMiddleware cache trạng thái account 30s
         services.AddTransient<JwtDelegatingHandler>();
 
-        // Cho ProfileService đọc cookie access_token để gắn Bearer khi gọi API.
-        services.AddHttpContextAccessor();
-
         services.AddHttpClient<IApiClient, ApiClient>((provider, client) =>
         {
             var options = provider.GetRequiredService<IOptions<ApiGatewayOptions>>().Value;
@@ -39,11 +37,10 @@ public static class ServiceCollectionExtensions
             {
                 client.BaseAddress = baseUri;
             }
-            // AI parse endpoints (CV/JD) can take several minutes on CPU
+
             client.Timeout = TimeSpan.FromMinutes(6);
         })
         .AddHttpMessageHandler<JwtDelegatingHandler>()
-        // Gọi tới API Gateway ở localhost: KHÔNG đi qua proxy hệ thống (proxy có thể chặn localhost -> timeout).
         .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { UseProxy = false });
 
         services.AddScoped<IAuthService, AuthService>();
@@ -53,10 +50,12 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IInterviewService, InterviewService>();
         services.AddScoped<IVerificationService, VerificationService>();
         services.AddScoped<IEvaluationService, EvaluationService>();
+        services.AddScoped<IFeedbackService, FeedbackService>();
         services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<IAdminService, AdminService>();
         services.AddScoped<IAdminDashboardService, AdminDashboardService>();
         services.AddScoped<IManagerService, ManagerService>();
+        services.AddScoped<IManagerDashboardService, ManagerDashboardService>();
         services.AddScoped<IManagerQuestionService, ManagerQuestionService>();
         services.AddScoped<IManagerTechStackService, ManagerTechStackService>();
         services.AddScoped<IManagerUserService, ManagerUserService>();

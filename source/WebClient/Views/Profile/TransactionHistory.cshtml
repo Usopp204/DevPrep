@@ -372,6 +372,7 @@
             .stats-grid { grid-template-columns: 1fr; }
         }
     </style>
+    <link rel="stylesheet" href="~/css/components/pagination.css" asp-append-version="true" />
 </head>
 <body class="pf-page">
 
@@ -518,32 +519,18 @@
                         <span class="pagination-info">
                             Showing @start–@end of @Model.TotalCount transaction(s)
                         </span>
-                        <nav class="pagination-nav">
-                            @if (Model.Page > 1)
+                        @{
+                            string PageUrl(int pageNumber) => Url.Action("TransactionHistory", "Profile", new
                             {
-                                <a asp-controller="Profile" asp-action="TransactionHistory"
-                                   asp-route-page="@(Model.Page - 1)"
-                                   class="page-btn">
-                                    <span class="material-symbols-outlined">chevron_left</span> Prev
-                                </a>
-                            }
-                            @for (int pg = Math.Max(1, Model.Page - 2); pg <= Math.Min(Model.TotalPages, Model.Page + 2); pg++)
-                            {
-                                <a asp-controller="Profile" asp-action="TransactionHistory"
-                                   asp-route-page="@pg"
-                                   class="page-btn @(pg == Model.Page ? "page-btn-now" : "")">
-                                    @pg
-                                </a>
-                            }
-                            @if (Model.Page < Model.TotalPages)
-                            {
-                                <a asp-controller="Profile" asp-action="TransactionHistory"
-                                   asp-route-page="@(Model.Page + 1)"
-                                   class="page-btn">
-                                    Next <span class="material-symbols-outlined">chevron_right</span>
-                                </a>
-                            }
-                        </nav>
+                                page = pageNumber
+                            }) ?? "#";
+                        }
+                        <partial name="_Pagination" model="new WebClient.Models.Shared.PaginationViewModel
+                        {
+                            CurrentPage = Model.Page,
+                            TotalPages = Model.TotalPages,
+                            PageUrl = PageUrl
+                        }" />
                     </div>
                 }
             }

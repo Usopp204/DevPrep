@@ -15,7 +15,10 @@
 body.room-page {
     margin: 0;
     height: 100vh;
-    width: 100vw;
+    height: 100dvh;
+    min-height: 100vh;
+    min-height: 100dvh;
+    width: 100%;
     overflow: hidden;
     display: flex;
     font-family: var(--font-body);
@@ -29,6 +32,7 @@ body.room-page {
     display: flex;
     width: 100%;
     height: 100%;
+    min-height: 0;
 }
 
 /* ---------- Left panel: sidebar ---------- */
@@ -877,7 +881,7 @@ body.room-page {
     margin-top: -6px;
 }
 
-.btn-end {
+.btn-cancel-interview {
     width: 100%;
     margin-top: 4px;
     display: flex;
@@ -895,18 +899,176 @@ body.room-page {
     font-weight: 500;
 }
 
-.btn-end:hover {
+.btn-cancel-interview:hover {
     background: rgba(239, 68, 68, 0.2);
 }
 
-.btn-end .material-symbols-outlined {
+.btn-cancel-interview .material-symbols-outlined {
     font-size: 20px;
 }
 
 .btn-secondary:disabled,
-.btn-end:disabled {
+.btn-cancel-interview:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+.cancel-interview-dialog {
+    width: min(520px, calc(100% - 32px));
+    padding: 0;
+    color: var(--color-text-primary);
+    background: var(--color-surface-container-lowest);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+}
+
+.cancel-interview-dialog::backdrop {
+    background: rgba(0, 0, 0, 0.72);
+    backdrop-filter: blur(4px);
+}
+
+.cancel-interview-dialog-content {
+    padding: 28px;
+}
+
+.cancel-interview-dialog h2 {
+    margin: 0 0 12px;
+    font-family: var(--font-display);
+    font-size: 22px;
+    line-height: 30px;
+}
+
+.cancel-interview-dialog p {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 15px;
+    line-height: 24px;
+}
+
+.cancel-interview-dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 28px;
+}
+
+.btn-continue-interview,
+.btn-confirm-cancel {
+    min-height: 42px;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-continue-interview {
+    color: var(--color-text-primary);
+    background: var(--color-surface-container);
+    border: 1px solid var(--color-border);
+}
+
+.btn-confirm-cancel {
+    color: #fff;
+    background: var(--color-destructive);
+    border: 1px solid var(--color-destructive);
+}
+
+.btn-continue-interview:focus-visible,
+.btn-confirm-cancel:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+@media (max-width: 640px) {
+    .cancel-interview-dialog-content {
+        padding: 22px;
+    }
+
+    .cancel-interview-dialog-actions {
+        flex-direction: column;
+    }
+
+    .btn-continue-interview,
+    .btn-confirm-cancel {
+        width: 100%;
+    }
+}
+
+@media (max-width: 900px) {
+    body.room-page {
+        height: auto;
+        min-height: 100vh;
+        min-height: 100dvh;
+        overflow-x: hidden;
+        overflow-y: auto;
+        display: block;
+    }
+
+    .room-layout {
+        height: auto;
+        min-height: 100vh;
+        min-height: 100dvh;
+        flex-direction: column;
+        overflow-x: hidden;
+    }
+
+    .room-sidebar,
+    .room-camera {
+        width: 100%;
+        flex-shrink: 1;
+        border-right: 0;
+        border-left: 0;
+    }
+
+    .room-sidebar {
+        border-bottom: 1px solid var(--color-border);
+    }
+
+    .room-sidebar-top {
+        display: grid;
+        grid-template-columns: minmax(180px, 0.8fr) minmax(220px, 1.2fr);
+        align-items: center;
+        padding: 16px;
+    }
+
+    .room-progress {
+        padding: 16px;
+    }
+
+    .room-chat {
+        min-height: 70vh;
+    }
+
+    .room-camera {
+        border-top: 1px solid var(--color-border);
+    }
+
+    .room-camera-top {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-items: start;
+    }
+}
+
+@media (max-width: 640px) {
+    .room-sidebar-top,
+    .room-camera-top {
+        display: flex;
+    }
+
+    .room-chat {
+        min-height: 80vh;
+    }
+
+    .room-chat-header,
+    .chat-input-bar,
+    .room-camera-top,
+    .room-camera-actions {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
 }
 
 .room-ended-note {

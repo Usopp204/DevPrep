@@ -9,6 +9,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AI Feedback - DevPrep AI</title>
     <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/components/star-rating.css" asp-append-version="true" />
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@@400;500;600;700;800;900&family=JetBrains+Mono:wght@@500&display=swap" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@@100..700,0..1&display=swap" rel="stylesheet" />
@@ -46,6 +47,8 @@
         .ai-main { margin-left: 250px; padding-top: 80px; padding-left: 24px; padding-right: 24px; min-height: 100vh; background: #0e1323; }
         .chip.active { outline: 2px solid currentColor; }
     </style>
+    <link rel="stylesheet" href="~/css/components/pagination.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/components/safe-text.css" asp-append-version="true" />
 </head>
 <body class="font-body-md overflow-x-hidden">
     @await Html.PartialAsync("_AdminTopbar")
@@ -110,9 +113,7 @@
                 <div class="px-lg py-md flex items-center justify-between border-t border-border-subtle bg-surface-container/20">
                     <p id="ai-summary" class="font-code-label text-[11px] text-on-surface-variant uppercase">Loading...</p>
                     <div class="flex gap-xs items-center">
-                        <button id="ai-prev" class="p-1 rounded bg-surface-container border border-border-subtle text-on-surface-variant hover:text-primary transition-colors" type="button"><span class="material-symbols-outlined">chevron_left</span></button>
-                        <span id="ai-page" class="px-3 py-1 rounded bg-primary-container text-on-primary-container font-code-label text-[11px] font-bold">1 / 1</span>
-                        <button id="ai-next" class="p-1 rounded bg-surface-container border border-border-subtle text-on-surface-variant hover:text-primary transition-colors" type="button"><span class="material-symbols-outlined">chevron_right</span></button>
+                        <nav id="ai-pages" class="devprep-pagination devprep-pagination-inline" aria-label="Pagination"></nav>
                     </div>
                 </div>
             </section>
@@ -147,7 +148,7 @@
             <div class="space-y-sm">
                 <span class="font-code-label text-[11px] uppercase text-on-surface-variant">User Comment</span>
                 <div class="glass-card rounded-xl p-md inner-glow">
-                    <p id="d-comment" class="font-body-md text-on-surface italic leading-relaxed">--</p>
+                    <p id="d-comment" class="font-body-md text-on-surface italic leading-relaxed safe-long-text">--</p>
                 </div>
             </div>
             <div class="pt-4 border-t border-border-subtle">
@@ -171,15 +172,13 @@
     </div>
 
     <script>
-        const API_BASE = 'http://localhost:7007/api/admin/feedbacks/ai';
+        const API_BASE = 'http://localhost:7000/api/admin/feedbacks/ai';
         const token = '@token';
         let currentPage = 1, pageSize = 10, totalPages = 1, searchTimer = null;
         let helpful = '', rating = '', lastItems = [], currentId = null, confirmCb = null;
         let showDeleted = false; // true = CHỈ hiện feedback đã xoá mềm (kèm nút Restore)
 
         document.addEventListener("DOMContentLoaded", () => {
-            document.getElementById('ai-prev').addEventListener('click', () => { if (currentPage > 1) { currentPage--; fetchList(); } });
-            document.getElementById('ai-next').addEventListener('click', () => { if (currentPage < totalPages) { currentPage++; fetchList(); } });
             document.getElementById('ai-search').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => { currentPage = 1; fetchList(); }, 300); });
             document.getElementById('ai-rating').addEventListener('click', (e) => {
                 const btn = e.target.closest('.chip'); if (!btn) return;
@@ -241,8 +240,7 @@
                     tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-error">Failed: ${escapeHtml(json.message)}</td></tr>`;
                 }
             } catch (err) {
-                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-error">Failed to load data. Please sign in again or check FeedbackAPI (:7007).</td></tr>`;
-            }
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-error">Failed to load data. Please sign in again or check ApiGateway (:7000).</td></tr>`;            }
         }
 
         function renderTable(items) {
@@ -252,12 +250,12 @@
                 <tr class="border-b border-border-subtle/50 hover:bg-surface-container-high/30 transition-colors cursor-pointer group" onclick="openDetail('${it.id}')">
                     <td class="px-lg py-lg">
                         <div class="flex items-center gap-sm">
-                            <div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary font-code-label">${initial(it.userFullName)}</div>
+                            <div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary font-code-label">${escapeHtml(initial(it.userFullName))}</div>
                             <span class="font-semibold text-on-surface">${escapeHtml(userLabel(it))}</span>${it.isDeleted ? deletedBadge() : ''}
                         </div>
                     </td>
                     <td class="px-lg py-lg"><div class="flex text-warning">${stars(it.rating || 0)}<span class="ml-xs text-on-surface-variant font-code-label">${it.rating || 0}</span></div></td>
-                    <td class="px-lg py-lg max-w-xs"><p class="truncate opacity-80 italic text-on-surface">"${escapeHtml(it.content || '')}"</p></td>
+                    <td class="px-lg py-lg max-w-xs"><p class="opacity-80 italic text-on-surface safe-long-text">"${escapeHtml(it.content || '')}"</p></td>
                     <td class="px-lg py-lg">${helpfulBadge(it.isHelpful)}</td>
                     <td class="px-lg py-lg font-code-label text-on-surface-variant">${formatDate(it.createdAt)}</td>
                     <td class="px-lg py-lg text-right">
@@ -279,7 +277,7 @@
             document.getElementById('d-email').innerText = it.userEmail || '--';
             document.getElementById('d-session').innerText = it.sessionId || '--';
             document.getElementById('d-date').innerText = formatDate(it.createdAt);
-            document.getElementById('d-rating').innerHTML = stars(it.rating || 0);
+            document.getElementById('d-rating').innerHTML = stars(it.rating || 0, false);
             document.getElementById('d-helpful').innerHTML = helpfulBadge(it.isHelpful);
             document.getElementById('d-comment').innerText = `"${it.content || ''}"`;
             // Nút dưới drawer đổi theo trạng thái: item đã xoá -> Restore, chưa xoá -> Delete.
@@ -325,12 +323,16 @@
             totalPages = Math.max(data.totalPages || 1, 1);
             const totalItems = data.totalItems || 0, page = data.page || currentPage, size = data.pageSize || pageSize;
             const start = totalItems === 0 ? 0 : ((page - 1) * size) + 1, end = Math.min(page * size, totalItems);
+            currentPage = page;
             document.getElementById('ai-summary').innerText = `Showing ${start}-${end} of ${totalItems} entries`;
-            document.getElementById('ai-page').innerText = `${page} / ${totalPages}`;
-            document.getElementById('ai-prev').disabled = page <= 1;
-            document.getElementById('ai-next').disabled = page >= totalPages;
+            DevPrepPagination.render({ container: 'ai-pages', currentPage, totalPages, onPageChange: pageNumber => { currentPage = pageNumber; fetchList(); } });
         }
-        function stars(n) { let s = ''; for (let i = 1; i <= 5; i++) s += `<span class="material-symbols-outlined text-[18px]" ${i <= n ? `style="font-variation-settings:'FILL' 1;"` : ''}>star</span>`; return s; }
+        function stars(n, compact = true) {
+            const value = Math.max(0, Math.min(5, Number(n) || 0));
+            let s = `<span class="star-rating ${compact ? 'star-rating--compact' : 'star-rating--full'}" role="img" aria-label="${value} out of 5 stars">`;
+            for (let i = 1; i <= 5; i++) s += `<span class="material-symbols-outlined star-rating-icon ${i <= value ? 'is-filled' : 'is-empty'}" aria-hidden="true">${i <= value ? 'star' : 'star_border'}</span>`;
+            return `${s}</span>`;
+        }
         function formatDate(d) { if (!d) return ''; const x = new Date(d); const m = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"]; return `${m[x.getMonth()]} ${x.getDate().toString().padStart(2,'0')}`; }
         function escapeHtml(u) { return (u || '').replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;"); }
         function toggleDrawer(show) {
@@ -339,5 +341,6 @@
             else { drawer.classList.add('drawer-hidden'); overlay.classList.remove('opacity-100'); setTimeout(() => { overlay.classList.add('hidden'); document.body.style.overflow = 'auto'; }, 300); }
         }
     </script>
+    <script src="~/js/components/pagination.js" asp-append-version="true"></script>
 </body>
 </html>

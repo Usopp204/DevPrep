@@ -11,6 +11,7 @@ public interface IAuthService
     Task<RegisterResult> RegisterAsync(RegisterViewModel model);
     Task<LoginResult> LoginAsync(LoginViewModel model);
     Task<AuthActionResult> VerifyEmailAsync(string email, string otp);
+    Task<AuthActionResult> ConfirmEmailAsync(string token);
     Task<AuthActionResult> ResendOtpAsync(string email);
     Task<AuthActionResult> ForgotPasswordAsync(string email);
     Task<AuthActionResult> ResetPasswordAsync(ResetPasswordViewModel model);
@@ -108,6 +109,9 @@ public sealed class AuthService(IApiClient apiClient) : IAuthService
 
     public Task<AuthActionResult> VerifyEmailAsync(string email, string otp) =>
         PostSimpleAsync("api/auth/verify-email", new { email, otp }, "Email verified successfully.");
+
+    public Task<AuthActionResult> ConfirmEmailAsync(string token) =>
+        PostSimpleAsync("api/auth/verify-email-link", new { token }, "Email verified successfully.");
 
     public Task<AuthActionResult> ResendOtpAsync(string email) =>
         PostSimpleAsync("api/auth/resend-otp", new { email }, "A new verification code has been sent.");

@@ -1,0 +1,212 @@
+@model WebClient.Models.Manager.ManagerDashboardViewModel
+@{
+    Layout = null;
+    var nowVn = DateTime.UtcNow.AddHours(7);
+    string Num(long? v) => v.HasValue ? v.Value.ToString("N0") : "—";
+    string Vnd(decimal? v) => v.HasValue ? v.Value.ToString("N0") + " VND" : "—";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DevPrep AI Manager Dashboard</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@@100..900&family=JetBrains+Mono:wght@@500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+    <style>
+        .ad-range { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .ad-range label { font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: .05em; text-transform: uppercase; color: #c8c5d0; }
+        .ad-range input[type="date"] {
+            background: rgba(26, 31, 48, .8); border: 1px solid rgba(255, 255, 255, .12);
+            color: #e5e1e7; border-radius: .5rem; padding: 6px 10px; font-size: 14px; outline: none;
+            color-scheme: dark;
+        }
+        .ad-range input[type="date"]:focus { border-color: #4f46e5; }
+        .ad-range .ad-apply {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: #fff; border: none;
+            border-radius: .5rem; padding: 7px 18px; font-weight: 600; font-size: 14px; cursor: pointer;
+        }
+        .ad-range .ad-apply:hover { opacity: .9; }
+        .ad-rev-summary { font-size: 14px; color: #c8c5d0; }
+        .ad-rev-summary b { color: #c3c0ff; font-size: 16px; }
+        .ad-chart-note { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #928f9a; font-size: 14px; }
+        .ad-chart-bar .bar { min-height: 0; }
+        .ad-chart-bar span { white-space: nowrap; }
+    </style>
+</head>
+<body class="admin-page">
+    @await Html.PartialAsync("_ManagerTopbar")
+    @await Html.PartialAsync("_ManagerSidebar")
+
+    <main class="ad-main">
+        <header class="mb-4">
+            <h1 class="ad-page-title">System Overview</h1>
+            <p class="ad-page-date">@nowVn.ToString("MMMM dd, yyyy")</p>
+        </header>
+
+        <section class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4 mb-4">
+            <div class="col">
+                <div class="glass-card ad-stat">
+                    <div class="ad-stat-top">
+                        <span class="ad-stat-label">Total Users</span>
+                        <span class="material-symbols-outlined" style="color:#e2dfff; opacity:.6;">group</span>
+                    </div>
+                    <div>
+                        <div class="ad-stat-value">@Num(Model.TotalUsers)</div>
+                        <div class="ad-stat-label" style="text-transform:none; margin-top:8px;">All registered accounts</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="glass-card ad-stat">
+                    <div class="ad-stat-top">
+                        <span class="ad-stat-label">New Users This Month</span>
+                        <span class="material-symbols-outlined" style="color:#4cd7f6; opacity:.6;">person_add</span>
+                    </div>
+                    <div>
+                        <div class="ad-stat-value">@Num(Model.NewUsersThisMonth)</div>
+                        <div class="ad-stat-label" style="text-transform:none; margin-top:8px;">Since @Model.DefaultFrom.ToString("MMM dd")</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="glass-card ad-stat">
+                    <div class="ad-stat-top">
+                        <span class="ad-stat-label">Total Sessions Run</span>
+                        <span class="material-symbols-outlined" style="color:#F9D949; opacity:.6;">play_circle</span>
+                    </div>
+                    <div>
+                        <div class="ad-stat-value">@Num(Model.TotalSessions)</div>
+                        <div class="ad-stat-label" style="text-transform:none; margin-top:8px;">Interview sessions</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="glass-card ad-stat">
+                    <div class="ad-stat-top">
+                        <span class="ad-stat-label">VNPay Revenue</span>
+                        <span class="material-symbols-outlined" style="color:#c3c0ff; opacity:.6;">account_balance_wallet</span>
+                    </div>
+                    <div>
+                        <div class="ad-stat-value" style="font-size:24px; color:#c3c0ff; line-height:1.2;">@Vnd(Model.RevenueThisMonth)</div>
+                        <div class="ad-stat-label" style="text-transform:none; margin-top:8px;">This month</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="glass-card ad-section">
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-3">
+                <h3 class="ad-section-title mb-0">Revenue</h3>
+                <form class="ad-range" id="rev-range" onsubmit="return false;">
+                    <label for="rev-from">From</label>
+                    <input type="date" id="rev-from" value="@Model.DefaultFrom.ToString("yyyy-MM-dd")" />
+                    <label for="rev-to">To</label>
+                    <input type="date" id="rev-to" value="@Model.DefaultTo.ToString("yyyy-MM-dd")" />
+                    <button type="submit" class="ad-apply" id="rev-apply">Apply</button>
+                </form>
+            </div>
+            <div class="ad-rev-summary mb-3" id="rev-summary">Loading…</div>
+            <div class="ad-chart" id="rev-chart">
+                <div class="ad-chart-grid">
+                    <div></div><div></div><div></div><div></div>
+                </div>
+                <div class="ad-chart-note" id="rev-note">Loading revenue…</div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        (function () {
+            const fromEl = document.getElementById('rev-from');
+            const toEl = document.getElementById('rev-to');
+            const applyBtn = document.getElementById('rev-apply');
+            const chartEl = document.getElementById('rev-chart');
+            const summaryEl = document.getElementById('rev-summary');
+
+            const vnd = n => Number(n).toLocaleString('en-US');
+
+            function setNote(text, isError) {
+                chartEl.querySelectorAll('.ad-chart-bar, .ad-chart-note').forEach(e => e.remove());
+                const note = document.createElement('div');
+                note.className = 'ad-chart-note';
+                if (isError) note.style.color = '#ffb4ab';
+                note.textContent = text;
+                chartEl.appendChild(note);
+            }
+
+            function zeroFill(from, to, days) {
+                const map = {};
+                (days || []).forEach(d => { map[d.date.substring(0, 10)] = d; });
+                const out = [];
+                const cur = new Date(from + 'T00:00:00');
+                const end = new Date(to + 'T00:00:00');
+                while (cur <= end) {
+                    const key = cur.toISOString().substring(0, 10);
+                    out.push(map[key] || { date: key, revenue: 0, orders: 0, credits: 0 });
+                    cur.setDate(cur.getDate() + 1);
+                    if (out.length > 400) break;
+                }
+                return out;
+            }
+
+            function render(data) {
+                const days = zeroFill(fromEl.value, toEl.value, data.days);
+                summaryEl.innerHTML =
+                    'Total: <b>' + vnd(data.totalRevenue) + ' VND</b>' +
+                    ' • ' + data.totalOrders + ' paid order' + (data.totalOrders === 1 ? '' : 's') +
+                    ' • ' + vnd(data.totalCredits) + ' credits sold' +
+                    ' <span style="color:#928f9a;">(' + fromEl.value + ' → ' + toEl.value + ')</span>';
+
+                chartEl.querySelectorAll('.ad-chart-bar, .ad-chart-note').forEach(e => e.remove());
+
+                const max = Math.max(...days.map(d => Number(d.revenue)));
+                if (!max) { setNote('No revenue in this date range.'); return; }
+
+                const labelStep = Math.ceil(days.length / 12);
+                days.forEach((d, i) => {
+                    const wrap = document.createElement('div');
+                    wrap.className = 'ad-chart-bar';
+                    const h = Math.round(Number(d.revenue) / max * 200);
+
+                    const bar = document.createElement('div');
+                    bar.className = 'bar';
+                    bar.style.height = (Number(d.revenue) > 0 ? Math.max(h, 3) : 0) + 'px';
+                    bar.title = d.date.substring(0, 10) + ' — ' + vnd(d.revenue) + ' VND (' + d.orders + ' order' + (d.orders === 1 ? '' : 's') + ')';
+
+                    const label = document.createElement('span');
+                    label.textContent = (i % labelStep === 0) ? d.date.substring(8, 10) + '/' + d.date.substring(5, 7) : '';
+
+                    wrap.appendChild(bar);
+                    wrap.appendChild(label);
+                    chartEl.appendChild(wrap);
+                });
+            }
+
+            async function load() {
+                if (!fromEl.value || !toEl.value) return;
+                if (fromEl.value > toEl.value) { setNote('"From" date must be before "To" date.', true); return; }
+                setNote('Loading revenue…');
+                summaryEl.textContent = 'Loading…';
+                try {
+                    const res = await fetch('/Manager/RevenueSeries?from=' + fromEl.value + '&to=' + toEl.value, { headers: { 'Accept': 'application/json' } });
+                    const json = await res.json();
+                    if (!res.ok || !json.success) throw new Error(json.message || ('HTTP ' + res.status));
+                    render(json.data);
+                } catch (err) {
+                    summaryEl.textContent = '';
+                    setNote('Could not load revenue: ' + err.message, true);
+                }
+            }
+
+            applyBtn.addEventListener('click', load);
+            document.getElementById('rev-range').addEventListener('submit', load);
+            load();
+        })();
+    </script>
+</body>
+</html>

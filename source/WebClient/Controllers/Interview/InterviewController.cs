@@ -1,17 +1,30 @@
+using System.Text.Json;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using WebClient.Helpers;
+using WebClient.Models.Evaluation;
+using WebClient.Models.Feedback;
 using WebClient.Models.Interview;
+using WebClient.Services.Evaluation;
+using WebClient.Services.Feedback;
 using WebClient.Services.Interview;
 
 namespace WebClient.Controllers.Interview;
 
-public class InterviewController(IInterviewService interviewService) : Controller
+public class InterviewController(
+    IInterviewService interviewService,
+    IFeedbackService feedbackService) : Controller
 {
+    private const int HistoryPageSize = 5;
+    private const int RecentSessionsPageSize = 6;
+
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
         return View(await interviewService.GetDashboardAsync(cancellationToken));
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Start(DashboardViewModel model, CancellationToken cancellationToken)
     {
         var result = await interviewService.StartInterviewAsync(
@@ -20,14 +33,19 @@ public class InterviewController(IInterviewService interviewService) : Controlle
 
         if (!result.Success)
         {
-            model.ErrorMessage = result.ErrorMessage;
-            return View("Index", model);
+            var dashboard = await interviewService.GetDashboardAsync(cancellationToken);
+            dashboard.DurationMinutes = model.DurationMinutes;
+            dashboard.Level = model.Level;
+            dashboard.Position = model.Position;
+            dashboard.Jd = model.Jd;
+            dashboard.FocusAreas = model.FocusAreas ?? new List<string>();
+            dashboard.ErrorMessage = result.ErrorMessage;
+            return View("Index", dashboard);
         }
 
         return RedirectToAction(nameof(Room), new { id = result.SessionId });
     }
 
-    // Same-origin proxy: returns the ai-service roles/technologies catalog for the dashboard JS.
     public async Task<IActionResult> Catalog(CancellationToken cancellationToken)
     {
         var (success, catalog, error) = await interviewService.GetCatalogAsync(cancellationToken);
@@ -52,14 +70,149 @@ public class InterviewController(IInterviewService interviewService) : Controlle
         return View(room);
     }
 
-    public async Task<IActionResult> History(Guid? sessionId, CancellationToken cancellationToken)
+    public async Task<IActionResult> History(
+        int page = 1,
+        string? status = null,
+        string? position = null,
+        string? keyword = null,
+        CancellationToken cancellationToken = default)
     {
-        var model = await interviewService.GetHistoryAsync(sessionId, cancellationToken);
+        var model = await interviewService.GetHistoryAsync(page, HistoryPageSize, status, position, keyword, cancellationToken);
+        model.SuccessMessage = TempData["SuccessMessage"] as string;
+        model.ErrorMessage ??= TempData["ErrorMessage"] as string;
         return View(model);
     }
 
-    // Same-origin proxy for the Room's chat: the browser sends the HttpOnly JWT cookie here,
-    // and the server forwards the answer to the Gateway (Authorization attached server-side).
+    public async Task<IActionResult> Details(Guid id, CancellationToken cancellationToken)
+    {
+        var model = await interviewService.GetSessionDetailAsync(id, cancellationToken);
+        await LoadMyInterviewFeedbackAsync(model, cancellationToken);
+        model.FeedbackMessage = TempData["FeedbackMessage"] as string;
+        return View(model);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> RecentSessions(int page = 1, CancellationToken cancellationToken = default)
+    {
+        var result = await interviewService.GetRecentSessionsAsync(page, RecentSessionsPageSize, cancellationToken);
+        if (!result.Success || result.Data is null)
+        {
+            return StatusCode(result.StatusCode == 0 ? StatusCodes.Status500InternalServerError : result.StatusCode,
+                new { error = result.Error ?? "Could not load recent sessions." });
+        }
+
+        return Json(new
+        {
+            page = result.Data.Page,
+            totalPages = result.Data.TotalPages,
+            totalItems = result.Data.TotalItems,
+            items = result.Data.Items.Select(session => new
+            {
+                sessionId = session.SessionId,
+                title = session.DisplayTitle,
+                level = session.Level,
+                status = session.Status,
+                displayStatus = session.DisplayStatus,
+                createdAt = session.CreatedAt,
+                relativeTime = TimeFormat.RelativeTime(session.EndedAt ?? session.StartedAt ?? session.CreatedAt),
+                detailsUrl = Url.Action(nameof(Details), "Interview", new { id = session.SessionId })
+            })
+        });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteSession(
+        Guid id,
+        int page = 1,
+        string? status = null,
+        string? position = null,
+        string? keyword = null,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await interviewService.DeleteSessionAsync(id, cancellationToken);
+        if (result.Success)
+        {
+            TempData["SuccessMessage"] = "The session was removed from your history.";
+        }
+        else
+        {
+            TempData["ErrorMessage"] = result.Error ?? "Could not remove this session from history.";
+        }
+
+        return RedirectToAction(nameof(History), new { page, pageSize = HistoryPageSize, status, position, keyword });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SubmitInterviewFeedback(
+        Guid id,
+        SubmitInterviewFeedbackRequest request,
+        string? source,
+        CancellationToken cancellationToken)
+    {
+        request.SessionId = id;
+        request.Comment = FeedbackInput.NormalizeOptionalComment(request.Comment);
+        var isEvaluationSource = string.Equals(source, "Evaluation", StringComparison.OrdinalIgnoreCase);
+
+        if (!ModelState.IsValid)
+        {
+            var fieldMessage = CommentValidationMessage();
+            var validationSummary = fieldMessage ?? "Please choose a 1-5 star rating for each category.";
+            return await RedisplayInterviewFeedbackAsync(id, request, isEvaluationSource, validationSummary, fieldMessage, cancellationToken);
+        }
+
+        var result = await feedbackService.SubmitInterviewFeedbackAsync(request, cancellationToken);
+        if (result.Success)
+        {
+            TempData["FeedbackMessage"] = "Interview feedback submitted and published successfully.";
+            return isEvaluationSource
+                ? RedirectToAction("Report", "Evaluation", new { sessionId = id })
+                : RedirectToAction(nameof(Details), new { id });
+        }
+
+        if (result.StatusCode == StatusCodes.Status401Unauthorized)
+        {
+            var returnUrl = isEvaluationSource
+                ? Url.Action("Report", "Evaluation", new { sessionId = id })
+                : Url.Action(nameof(Details), "Interview", new { id });
+            return RedirectToAction("Login", "Auth", new { returnUrl });
+        }
+
+        if (result.StatusCode == StatusCodes.Status409Conflict)
+        {
+            var existing = await feedbackService.GetMyInterviewFeedbackAsync(id, cancellationToken);
+            if (existing.Success && existing.Data is not null)
+            {
+                TempData["FeedbackMessage"] = "Your existing feedback is shown below.";
+                if (isEvaluationSource)
+                {
+                    return RedirectToAction("Report", "Evaluation", new { sessionId = id });
+                }
+
+                var duplicateModel = await interviewService.GetSessionDetailAsync(id, cancellationToken);
+                duplicateModel.MyInterviewFeedback = existing.Data;
+                duplicateModel.FeedbackMessage = "Your existing feedback is shown below.";
+                return View(nameof(Details), duplicateModel);
+            }
+
+            return await RedisplayInterviewFeedbackAsync(
+                id,
+                request,
+                isEvaluationSource,
+                "Feedback already exists for this interview session, but it could not be reloaded right now.",
+                null,
+                cancellationToken);
+        }
+
+        var message = ToFeedbackMessage(result.StatusCode, result.Error, "Could not submit interview feedback.");
+        var validationMessage = result.StatusCode is StatusCodes.Status400BadRequest or StatusCodes.Status422UnprocessableEntity
+            && result.Error?.Contains("Comment", StringComparison.OrdinalIgnoreCase) == true
+                ? result.Error
+                : null;
+        return await RedisplayInterviewFeedbackAsync(id, request, isEvaluationSource, message, validationMessage, cancellationToken);
+    }
+
     [HttpPost]
     public async Task<IActionResult> Message(Guid id, [FromBody] SendMessageRequest request, CancellationToken cancellationToken)
     {
@@ -73,8 +226,6 @@ public class InterviewController(IInterviewService interviewService) : Controlle
         return Json(message);
     }
 
-    // Same-origin proxy for text-to-speech: returns audio/mpeg bytes the Room plays when
-    // "AI Voice" is on. Binary passthrough — not JSON.
     [HttpPost]
     public async Task<IActionResult> Tts([FromBody] TtsProxyRequest request, CancellationToken cancellationToken)
     {
@@ -93,8 +244,6 @@ public class InterviewController(IInterviewService interviewService) : Controlle
         return File(audio, "audio/mpeg");
     }
 
-    // Same-origin proxy for speech-to-text: forwards the recorded audio to the Gateway and returns
-    // the transcribed text, which the Room drops into the answer box for the user to review + send.
     [HttpPost]
     public async Task<IActionResult> Stt(IFormFile audio, CancellationToken cancellationToken)
     {
@@ -119,7 +268,6 @@ public class InterviewController(IInterviewService interviewService) : Controlle
         return Json(new { text });
     }
 
-    // Same-origin proxy for a hint on the current question.
     [HttpPost]
     public async Task<IActionResult> Hint([FromBody] HintProxyRequest request, CancellationToken cancellationToken)
     {
@@ -138,21 +286,32 @@ public class InterviewController(IInterviewService interviewService) : Controlle
         return Json(new { hint });
     }
 
-    // Same-origin proxy for ending the interview (see Message above).
+    [HttpPost]
+    public async Task<IActionResult> CompleteSession(Guid id, CancellationToken cancellationToken)
+    {
+        var (success, completion, error) = await interviewService.CompleteSessionAsync(id, cancellationToken);
+
+        if (!success || completion is null)
+        {
+            return BadRequest(new { error = error ?? "Could not complete the session." });
+        }
+
+        return Json(new { status = completion.Status });
+    }
+
     [HttpPost]
     public async Task<IActionResult> EndSession(Guid id, CancellationToken cancellationToken)
     {
-        var (success, error) = await interviewService.EndSessionAsync(id, cancellationToken);
+        var (success, cancellation, error) = await interviewService.EndSessionAsync(id, cancellationToken);
 
-        if (!success)
+        if (!success || cancellation is null)
         {
-            return BadRequest(new { error = error ?? "Could not end the session." });
+            return BadRequest(new { error = error ?? "Could not cancel the session." });
         }
 
-        return Json(new { ok = true });
+        return Json(new { status = cancellation.Status });
     }
 
-    // Same-origin proxy for pausing the interview (Room UX Phase 2).
     [HttpPost]
     public async Task<IActionResult> Pause(Guid id, CancellationToken cancellationToken)
     {
@@ -166,7 +325,6 @@ public class InterviewController(IInterviewService interviewService) : Controlle
         return Json(pause);
     }
 
-    // Same-origin proxy for un-pausing the interview (Room UX Phase 2).
     [HttpPost]
     public async Task<IActionResult> Unpause(Guid id, CancellationToken cancellationToken)
     {
@@ -180,8 +338,6 @@ public class InterviewController(IInterviewService interviewService) : Controlle
         return Json(unpause);
     }
 
-    // Same-origin proxy for marking the Room's onboarding tour as seen (Room UX Phase 3) — called
-    // once the tour finishes or is skipped/closed. Not session-scoped (the flag is per-user).
     [HttpPost]
     public async Task<IActionResult> TourSeen(CancellationToken cancellationToken)
     {
@@ -194,4 +350,67 @@ public class InterviewController(IInterviewService interviewService) : Controlle
 
         return Json(new { ok = true });
     }
+
+
+    private async Task<IActionResult> RedisplayInterviewFeedbackAsync(
+        Guid sessionId,
+        SubmitInterviewFeedbackRequest request,
+        bool isEvaluationSource,
+        string message,
+        string? validationMessage,
+        CancellationToken cancellationToken)
+    {
+        if (isEvaluationSource)
+        {
+            TempData[FeedbackTempDataKeys.InterviewForm] = JsonSerializer.Serialize(request);
+            TempData[FeedbackTempDataKeys.InterviewValidation] = validationMessage;
+            TempData["FeedbackMessage"] = message;
+            return RedirectToAction("Report", "Evaluation", new { sessionId });
+        }
+
+        var model = await interviewService.GetSessionDetailAsync(sessionId, cancellationToken);
+        model.FeedbackForm = request;
+        model.FeedbackFormWasSubmitted = true;
+        model.FeedbackValidationMessage = validationMessage;
+        model.FeedbackMessage = message;
+        await LoadMyInterviewFeedbackAsync(model, cancellationToken);
+        return View(nameof(Details), model);
+    }
+
+    private string? CommentValidationMessage()
+    {
+        if (!ModelState.TryGetValue(nameof(SubmitInterviewFeedbackRequest.Comment), out var entry))
+        {
+            return null;
+        }
+
+        return entry.Errors.Select(error => error.ErrorMessage)
+            .FirstOrDefault(message => !string.IsNullOrWhiteSpace(message));
+    }
+
+    private async Task LoadMyInterviewFeedbackAsync(SessionDetailViewModel model, CancellationToken cancellationToken)
+    {
+        var result = await feedbackService.GetMyInterviewFeedbackAsync(model.SessionId, cancellationToken);
+        if (result.Success)
+        {
+            model.MyInterviewFeedback = result.Data;
+        }
+        else if (result.StatusCode != StatusCodes.Status404NotFound &&
+                 result.StatusCode != StatusCodes.Status401Unauthorized &&
+                 result.StatusCode != StatusCodes.Status403Forbidden)
+        {
+            model.FeedbackMessage ??= result.Error;
+        }
+    }
+
+    private static string ToFeedbackMessage(int statusCode, string? error, string fallback) =>
+        statusCode switch
+        {
+            StatusCodes.Status400BadRequest or StatusCodes.Status422UnprocessableEntity => error ?? "Please correct the feedback fields and try again.",
+            StatusCodes.Status403Forbidden => "You do not have permission to submit feedback for this session.",
+            StatusCodes.Status404NotFound => "This session, report, or feedback is no longer available.",
+            StatusCodes.Status429TooManyRequests => "Too many requests. Please wait and try again.",
+            StatusCodes.Status500InternalServerError or StatusCodes.Status502BadGateway or StatusCodes.Status503ServiceUnavailable or StatusCodes.Status504GatewayTimeout => "Feedback is temporarily unavailable. Please try again later.",
+            _ => string.IsNullOrWhiteSpace(error) ? fallback : error
+        };
 }

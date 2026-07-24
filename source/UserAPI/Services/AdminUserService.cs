@@ -3,6 +3,7 @@
 using System.Net.Http.Json;
 using Microsoft.Extensions.Logging;
 using UserAPI.DTOs;
+using UserAPI.Helpers;
 using UserAPI.Repositories.Interfaces;
 using UserAPI.Services.Interfaces;
 
@@ -113,7 +114,8 @@ public class AdminUserService : IAdminUserService
         List<InternalSessionSummaryDto> sessionsResponse = new();
         List<InternalWalletDto> walletsResponse = new();
 
-        var sessionsTask = interviewClient.PostAsJsonAsync("/api/internal/interviews/sessions/summaries", userIds);
+        // Lưu ý: InterviewAPI đang lưu AccountId vào cột UserId của nó, nên phải gửi accountIds
+        var sessionsTask = interviewClient.PostAsJsonAsync("/api/internal/interviews/sessions/summaries", accountIds);
         var walletsTask = paymentClient.PostAsJsonAsync("/api/internal/payments/wallets/balances", userIds);
 
         try
@@ -152,7 +154,8 @@ public class AdminUserService : IAdminUserService
             var profile = profiles.FirstOrDefault(p => p.AccountId == acc.AccountId);
             var userId = profile?.UserId ?? acc.AccountId;
 
-            var sessionSummary = sessionsResponse.FirstOrDefault(s => s.UserId == userId);
+            // Sửa: InterviewAPI trả về UserId thực chất là AccountId, nên phải so khớp theo acc.AccountId
+            var sessionSummary = sessionsResponse.FirstOrDefault(s => s.UserId == acc.AccountId);
             var wallet = walletsResponse.FirstOrDefault(w => w.UserId == userId);
 
             items.Add(new AdminUserListItemDto
@@ -220,7 +223,7 @@ public class AdminUserService : IAdminUserService
         List<AdminUserSessionDto> sessions = new();
         InternalWalletDto? wallet = null;
 
-        var sessionsTask = interviewClient.GetAsync($"/api/internal/interviews/sessions?userId={userId}");
+        var sessionsTask = interviewClient.GetAsync($"/api/internal/interviews/sessions?userId={accountId}");
         var walletTask = paymentClient.GetAsync($"/api/internal/payments/wallets?userId={userId}");
 
         try
@@ -341,21 +344,168 @@ public class AdminUserService : IAdminUserService
     // =========================================================
     // TỰ ĐỘNG KHÓA NGƯỜI DÙNG KHÔNG HOẠT ĐỘNG (AUTO-BLOCK)
     // =========================================================
+    //public async Task<AdminAutoBlockInactiveResultDto> AutoBlockInactiveUsersAsync(int inactiveDays)
+    //{
+    //    if (inactiveDays < 1) inactiveDays = 30;
+    //    if (inactiveDays > 365) inactiveDays = 365;
+
+    //    var authClient = _clientFactory.CreateClient("AuthServiceClient");
+    //    var response = await authClient.PostAsync($"/api/internal/accounts/auto-block-inactive?days={inactiveDays}", null);
+
+    //    if (response.IsSuccessStatusCode)
+    //    {
+    //        return await response.Content.ReadFromJsonAsync<AdminAutoBlockInactiveResultDto>() ?? new();
+    //    }
+
+    //    return new AdminAutoBlockInactiveResultDto { InactiveDays = inactiveDays };
+    //}
+
+
+    // =========================================================
+    // TỰ ĐỘNG KHÓA NGƯỜI DÙNG KHÔNG HOẠT ĐỘNG (AUTO-BLOCK)
+    // Điều kiện: KHÔNG login, KHÔNG interview, KHÔNG giao dịch trong N ngày
+    // =========================================================
     public async Task<AdminAutoBlockInactiveResultDto> AutoBlockInactiveUsersAsync(int inactiveDays)
     {
         if (inactiveDays < 1) inactiveDays = 30;
         if (inactiveDays > 365) inactiveDays = 365;
 
-        var authClient = _clientFactory.CreateClient("AuthServiceClient");
-        var response = await authClient.PostAsync($"/api/internal/accounts/auto-block-inactive?days={inactiveDays}", null);
+        var cutoffDate = VietnamTime.Now.AddDays(-inactiveDays);
 
-        if (response.IsSuccessStatusCode)
+        var authClient = _clientFactory.CreateClient("AuthServiceClient");
+        var interviewClient = _clientFactory.CreateClient("InterviewServiceClient");
+        var paymentClient = _clientFactory.CreateClient("PaymentServiceClient");
+
+        // 1. Lấy toàn bộ Active "User" accounts từ AuthAPI
+        List<InternalAccountDto> accounts = new();
+        try
         {
-            return await response.Content.ReadFromJsonAsync<AdminAutoBlockInactiveResultDto>() ?? new();
+            var authResp = await authClient.GetAsync("/api/internal/accounts?role=User&status=Active&pageSize=100000");
+            if (authResp.IsSuccessStatusCode)
+            {
+                var json = await authResp.Content.ReadAsStringAsync();
+                var result = System.Text.Json.JsonSerializer.Deserialize<PagedResult<InternalAccountDto>>(json,
+                    new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                accounts = result?.Items ?? new();
+            }
+            else
+            {
+                _logger.LogWarning("Auth-API trả lỗi khi lấy danh sách active users cho auto-block.");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Lỗi khi gọi Auth-API để lấy danh sách active users.");
+            return new AdminAutoBlockInactiveResultDto { InactiveDays = inactiveDays, ExecutedAt = VietnamTime.Now };
         }
 
-        return new AdminAutoBlockInactiveResultDto { InactiveDays = inactiveDays };
+        if (!accounts.Any())
+        {
+            return new AdminAutoBlockInactiveResultDto { InactiveDays = inactiveDays, ExecutedAt = VietnamTime.Now };
+        }
+
+        var accountIds = accounts.Select(a => a.AccountId).ToList();
+        var profiles = await _repository.GetProfilesByAccountIdsAsync(accountIds);
+
+        // 2. Gọi song song Interview & Payment để lấy last-activity
+        List<LastActivityDto> interviewActivity = new();
+        List<LastActivityDto> paymentActivity = new();
+
+        var interviewTask = interviewClient.PostAsJsonAsync("/api/internal/interviews/last-activity", accountIds);
+        var userIds = profiles.Select(p => p.UserId).ToList();
+        var paymentTask = paymentClient.PostAsJsonAsync("/api/internal/payments/last-activity", userIds);
+
+        try
+        {
+            await Task.WhenAll(interviewTask, paymentTask);
+
+            if (interviewTask.Result.IsSuccessStatusCode)
+            {
+                interviewActivity = await interviewTask.Result.Content.ReadFromJsonAsync<List<LastActivityDto>>() ?? new();
+            }
+            else
+            {
+                _logger.LogWarning("Interview-API trả lỗi khi lấy last-activity.");
+            }
+
+            if (paymentTask.Result.IsSuccessStatusCode)
+            {
+                paymentActivity = await paymentTask.Result.Content.ReadFromJsonAsync<List<LastActivityDto>>() ?? new();
+            }
+            else
+            {
+                _logger.LogWarning("Payment-API trả lỗi khi lấy last-activity.");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Lỗi khi gọi song song Interview/Payment API để lấy last-activity.");
+        }
+
+        // 3. Xét từng account: hoạt động cuối = max(LastLoginAt, LastInterview, LastPayment, CreatedAt)
+        var toBlock = new List<Guid>();
+        foreach (var acc in accounts)
+        {
+            var profile = profiles.FirstOrDefault(p => p.AccountId == acc.AccountId);
+            var interviewLast = interviewActivity.FirstOrDefault(x => x.AccountId == acc.AccountId || x.UserId == acc.AccountId) ?.LastActivityAt;
+            var paymentLast = profile != null
+                ? paymentActivity.FirstOrDefault(x => x.UserId == profile.UserId)?.LastActivityAt
+                : null;
+
+            var candidates = new[] { acc.LastLoginAt, interviewLast, paymentLast, acc.CreatedAt }
+                .Where(d => d.HasValue)
+                .Select(d => d!.Value);
+
+            var lastActivity = candidates.Any() ? candidates.Max() : acc.CreatedAt;
+
+            if (lastActivity < cutoffDate)
+            {
+                toBlock.Add(acc.AccountId);
+            }
+        }
+
+        if (!toBlock.Any())
+        {
+            return new AdminAutoBlockInactiveResultDto { InactiveDays = inactiveDays, ExecutedAt = VietnamTime.Now };
+        }
+
+        // 4. Gửi danh sách cụ thể sang AuthAPI để block
+        int blockedCount = 0;
+        try
+        {
+            var blockResp = await authClient.PostAsJsonAsync(
+                $"/api/internal/accounts/batch-block-inactive?days={inactiveDays}", toBlock);
+
+            if (blockResp.IsSuccessStatusCode)
+            {
+                blockedCount = toBlock.Count;
+            }
+            else
+            {
+                var err = await blockResp.Content.ReadAsStringAsync();
+                _logger.LogError("Auth-API trả lỗi khi block hàng loạt. Chi tiết: {Err}", err);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Lỗi khi gọi Auth-API để block hàng loạt users.");
+        }
+
+        return new AdminAutoBlockInactiveResultDto
+        {
+            InactiveDays = inactiveDays,
+            BlockedCount = blockedCount,
+            ExecutedAt = VietnamTime.Now
+        };
     }
+
+    private class LastActivityDto
+    {
+        public Guid AccountId { get; set; }
+        public Guid UserId { get; set; }
+        public DateTime? LastActivityAt { get; set; }
+    }
+
 
     private PagedResult<AdminUserListItemDto> GetEmptyPagedResult(int page, int pageSize)
     {

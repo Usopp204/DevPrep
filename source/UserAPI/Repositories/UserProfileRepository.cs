@@ -41,5 +41,19 @@ public class UserProfileRepository : IUserProfileRepository
     public async Task AddAsync(UserProfile profile) =>
         await _context.UserProfiles.AddAsync(profile);
 
+    public async Task<int> DeleteByAccountIdsAsync(IReadOnlyCollection<Guid> accountIds)
+    {
+        var profiles = await _context.UserProfiles
+            .Where(p => accountIds.Contains(p.AccountId))
+            .ToListAsync();
+        if (profiles.Count == 0)
+        {
+            return 0;
+        }
+
+        _context.UserProfiles.RemoveRange(profiles);
+        return await _context.SaveChangesAsync();
+    }
+
     public Task<int> SaveChangesAsync() => _context.SaveChangesAsync();
 }

@@ -141,7 +141,7 @@ public class ProfileController(
 
         // Recent sessions feed the temporary "Test verification" section (Milestone 2);
         // best-effort — the enrollment part of the page works without them.
-        var recentSessions = new List<WebClient.Models.Interview.SessionListItemDto>();
+        var recentSessions = new List<WebClient.Models.Interview.SessionHistoryItemDto>();
         try
         {
             var dashboard = await interviewService.GetDashboardAsync(cancellationToken);
