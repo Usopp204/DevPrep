@@ -10,7 +10,7 @@ namespace QuestionAPI.Services;
 
 public class AdminQuestionService : IAdminQuestionService
 {
-    private const int MaxBrowsePages = 30;
+   // private const int MaxBrowsePages = 30;
     private const int DefaultPageSize = 10;
     private const int MaximumPageSize = 100;
 
@@ -435,8 +435,8 @@ public class AdminQuestionService : IAdminQuestionService
     }
 
     private async Task<AdminPagedResultDto<AdminQuestionListItemDto>> PagingAsync(
-        IQueryable<Question> query,
-        AdminQuestionQueryDto filter)
+    IQueryable<Question> query,
+    AdminQuestionQueryDto filter)
     {
         if (filter.PageIndex <= 0)
         {
@@ -453,29 +453,11 @@ public class AdminQuestionService : IAdminQuestionService
             filter.PageSize = MaximumPageSize;
         }
 
-        var maximumRecords = MaxBrowsePages * filter.PageSize;
-
-        var limitedKeys = await query
-            .OrderByDescending(x => x.CreatedAt)
-            .ThenByDescending(x => x.QuestionId)
-            .Select(x => new
-            {
-                x.QuestionId,
-                x.CreatedAt
-            })
-            .Take(maximumRecords)
-            .ToListAsync();
-
-        var totalRecords = limitedKeys.Count;
+        var totalRecords = await query.CountAsync();
 
         var totalPages = totalRecords == 0
             ? 0
             : (int)Math.Ceiling((double)totalRecords / filter.PageSize);
-
-        if (totalPages > MaxBrowsePages)
-        {
-            totalPages = MaxBrowsePages;
-        }
 
         if (totalPages > 0 && filter.PageIndex > totalPages)
         {
@@ -487,54 +469,26 @@ public class AdminQuestionService : IAdminQuestionService
             filter.PageIndex = 1;
         }
 
-        var pageKeys = limitedKeys
+        var questionItems = await query
+            .OrderByDescending(x => x.CreatedAt)
+            .ThenByDescending(x => x.QuestionId)
             .Skip((filter.PageIndex - 1) * filter.PageSize)
             .Take(filter.PageSize)
-            .ToList();
-
-        var pageIds = pageKeys
-            .Select(x => x.QuestionId)
-            .ToList();
-
-        List<AdminQuestionListItemDto> questionItems;
-
-        if (pageIds.Count == 0)
-        {
-            questionItems = new List<AdminQuestionListItemDto>();
-        }
-        else
-        {
-            questionItems = await _db.Questions
-                .AsNoTracking()
-                .Where(x => pageIds.Contains(x.QuestionId))
-                .Select(x => new AdminQuestionListItemDto
-                {
-                    QuestionId = x.QuestionId,
-                    CategoryId = x.CategoryId,
-                    Category = null,
-                    Question = x.QuestionText,
-                    Difficulty = x.Difficulty,
-                    Position = x.Position,
-                    Status = x.Status,
-                    IsDeleted = x.IsDeleted,
-                    DeletedAt = x.DeletedAt,
-                    DeletedBy = x.DeletedBy,
-                    CreatedAt = x.CreatedAt
-                })
-                .ToListAsync();
-        }
-
-        var orderMap = pageKeys
-            .Select((x, index) => new
+            .Select(x => new AdminQuestionListItemDto
             {
-                x.QuestionId,
-                Index = index
+                QuestionId = x.QuestionId,
+                CategoryId = x.CategoryId,
+                Category = null,
+                Question = x.QuestionText,
+                Difficulty = x.Difficulty,
+                Position = x.Position,
+                Status = x.Status,
+                IsDeleted = x.IsDeleted,
+                DeletedAt = x.DeletedAt,
+                DeletedBy = x.DeletedBy,
+                CreatedAt = x.CreatedAt
             })
-            .ToDictionary(x => x.QuestionId, x => x.Index);
-
-        questionItems = questionItems
-            .OrderBy(x => orderMap.TryGetValue(x.QuestionId, out var index) ? index : int.MaxValue)
-            .ToList();
+            .ToListAsync();
 
         var categoryIds = questionItems
             .Where(x => x.CategoryId.HasValue)
