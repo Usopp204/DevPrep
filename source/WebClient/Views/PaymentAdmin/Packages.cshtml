@@ -66,6 +66,15 @@
         .btn-danger  { background: var(--error-dim);   border: 1px solid rgba(248,113,113,.2); color: var(--error); }
         .btn-danger:hover  { background: rgba(248,113,113,.2); color: var(--error); }
 
+        /* Icon-only action buttons (table row actions) */
+        .icon-btn { display: inline-flex; align-items: center; justify-content: center;
+                    width: 30px; height: 30px; border-radius: var(--r-sm);
+                    background: var(--surface-h); border: 1px solid var(--border);
+                    color: var(--text-muted); cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
+        .icon-btn .material-symbols-outlined { font-size: 17px; }
+        .icon-btn:hover { background: var(--border); color: var(--text); }
+        .icon-btn-danger:hover { background: var(--error-dim); color: var(--error); border-color: rgba(248,113,113,.3); }
+
         /* Table */
         .pkg-table { width: 100%; border-collapse: collapse; }
         .pkg-table th { text-align: left; padding: 13px 20px; font-family: 'JetBrains Mono', monospace;
@@ -270,17 +279,15 @@
                                 </td>
                                 <td>
                                     <div class="action-btns" style="justify-content:flex-end;">
-                                        <button class="btn btn-sm btn-success"
+                                        <button class="icon-btn" title="Edit"
                                                 onclick='openEditModal(@Json.Serialize(pkg))'>
                                             <span class="material-symbols-outlined">edit</span>
-                                            Edit
                                         </button>
                                         @if (pkg.IsActive)
                                         {
-                                            <button class="btn btn-sm btn-danger"
+                                            <button class="icon-btn icon-btn-danger" title="Deactivate"
                                                     onclick='openDeleteModal("@pkg.PackageId","@pkg.Name")'>
                                                 <span class="material-symbols-outlined">delete</span>
-                                                Deactivate
                                             </button>
                                         }
                                     </div>

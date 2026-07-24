@@ -72,9 +72,13 @@ ai-service/chroma_data/
 
 # Uploaded files (user data, not committed)
 /source/WebClient/wwwroot/uploads/
+source/CvJdAPI/uploads/
 CLAUDE.md
 infra/cloudflared.deb
 ai-service/chroma_data_docker/
+
+# Local-only dev convenience script (not shared with the team)
+/start-all.ps1
 
 
 infra/*.jpg

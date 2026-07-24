@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using WebClient.Services.CvJd;
+using WebClient.Services.Shared;
 
 namespace WebClient.Controllers.CvJd;
 
@@ -73,9 +74,12 @@ public class CvJdController(ICvJdService cvJdService) : Controller
         return Content(r ?? "{}", "application/json");
     }
 
-    private (string? userId, string? token) GetCtx() =>
-        (string.IsNullOrEmpty(Request.Cookies["user_id"]) ? null : Request.Cookies["user_id"],
-         string.IsNullOrEmpty(Request.Cookies["access_token"]) ? null : Request.Cookies["access_token"]);
+    private (string? userId, string? token) GetCtx()
+    {
+        var token = string.IsNullOrEmpty(Request.Cookies["access_token"]) ? null : Request.Cookies["access_token"];
+        var userId = JwtUserId.FromToken(token)?.ToString();
+        return (userId, token);
+    }
 }
 
 public record UpdateCvJsonRequest(string ParsedJson);

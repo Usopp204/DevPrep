@@ -322,7 +322,7 @@
                         <thead>
                             <tr>
                                 <th>Order Code</th>
-                                <th>User ID</th>
+                                <th>User</th>
                                 <th style="text-align:right;">Credits</th>
                                 <th style="text-align:right;">Amount</th>
                                 <th>Method</th>
@@ -338,7 +338,16 @@
                                 var txDate    = (o.PaidAt ?? o.CreatedAt);
                                 <tr>
                                     <td><span class="mono order-code" title="@o.OrderCode">@o.OrderCode</span></td>
-                                    <td><span class="mono muted">@o.UserId.ToString()[..8]…</span></td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(o.UserName))
+                                        {
+                                            <span title="@o.UserId">@o.UserName</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="mono muted" title="@o.UserId">@o.UserId.ToString()[..8]…</span>
+                                        }
+                                    </td>
                                     <td style="text-align:right;"><strong>@o.Credits</strong></td>
                                     <td style="text-align:right;">
                                         <span class="mono">@o.Amount.ToString("N0")</span>

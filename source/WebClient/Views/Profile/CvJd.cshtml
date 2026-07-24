@@ -14,6 +14,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@@300;400;500;600;700&family=Inter:wght@@100..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="~/css/profile.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/cvjd.css" asp-append-version="true" />
+    <style>
+        .tag.req-skill.matched, .tag.nice-skill.matched { background: rgba(16,185,129,.10); color: #34d399; border-color: rgba(16,185,129,.3); }
+        .tag.req-skill.missing, .tag.nice-skill.missing { background: rgba(239,68,68,.10);  color: #f87171; border-color: rgba(239,68,68,.3); }
+        #cvStrengths .exp-card.matched { border: 1px solid rgba(16,185,129,.35); }
+    </style>
 </head>
 <body class="pf-page">
 @await Html.PartialAsync("_ProfileTopbar")
@@ -229,14 +234,35 @@
                             <div style="font-size:.73rem;color:var(--pf-muted);">
                                 <div class="d-flex justify-content-between mb-1"><span>Kỹ năng yêu cầu (60%)</span><span id="brkReq">—</span></div>
                                 <div class="d-flex justify-content-between mb-1"><span>Điểm mạnh phù hợp (25%)</span><span id="brkStr">—</span></div>
-                                <div class="d-flex justify-content-between mb-2"><span>Kỹ năng thêm (15%)</span><span id="brkNice">—</span></div>
+                                <div class="d-flex justify-content-between mb-2"><span>Kỹ năng ưu tiên (15%)</span><span id="brkNice">—</span></div>
                             </div>
                         </div>
 
-                        <!-- Missing skills -->
-                        <div id="missingWrap" style="display:none;padding-top:10px;border-top:1px solid var(--pf-border);">
-                            <div class="cvjd-label" style="margin-bottom:6px;">Kỹ năng còn thiếu:</div>
-                            <div class="tag-list" id="missingTags"></div>
+                        <!-- Tiêu chí 1: kỹ năng yêu cầu (60%) -->
+                        <div id="reqMatchWrap" style="display:none;padding-top:10px;border-top:1px solid var(--pf-border);">
+                            <div class="cvjd-label" style="margin-bottom:2px;">1. Kỹ năng yêu cầu <span id="reqMatchCount" style="color:var(--pf-muted);font-weight:400;"></span></div>
+                            <div style="font-size:.7rem;color:var(--pf-muted);margin-bottom:6px;">
+                                Kỹ năng JD bắt buộc (60%). ✓ xanh = CV đã có, ✗ đỏ = CV còn thiếu.
+                            </div>
+                            <div class="tag-list" id="reqMatchTags"></div>
+                        </div>
+
+                        <!-- Tiêu chí 2: điểm mạnh phù hợp (25%) -->
+                        <div id="strMatchWrap" style="display:none;padding-top:10px;border-top:1px solid var(--pf-border);">
+                            <div class="cvjd-label" style="margin-bottom:2px;">2. Điểm mạnh phù hợp <span id="strMatchCount" style="color:var(--pf-muted);font-weight:400;"></span></div>
+                            <div style="font-size:.7rem;color:var(--pf-muted);margin-bottom:6px;">
+                                Điểm mạnh trong CV có liên quan tới yêu cầu của JD (25%). ✓ xanh = liên quan.
+                            </div>
+                            <div class="tag-list" id="strMatchTags"></div>
+                        </div>
+
+                        <!-- Tiêu chí 3: kỹ năng ưu tiên (15%) -->
+                        <div id="niceMatchWrap" style="display:none;padding-top:10px;border-top:1px solid var(--pf-border);">
+                            <div class="cvjd-label" style="margin-bottom:2px;">3. Kỹ năng ưu tiên <span id="niceMatchCount" style="color:var(--pf-muted);font-weight:400;"></span></div>
+                            <div style="font-size:.7rem;color:var(--pf-muted);margin-bottom:6px;">
+                                Kỹ năng JD không bắt buộc nhưng CV có sẽ được cộng điểm (15%). ✓ xanh = CV đã có, ✗ đỏ = CV chưa có.
+                            </div>
+                            <div class="tag-list" id="niceMatchTags"></div>
                         </div>
 
                         <!-- Suggestions -->
@@ -317,24 +343,31 @@ window.cancelCvUpload = function() {
     if(_cvController){ _cvController.abort(); _cvController = null; }
 };
 
+let _cvSeq = 0;
+
 $('btnUpload').addEventListener('click', async () => {
     if(!cvFile.files.length){ setStatus('cvStatus','Chọn file CV trước.','err'); return; }
+    if(_cvController) _cvController.abort();
+    const seq = ++_cvSeq;
     setCvLoading(true);
     _cvController = new AbortController();
     const form = new FormData();
     form.append('file', cvFile.files[0]);
     try {
         const resp = await fetch('/CvJd/UploadCv', { method:'POST', body:form, signal:_cvController.signal });
+        if(seq !== _cvSeq) return;
         const data = await safeJson(resp);
+        if(seq !== _cvSeq) return;
         if(data.error){ setStatus('cvStatus','Lỗi: ' + data.error,'err'); return; }
         const parsed = data.parsedJson ? JSON.parse(data.parsedJson) : null;
         if(parsed){ cvParsedData = parsed; renderCvParsed(parsed); setStatus('cvStatus','CV đã được phân tích thành công!','ok'); }
         else { setStatus('cvStatus','CV đã lưu nhưng chưa parse được.','info'); }
     } catch(e){
+        if(seq !== _cvSeq) return;
         if(e.name === 'AbortError') setStatus('cvStatus','Đã hủy upload.','info');
         else setStatus('cvStatus','Lỗi: '+e.message,'err');
     } finally {
-        setCvLoading(false); _cvController = null;
+        if(seq === _cvSeq){ setCvLoading(false); _cvController = null; }
     }
 });
 
@@ -472,12 +505,16 @@ window.changeJd = function() {
 $('btnAiParse').addEventListener('click', () => saveJd('ai'));
 $('btnNormal').addEventListener('click', () => saveJd('normal'));
 
+let _jdSeq = 0;
+
 async function saveJd(mode) {
     const position = $('jdPosition').value.trim();
     const isFile = $('tabFile').classList.contains('active');
     if(isFile && !jdFile.files.length){ setStatus('jdStatus','Chọn file JD trước.','err'); return; }
     if(!isFile && !$('jdText').value.trim()){ setStatus('jdStatus','Nhập nội dung JD trước.','err'); return; }
 
+    if(_jdController) _jdController.abort();
+    const seq = ++_jdSeq;
     setJdLoading(true);
     _jdController = new AbortController();
 
@@ -497,16 +534,18 @@ async function saveJd(mode) {
             const resp = await fetch('/CvJd/SaveJd', { method:'POST', body:form, signal:_jdController.signal });
             data = await safeJson(resp);
         }
+        if(seq !== _jdSeq) return;
 
         if(data.error){ setStatus('jdStatus','Lỗi: '+data.error,'err'); return; }
         const clarified = data.clarifiedJson ? JSON.parse(data.clarifiedJson) : null;
         if(clarified) renderJdParsed(clarified, position, $('jdCompany').value.trim());
         setStatus('jdStatus', mode==='ai' ? 'JD đã được AI phân tích thành công!' : 'JD đã lưu (Normal mode).' , 'ok');
     } catch(e){
+        if(seq !== _jdSeq) return;
         if(e.name==='AbortError') return;
         setStatus('jdStatus','Lỗi: '+e.message,'err');
     } finally {
-        setJdLoading(false); _jdController = null;
+        if(seq === _jdSeq){ setJdLoading(false); _jdController = null; }
     }
 }
 
@@ -559,14 +598,63 @@ function renderScore(d) {
     $('brkStr').textContent  = (bd.strength_relevance_score??'—')+'/25';
     $('brkNice').textContent = (bd.nice_to_have_score??'—')+'/15';
     $('breakdownWrap').style.display = 'block';
-    const miss = d.missing_skills||[];
-    $('missingTags').innerHTML = miss.map(s=>`<span class="tag missing">${esc(skillLabel(s))}</span>`).join('');
-    $('missingWrap').style.display = miss.length?'block':'none';
     const matched = (d.matched_skills||[]).map(skillLabel);
+    const miss = d.missing_skills||[];
     document.querySelectorAll('#cvSkillTags .tag').forEach(el=>{
         const skill = el.textContent.replace(/\s*×$/,'').trim().toLowerCase();
         if(matched.some(m=>m.toLowerCase()===skill)) el.classList.add('matched');
     });
+
+    const rMatched = (d.matched_required || d.matched_skills || []).map(skillLabel);
+    const rMissing = miss.map(skillLabel);
+    if(rMatched.length || rMissing.length){
+        $('reqMatchCount').textContent = `(CV có ${rMatched.length}/${rMatched.length + rMissing.length})`;
+        $('reqMatchTags').innerHTML =
+            rMatched.map(s=>`<span class="tag matched">✓ ${esc(s)}</span>`).join('') +
+            rMissing.map(s=>`<span class="tag missing">✗ ${esc(s)}</span>`).join('');
+        $('reqMatchWrap').style.display = 'block';
+    } else {
+        $('reqMatchWrap').style.display = 'none';
+    }
+
+    const strMatched = (d.matched_strengths||[]).map(s=>String(s));
+    const allStrengths = ((cvParsedData && cvParsedData.strengths) || []).map(s=>s.strength||'').filter(Boolean);
+    if(allStrengths.length && d.matched_strengths !== undefined){
+        $('strMatchCount').textContent = `(${strMatched.length}/${allStrengths.length} liên quan JD)`;
+        $('strMatchTags').innerHTML = allStrengths.map(s=>{
+            const hit = strMatched.some(m=>m.toLowerCase()===s.toLowerCase());
+            return `<span class="tag ${hit?'matched':''}">${hit?'✓ ':''}${esc(s)}</span>`;
+        }).join('');
+        $('strMatchWrap').style.display = 'block';
+    } else {
+        $('strMatchWrap').style.display = 'none';
+    }
+    document.querySelectorAll('#cvStrengths .exp-card').forEach(card=>{
+        const title = (card.querySelector('.exp-title')?.textContent || '').trim().toLowerCase();
+        card.classList.toggle('matched', strMatched.some(m=>m.toLowerCase()===title));
+    });
+
+    const nMatched = (d.matched_nice_to_have||[]).map(skillLabel);
+    const nMissing = (d.missing_nice_to_have||[]).map(skillLabel);
+    if(nMatched.length || nMissing.length){
+        $('niceMatchCount').textContent = `(CV có ${nMatched.length}/${nMatched.length + nMissing.length})`;
+        $('niceMatchTags').innerHTML =
+            nMatched.map(s=>`<span class="tag matched">✓ ${esc(s)}</span>`).join('') +
+            nMissing.map(s=>`<span class="tag missing">✗ ${esc(s)}</span>`).join('');
+        $('niceMatchWrap').style.display = 'block';
+    } else {
+        $('niceMatchWrap').style.display = 'none';
+    }
+
+    const matchedLower = matched.map(m=>m.toLowerCase());
+    const missingLower = rMissing.concat(nMissing).map(m=>m.toLowerCase());
+    document.querySelectorAll('#jdReqTags .tag, #jdNiceTags .tag').forEach(el=>{
+        const t = el.textContent.trim().toLowerCase();
+        el.classList.remove('matched','missing');
+        if(matchedLower.includes(t)) el.classList.add('matched');
+        else if(missingLower.includes(t)) el.classList.add('missing');
+    });
+
     const sugs = d.suggestions||[];
     $('suggestions').innerHTML = sugs.map(s=>`<div class="sug-item"><div class="sug-dot"></div><div>${esc(s)}</div></div>`).join('');
     $('suggestWrap').style.display = sugs.length?'block':'none';

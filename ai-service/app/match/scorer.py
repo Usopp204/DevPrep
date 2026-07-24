@@ -100,12 +100,13 @@ def calculate_score(cv_json: dict, jd_json: dict) -> dict:
         req_tokens = set()
         for skill in required_skills:
             req_tokens.update(_normalize(str(skill)) - _STOP)
-        strength_hits = sum(1 for s in strengths if _strength_tokens(s) & req_tokens)
-        strength_score = strength_hits / len(strengths)
+        matched_strengths = [str(s.get("strength", "")) for s in strengths if _strength_tokens(s) & req_tokens]
+        strength_score = len(matched_strengths) / len(strengths)
     else:
+        matched_strengths = []
         strength_score = 0.0
 
-    nice_ratio, matched_nice, _ = _skill_match(cv_tokens, nice_to_have)
+    nice_ratio, matched_nice, missing_nice = _skill_match(cv_tokens, nice_to_have)
 
     total = round(req_ratio * 60 + strength_score * 25 + nice_ratio * 15)
     total = max(0, min(100, total))
@@ -124,6 +125,10 @@ def calculate_score(cv_json: dict, jd_json: dict) -> dict:
         "score": total,
         "matched_skills": matched_req + matched_nice,
         "missing_skills": missing_req,
+        "matched_required": matched_req,
+        "matched_strengths": matched_strengths,
+        "matched_nice_to_have": matched_nice,
+        "missing_nice_to_have": missing_nice,
         "suggestions": suggestions,
         "breakdown": {
             "required_skills_score": round(req_ratio * 60, 1),

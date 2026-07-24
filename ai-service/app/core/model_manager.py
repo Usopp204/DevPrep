@@ -1,4 +1,12 @@
 import os
+
+_hf_home = os.environ.get("HF_HOME")
+if _hf_home:
+    _drive = os.path.splitdrive(_hf_home)[0]
+    if _drive and not os.path.isdir(_drive + os.sep):
+        print(f"HF_HOME={_hf_home!r} points to an unavailable drive; ignoring it for this run.", flush=True)
+        os.environ.pop("HF_HOME", None)
+
 import threading
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
@@ -20,7 +28,10 @@ def get_model_and_tokenizer():
 
         hf_token = os.environ.get("HF_TOKEN")
         if hf_token:
-            login(token=hf_token)
+            try:
+                login(token=hf_token)
+            except Exception as e:
+                print(f"HF login() failed to persist token, continuing anyway: {e}", flush=True)
 
         model_id = os.environ.get("AI_MODEL_ID", "google/gemma-4-E4B-it")
         print(f"Loading {model_id}...", flush=True)

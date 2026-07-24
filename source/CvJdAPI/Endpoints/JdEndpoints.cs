@@ -30,6 +30,8 @@ public static class JdEndpoints
             if (!Guid.TryParse(body.UserId, out var userId))
                 return Results.BadRequest(new { error = "Invalid UserId" });
 
+            var startedAt = DateTime.UtcNow;
+
             string? clarifiedJson = null;
             if (body.ParseMode != "normal")
             {
@@ -64,6 +66,7 @@ public static class JdEndpoints
                 Position = body.Position,
                 RawText = body.Text,
                 ClarifiedJson = clarifiedJson,
+                CreatedAt = startedAt,
             };
             db.JobDescriptions.Add(jd);
             await db.SaveChangesAsync();
@@ -79,6 +82,8 @@ public static class JdEndpoints
             var position = request.Form["position"].ToString();
             if (!Guid.TryParse(userIdStr, out var userId))
                 return Results.BadRequest(new { error = "Invalid userId" });
+
+            var startedAt = DateTime.UtcNow;
 
             var file = request.Form.Files[0];
             var ext = Path.GetExtension(file.FileName ?? "").ToLower();
@@ -115,6 +120,7 @@ public static class JdEndpoints
                 Position = position,
                 RawText = rawText,
                 ClarifiedJson = clarifiedJson,
+                CreatedAt = startedAt,
             };
             db.JobDescriptions.Add(jd);
             await db.SaveChangesAsync();

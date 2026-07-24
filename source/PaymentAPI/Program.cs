@@ -1,5 +1,6 @@
 using DotNetEnv;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -364,11 +365,40 @@ app.MapGet("/admin/payments", async (
         })
         .ToListAsync();
 
+    var userNames = new Dictionary<Guid, string?>();
+    if (items.Count > 0)
+    {
+        try
+        {
+            var ids = items.Select(i => i.UserId).Distinct().ToList();
+            var inClause = string.Join(",", ids.Select((_, i) => $"@u{i}"));
+            var sql = $@"
+                SELECT a.AccountId, COALESCE(NULLIF(p.FullName, ''), a.Email) AS DisplayName
+                FROM DevPrep_Auth.dbo.Accounts a
+                LEFT JOIN DevPrep_User.dbo.UserProfiles p ON p.AccountId = a.AccountId
+                WHERE a.AccountId IN ({inClause});";
+            await using var conn = new SqlConnection(db.Database.GetConnectionString());
+            await conn.OpenAsync();
+            await using var cmd = new SqlCommand(sql, conn);
+            for (var i = 0; i < ids.Count; i++)
+                cmd.Parameters.AddWithValue($"@u{i}", ids[i]);
+            await using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+                userNames[reader.GetGuid(0)] = reader.IsDBNull(1) ? null : reader.GetString(1);
+        }
+        catch { }
+    }
+
     return Results.Ok(new
     {
         TotalCount = totalCount, Page = page, PageSize = pageSize,
         TotalAmount = totalAmount, PaidAmount = paidAmount, PaidCount = paidCount,
-        Items = items
+        Items = items.Select(o => new
+        {
+            o.OrderId, o.OrderCode, o.UserId,
+            UserName = userNames.GetValueOrDefault(o.UserId),
+            o.Amount, o.Credits, o.Currency, o.PaymentMethod, o.Status, o.PaidAt, o.CreatedAt
+        })
     });
 });
 

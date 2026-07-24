@@ -28,6 +28,8 @@ public static class CvEndpoints
             if (!Guid.TryParse(userIdStr, out var userId))
                 return Results.BadRequest(new { error = "Invalid userId" });
 
+            var startedAt = DateTime.UtcNow;
+
             var file = request.Form.Files[0];
             var ext = Path.GetExtension(file.FileName ?? "").ToLower();
             if (ext is not (".pdf" or ".doc" or ".docx"))
@@ -66,8 +68,12 @@ public static class CvEndpoints
                 Console.Error.WriteLine($"[CV] AI service call failed: {ex.GetType().Name}: {ex.Message}");
             }
 
-            var prevCvs = await db.Cvs.Where(c => c.UserId == userId && c.IsCurrent).ToListAsync();
-            foreach (var prev in prevCvs) prev.IsCurrent = false;
+            var hasNewer = await db.Cvs.AnyAsync(c => c.UserId == userId && c.IsCurrent && c.UploadedAt > startedAt);
+            if (!hasNewer)
+            {
+                var prevCvs = await db.Cvs.Where(c => c.UserId == userId && c.IsCurrent).ToListAsync();
+                foreach (var prev in prevCvs) prev.IsCurrent = false;
+            }
 
             db.Cvs.Add(new Cv
             {
@@ -78,7 +84,8 @@ public static class CvEndpoints
                 FileSizeKb = (int)(file.Length / 1024),
                 ParsedJson = parsedJson,
                 ParseStatus = parsedJson is not null ? "Parsed" : "Failed",
-                IsCurrent = true,
+                UploadedAt = startedAt,
+                IsCurrent = !hasNewer,
             });
             await db.SaveChangesAsync();
             return Results.Ok(new { parsedJson });

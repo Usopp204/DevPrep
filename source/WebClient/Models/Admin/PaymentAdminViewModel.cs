@@ -28,6 +28,7 @@ public class AdminPaymentOrderDto
     public Guid OrderId { get; set; }
     public string OrderCode { get; set; } = string.Empty;
     public Guid UserId { get; set; }
+    public string? UserName { get; set; }
     public decimal Amount { get; set; }
     public int Credits { get; set; }
     public string Currency { get; set; } = "VND";
