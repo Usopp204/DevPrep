@@ -785,7 +785,6 @@ public class SessionService : ISessionService
         return sessions.Select(s => new SessionListItemDto
         {
             SessionId = s.SessionId,
-            Title = s.Title,
             Position = s.Position,
             Level = s.Level,
             Status = s.Status,
@@ -837,7 +836,6 @@ public class SessionService : ISessionService
         return new TranscriptResponse
         {
             SessionId = session.SessionId,
-            Title = session.Title,
             Position = session.Position,
             Level = session.Level,
             Status = session.Status,
