@@ -119,33 +119,21 @@
             height: 42px;
             border-radius: 7px;
             border: 1px solid #30384e;
-            background: #0f1322 !important;
-            color: #ffffff !important;
+            background: #0f1322;
+            color: #ffffff;
             font-size: 14px;
             box-shadow: none !important;
         }
 
             .admin-input:focus,
             .admin-select:focus {
-                border-color: var(--primary) !important;
-                background: #161824 !important;
-                color: #ffffff !important;
+                border-color: var(--primary);
+                background: #0f1322;
+                color: #ffffff;
             }
 
             .admin-input::placeholder {
                 color: #64748b;
-            }
-
-            .admin-select option {
-                background-color: #11121a !important;
-                color: #ffffff !important;
-            }
-
-            input[type="date"], input[type="datetime-local"] {
-                color-scheme: dark !important;
-                background-color: #11121a !important;
-                color: #ffffff !important;
-                border-color: #292c3d !important;
             }
 
         .btn-filter {
@@ -310,35 +298,20 @@
                 background: rgba(255, 255, 255, 0.08);
             }
 
-        .action-view {
+        .action-view,
+        .action-edit {
             color: #94a3b8;
         }
 
-        .action-view:hover {
+        .action-btn:hover {
             color: #ffffff;
         }
 
-        .action-edit {
-            color: #cbd5e1;
-        }
-
-        .action-edit:hover {
-            color: #c084fc;
-        }
-
         .action-block {
-            color: #f87171;
-        }
-
-        .action-block:hover {
-            color: #ef4444;
+            color: #fb7185;
         }
 
         .action-unblock {
-            color: #94a3b8;
-        }
-
-        .action-unblock:hover {
             color: #10b981;
         }
 
@@ -505,7 +478,7 @@
                                 <th style="width: 32%;">User Information</th>
                                 <th style="width: 13%;">Role</th>
                                 <th style="width: 18%;">Registered</th>
-                               
+
                                 <th style="width: 13%;">Status</th>
                                 <th style="width: 12%;" class="text-end">Actions</th>
                             </tr>
@@ -526,7 +499,7 @@
                                 foreach (var user in users)
                                 {
                                     var displayName = string.IsNullOrWhiteSpace(user.FullName) ? "Unknown User" : user.FullName;
-                                  
+
 
                                     var roleClass = (user.Role ?? "").ToLowerInvariant() switch
                                     {
@@ -564,7 +537,7 @@
                                             <div class="muted-small">@user.CreatedAt.ToString("HH:mm")</div>
                                         </td>
 
-                                        
+
 
                                         <td>
                                             <span class="status-badge @statusClass">
@@ -574,17 +547,17 @@
                                         </td>
 
                                         <td class="text-end">
-                                             <a class="action-btn action-view"
-                                                href="/Admin/User/Detail/@user.UserId"
-                                                title="View details">
-                                                 <span class="material-symbols-outlined fs-5">visibility</span>
-                                             </a>
+                                            <a class="action-btn action-view"
+                                               href="/Admin/User/Detail/@user.UserId"
+                                               title="View details">
+                                                <i class="fa-regular fa-eye"></i>
+                                            </a>
 
-                                             <a class="action-btn action-edit"
-                                                href="/Admin/User/Edit/@user.UserId"
-                                                title="Edit role">
-                                                 <span class="material-symbols-outlined fs-5">edit</span>
-                                             </a>
+                                            <a class="action-btn action-edit"
+                                               href="/Admin/User/Edit/@user.UserId"
+                                               title="Edit role">
+                                                <span class="material-symbols-outlined fs-5">edit</span>
+                                            </a>
 
                                             @if (isBlocked)
                                             {

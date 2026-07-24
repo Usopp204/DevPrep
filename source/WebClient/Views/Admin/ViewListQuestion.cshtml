@@ -230,14 +230,9 @@
 
             .admin-input:focus,
             .admin-select:focus {
-                border-color: var(--primary) !important;
-                background: #161824 !important;
-                color: #ffffff !important;
-            }
-
-            .admin-select option {
-                background-color: #11121a !important;
-                color: #ffffff !important;
+                border-color: var(--primary);
+                background: #0f1322;
+                color: #ffffff;
             }
 
             .admin-input::placeholder {
@@ -432,35 +427,20 @@
                 background: rgba(255, 255,255, 0.08);
             }
 
-        .action-view {
+        .action-view,
+        .action-edit {
             color: #94a3b8;
         }
 
-        .action-view:hover {
+        .action-btn:hover {
             color: #ffffff;
         }
 
-        .action-edit {
-            color: #cbd5e1;
-        }
-
-        .action-edit:hover {
-            color: #c084fc;
-        }
-
         .action-delete {
-            color: #f87171;
-        }
-
-        .action-delete:hover {
-            color: #ef4444;
+            color: #fb7185;
         }
 
         .action-restore {
-            color: #94a3b8;
-        }
-
-        .action-restore:hover {
             color: #10b981;
         }
 
@@ -891,7 +871,7 @@
                                             <a href="/admin/questions/detail/@item.QuestionId"
                                                class="action-btn action-view"
                                                title="View detail">
-                                                <span class="material-symbols-outlined fs-5">visibility</span>
+                                                <i class="fa-regular fa-eye"></i>
                                             </a>
 
                                             @if (!item.IsDeleted)
@@ -905,11 +885,17 @@
 
                                             @if (item.IsDeleted)
                                             {
+                                                @* <button type="button" *@
+                                                @*         onclick="restoreQuestion('@item.QuestionId')" *@
+                                                @*         class="action-btn action-restore" *@
+                                                @*         title="Restore question"> *@
+                                                @*     <i class="fa-solid fa-trash-arrow-up"></i> *@
+                                                @* </button> *@
                                                 <button type="button"
                                                         onclick="restoreQuestion('@item.QuestionId')"
                                                         class="action-btn action-restore"
                                                         title="Restore question">
-                                                    <span class="material-symbols-outlined fs-5">restore_from_trash</span>
+                                                    <span class="material-symbols-outlined fs-5">settings_backup_restore</span>
                                                 </button>
                                             }
                                             else
@@ -918,7 +904,7 @@
                                                         onclick="deleteQuestion('@item.QuestionId')"
                                                         class="action-btn action-delete"
                                                         title="Delete question">
-                                                    <span class="material-symbols-outlined fs-5 text-danger">delete</span>
+                                                    <i class="fa-regular fa-trash-can"></i>
                                                 </button>
                                             }
                                         </td>
