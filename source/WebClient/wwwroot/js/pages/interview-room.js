@@ -6,7 +6,8 @@
     if (!root) return;
 
     const messageUrl = root.dataset.messageUrl;
-    const endUrl = root.dataset.endUrl;
+    const completeUrl = root.dataset.completeUrl;
+    const cancelUrl = root.dataset.cancelUrl;
     const pauseUrl = root.dataset.pauseUrl;
     const unpauseUrl = root.dataset.unpauseUrl;
     const tourSeenUrl = root.dataset.tourSeenUrl;
@@ -14,6 +15,7 @@
     const sttUrl = root.dataset.sttUrl;
     const hintUrl = root.dataset.hintUrl;
     const reportUrl = root.dataset.reportUrl;
+    const detailsUrl = root.dataset.detailsUrl;
     const isActive = root.dataset.isActive === "true";
 
     let currentQuestionId = root.dataset.currentQuestionId || null;
@@ -53,6 +55,7 @@
     // otherwise a user could spam Replay to stall the idle clock indefinitely.
     let hasSeenRoomTour = root.dataset.hasSeenTour === "true";
     let tourActive = false;
+    let activeTourCleanup = null;
 
     const startedAtMs = Date.now();
     let ended = !isActive;
@@ -63,7 +66,10 @@
     const skipBtn = document.getElementById("skip-btn");
     const micBtn = document.getElementById("mic-btn");
     const hintBtn = document.getElementById("hint-btn");
-    const endBtn = document.getElementById("end-btn");
+    const cancelInterviewBtn = document.getElementById("cancel-interview-btn");
+    const cancelInterviewDialog = document.getElementById("cancel-interview-dialog");
+    const continueInterviewBtn = document.getElementById("continue-interview-btn");
+    const confirmCancelInterviewBtn = document.getElementById("confirm-cancel-interview-btn");
     const pauseBtn = document.getElementById("pause-btn");
     const pauseBtnLabel = document.getElementById("pause-btn-label");
     const pauseQuotaText = document.getElementById("pause-quota-text");
@@ -257,10 +263,23 @@
                 }
             },
             {
-                element: "#end-btn",
+                element: ".timer-box",
                 popover: {
-                    title: "End the Interview",
-                    description: "Finish early any time you want — you'll be taken straight to your evaluation report."
+                    title: "Time Remaining",
+                    description: "Your session countdown. It keeps running once the interview starts, including while you're reading this tour."
+                }
+            },
+            {
+                element: ".room-progress",
+                popover: {
+                    title: "Your Progress",
+                    description: "Tracks how many questions you've answered out of the total planned for this session."
+                }
+            },
+            {
+                element: "#cancel-interview-btn",                popover: {
+                    title: "Cancel the Interview",
+                    description: "Cancelling ends the session without an evaluation report or interview feedback."
                 }
             }
         ];
@@ -277,20 +296,44 @@
 
     // onFinished covers every way the tour can end — completing the last step, clicking the X,
     // clicking the overlay, or pressing Escape — so "skip" and "finish" are handled identically.
+    function clearDriverArtifacts() {
+        document.body.classList.remove("driver-active", "driver-fade", "driver-simple");
+        document.querySelectorAll(".driver-overlay, .driver-popover").forEach((element) => element.remove());
+    }
+
+    function destroyRoomTour() {
+        const cleanup = activeTourCleanup;
+        activeTourCleanup = null;
+        if (cleanup) cleanup();
+        clearDriverArtifacts();
+        tourActive = false;
+    }
+
     function runRoomTour(onFinished) {
         if (typeof window.driver === "undefined") {
             if (onFinished) onFinished();
             return;
         }
+
+        if (activeTourCleanup) destroyRoomTour();
+        clearDriverArtifacts();
+
+        let notifyFinished = true;
         const tour = window.driver.js.driver({
             showProgress: true,
             allowClose: true,
             overlayOpacity: 0.65,
             steps: buildRoomTourSteps(),
             onDestroyed: () => {
-                if (onFinished) onFinished();
+                activeTourCleanup = null;
+                clearDriverArtifacts();
+                if (notifyFinished && onFinished) onFinished();
             }
         });
+        activeTourCleanup = () => {
+            notifyFinished = false;
+            if (tour.isActive()) tour.destroy();
+        };
         tour.drive();
     }
 
@@ -433,7 +476,7 @@
             if (!tourActive) tickIdle();
             if (remainingSeconds <= 0) {
                 clearInterval(countdownHandle);
-                finishInterview();
+                completeInterview();
             }
         }, 1000);
 
@@ -444,33 +487,78 @@
         window.addEventListener("focus", resetIdle);
     }
 
-    async function finishInterview() {
-        if (ended) return;
-        ended = true;
-        hideIdleBanner();
-        // A typing indicator from a still-pending applyNextQuestion delay must not linger
-        // under the closing message (see the "ended" race note in applyNextQuestion).
+    function disableLifecycleControls() {
         if (typingTimeoutHandle) {
             clearTimeout(typingTimeoutHandle);
             typingTimeoutHandle = null;
         }
-        document.querySelectorAll(".chat-bubble-typing").forEach((el) => el.closest(".chat-row")?.remove());
-        if (inputEl) inputEl.disabled = true;
+        document.querySelectorAll(".chat-bubble-typing").forEach((element) => element.closest(".chat-row")?.remove());        if (inputEl) inputEl.disabled = true;
         if (sendBtn) sendBtn.disabled = true;
-        if (endBtn) endBtn.disabled = true;
+        if (cancelInterviewBtn) cancelInterviewBtn.disabled = true;
         if (skipBtn) skipBtn.disabled = true;
         if (hintBtn) hintBtn.disabled = true;
-        if (statusEl) statusEl.textContent = "Ending…";
+    }
 
-        // Static closing (mirrors ai-service's _closing_text), shown before leaving for the report.
-        const closing = "That wraps up our interview — thank you for your time and thoughtful " +
-            "answers! I'm now putting together your detailed evaluation.";
+    function closeCancelConfirmation() {
+        if (cancelInterviewDialog?.open) cancelInterviewDialog.close();
+    }
+
+    function cleanupTransientUi() {
+        closeCancelConfirmation();
+        destroyRoomTour();
+    }
+
+    function openCancelConfirmation() {
+        if (ended) return;
+
+        if (!cancelInterviewDialog || typeof cancelInterviewDialog.showModal !== "function") {
+            const warning = "Your current interview will be cancelled. " +
+                "You will not receive an evaluation report, and you will not be able to submit interview feedback.";
+            if (window.confirm(`Cancel this interview?\n\n${warning}`)) cancelInterview();
+            return;
+        }
+
+        cancelInterviewDialog.showModal();
+        continueInterviewBtn?.focus();
+    }
+
+    continueInterviewBtn?.addEventListener("click", closeCancelConfirmation);
+    confirmCancelInterviewBtn?.addEventListener("click", function confirmCancellation() {
+        closeCancelConfirmation();
+        cancelInterview();
+    });
+    cancelInterviewDialog?.addEventListener("cancel", closeCancelConfirmation);
+    cancelInterviewDialog?.addEventListener("click", function dismissFromBackdrop(event) {
+        if (event.target === cancelInterviewDialog) closeCancelConfirmation();
+    });
+    window.addEventListener("pagehide", cleanupTransientUi);
+    window.addEventListener("pageshow", function cleanupRestoredPage(event) {
+        if (event.persisted) cleanupTransientUi();
+    });
+
+    async function completeInterview() {
+        if (ended) return;
+        cleanupTransientUi();
+        ended = true;
+        hideIdleBanner();
+        disableLifecycleControls();
+        if (statusEl) statusEl.textContent = "Finalizing...";
+
+        let completion;
+        try {
+            completion = await postProxy(completeUrl);
+        } catch (err) {
+            appendBubble("AI", `Could not finalize the interview: ${err.message}`);
+            window.location.href = detailsUrl;
+            return;
+        }
+
+        const completed = completion.status === "Completed";
+        const closing = completed
+            ? "That wraps up our interview — thank you for your time and thoughtful answers! I'm now putting together your detailed evaluation."
+            : "That wraps up this interview. The session has expired and remains available in your history.";
         appendBubble("AI", closing);
-
-        // End the session server-side in parallel with the farewell — neither blocks the other.
-        const endCall = postProxy(endUrl).catch(() => {
-            // Session may already be Completed/Expired server-side; proceed to the report regardless.
-        });
+        if (statusEl) statusEl.textContent = completion.status;
 
         // With AI Voice on, let the farewell finish speaking (10s safety cap so a hung clip never
         // strands the user); with it off, pause just long enough to read the bubble.
@@ -479,10 +567,31 @@
         } else {
             await new Promise((resolve) => setTimeout(resolve, 2500));
         }
-        await endCall;
-
         const elapsedSeconds = Math.round((Date.now() - startedAtMs) / 1000);
-        window.location.href = `${reportUrl}?sessionId=${root.dataset.sessionId}&durationActualSec=${elapsedSeconds}`;
+        window.location.href = completed
+            ? `${reportUrl}?sessionId=${root.dataset.sessionId}&durationActualSec=${elapsedSeconds}`
+            : detailsUrl;
+    }
+
+    async function cancelInterview() {
+        if (ended) return;
+        cleanupTransientUi();
+        ended = true;
+        hideIdleBanner();
+        if (countdownHandle) clearInterval(countdownHandle);
+        disableLifecycleControls();
+        if (statusEl) statusEl.textContent = "Cancelling...";
+
+        try {
+            const completion = await postProxy(cancelUrl);
+            if (statusEl) statusEl.textContent = completion.status;
+            window.location.href = detailsUrl;
+        } catch (err) {
+            ended = false;
+            appendBubble("AI", `Could not cancel the interview: ${err.message}`);
+            if (cancelInterviewBtn) cancelInterviewBtn.disabled = false;
+            setPausedUI(paused);
+        }
     }
 
     async function sendAnswer() {
@@ -504,7 +613,7 @@
             updateProgressDisplay();
 
             if (data.ended || !data.nextQuestion) {
-                await finishInterview();
+                await completeInterview();
                 return;
             }
 
@@ -544,7 +653,7 @@
             updateProgressDisplay();
 
             if (data.ended || !data.nextQuestion) {
-                await finishInterview();
+                await completeInterview();
                 return;
             }
 
@@ -587,7 +696,7 @@
             updateProgressDisplay();
 
             if (data.ended || !data.nextQuestion) {
-                await finishInterview();
+                await completeInterview();
                 return;
             }
 
@@ -609,7 +718,7 @@
         }
     });
     skipBtn?.addEventListener("click", skipQuestion);
-    endBtn?.addEventListener("click", finishInterview);
+    cancelInterviewBtn?.addEventListener("click", openCancelConfirmation);
 
     // Hint: ask ai-service (via same-origin proxy) for one light directional hint on the current
     // question, then show it as an AI bubble prefixed with 💡. Does not change the message flow.

@@ -1,6 +1,3 @@
-// Dashboard: load the ai-service roles/technologies catalog, fill the Job Role dropdown, and let
-// the user pick Focus Areas for the selected role. Selected focus areas are mirrored as hidden
-// <input name="FocusAreas"> so they post with the standard form (no change to the submit flow).
 (function () {
     const form = document.getElementById("dash-form");
     if (!form) return;
@@ -10,7 +7,6 @@
     const focusBox = document.getElementById("focus-control");
     const selectedBox = document.getElementById("focus-selected");
 
-    // Editorial "popular" ordering; only those present for the role are shown as default chips.
     const POPULAR = ["React", "Node.js", "TypeScript", "JavaScript", "Python", "FastAPI", "Django",
         "Flask", "Express", "NestJS", "Next.js", "Vue", "Angular", "Spring Boot", "PostgreSQL",
         "MongoDB", "MySQL", "Redis", "Go", "Rust", "Java", "C#", "ASP.NET Core", "Svelte"];
@@ -30,8 +26,8 @@
     }
 
     function refreshChipStates() {
-        focusBox.querySelectorAll("button[data-tech]").forEach((b) =>
-            b.classList.toggle("selected", selected.has(b.dataset.tech)));
+        focusBox.querySelectorAll("button[data-tech]").forEach((button) =>
+            button.classList.toggle("selected", selected.has(button.dataset.tech)));
     }
 
     function makeChip(tech, small) {
@@ -60,11 +56,9 @@
             return;
         }
 
-        // Default: a handful of popular chips that exist for this role.
         const popular = POPULAR.filter((t) => techs.includes(t)).slice(0, 12);
         popular.forEach((t) => focusBox.appendChild(makeChip(t, false)));
 
-        // Toggle to reveal the full, searchable list.
         const toggle = document.createElement("button");
         toggle.type = "button";
         toggle.className = "dash-chip dash-chip-outline";
@@ -77,7 +71,7 @@
 
         const search = document.createElement("input");
         search.type = "text";
-        search.placeholder = "Search technologies…";
+        search.placeholder = "Search technologies...";
         search.className = "dash-input dash-focus-search";
 
         const list = document.createElement("div");
@@ -85,9 +79,9 @@
         techs.forEach((t) => list.appendChild(makeChip(t, true)));
 
         search.addEventListener("input", () => {
-            const q = search.value.trim().toLowerCase();
-            list.querySelectorAll("button[data-tech]").forEach((b) =>
-                b.style.display = (!q || b.dataset.tech.toLowerCase().includes(q)) ? "" : "none");
+            const query = search.value.trim().toLowerCase();
+            list.querySelectorAll("button[data-tech]").forEach((button) =>
+                button.style.display = (!query || button.dataset.tech.toLowerCase().includes(query)) ? "" : "none");
         });
 
         panel.appendChild(search);
@@ -98,21 +92,102 @@
     }
 
     fetch(catalogUrl)
-        .then((r) => r.json())
-        .then((cat) => {
-            techByRole = cat.technologies || {};
-            if (Array.isArray(cat.roles) && cat.roles.length) {
+        .then((response) => response.json())
+        .then((catalog) => {
+            techByRole = catalog.technologies || {};
+            if (Array.isArray(catalog.roles) && catalog.roles.length) {
                 const current = roleSelect.value;
-                roleSelect.innerHTML = cat.roles
-                    .map((r) => `<option value="${r}">${r}</option>`).join("");
-                if (cat.roles.includes(current)) roleSelect.value = current;
+                roleSelect.innerHTML = catalog.roles
+                    .map((role) => `<option value="${role}">${role}</option>`).join("");
+                if (catalog.roles.includes(current)) roleSelect.value = current;
             }
             renderFocus();
         })
         .catch(() => {
             focusBox.innerHTML =
-                '<span class="dash-hint">Could not load technologies — you can still start; the whole role will be covered.</span>';
+                '<span class="dash-hint">Could not load technologies. You can still start; the whole role will be covered.</span>';
         });
 
     roleSelect.addEventListener("change", renderFocus);
+})();
+
+(function () {
+    const list = document.getElementById("recent-session-list");
+    const state = document.getElementById("recent-session-state");
+    if (!list || !list.dataset.url) return;
+
+    let loading = false;
+    let nextPage = Number(list.dataset.nextPage || "2");
+    let hasMore = list.dataset.hasMore === "true";
+    const loadedSessionIds = new Set(
+        Array.from(list.querySelectorAll("[data-session-id]"), (item) => item.dataset.sessionId)
+    );
+
+    function setState(message, mode) {
+        if (!state) return;
+        state.textContent = message || "";
+        state.dataset.mode = mode || "";
+    }
+
+    function escapeHtml(value) {
+        return String(value || "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    function appendSession(item) {
+        if (!item.sessionId || loadedSessionIds.has(item.sessionId)) return;
+
+        loadedSessionIds.add(item.sessionId);
+        const link = document.createElement("a");
+        link.className = "dash-session-item";
+        link.href = item.detailsUrl;
+        link.dataset.sessionId = item.sessionId;
+        link.innerHTML = `<span class="dash-session-title">${escapeHtml(item.title)}</span>` +
+            `<span class="dash-session-meta">${escapeHtml(item.level)} &middot; ${escapeHtml(item.displayStatus)} &middot; ${escapeHtml(item.relativeTime)}</span>`;
+        list.appendChild(link);
+    }
+
+    async function loadMore() {
+        if (loading || !hasMore) return;
+        loading = true;
+        setState("Loading more sessions...", "loading");
+
+        try {
+            const response = await fetch(`${list.dataset.url}?page=${nextPage}`, { headers: { "Accept": "application/json" } });
+            if (!response.ok) throw new Error("Could not load recent sessions.");
+            const data = await response.json();
+            (data.items || []).forEach(appendSession);
+            hasMore = data.totalPages > data.page;
+            nextPage = data.page + 1;
+            list.dataset.nextPage = String(nextPage);
+            list.dataset.hasMore = hasMore ? "true" : "false";
+            setState(hasMore ? "" : "All recent sessions loaded.", hasMore ? "" : "done");
+        } catch (error) {
+            setState("Could not load more sessions.", "error");
+        } finally {
+            loading = false;
+        }
+    }
+
+    list.addEventListener("scroll", () => {
+        const nearBottom = list.scrollTop + list.clientHeight >= list.scrollHeight - 24;
+        if (nearBottom) loadMore();
+    });
+})();
+
+(function () {
+    document.querySelectorAll("[data-tabs]").forEach((tabs) => {
+        tabs.addEventListener("click", (event) => {
+            const button = event.target.closest("[data-tab-target]");
+            if (!button) return;
+            const panelId = button.dataset.tabTarget;
+            const scope = tabs.closest(".history-panel") || document;
+            tabs.querySelectorAll("[data-tab-target]").forEach((tab) => tab.classList.toggle("is-active", tab === button));
+            scope.querySelectorAll(".detail-tab-panel").forEach((panel) => panel.classList.toggle("is-active", panel.id === panelId));
+        });
+    });
 })();

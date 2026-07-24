@@ -1,3 +1,4 @@
+@using WebClient.Models.Feedback
 @model WebClient.Models.Evaluation.ReportViewModel
 
 @{
@@ -40,6 +41,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="~/css/theme-session.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/pages/report.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/components/safe-text.css" asp-append-version="true" />
 </head>
 <body class="report-page">
     <main class="report-main">
@@ -58,7 +60,7 @@
             <div class="glass-card report-hero">
                 <div>
                     <h1 class="report-hero-title">@HeroTitle(overall)</h1>
-                    <p class="report-hero-sub">@Model.Position &mdash; @Model.Level level</p>
+                    <p class="report-hero-sub safe-long-text">@Model.Position &mdash; @Model.Level level</p>
                     <div class="report-chips">
                         <span class="report-chip"><span class="material-symbols-outlined" style="font-size:16px">forum</span>@Model.Questions.Count Questions</span>
                         @if (!string.IsNullOrEmpty(report.Grade))
@@ -124,7 +126,7 @@
                         <summary>
                             <span class="report-q-left">
                                 <span class="report-q-num">@q.OrderIndex</span>
-                                <span class="report-q-text">@q.Content</span>
+                                <span class="report-q-text safe-long-text">@q.Content</span>
                             </span>
                             @if (q.Score is not null)
                             {
@@ -135,19 +137,19 @@
                                 <span class="report-q-score" style="color:var(--color-text-secondary); border:1px solid var(--color-border)">Not evaluated</span>
                             }
                         </summary>
-                        <div class="report-q-body">
+                        <div class="report-q-body safe-text-container">
                             @if (!string.IsNullOrEmpty(q.AiFeedback))
                             {
-                                <div class="report-q-block">
+                                <div class="report-q-block safe-text-container">
                                     <span class="label">AI Analysis</span>
-                                    <p>@q.AiFeedback</p>
+                                    <p class="safe-long-text">@q.AiFeedback</p>
                                 </div>
                             }
                             @if (!string.IsNullOrEmpty(q.Strengths))
                             {
-                                <div class="report-q-block strengths">
+                                <div class="report-q-block strengths safe-text-container">
                                     <span class="label">Strengths</span>
-                                    <p>@q.Strengths</p>
+                                    <p class="safe-long-text">@q.Strengths</p>
                                 </div>
                             }
                             @if (q.Score is null)
@@ -164,28 +166,28 @@
         <!-- AI Coach Summary -->
         @if (report is not null && (!string.IsNullOrEmpty(report.Strengths) || !string.IsNullOrEmpty(report.Improvements) || !string.IsNullOrEmpty(report.Summary)))
         {
-            <div class="glass-card report-summary">
+            <div class="glass-card report-summary safe-text-container">
                 <h3 class="report-summary-title"><span class="material-symbols-outlined">auto_awesome</span> AI Coach Summary</h3>
                 @if (!string.IsNullOrEmpty(report.Summary))
                 {
-                    <p style="color:var(--color-text-secondary); margin-top:0">@report.Summary</p>
+                    <p class="safe-long-text" style="color:var(--color-text-secondary); margin-top:0">@report.Summary</p>
                 }
-                <div class="report-summary-grid">
-                    <div class="report-summary-col strengths">
+                <div class="report-summary-grid safe-text-container">
+                    <div class="report-summary-col strengths safe-text-container">
                         <h4>Key Strengths</h4>
                         <ul>
                             @foreach (var item in (report.Strengths ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
                             {
-                                <li><span class="material-symbols-outlined">check_circle</span>@item</li>
+                                <li class="safe-text-container"><span class="material-symbols-outlined">check_circle</span><span class="safe-long-text">@item</span></li>
                             }
                         </ul>
                     </div>
-                    <div class="report-summary-col improve">
+                    <div class="report-summary-col improve safe-text-container">
                         <h4>Areas to Improve</h4>
                         <ul>
                             @foreach (var item in (report.Improvements ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
                             {
-                                <li><span class="material-symbols-outlined">arrow_upward</span>@item</li>
+                                <li class="safe-text-container"><span class="material-symbols-outlined">arrow_upward</span><span class="safe-long-text">@item</span></li>
                             }
                         </ul>
                     </div>
@@ -193,37 +195,121 @@
             </div>
         }
 
-        <!-- UI PLACEHOLDER (session feedback): markup/style only, per the interviewfeedback mockup.
-             The submit logic is owned by another team member (FeedbackAPI) — do NOT wire real
-             submission here. Stars/tags toggle visually; Submit shows a "Coming soon" note. -->
         @if (report is not null)
         {
-            <div class="glass-card report-feedback">
+            <link rel="stylesheet" href="~/css/components/star-rating.css" asp-append-version="true" />
+            <div class="glass-card report-feedback safe-text-container">
                 <h3 class="report-feedback-title">How was this session?</h3>
                 <p class="report-feedback-sub">Help us improve the AI coaching experience.</p>
-                <div class="star-rating">
-                    @for (var i = 0; i < 5; i++)
-                    {
-                        <button type="button" class="star-btn"><span class="material-symbols-outlined">star</span></button>
-                    }
-                </div>
-                <div class="feedback-tags">
-                    <button type="button" class="feedback-tag">Questions too easy</button>
-                    <button type="button" class="feedback-tag">Spot on analysis</button>
-                    <button type="button" class="feedback-tag">Audio issues</button>
-                </div>
-                <textarea class="feedback-textarea" placeholder="Any additional thoughts?"></textarea>
-                <div class="feedback-submit-row">
-                    <span class="coming-soon-note" id="feedback-note" hidden>Coming soon — this feature is being built.</span>
-                    <button type="button" class="btn-submit" data-coming-soon="feedback-note">Submit Feedback</button>
-                </div>
+
+                @if (!string.IsNullOrWhiteSpace(Model.FeedbackMessage))
+                {
+                    var alertClass = Model.FeedbackMessage.StartsWith("Interview feedback submitted", StringComparison.OrdinalIgnoreCase)
+                        ? "success"
+                        : "warning";
+                    <div class="report-feedback-alert @alertClass" role="status">@Model.FeedbackMessage</div>
+                }
+
+                @if (Model.MyInterviewFeedback is not null)
+                {
+                    var submitted = Model.MyInterviewFeedback;
+                    var publicationStatus = submitted.IsVisible &&
+                        string.Equals(submitted.ModerationStatus, "Approved", StringComparison.OrdinalIgnoreCase)
+                            ? "Published"
+                            : "Not published";
+                    <div class="report-feedback-submitted safe-text-container">
+                        <div class="report-feedback-submitted-head">
+                            <div>
+                                <strong>Your submitted feedback</strong>
+                                <span>Submitted @submitted.CreatedAt.ToLocalTime().ToString("MMM d, yyyy")</span>
+                            </div>
+                            <span class="report-feedback-status">@publicationStatus</span>
+                        </div>
+                        <div class="report-feedback-scores">
+                            @foreach (var metric in new[]
+                            {
+                                new { Label = "Overall", Rating = (byte?)submitted.OverallRating },
+                                new { Label = "Question quality", Rating = submitted.QuestionQualityRating },
+                                new { Label = "AI accuracy", Rating = submitted.AiAccuracyRating },
+                                new { Label = "Scoring fairness", Rating = submitted.ScoringFairnessRating },
+                                new { Label = "Feedback usefulness", Rating = submitted.FeedbackUsefulnessRating }
+                            })
+                            {
+                                <div class="report-feedback-score">
+                                    <span>@metric.Label</span>
+                                    @await Html.PartialAsync("_StarRating", new WebClient.Models.Shared.StarRatingViewModel
+                                    {
+                                        Label = metric.Label,
+                                        Value = metric.Rating,
+                                        Compact = true
+                                    })
+                                </div>
+                            }
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(submitted.Comment))
+                        {
+                            <blockquote class="report-feedback-comment safe-long-text">@submitted.Comment</blockquote>
+                        }
+                    </div>
+                }
+                else if (Model.CanSubmitInterviewFeedback)
+                {
+                    <form method="post" asp-controller="Interview" asp-action="SubmitInterviewFeedback" asp-route-id="@Model.SessionId" class="report-feedback-form safe-text-container" data-feedback-form>
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="SessionId" value="@Model.SessionId" />
+                        <input type="hidden" name="source" value="Evaluation" />
+                        <p class="report-rating-help">1 star = poor, 5 stars = excellent</p>
+
+                        @foreach (var field in new[]
+                        {
+                            new { Name = "OverallRating", Label = "Overall", Value = Model.FeedbackForm.OverallRating },
+                            new { Name = "QuestionQualityRating", Label = "Question quality", Value = Model.FeedbackForm.QuestionQualityRating },
+                            new { Name = "AiAccuracyRating", Label = "AI accuracy", Value = Model.FeedbackForm.AiAccuracyRating },
+                            new { Name = "ScoringFairnessRating", Label = "Scoring fairness", Value = Model.FeedbackForm.ScoringFairnessRating },
+                            new { Name = "FeedbackUsefulnessRating", Label = "Feedback usefulness", Value = Model.FeedbackForm.FeedbackUsefulnessRating }
+                        })
+                        {
+                            @await Html.PartialAsync("_StarRating", new WebClient.Models.Shared.StarRatingViewModel
+                            {
+                                Name = field.Name,
+                                Label = field.Label,
+                                Value = Model.FeedbackFormWasSubmitted ? field.Value : 5,
+                                Editable = true,
+                                Required = true,
+                                CssClass = "report-star-rating"
+                            })
+                        }
+
+                        <label class="report-feedback-label" for="report-feedback-comment">Comment <span>(optional)</span></label>
+                        <textarea class="report-feedback-textarea feedback-comment-input @(string.IsNullOrWhiteSpace(Model.FeedbackValidationMessage) ? null : "is-invalid")"
+                                  id="report-feedback-comment"
+                                  name="Comment"
+                                  maxlength="@InterviewFeedbackRules.MaxCommentLength"
+                                  aria-describedby="report-feedback-comment-error report-feedback-comment-counter"
+                                  aria-invalid="@(!string.IsNullOrWhiteSpace(Model.FeedbackValidationMessage)).ToString().ToLowerInvariant()"
+                                  data-feedback-comment
+                                  data-server-invalid="@(!string.IsNullOrWhiteSpace(Model.FeedbackValidationMessage)).ToString().ToLowerInvariant()"
+                                  placeholder="Any additional thoughts?">@Model.FeedbackForm.Comment</textarea>
+                        <div class="feedback-field-meta">
+                            <span id="report-feedback-comment-error" class="feedback-field-error" data-feedback-error>@Model.FeedbackValidationMessage</span>
+                            <span id="report-feedback-comment-counter" class="feedback-character-counter" data-feedback-counter>@(Model.FeedbackForm.Comment?.Length ?? 0) / @InterviewFeedbackRules.MaxCommentLength</span>
+                        </div>
+                        <div class="feedback-submit-row">
+                            <button type="submit" class="report-feedback-submit" data-feedback-submit data-pending-text="Submitting..."><span class="material-symbols-outlined" aria-hidden="true">send</span> Submit Feedback</button>
+                        </div>
+                    </form>
+                }
+                else
+                {
+                    <p class="report-feedback-unavailable">Interview feedback is unavailable for this session.</p>
+                }
             </div>
         }
     </main>
 
     <div class="report-bottom">
         <div class="report-bottom-inner">
-            <a class="btn-ghost" asp-controller="Home" asp-action="Index"><span class="material-symbols-outlined" style="font-size:18px">arrow_back</span> Back to Dashboard</a>
+            <a class="btn-ghost" asp-controller="Interview" asp-action="Index"><span class="material-symbols-outlined" style="font-size:18px">arrow_back</span> Back to Interview Dashboard</a>
             <div class="report-bottom-actions">
                 <!-- UI PLACEHOLDER: Share/Download are mockup-parity buttons; the real export logic
                      is owned by another team member. Clicking shows a "Coming soon" note. -->
@@ -236,27 +322,17 @@
     </div>
 
     <script>
-        // UI placeholder wiring only: stars/tags toggle visually (nothing is sent anywhere);
-        // Submit/Share/Download reveal a "Coming soon" note instead of doing anything.
         (function () {
-            document.querySelectorAll("[data-coming-soon]").forEach(function (btn) {
-                btn.addEventListener("click", function () {
-                    var note = document.getElementById(btn.dataset.comingSoon);
+            document.querySelectorAll("[data-coming-soon]").forEach(function (button) {
+                button.addEventListener("click", function () {
+                    var note = document.getElementById(button.dataset.comingSoon);
                     if (note) note.hidden = false;
                 });
             });
 
-            var stars = Array.prototype.slice.call(document.querySelectorAll(".star-btn"));
-            stars.forEach(function (star, index) {
-                star.addEventListener("click", function () {
-                    stars.forEach(function (s, i) { s.classList.toggle("active", i <= index); });
-                });
-            });
-
-            document.querySelectorAll(".feedback-tag").forEach(function (tag) {
-                tag.addEventListener("click", function () { tag.classList.toggle("active"); });
-            });
         })();
     </script>
+    <script src="~/js/components/feedback-content.js" asp-append-version="true"></script>
+    <script src="~/js/components/star-rating.js" asp-append-version="true"></script>
 </body>
 </html>

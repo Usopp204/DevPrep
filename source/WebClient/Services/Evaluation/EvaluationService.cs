@@ -13,6 +13,7 @@ public interface IEvaluationService
 
     Task<(bool Success, ReportViewModel? Report, string? Error)> GetReportAsync(
         Guid sessionId, int durationActualSec, CancellationToken cancellationToken);
+
 }
 
 public sealed class EvaluationService(IApiClient apiClient) : IEvaluationService
@@ -27,7 +28,7 @@ public sealed class EvaluationService(IApiClient apiClient) : IEvaluationService
         {
             ModuleName = "Evaluation & Reporting",
             Epic = "Evaluation & Reporting",
-            Summary = "Evaluation and reporting placeholder for future API Gateway integration."
+            Summary = "Open a completed session from Interview History to view its performance report."
         };
     }
 
@@ -42,6 +43,29 @@ public sealed class EvaluationService(IApiClient apiClient) : IEvaluationService
             cancellationToken);
         if (!transcript.Success || transcript.Data is null)
             return (false, null, transcript.Error ?? "Could not load the session.");
+
+        if (!string.Equals(transcript.Data.Status, "Completed", StringComparison.OrdinalIgnoreCase))
+        {
+            var terminalStateReason = string.Equals(transcript.Data.Status, "Cancelled", StringComparison.OrdinalIgnoreCase)
+                ? "This interview was cancelled, so no evaluation report was generated."
+                : "This interview expired, so no evaluation report was generated.";
+            return (true, new ReportViewModel
+            {
+                SessionId = sessionId,
+                Position = transcript.Data.Position,
+                Level = transcript.Data.Level,
+                Status = transcript.Data.Status,
+                Questions = transcript.Data.Questions
+                    .OrderBy(q => q.OrderIndex)
+                    .Select(q => new ReportQuestionViewModel
+                    {
+                        OrderIndex = q.OrderIndex,
+                        Content = q.Content
+                    })
+                    .ToList(),
+                EmptyReason = terminalStateReason
+            }, null);
+        }
 
         // Prefer an already-built report; only build a new one if none exists yet.
         var existingReport = await SendAsync<ReportResponse>(HttpMethod.Get,
@@ -107,23 +131,58 @@ public sealed class EvaluationService(IApiClient apiClient) : IEvaluationService
         return (true, viewModel, null);
     }
 
+
+
     private async Task<(bool Success, T? Data, string? Error)> SendAsync<T>(
         HttpMethod method, string path, object? body, CancellationToken cancellationToken)
     {
-        using var request = new HttpRequestMessage(method, path);
-        if (body is not null)
+        try
         {
-            request.Content = JsonContent.Create(body, options: JsonOptions);
+            using var request = new HttpRequestMessage(method, path);
+            if (body is not null)
+            {
+                request.Content = JsonContent.Create(body, options: JsonOptions);
+            }
+
+            using var response = await apiClient.HttpClient.SendAsync(request, cancellationToken);
+            var raw = await response.Content.ReadAsStringAsync(cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                return (false, default, ReadError(raw) ?? $"Request failed ({(int)response.StatusCode}).");
+            }
+
+            var envelope = string.IsNullOrWhiteSpace(raw)
+                ? null
+                : JsonSerializer.Deserialize<ApiResponse<T>>(raw, JsonOptions);
+
+            if (envelope is null || !envelope.Success)
+            {
+                return (false, default, envelope?.Message ?? $"Request failed ({(int)response.StatusCode}).");
+            }
+
+            return (true, envelope.Data, null);
+        }
+        catch (Exception)
+        {
+            return (false, default, "Cannot reach the server. Please make sure the API Gateway is running.");
+        }
+    }
+
+    private static string? ReadError(string raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return null;
         }
 
-        using var response = await apiClient.HttpClient.SendAsync(request, cancellationToken);
-        var envelope = await response.Content.ReadFromJsonAsync<ApiResponse<T>>(JsonOptions, cancellationToken);
-
-        if (!response.IsSuccessStatusCode || envelope is null || !envelope.Success)
+        try
         {
-            return (false, default, envelope?.Message ?? $"Request to {path} failed ({(int)response.StatusCode}).");
+            var envelope = JsonSerializer.Deserialize<ApiResponse<object>>(raw, JsonOptions);
+            return envelope?.Message;
         }
-
-        return (true, envelope.Data, null);
+        catch (JsonException)
+        {
+            return raw.Length > 200 ? raw[..200] : raw;
+        }
     }
 }

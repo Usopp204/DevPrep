@@ -1,3 +1,4 @@
+using InterviewAPI.DTOs.Session;
 using InterviewAPI.Models;
 
 namespace InterviewAPI.Repositories.Interfaces;
@@ -14,7 +15,15 @@ public interface ISessionRepository
     Task<SessionQuestion?> GetQuestionByIdAsync(Guid sessionQuestionId, CancellationToken ct);
     Task<List<ChatMessage>> GetMessagesByQuestionAsync(Guid sessionQuestionId, CancellationToken ct);
     Task<SessionQuestion?> GetNextUnansweredQuestionAsync(Guid sessionId, int afterOrderIndex, CancellationToken ct);
+    Task<bool> HasSubstantiveAnswerAsync(Guid sessionId, CancellationToken ct);
     Task<List<InterviewSession>> GetByUserAsync(Guid userId, CancellationToken ct);
+    Task<(IReadOnlyList<InterviewSession> Items, int TotalItems, IReadOnlyList<string> PositionOptions)> GetHistoryAsync(
+        Guid userId,
+        SessionHistoryQuery query,
+        CancellationToken ct);
+    Task<InterviewSession?> GetChatLogAsync(Guid userId, Guid sessionId, CancellationToken ct);
+    Task<int> CountFeedbackEligibleSessionsAsync(Guid userId, CancellationToken ct);
+    Task<InterviewSession?> GetFeedbackEligibilitySessionAsync(Guid userId, Guid sessionId, CancellationToken ct);
     Task<InterviewRoom?> GetRoomBySessionAsync(Guid sessionId, CancellationToken ct);
     Task UpdateRoomAsync(InterviewRoom room, CancellationToken ct);
     Task<bool> UpdateStatusIfAsync(Guid userId, Guid sessionId, string currentStatus, string newStatus, CancellationToken ct);

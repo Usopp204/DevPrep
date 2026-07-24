@@ -13,20 +13,33 @@ public class AiFeedbackRepository : IAiFeedbackRepository
         _db = db;
     }
 
-    // Chỉ lấy bản ghi chưa bị xoá mềm. AsNoTracking cho truy vấn đọc (list/projection/search).
     public IQueryable<InterviewFeedback> Query() =>
         _db.InterviewFeedbacks.AsNoTracking().Where(f => !f.IsDeleted);
 
-    // Kèm cả bản ghi đã xoá mềm — cho admin xem/khôi phục.
     public IQueryable<InterviewFeedback> QueryIncludingDeleted() =>
         _db.InterviewFeedbacks.AsNoTracking();
 
-    public Task<InterviewFeedback?> GetByIdAsync(Guid id, bool tracking = false)
+    public IQueryable<InterviewFeedback> PublicQuery() =>
+        _db.InterviewFeedbacks
+            .AsNoTracking()
+            .Where(f => !f.IsDeleted && f.ModerationStatus == "Approved" && f.IsVisible);
+
+    public Task<InterviewFeedback?> GetByIdAsync(Guid id, bool tracking = false, CancellationToken ct = default)
     {
         IQueryable<InterviewFeedback> query = _db.InterviewFeedbacks;
         if (!tracking) query = query.AsNoTracking();
-        return query.FirstOrDefaultAsync(f => f.InterviewFeedbackId == id);
+        return query.FirstOrDefaultAsync(f => f.InterviewFeedbackId == id, ct);
     }
 
-    public Task SaveChangesAsync() => _db.SaveChangesAsync();
+    public Task<InterviewFeedback?> GetByUserAndSessionAsync(Guid userId, Guid sessionId, CancellationToken ct = default) =>
+        _db.InterviewFeedbacks.AsNoTracking()
+            .FirstOrDefaultAsync(f => f.UserId == userId && f.SessionId == sessionId && !f.IsDeleted, ct);
+
+    public Task<bool> ActiveExistsAsync(Guid userId, Guid sessionId, CancellationToken ct = default) =>
+        _db.InterviewFeedbacks.AnyAsync(f => f.UserId == userId && f.SessionId == sessionId && !f.IsDeleted, ct);
+
+    public async Task AddAsync(InterviewFeedback feedback, CancellationToken ct = default) =>
+        await _db.InterviewFeedbacks.AddAsync(feedback, ct);
+
+    public Task SaveChangesAsync(CancellationToken ct = default) => _db.SaveChangesAsync(ct);
 }

@@ -3,20 +3,18 @@ using FeedbackAPI.Models;
 namespace FeedbackAPI.Repositories.Interfaces;
 
 /// <summary>
-/// Truy cập dữ liệu cho System feedback (bảng SystemFeedbacks) và phần trả lời (FeedbackReplies).
-/// Query() trả về IQueryable đã lọc bỏ bản ghi soft-deleted (IsDeleted = 0), AsNoTracking.
+/// Data access for system feedback, replies, public reviews, deleted records, and Candidate submissions.
 /// </summary>
 public interface ISystemFeedbackRepository
 {
     IQueryable<SystemFeedback> Query();
-
-    /// <summary>Như Query() nhưng KÈM cả bản ghi đã xoá mềm (cho admin xem/khôi phục).</summary>
     IQueryable<SystemFeedback> QueryIncludingDeleted();
-
-    Task<SystemFeedback?> GetByIdAsync(Guid id, bool includeReplies = false, bool tracking = false);
-
-    Task AddReplyAsync(FeedbackReply reply);
+    IQueryable<SystemFeedback> PublicQuery();
+    Task<SystemFeedback?> GetByIdAsync(Guid id, bool includeReplies = false, bool tracking = false, CancellationToken ct = default);
+    Task<int> CountByUserIdAsync(Guid userId, CancellationToken ct = default);
+    Task<SystemFeedback?> GetLatestByUserIdAsync(Guid userId, CancellationToken ct = default);
+    Task AddAsync(SystemFeedback feedback, CancellationToken ct = default);
+    Task AddReplyAsync(FeedbackReply reply, CancellationToken ct = default);
     void RemoveReply(FeedbackReply reply);
-
-    Task SaveChangesAsync();
+    Task SaveChangesAsync(CancellationToken ct = default);
 }

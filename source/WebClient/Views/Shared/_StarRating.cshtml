@@ -1,0 +1,49 @@
+@model WebClient.Models.Shared.StarRatingViewModel
+@{
+    var rating = Math.Clamp(Model.Value ?? 0, 0, 5);
+    var sizeClass = Model.Compact ? "star-rating--compact" : "star-rating--full";
+    var disabledClass = Model.Disabled ? "star-rating--disabled" : null;
+    var rootClass = $"star-rating {sizeClass} {disabledClass} {Model.CssClass}".Trim();
+    var safeName = string.Concat(Model.Name.Select(character => char.IsLetterOrDigit(character) ? character : '-'));
+}
+
+@if (Model.Editable)
+{
+    <fieldset class="star-rating-field">
+        <legend>@Model.Label</legend>
+        <span class="@rootClass"
+              data-star-rating
+              data-star-editable="true"
+              data-star-selected="@rating">
+            @for (var value = 1; value <= 5; value++)
+            {
+                var inputId = $"star-rating-{safeName}-{value}";
+                <label class="star-rating-option" data-star-value="@value" for="@inputId">
+                    <input id="@inputId"
+                           type="radio"
+                           name="@Model.Name"
+                           value="@value"
+                           checked="@(value == rating)"
+                           required="@Model.Required"
+                           disabled="@Model.Disabled"
+                           aria-describedby="@Model.DescribedBy"
+                           aria-label="@value out of 5 stars for @Model.Label" />
+                    <span class="material-symbols-outlined star-rating-icon @(value <= rating ? "is-filled" : "is-empty")" data-star-icon aria-hidden="true">@(value <= rating ? "star" : "star_border")</span>
+                </label>
+            }
+        </span>
+    </fieldset>
+}
+else
+{
+    <span class="@rootClass" role="img" aria-label="@Model.Label: @rating out of 5 stars">
+        @for (var value = 1; value <= 5; value++)
+        {
+            <span class="material-symbols-outlined star-rating-icon @(value <= rating ? "is-filled" : "is-empty")" aria-hidden="true">@(value <= rating ? "star" : "star_border")</span>
+        }
+        @if (Model.ShowNumericValue)
+        {
+            <span class="star-rating-value" aria-hidden="true">@rating/5</span>
+        }
+    </span>
+}

@@ -89,22 +89,25 @@
                             </td>
                             <td class="tech-stack-actions-column">
                                 <div class="tech-stack-actions">
-                                    <button type="button" class="ts-button ts-button-small ts-button-secondary tech-stack-edit-action js-edit-tech-stack"
-                                            data-tech-stack-id="@item.TechStackId">
-                                        <span class="material-symbols-outlined">edit</span>Edit
+                                    <button type="button" class="ts-button ts-button-small ts-button-secondary tech-stack-icon-action tech-stack-edit-action js-edit-tech-stack"
+                                            data-tech-stack-id="@item.TechStackId"
+                                            aria-label="Edit @item.Name" title="Edit">
+                                        <span class="material-symbols-outlined" aria-hidden="true">edit</span>
                                     </button>
                                     @if (item.IsActive)
                                     {
-                                        <button type="button" class="ts-button ts-button-small ts-button-danger js-deactivate-tech-stack"
-                                                data-tech-stack-id="@item.TechStackId" data-tech-stack-name="@item.Name">
-                                            <span class="material-symbols-outlined">block</span>Deactivate
+                                        <button type="button" class="ts-button ts-button-small ts-button-danger tech-stack-icon-action js-deactivate-tech-stack"
+                                                data-tech-stack-id="@item.TechStackId" data-tech-stack-name="@item.Name"
+                                                aria-label="Deactivate @item.Name" title="Deactivate">
+                                            <span class="material-symbols-outlined" aria-hidden="true">block</span>
                                         </button>
                                     }
                                     else
                                     {
-                                        <button type="button" class="ts-button ts-button-small ts-button-success js-reactivate-tech-stack"
-                                                data-tech-stack-id="@item.TechStackId" data-tech-stack-name="@item.Name">
-                                            <span class="material-symbols-outlined">restart_alt</span>Reactivate
+                                        <button type="button" class="ts-button ts-button-small ts-button-success tech-stack-icon-action js-reactivate-tech-stack"
+                                                data-tech-stack-id="@item.TechStackId" data-tech-stack-name="@item.Name"
+                                                aria-label="Reactivate @item.Name" title="Reactivate">
+                                            <span class="material-symbols-outlined" aria-hidden="true">restart_alt</span>
                                         </button>
                                     }
                                 </div>

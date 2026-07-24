@@ -1,4 +1,4 @@
-@{
+﻿@{
     var path = Context.Request.Path.Value ?? string.Empty;
     bool IsActive(string href) => path.Equals(href, StringComparison.OrdinalIgnoreCase)
         || (href != "/Manager/Index" && path.StartsWith(href + "/", StringComparison.OrdinalIgnoreCase));
@@ -39,6 +39,9 @@
         </a>
         <a class="ad-nav-item @(IsActive("/Manager/Feedback") ? "active" : "")" href="/Manager/Feedback">
             <span class="material-symbols-outlined">forum</span><span class="label">System Feedback</span>
+        </a>
+        <a class="ad-nav-item @(IsActive("/Manager/ReportedFeedback") ? "active" : "")" href="/Manager/ReportedFeedback">
+            <span class="material-symbols-outlined">flag</span><span class="label">Reported Feedback</span>
         </a>
         <a class="ad-nav-item @(IsActive("/Manager/News") ? "active" : "")" href="/Manager/News">
             <span class="material-symbols-outlined">newspaper</span><span class="label">News</span>

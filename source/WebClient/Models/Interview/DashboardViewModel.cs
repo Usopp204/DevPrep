@@ -1,6 +1,6 @@
 namespace WebClient.Models.Interview;
 
-// Backs Views/Interview/Index.cshtml — the interview configuration + start form.
+// Backs Views/Interview/Index.cshtml - the interview configuration + start form.
 public class DashboardViewModel
 {
     public int DurationMinutes { get; set; } = 30;
@@ -11,8 +11,9 @@ public class DashboardViewModel
     public string? Jd { get; set; }
     public List<string> FocusAreas { get; set; } = new();
 
-    // Newest sessions shown in the sidebar "Recent Sessions" list (most recent first).
-    public List<SessionListItemDto> RecentSessions { get; set; } = new();
+    // Newest completed/expired sessions shown in the sidebar "Recent Sessions" list.
+    public List<SessionHistoryItemDto> RecentSessions { get; set; } = new();
+    public InterviewSidebarViewModel Sidebar { get; set; } = new() { ActiveItem = "New" };
 
     public string? ErrorMessage { get; set; }
 }

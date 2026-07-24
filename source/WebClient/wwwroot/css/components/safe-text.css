@@ -1,0 +1,79 @@
+.safe-text-container,
+.safe-long-text {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.safe-long-text {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.feedback-expandable.is-collapsible:not(.is-expanded) {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: var(--feedback-clamp-lines, 6);
+}
+
+.feedback-expand-toggle {
+    display: inline-flex;
+    align-items: center;
+    min-height: 36px;
+    margin: -6px 0 14px;
+    padding: 4px 0;
+    border: 0;
+    color: #AFAAFF;
+    background: transparent;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.feedback-expand-toggle:hover {
+    color: #FFFFFF;
+}
+
+.feedback-expand-toggle:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 3px;
+    border-radius: 4px;
+}
+
+.feedback-field-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 0;
+    margin-top: 6px;
+    font-size: 12px;
+}
+
+.feedback-field-error {
+    color: #FFB4AB;
+    overflow-wrap: anywhere;
+}
+
+.feedback-character-counter {
+    flex: 0 0 auto;
+    margin-left: auto;
+    color: #A1A1AA;
+    font-variant-numeric: tabular-nums;
+}
+
+.feedback-character-counter.is-invalid {
+    color: #FFB4AB;
+    font-weight: 700;
+}
+
+.feedback-comment-input.is-invalid,
+.feedback-comment-input[aria-invalid="true"] {
+    border-color: #EF4444 !important;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.14) !important;
+}
+
+[data-feedback-submit]:disabled {
+    cursor: not-allowed !important;
+    opacity: 0.58;
+}

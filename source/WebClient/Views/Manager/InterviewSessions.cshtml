@@ -1,4 +1,4 @@
-@{
+﻿@{
     var token = Context.Request.Cookies["access_token"];
     Layout = null;
 }
@@ -44,6 +44,7 @@
         .iv-select { background: #11121a !important; border: 1px solid #292c3d !important; border-radius: 10px; padding: 6px 12px; color: #ffffff !important; font-size: 13px; }
         .iv-select option { background-color: #11121a !important; color: #ffffff !important; }
     </style>
+    <link rel="stylesheet" href="~/css/components/pagination.css" asp-append-version="true" />
 </head>
 <body class="font-body-md overflow-x-hidden">
     @await Html.PartialAsync("_ManagerTopbar")
@@ -90,9 +91,7 @@
                 <div class="px-lg py-md flex items-center justify-between border-t border-border-subtle bg-surface-container/20">
                     <p id="iv-summary" class="font-code-label text-[11px] text-on-surface-variant uppercase">Loading...</p>
                     <div class="flex gap-xs items-center">
-                        <button id="iv-prev" class="p-1 rounded bg-surface-container border border-border-subtle text-on-surface-variant hover:text-primary" type="button"><span class="material-symbols-outlined">chevron_left</span></button>
-                        <span id="iv-page" class="px-3 py-1 rounded bg-primary-container text-on-primary-container font-code-label text-[11px] font-bold">1</span>
-                        <button id="iv-next" class="p-1 rounded bg-surface-container border border-border-subtle text-on-surface-variant hover:text-primary" type="button"><span class="material-symbols-outlined">chevron_right</span></button>
+                        <nav id="iv-pages" class="devprep-pagination devprep-pagination-inline" aria-label="Pagination"></nav>
                     </div>
                 </div>
             </section>
@@ -124,8 +123,6 @@
             fillSelect('iv-status', STATUSES); fillSelect('iv-level', LEVELS); fillSelect('iv-mode', MODES); fillSelect('iv-type', TYPES);
             ['iv-status', 'iv-level', 'iv-mode', 'iv-type'].forEach(id => document.getElementById(id).addEventListener('change', () => { currentPage = 1; fetchList(); }));
             document.getElementById('iv-search').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => { currentPage = 1; fetchList(); }, 300); });
-            document.getElementById('iv-prev').addEventListener('click', () => { if (currentPage > 1) { currentPage--; fetchList(); } });
-            document.getElementById('iv-next').addEventListener('click', () => { if (currentPage < totalPages) { currentPage++; fetchList(); } });
             fetchList();
         });
 
@@ -248,7 +245,7 @@
 
         function userLabel(it) { return cleanText(it.userFullName) || (it.userId ? 'User ' + String(it.userId).substring(0, 5) : 'Unknown'); }
         function initial(n) { const clean = cleanText(n); return clean && clean.trim() ? clean.trim()[0].toUpperCase() : 'U'; }
-        function badge(t) { return t ? `<span class="px-xs py-0.5 rounded bg-surface-container-highest text-on-surface-variant text-[10px] uppercase font-code-label">${escapeHtml(t)}</span>` : '—'; }
+        function badge(t) { return t ? `<span class="px-xs py-0.5 rounded bg-surface-container-highest text-on-surface-variant text-[10px] uppercase font-code-label">${escapeHtml(t)}</span>` : 'ΓÇö'; }
         function statusBadge(s) {
             const map = { InProgress: 'bg-secondary/15 border-secondary/40 text-secondary', Completed: 'bg-success/10 border-success/30 text-success', Configured: 'bg-warning/10 border-warning/30 text-warning', Initialized: 'bg-warning/10 border-warning/30 text-warning', Expired: 'bg-tertiary-container/15 border-tertiary/30 text-tertiary', Cancelled: 'bg-error/10 border-error/30 text-error' };
             return `<span class="px-xs py-1 rounded-full border text-[10px] font-bold uppercase ${map[s] || 'bg-surface-container-highest border-border-subtle text-on-surface-variant'}">${escapeHtml(s || '')}</span>`;
@@ -257,19 +254,18 @@
             totalPages = Math.max(data.totalPages || 1, 1);
             const ti = data.totalItems || data.totalCount || 0, pg = data.page || currentPage, sz = data.pageSize || pageSize;
             const start = ti === 0 ? 0 : ((pg - 1) * sz) + 1, end = Math.min(pg * sz, ti);
+            currentPage = pg;
             document.getElementById('iv-summary').innerText = `Showing ${start}-${end} of ${ti} sessions`;
-            document.getElementById('iv-page').innerText = `${pg} / ${totalPages}`;
-            document.getElementById('iv-prev').disabled = pg <= 1;
-            document.getElementById('iv-next').disabled = pg >= totalPages;
+            DevPrepPagination.render({ container: 'iv-pages', currentPage, totalPages, onPageChange: pageNumber => { currentPage = pageNumber; fetchList(); } });
         }
-        function fmtDate(d) { if (!d) return '—'; const x = new Date(d); const m = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"]; return `${m[x.getMonth()]} ${x.getDate().toString().padStart(2,'0')}`; }
-        function fmtDateTime(d) { if (!d) return '—'; const x = new Date(d); return x.toLocaleString(); }
-        function msToSec(ms) { if (!ms && ms !== 0) return '—'; return (ms / 1000).toFixed(1) + 's'; }
-        function actualDuration(a, b) { if (!a || !b) return '—'; const ms = new Date(b) - new Date(a); if (ms < 0) return '—'; const min = Math.floor(ms / 60000), sec = Math.floor((ms % 60000) / 1000); return `${min}m ${sec}s`; }
+        function fmtDate(d) { if (!d) return 'ΓÇö'; const x = new Date(d); const m = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"]; return `${m[x.getMonth()]} ${x.getDate().toString().padStart(2,'0')}`; }
+        function fmtDateTime(d) { if (!d) return 'ΓÇö'; const x = new Date(d); return x.toLocaleString(); }
+        function msToSec(ms) { if (!ms && ms !== 0) return 'ΓÇö'; return (ms / 1000).toFixed(1) + 's'; }
+        function actualDuration(a, b) { if (!a || !b) return 'ΓÇö'; const ms = new Date(b) - new Date(a); if (ms < 0) return 'ΓÇö'; const min = Math.floor(ms / 60000), sec = Math.floor((ms % 60000) / 1000); return `${min}m ${sec}s`; }
         function cleanText(value) {
             let text = String(value || '');
             for (let i = 0; i < 2; i++) {
-                if (!/[ÃÂâ]|áº|á»|Ä|Æ|�/.test(text)) break;
+                if (!/[├â├é├ó]|├í┬║|├í┬╗|├ä|├å|∩┐╜/.test(text)) break;
                 try {
                     const windows1252 = {
                         0x20AC: 0x80, 0x201A: 0x82, 0x0192: 0x83, 0x201E: 0x84,
@@ -300,5 +296,6 @@
             else { drawer.classList.add('drawer-hidden'); overlay.classList.remove('opacity-100'); setTimeout(() => { overlay.classList.add('hidden'); document.body.style.overflow = 'auto'; }, 300); }
         }
     </script>
+    <script src="~/js/components/pagination.js" asp-append-version="true"></script>
 </body>
 </html>
