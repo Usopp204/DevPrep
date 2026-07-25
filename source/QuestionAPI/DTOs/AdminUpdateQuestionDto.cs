@@ -20,11 +20,11 @@ public class AdminUpdateQuestionDto
 
     //public string? Tags { get; set; }
     // Bổ sung
-    [StringLength(
-        50,
-        ErrorMessage = "Position cannot exceed 50 characters."
-    )]
-    public string? Position { get; set; }
-
+    //[StringLength(
+    //    50,
+    //    ErrorMessage = "Position cannot exceed 50 characters."
+    //)]
+    // public string? Position { get; set; }
+    public Guid? PositionId { get; set; }
     public string? Status { get; set; }
 }

@@ -23,6 +23,9 @@ public interface IAdminQuestionService
     Task<QuestionApiResponse<object>> RestoreQuestionAsync(Guid id);
 
     Task<QuestionApiResponse<object>> BulkDeleteQuestionsAsync(List<Guid> ids);
+
+
+    Task<QuestionApiResponse<List<AdminPositionDto>>> GetPositionsAsync();
 }
 
 public sealed class AdminQuestionService : IAdminQuestionService
@@ -246,5 +249,10 @@ public sealed class AdminQuestionService : IAdminQuestionService
         {
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         }
+    }
+
+    public async Task<QuestionApiResponse<List<AdminPositionDto>>> GetPositionsAsync()
+    {
+        return await GetAsync<List<AdminPositionDto>>("api/admin/questions/positions");
     }
 }

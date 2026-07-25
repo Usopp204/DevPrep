@@ -22,6 +22,11 @@ public class AdminCategoryDto
 
     public string Category { get; set; } = string.Empty;
 }
+public class AdminPositionDto
+{
+    public Guid PositionId { get; set; }
+    public string Name { get; set; } = string.Empty;
+}
 
 public class AdminQuestionQueryDto
 {
@@ -87,7 +92,8 @@ public class AdminQuestionDetailDto
 
     // public string? Tags { get; set; }
 
-    public string? Position { get; set; }
+     public string? Position { get; set; }
+    public Guid? PositionId { get; set; }
 
     public string Status { get; set; } = string.Empty;
 
@@ -118,8 +124,8 @@ public class AdminCreateQuestionDto
 
     // public string Tags { get; set; } = string.Empty;
 
-    public string Position { get; set; } = string.Empty;
-
+    //public string Position { get; set; } = string.Empty;
+    public Guid? PositionId { get; set; }
     public string Status { get; set; } = "Active";
 }
 
@@ -137,7 +143,8 @@ public class AdminUpdateQuestionDto
 
     //public string? Tags { get; set; }
 
-    public string? Position { get; set; }
+    //public string? Position { get; set; }
+    public Guid? PositionId { get; set; }
 
     public string? Status { get; set; }
 }
@@ -147,4 +154,5 @@ public class AdminQuestionViewModel
     public AdminPagedResultDto<AdminQuestionListItemDto> PagedResult { get; set; } = new();
 
     public List<AdminCategoryDto> Categories { get; set; } = new();
+    public List<AdminPositionDto> Positions { get; set; } = new();   // ← THÊM
 }

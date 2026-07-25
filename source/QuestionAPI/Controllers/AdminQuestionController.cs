@@ -216,4 +216,17 @@ public class AdminQuestionController : ControllerBase
             ? parsedGuid
             : null;
     }
+
+    //them 
+    // GET /api/admin/questions/positions
+    [HttpGet("questions/positions")]
+    public async Task<IActionResult> GetPositions()
+    {
+        var positions = await _service.GetAllPositionsAsync();
+
+        return Ok(ApiResponse<List<AdminPositionDto>>.Ok(
+            positions,
+            "Fetched question positions successfully."
+        ));
+    }
 }
