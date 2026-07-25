@@ -19,9 +19,6 @@ public partial class InterviewSession
 
     public Guid? JdId { get; set; }
 
-    [StringLength(255)]
-    public string? Title { get; set; }
-
     [StringLength(100)]
     public string? Position { get; set; }
 

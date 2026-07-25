@@ -42,11 +42,11 @@ public class InterviewService : IInterviewService
         if (!string.IsNullOrWhiteSpace(query.Keyword))
         {
             var kw = query.Keyword.Trim();
-            // Search cả Title + tên (UserAPI) + email (AuthAPI). matchIds rỗng -> chỉ khớp Title.
+            // Search theo tên (UserAPI) + email (AuthAPI). Cột Title đã bỏ khỏi schema.
             var nameIds = await _userClient.SearchIdsByNameAsync(kw, cancellationToken);
             var emailIds = await _authClient.SearchIdsByEmailAsync(kw, cancellationToken);
             var matchIds = nameIds.Concat(emailIds).Distinct().ToList();
-            q = q.Where(s => (s.Title != null && s.Title.Contains(kw)) || matchIds.Contains(s.UserId));
+            q = q.Where(s => matchIds.Contains(s.UserId));
         }
         if (!string.IsNullOrWhiteSpace(query.Status)) q = q.Where(s => s.Status == query.Status);
         if (!string.IsNullOrWhiteSpace(query.RoomStatus)) q = q.Where(s => s.InterviewRoom != null && s.InterviewRoom.Status == query.RoomStatus);
@@ -66,7 +66,6 @@ public class InterviewService : IInterviewService
             {
                 SessionId = s.SessionId,
                 UserId = s.UserId,
-                Title = s.Title,
                 Level = s.Level,
                 InteractionMode = s.InteractionMode,
                 QuestionType = s.QuestionType,
@@ -119,7 +118,7 @@ public class InterviewService : IInterviewService
             var emailIds = await _authClient.SearchIdsByEmailAsync(kw, cancellationToken);
             var matchIds = nameIds.Concat(emailIds).Distinct().ToList();
             q = q.Where(s =>
-                (s.Title != null && s.Title.Contains(kw)) ||
+                (s.Position != null && s.Position.Contains(kw)) ||
                 (s.InterviewRoom != null && s.InterviewRoom.ChannelName.Contains(kw)) ||
                 matchIds.Contains(s.UserId));
         }
@@ -145,7 +144,8 @@ public class InterviewService : IInterviewService
                 ChannelName = s.InterviewRoom == null ? null : s.InterviewRoom.ChannelName,
                 RoomStatus = s.InterviewRoom == null ? null : s.InterviewRoom.Status,
                 UserId = s.UserId,
-                Title = s.Title,
+                // Cột Title đã bỏ — trang Manager hiển thị Position làm tiêu đề.
+                Title = s.Position,
                 Level = s.Level,
                 InteractionMode = s.InteractionMode,
                 QuestionType = s.QuestionType,
@@ -192,7 +192,6 @@ public class InterviewService : IInterviewService
             UserId = s.UserId,
             CvId = s.CvId,
             JdId = s.JdId,
-            Title = s.Title,
             Level = s.Level,
             InteractionMode = s.InteractionMode,
             QuestionType = s.QuestionType,
@@ -256,7 +255,8 @@ public class InterviewService : IInterviewService
             UserId = s.UserId,
             CvId = s.CvId,
             JdId = s.JdId,
-            Title = s.Title,
+            // Cột Title đã bỏ — trang Manager hiển thị Position làm tiêu đề.
+            Title = s.Position,
             Level = s.Level,
             InteractionMode = s.InteractionMode,
             QuestionType = s.QuestionType,
