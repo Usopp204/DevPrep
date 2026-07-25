@@ -80,7 +80,7 @@
 
                             <!-- Skills -->
                             <div class="cv-section">
-                                <div class="cv-section-head">Kỹ năng</div>
+                                <div class="cv-section-head">Kỹ năng <span id="cvSkillMatchSummary" style="color:var(--pf-muted);font-weight:400;font-size:.75rem;"></span></div>
                                 <div class="tag-list" id="cvSkillTags"></div>
                                 <div class="add-skill-row">
                                     <input class="cvjd-input" id="newSkill" placeholder="Thêm kỹ năng..." />
@@ -561,10 +561,12 @@ function renderJdParsed(c, fallbackPosition, company) {
     $('jdParsedCompany').style.display = co ? 'block' : 'none';
 
     const reqs = c.required_skills || [];
+    $('jdReqTags').style.display = 'flex';
     $('jdReqTags').innerHTML = reqs.map(s=>`<span class="tag req-skill">${esc(skillLabel(s))}</span>`).join('');
     $('jdReqWrap').style.display = reqs.length ? 'block' : 'none';
 
     const nices = c.nice_to_have || [];
+    $('jdNiceTags').style.display = 'flex';
     $('jdNiceTags').innerHTML = nices.map(s=>`<span class="tag nice-skill">${esc(skillLabel(s))}</span>`).join('');
     $('jdNiceWrap').style.display = nices.length ? 'block' : 'none';
 
@@ -600,10 +602,15 @@ function renderScore(d) {
     $('breakdownWrap').style.display = 'block';
     const matched = (d.matched_skills||[]).map(skillLabel);
     const miss = d.missing_skills||[];
-    document.querySelectorAll('#cvSkillTags .tag').forEach(el=>{
+    const cvSkillEls = [...document.querySelectorAll('#cvSkillTags .tag')];
+    let cvSkillMatchedCount = 0;
+    cvSkillEls.forEach(el=>{
         const skill = el.textContent.replace(/\s*×$/,'').trim().toLowerCase();
-        if(matched.some(m=>m.toLowerCase()===skill)) el.classList.add('matched');
+        if(matched.some(m=>m.toLowerCase()===skill)){ el.classList.add('matched'); cvSkillMatchedCount++; }
     });
+    $('cvSkillMatchSummary').textContent = cvSkillEls.length
+        ? `(✓ ${cvSkillMatchedCount} phù hợp JD · ${cvSkillEls.length-cvSkillMatchedCount} JD không yêu cầu)`
+        : '';
 
     const rMatched = (d.matched_required || d.matched_skills || []).map(skillLabel);
     const rMissing = miss.map(skillLabel);
@@ -629,10 +636,24 @@ function renderScore(d) {
     } else {
         $('strMatchWrap').style.display = 'none';
     }
-    document.querySelectorAll('#cvStrengths .exp-card').forEach(card=>{
-        const title = (card.querySelector('.exp-title')?.textContent || '').trim().toLowerCase();
-        card.classList.toggle('matched', strMatched.some(m=>m.toLowerCase()===title));
-    });
+
+    // Group the CV's own "Điểm mạnh" card the same way (relevant to JD vs not),
+    // so the CV card itself already shows the criterion-2 breakdown.
+    if(allStrengths.length && d.matched_strengths !== undefined && cvParsedData){
+        const strengthObjs = cvParsedData.strengths || [];
+        const relevant = strengthObjs.filter(s => strMatched.some(m=>m.toLowerCase()===(s.strength||'').toLowerCase()));
+        const notRelevant = strengthObjs.filter(s => !strMatched.some(m=>m.toLowerCase()===(s.strength||'').toLowerCase()));
+        const card = s => `<div class="exp-card matched"><span class="exp-title">✓ ${esc(s.strength||'')}</span><div class="exp-sub" style="margin-top:3px;">${esc(s.reasoning||'')}</div></div>`;
+        const cardPlain = s => `<div class="exp-card"><span class="exp-title">${esc(s.strength||'')}</span><div class="exp-sub" style="margin-top:3px;">${esc(s.reasoning||'')}</div></div>`;
+        $('cvStrengths').innerHTML =
+            (relevant.length ? `<div class="jd-skill-group-label req" style="margin-top:0;">Liên quan tới JD (${relevant.length})</div>` + relevant.map(card).join('') : '') +
+            (notRelevant.length ? `<div class="jd-skill-group-label nice" style="margin-top:8px;">Chưa thấy liên quan JD (${notRelevant.length})</div>` + notRelevant.map(cardPlain).join('') : '');
+    } else {
+        document.querySelectorAll('#cvStrengths .exp-card').forEach(card=>{
+            const title = (card.querySelector('.exp-title')?.textContent || '').trim().toLowerCase();
+            card.classList.toggle('matched', strMatched.some(m=>m.toLowerCase()===title));
+        });
+    }
 
     const nMatched = (d.matched_nice_to_have||[]).map(skillLabel);
     const nMissing = (d.missing_nice_to_have||[]).map(skillLabel);
@@ -646,14 +667,20 @@ function renderScore(d) {
         $('niceMatchWrap').style.display = 'none';
     }
 
-    const matchedLower = matched.map(m=>m.toLowerCase());
-    const missingLower = rMissing.concat(nMissing).map(m=>m.toLowerCase());
-    document.querySelectorAll('#jdReqTags .tag, #jdNiceTags .tag').forEach(el=>{
-        const t = el.textContent.trim().toLowerCase();
-        el.classList.remove('matched','missing');
-        if(matchedLower.includes(t)) el.classList.add('matched');
-        else if(missingLower.includes(t)) el.classList.add('missing');
-    });
+    // Group the JD card's own skill lists into Matched/Missing too, so the JD
+    // card itself already shows criteria 1 and 3 without needing the side panel.
+    function renderJdGroup(wrapId, matchedArr, missingArr, cls) {
+        if(!matchedArr.length && !missingArr.length) return;
+        const el = $(wrapId);
+        el.style.display = 'block'; // override the default flex tag-list layout — children here are group blocks, not bare tags
+        el.innerHTML =
+            (matchedArr.length ? `<div class="jd-skill-group-label req" style="margin-top:0;">CV đã có (${matchedArr.length})</div>
+                <div class="tag-list">${matchedArr.map(s=>`<span class="tag ${cls} matched">✓ ${esc(s)}</span>`).join('')}</div>` : '') +
+            (missingArr.length ? `<div class="jd-skill-group-label nice" style="margin-top:8px;">CV còn thiếu (${missingArr.length})</div>
+                <div class="tag-list">${missingArr.map(s=>`<span class="tag ${cls} missing">✗ ${esc(s)}</span>`).join('')}</div>` : '');
+    }
+    renderJdGroup('jdReqTags', rMatched, rMissing, 'req-skill');
+    renderJdGroup('jdNiceTags', nMatched, nMissing, 'nice-skill');
 
     const sugs = d.suggestions||[];
     $('suggestions').innerHTML = sugs.map(s=>`<div class="sug-item"><div class="sug-dot"></div><div>${esc(s)}</div></div>`).join('');
