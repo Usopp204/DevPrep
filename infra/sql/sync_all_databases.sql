@@ -15,6 +15,10 @@
 -- tao database tu dau.
 -- ============================================================================
 
+-- Bat buoc cho filtered unique index (vd UQ_Positions_Name) o phan 3 ben duoi.
+SET QUOTED_IDENTIFIER ON;
+GO
+
 
 -- ============================================================================
 -- 1) DevPrep_Interview
@@ -185,6 +189,69 @@ BEGIN
     ALTER TABLE dbo.Questions ADD CONSTRAINT DF_Questions_Difficulty DEFAULT ('Junior') FOR Difficulty;
 END;
 GO
+
+-- 3b. Positions catalog (PR "position-crud-admin-cleanup", 2026-07-24): Questions.Position
+-- doi tu cot text tu do sang FK chuan hoa toi bang Positions moi.
+IF OBJECT_ID(N'dbo.Positions', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.Positions
+    (
+        PositionId UNIQUEIDENTIFIER NOT NULL
+            CONSTRAINT PK_Positions PRIMARY KEY
+            CONSTRAINT DF_Positions_PositionId DEFAULT (NEWSEQUENTIALID()),
+        Name       NVARCHAR(50)     NOT NULL,
+        IsDeleted  BIT              NOT NULL CONSTRAINT DF_Positions_IsDeleted DEFAULT (0),
+        DeletedAt  DATETIME2        NULL,
+        CreatedAt  DATETIME2        NOT NULL CONSTRAINT DF_Positions_CreatedAt DEFAULT (DATEADD(HOUR,7,SYSUTCDATETIME())),
+        UpdatedAt  DATETIME2        NOT NULL CONSTRAINT DF_Positions_UpdatedAt DEFAULT (DATEADD(HOUR,7,SYSUTCDATETIME()))
+    );
+END;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UQ_Positions_Name' AND object_id = OBJECT_ID(N'dbo.Positions'))
+BEGIN
+    CREATE UNIQUE INDEX UQ_Positions_Name ON dbo.Positions (Name) WHERE ([IsDeleted] = 0);
+END;
+GO
+
+-- 3c. Seed Positions tu cac gia tri Position (text) da co san trong Questions — khong mat du lieu cu.
+IF COL_LENGTH('dbo.Questions', 'Position') IS NOT NULL
+BEGIN
+    INSERT INTO dbo.Positions (Name)
+    SELECT DISTINCT q.Position
+    FROM dbo.Questions q
+    WHERE q.Position IS NOT NULL
+      AND NOT EXISTS (SELECT 1 FROM dbo.Positions p WHERE p.Name = q.Position);
+END;
+GO
+
+-- 3d. Questions.PositionId (cot FK moi).
+IF COL_LENGTH('dbo.Questions', 'PositionId') IS NULL
+BEGIN
+    ALTER TABLE dbo.Questions ADD PositionId UNIQUEIDENTIFIER NULL;
+END;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_Q_Position')
+BEGIN
+    ALTER TABLE dbo.Questions ADD CONSTRAINT FK_Q_Position
+        FOREIGN KEY (PositionId) REFERENCES dbo.Positions(PositionId);
+END;
+GO
+
+-- 3e. Backfill PositionId tu cot text cu (chi cac dong chua duoc gan).
+IF COL_LENGTH('dbo.Questions', 'Position') IS NOT NULL
+BEGIN
+    UPDATE q
+    SET q.PositionId = p.PositionId
+    FROM dbo.Questions q
+    JOIN dbo.Positions p ON p.Name = q.Position
+    WHERE q.PositionId IS NULL AND q.Position IS NOT NULL;
+END;
+GO
+
+-- LUU Y: cot Questions.Position (text) cu KHONG bi xoa o day de an toan — code C# da
+-- khong con doc/ghi cot nay nua (chi con PositionId), giu lai lam backup doi chieu.
+-- Neu sau khi kiem tra ky (PositionId da gan dung het) thi co the DROP COLUMN Position
+-- thu cong sau.
 
 
 -- ============================================================================
