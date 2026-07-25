@@ -155,9 +155,7 @@ public class SessionRepository : ISessionRepository
         if (normalized.Keyword is not null)
         {
             var keyword = normalized.Keyword.ToLower();
-            sessions = sessions.Where(s =>
-                (s.Title != null && s.Title.ToLower().Contains(keyword)) ||
-                (s.Position != null && s.Position.ToLower().Contains(keyword)));
+            sessions = sessions.Where(s => s.Position != null && s.Position.ToLower().Contains(keyword));
         }
 
         var totalItems = await sessions.CountAsync(ct);
