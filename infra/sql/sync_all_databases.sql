@@ -144,6 +144,17 @@ BEGIN
 END;
 GO
 
+-- 1g. InterviewSessions.CameraViolationCount (mandatory-camera policy audit trail,
+-- source/InterviewAPI/Sql/005_add_camera_violation_count.sql).
+IF NOT EXISTS (
+    SELECT 1 FROM sys.columns
+    WHERE object_id = OBJECT_ID(N'dbo.InterviewSessions')
+      AND name = N'CameraViolationCount')
+BEGIN
+    ALTER TABLE dbo.InterviewSessions ADD CameraViolationCount INT NOT NULL DEFAULT 0;
+END;
+GO
+
 
 -- ============================================================================
 -- 2) DevPrep_Evaluation
@@ -214,13 +225,18 @@ END;
 GO
 
 -- 3c. Seed Positions tu cac gia tri Position (text) da co san trong Questions — khong mat du lieu cu.
+-- Dung dynamic SQL: neu cot Position (text) da bi xoa o may nao do (da qua giai doan chuyen
+-- doi), T-SQL van bat loi "Invalid column name" luc PARSE batch nay cho du IF khong chay —
+-- EXEC() hoan viec parse ve luc chay nen an toan ca 2 truong hop.
 IF COL_LENGTH('dbo.Questions', 'Position') IS NOT NULL
 BEGIN
-    INSERT INTO dbo.Positions (Name)
-    SELECT DISTINCT q.Position
-    FROM dbo.Questions q
-    WHERE q.Position IS NOT NULL
-      AND NOT EXISTS (SELECT 1 FROM dbo.Positions p WHERE p.Name = q.Position);
+    EXEC(N'
+        INSERT INTO dbo.Positions (Name)
+        SELECT DISTINCT q.Position
+        FROM dbo.Questions q
+        WHERE q.Position IS NOT NULL
+          AND NOT EXISTS (SELECT 1 FROM dbo.Positions p WHERE p.Name = q.Position);
+    ');
 END;
 GO
 
@@ -237,14 +253,17 @@ BEGIN
 END;
 GO
 
--- 3e. Backfill PositionId tu cot text cu (chi cac dong chua duoc gan).
+-- 3e. Backfill PositionId tu cot text cu (chi cac dong chua duoc gan). Dynamic SQL — ly do
+-- giong 3c o tren.
 IF COL_LENGTH('dbo.Questions', 'Position') IS NOT NULL
 BEGIN
-    UPDATE q
-    SET q.PositionId = p.PositionId
-    FROM dbo.Questions q
-    JOIN dbo.Positions p ON p.Name = q.Position
-    WHERE q.PositionId IS NULL AND q.Position IS NOT NULL;
+    EXEC(N'
+        UPDATE q
+        SET q.PositionId = p.PositionId
+        FROM dbo.Questions q
+        JOIN dbo.Positions p ON p.Name = q.Position
+        WHERE q.PositionId IS NULL AND q.Position IS NOT NULL;
+    ');
 END;
 GO
 
@@ -255,7 +274,28 @@ GO
 
 
 -- ============================================================================
--- Xong. Khong co gi de sua o 8 database con lai (Payment, Auth, CvJd, User,
+-- 4) DevPrep_Payment
+-- ============================================================================
+USE [DevPrep_Payment];
+GO
+
+-- 4a. Chan trung thuong bonus dang ky sinh trac hoc (source/PaymentAPI/Sql/001_add_credit_ledger_bonus_index.sql).
+-- Toi da 1 dong "Bonus" moi user — check-then-insert phia code khong du an toan khi co
+-- 2 request cung luc, unique filtered index nay la hang rao that su o tang DB.
+IF NOT EXISTS (
+    SELECT 1 FROM sys.indexes
+    WHERE name = N'UX_Ledger_UserBonus'
+      AND object_id = OBJECT_ID(N'dbo.CreditLedger'))
+BEGIN
+    CREATE UNIQUE INDEX UX_Ledger_UserBonus
+        ON dbo.CreditLedger (UserId)
+        WHERE EntryType = 'Bonus';
+END;
+GO
+
+
+-- ============================================================================
+-- Xong. Khong co gi de sua o 7 database con lai (Auth, CvJd, User,
 -- News, Feedback, Statistics, Notification) tai thoi diem viet script nay —
 -- da doi chieu tung cot voi model C# tuong ung, khop 100%.
 -- ============================================================================
