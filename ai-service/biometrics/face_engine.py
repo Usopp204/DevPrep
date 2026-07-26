@@ -31,6 +31,17 @@ class FaceQualityError(ValueError):
     pass
 
 
+class MultipleFacesError(FaceQualityError):
+    """Raised instead of the generic FaceQualityError when more than one face is detected —
+    callers that care (the in-session cheating check) can catch this specifically and read
+    face_count; callers that don't (enroll) still catch it via the FaceQualityError base class
+    and get the same str(exc) message as before."""
+
+    def __init__(self, face_count: int):
+        self.face_count = face_count
+        super().__init__(f"Multiple faces detected ({face_count})")
+
+
 def _blur_variance(bgr):
     gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
     return float(cv2.Laplacian(gray, cv2.CV_64F).var())
@@ -49,7 +60,7 @@ def _primary_face(bgr, enforce_single=True):
     if not faces:
         raise FaceQualityError("No face detected")
     if enforce_single and len(faces) > 1:
-        raise FaceQualityError("Multiple faces detected")
+        raise MultipleFacesError(len(faces))
 
     def area(f):
         x1, y1, x2, y2 = f.bbox

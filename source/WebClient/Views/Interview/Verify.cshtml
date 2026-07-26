@@ -1,0 +1,68 @@
+@model WebClient.Models.Interview.VerifyViewModel
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Identity check | DevPrep AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/biometric-wizard.css" asp-append-version="true" />
+</head>
+<body class="bw-page">
+<!-- Biometric entry gate: one face-match check before the Room opens (no head-turn/liveness
+     requirement — see ai-service/biometrics/router.py for why liveness is disabled). Reuses
+     the biometric wizard's face-screen look; logic lives in entry-verify.js (face-only —
+     intentionally NOT the enroll wizard, which stays untouched). Full-screen immersive per
+     docs/design.md — no navbar/sidebar/footer, same pattern as the Room. -->
+<div class="stage" id="entry-verify"
+     data-session-id="@Model.SessionId"
+     data-attempts-remaining="@Model.AttemptsRemaining"
+     data-challenge-url="@Url.Action("Challenge", "Verification")"
+     data-verify-face-url="@Url.Action("VerifyFace", "Verification")"
+     data-entry-gate-url="@Url.Action("EntryGate", "Verification")"
+     data-room-url="@Url.Action("Room", "Interview", new { id = Model.SessionId })"
+     data-failed-url="@Url.Action("VerifyFailed", "Interview")">
+
+    <div class="ambient-blob ambient-blob-primary" aria-hidden="true"></div>
+    <div class="ambient-blob ambient-blob-secondary" aria-hidden="true"></div>
+
+    <section class="screen" id="screen-face">
+        <div class="face">
+            <div class="topbar">
+                <div class="stepper on-dark">
+                    <div class="dot"><span class="bead now">✓</span><span class="lbl">Identity check</span></div>
+                </div>
+                <span class="guide-pill" id="attempts-pill">Attempts left: @Model.AttemptsRemaining</span>
+            </div>
+            <h1 class="sr-only" id="face-title" tabindex="-1">Identity check before the interview</h1>
+
+            <div class="camera">
+                <video id="bw-video" autoplay playsinline muted></video>
+                <div class="mask"></div>
+                <div class="oval" id="face-oval"></div>
+                <div class="scanline" id="face-scanline" hidden></div>
+                <div class="count" id="face-countdown" hidden>3</div>
+                <div class="cam-overlay" id="face-processing" hidden>
+                    <div class="spinner" aria-hidden="true"></div>
+                    <p>Analyzing…</p>
+                </div>
+                <div class="guide-pill" id="face-guidance" role="status" aria-live="polite">Preparing camera…</div>
+            </div>
+
+            <p class="err" id="face-error" role="alert" hidden></p>
+            <div class="cta-row">
+                <button type="button" class="btn" id="face-action-btn" disabled>I'm ready</button>
+            </div>
+            <p class="hint-dark">Verify it's you before entering the interview room — keep your face inside the oval and look straight at the camera</p>
+        </div>
+    </section>
+</div>
+<script src="~/js/pages/entry-verify.js" asp-append-version="true"></script>
+</body>
+</html>

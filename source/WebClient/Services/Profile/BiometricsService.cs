@@ -13,7 +13,7 @@ public interface IBiometricsService
         CancellationToken cancellationToken);
 
     // modality: "face" | "voice" — maps to POST api/profiles/me/biometrics/{modality}.
-    Task<(bool Success, string? Error)> EnrollAsync(
+    Task<(bool Success, BiometricEnrollModel? Result, string? Error)> EnrollAsync(
         string modality, byte[] data, string fileName, string contentType,
         CancellationToken cancellationToken);
 }
@@ -36,7 +36,7 @@ public sealed class BiometricsService(IApiClient apiClient) : IBiometricsService
         return (true, envelope.Data, null);
     }
 
-    public async Task<(bool Success, string? Error)> EnrollAsync(
+    public async Task<(bool Success, BiometricEnrollModel? Result, string? Error)> EnrollAsync(
         string modality, byte[] data, string fileName, string contentType,
         CancellationToken cancellationToken)
     {
@@ -47,14 +47,14 @@ public sealed class BiometricsService(IApiClient apiClient) : IBiometricsService
 
         using var response = await apiClient.HttpClient.PostAsync(
             $"api/profiles/me/biometrics/{modality}", content, cancellationToken);
-        var envelope = await ReadEnvelopeAsync<object>(response, cancellationToken);
-        if (!response.IsSuccessStatusCode || envelope is null || !envelope.Success)
+        var envelope = await ReadEnvelopeAsync<BiometricEnrollModel>(response, cancellationToken);
+        if (!response.IsSuccessStatusCode || envelope is null || !envelope.Success || envelope.Data is null)
         {
             // 422 carries the ai-service quality reason (e.g. "No face detected") in Message.
-            return (false, envelope?.Message ?? $"Enrollment failed ({(int)response.StatusCode}).");
+            return (false, null, envelope?.Message ?? $"Enrollment failed ({(int)response.StatusCode}).");
         }
 
-        return (true, null);
+        return (true, envelope.Data, null);
     }
 
     private static async Task<ApiResponse<T>?> ReadEnvelopeAsync<T>(

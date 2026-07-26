@@ -36,4 +36,17 @@ public class InternalCreditController : ControllerBase
         var response = await _service.RefundCreditAsync(request, ct);
         return Ok(response);
     }
+
+    // One-time bonus (100 credits for enrolling both Face and Voice biometrics). Idempotent —
+    // see InternalCreditService.AwardCreditAsync for the two-layer guard.
+    [HttpPost("award")]
+    [ProducesResponseType(typeof(InternalCreditAwardResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> AwardCredit(
+        [FromBody] InternalCreditAwardRequest request,
+        CancellationToken ct)
+    {
+        var response = await _service.AwardCreditAsync(request, ct);
+        return Ok(response);
+    }
 }

@@ -23,3 +23,19 @@ public class InternalCreditRefundRequest
     public Guid ReferenceId { get; set; }
     public string Description { get; set; } = string.Empty;
 }
+
+public class InternalCreditAwardRequest
+{
+    public Guid UserId { get; set; }
+    public int Amount { get; set; }
+    public Guid ReferenceId { get; set; }
+    public string Description { get; set; } = string.Empty;
+}
+
+public class InternalCreditAwardResponse
+{
+    public bool Success { get; set; }
+    public bool Awarded { get; set; }
+    public int BalanceAfter { get; set; }
+    public string? Message { get; set; }
+}

@@ -212,6 +212,44 @@ public class AiServiceClient : IAiServiceClient
         }
     }
 
+    public async Task<AiFaceVerifyResponse> VerifyFaceAsync(
+        IFormFile frame, float[] storedEmbedding, CancellationToken ct = default)
+    {
+        const string path = "/internal/biometrics/verify";
+        try
+        {
+            using var content = new MultipartFormDataContent();
+            await using var stream = frame.OpenReadStream();
+            var fileContent = new StreamContent(stream);
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue(
+                string.IsNullOrEmpty(frame.ContentType) ? "image/jpeg" : frame.ContentType);
+            content.Add(fileContent, "file", string.IsNullOrEmpty(frame.FileName) ? "frame.jpg" : frame.FileName);
+            content.Add(new StringContent("face"), "modality");
+            content.Add(new StringContent(JsonSerializer.Serialize(storedEmbedding)), "stored_embedding");
+
+            var response = await _httpClient.PostAsync(path, content, ct);
+            if (response.StatusCode == HttpStatusCode.UnprocessableEntity)
+            {
+                var (message, faceCount) = await ReadStructuredDetailAsync(response, ct);
+                throw faceCount is int count
+                    ? new BiometricQualityException(message, count)
+                    : new BiometricQualityException(message);
+            }
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadFromJsonAsync<AiFaceVerifyResponse>(ct)
+                   ?? throw new InvalidOperationException("Empty response from ai-service verify endpoint.");
+        }
+        catch (BiometricQualityException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Call to ai-service POST {Path} failed.", path);
+            throw;
+        }
+    }
+
     public async Task<AiVoiceVerifyChallengeResponse> VerifyVoiceChallengeAsync(
         IFormFile file, float[] storedEmbedding, string expectedPhrase,
         CancellationToken ct = default)
@@ -265,6 +303,41 @@ public class AiServiceClient : IAiServiceClient
         {
         }
         return "Biometric sample was rejected.";
+    }
+
+    // Same shape as ReadDetailAsync, plus: when detail is an OBJECT with a "multiple_faces" code
+    // (see router.py's /verify endpoint), also extracts face_count. Every other rejection from
+    // this endpoint still has a plain string detail, same as ReadDetailAsync handles.
+    private static async Task<(string Message, int? FaceCount)> ReadStructuredDetailAsync(
+        HttpResponseMessage response, CancellationToken ct)
+    {
+        var raw = await response.Content.ReadAsStringAsync(ct);
+        try
+        {
+            using var doc = JsonDocument.Parse(raw);
+            if (doc.RootElement.TryGetProperty("detail", out var detail))
+            {
+                if (detail.ValueKind == JsonValueKind.String)
+                {
+                    return (detail.GetString()!, null);
+                }
+
+                if (detail.ValueKind == JsonValueKind.Object
+                    && detail.TryGetProperty("code", out var code)
+                    && code.GetString() == "multiple_faces"
+                    && detail.TryGetProperty("face_count", out var faceCount))
+                {
+                    var message = detail.TryGetProperty("message", out var msg)
+                        ? msg.GetString() ?? "Multiple faces detected."
+                        : "Multiple faces detected.";
+                    return (message, faceCount.GetInt32());
+                }
+            }
+        }
+        catch (JsonException)
+        {
+        }
+        return ("Biometric sample was rejected.", null);
     }
 
     public async Task<AiCatalogResponse> GetCatalogAsync(CancellationToken ct = default)

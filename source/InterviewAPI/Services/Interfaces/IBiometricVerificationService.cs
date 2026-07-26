@@ -23,7 +23,9 @@ public interface IBiometricVerificationService
     // not called from any Room UI yet.
     Task<EntryGateStatusResponse> GetEntryGateStatusAsync(Guid userId, Guid sessionId, CancellationToken ct);
 
-    // Randomized-cadence signal for whether a fresh in-session re-check should be
-    // prompted now. Milestone 4 groundwork — not called from any Room UI yet.
-    Task<InSessionCheckDueResponse> IsInSessionCheckDueAsync(Guid sessionId, CancellationToken ct);
+    // One in-session cheating check: single-frame face match + multi-face detection. Called by
+    // the Room once per new question (rate-limited server-side). See the implementation for the
+    // strike/Strictness rules.
+    Task<InSessionVerifyResponse> VerifyInSessionAsync(
+        Guid userId, Guid sessionId, IFormFile frame, CancellationToken ct);
 }
