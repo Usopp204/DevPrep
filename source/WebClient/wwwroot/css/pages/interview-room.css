@@ -19,7 +19,16 @@ body.room-page {
     min-height: 100vh;
     min-height: 100dvh;
     width: 100%;
-    overflow: hidden;
+    /* Was overflow:hidden on both axes. The sidebar (260px) and camera panel (350px) both use
+       flex-shrink:0 while the chat column has min-width:0 (shrinks to nothing first) — on any
+       viewport narrower than the two fixed panels combined, the rightmost panel (camera —
+       Quick Actions incl. the End/Cancel Interview button) got pushed past the visible edge
+       and silently CLIPPED by overflow:hidden, cutting off button text instead of wrapping or
+       scrolling to it. overflow-x:auto turns that into a horizontal scrollbar (everything
+       stays fully visible/reachable); overflow-y stays hidden — the chat/panels handle their
+       own internal vertical scrolling. */
+    overflow-x: auto;
+    overflow-y: hidden;
     display: flex;
     font-family: var(--font-body);
     font-size: 16px;
@@ -32,18 +41,28 @@ body.room-page {
     display: flex;
     width: 100%;
     height: 100%;
+    /* Sidebar (260) + camera panel (350) never shrink; guarantee the chat column a sane
+       minimum too (400) instead of the 0 its own min-width:0 would otherwise allow, so the
+       whole row's natural minimum is always fully visible/scrollable rather than the camera
+       panel getting clipped off-canvas. */
+    min-width: 1010px;
     min-height: 0;
 }
 
 /* ---------- Left panel: sidebar ---------- */
 .room-sidebar {
     width: 260px;
+    min-width: 260px;
     flex-shrink: 0;
     border-right: 1px solid var(--color-border);
     background: var(--color-surface);
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    /* No justify-content:space-between — same reasoning as .room-camera: .room-sidebar-top
+       flexes/scrolls to fill whatever space is left above .room-progress (fixed size) instead
+       of the two ends just being pushed apart. The cheating-warning block below can add height
+       on short notice (a strike fires mid-interview), so this panel needs the same overflow
+       protection .room-camera got in the Room-layout fix, applied preventively here. */
 }
 
 .room-sidebar-top {
@@ -51,6 +70,9 @@ body.room-page {
     display: flex;
     flex-direction: column;
     gap: 24px;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
 }
 
 .room-brand {
@@ -130,10 +152,24 @@ body.room-page {
     color: var(--color-text-primary);
 }
 
+/* In-session cheating check warning — same error-tint pattern as .content-warning/
+   .camera-status-warning (--color-destructive at 10%/20%). Hidden until a check flags something. */
+.cheating-warning {
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: rgba(255, 180, 171, 0.1);
+    border: 1px solid rgba(255, 180, 171, 0.2);
+    color: var(--color-destructive);
+    font-size: 13px;
+    line-height: 18px;
+}
+
 .room-progress {
     padding: 24px;
     border-top: 1px solid var(--color-border);
     background: var(--color-surface-container-lowest);
+    /* Fixed size, never shrinks — mirrors .room-camera-actions in the Room-layout fix. */
+    flex-shrink: 0;
 }
 
 .room-progress-head {
@@ -298,6 +334,41 @@ body.room-page {
     margin-inline: auto;
 }
 
+/* Custom scrollbar for every scrolling region in the Room (default browser scrollbar renders
+   white, clashing with the dark theme). Firefox: scrollbar-color/-width. Chromium/Safari/Edge:
+   ::-webkit-scrollbar. Tokens reused from theme-session.css, no new colors introduced. */
+.chat-messages,
+.room-camera-top,
+.room-sidebar-top {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-surface-container-high) transparent;
+}
+
+.chat-messages::-webkit-scrollbar,
+.room-camera-top::-webkit-scrollbar,
+.room-sidebar-top::-webkit-scrollbar {
+    width: 8px;
+}
+
+.chat-messages::-webkit-scrollbar-track,
+.room-camera-top::-webkit-scrollbar-track,
+.room-sidebar-top::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.chat-messages::-webkit-scrollbar-thumb,
+.room-camera-top::-webkit-scrollbar-thumb,
+.room-sidebar-top::-webkit-scrollbar-thumb {
+    background: var(--color-surface-container-high);
+    border-radius: 9999px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb:hover,
+.room-camera-top::-webkit-scrollbar-thumb:hover,
+.room-sidebar-top::-webkit-scrollbar-thumb:hover {
+    background: var(--color-surface-bright);
+}
+
 .ai-glow {
     position: absolute;
     top: 25%;
@@ -350,6 +421,13 @@ body.room-page {
     line-height: 1.6;
     white-space: pre-wrap;
     font-size: 14px;
+    /* Flex items default to min-width:auto, so an unbroken run of characters
+       (no spaces) refuses to shrink below its own width and overflows the
+       bubble/.chat-row instead of wrapping. break-word lets long unbreakable
+       runs wrap; min-width:0 lets the flex item actually shrink to allow it. */
+    overflow-wrap: break-word;
+    word-break: break-word;
+    min-width: 0;
 }
 
 .chat-bubble-ai {
@@ -416,15 +494,60 @@ body.room-page {
     gap: 12px;
 }
 
+/* Tier 1 (reminder, ~90s idle) is a centered modal popup instead of an inline banner —
+   dismissed only via its own OK button. Tier 2 (auto-advance warning, ~180s idle) is
+   UNCHANGED below: still the inline banner + inline "I'm still answering" button. */
 .idle-banner.tier1 {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 200;
+    width: calc(100% - 48px);
+    max-width: 380px;
+    margin: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+    padding: 24px;
+    border-radius: 16px;
     background: var(--color-surface-container);
     border: 1px solid var(--color-border);
+    box-shadow: 0 20px 50px -20px rgba(0, 0, 0, 0.6);
     color: var(--color-text-secondary);
+    text-align: center;
+}
+
+.idle-banner-message { margin: 0; line-height: 1.5; }
+
+.idle-banner-ok {
+    flex-shrink: 0;
+    padding: 10px 16px;
+    background: var(--color-primary-container);
+    border: none;
+    border-radius: 8px;
+    color: var(--color-on-primary-container);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.idle-banner-ok:hover { opacity: 0.9; }
+
+/* Dims the Room behind the tier1 popup. Toggled by JS alongside .idle-banner.tier1
+   (see hideIdleBanner/showTier1Banner) — tier2 never shows this. */
+.idle-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 199;
 }
 
 .idle-banner.tier2 {
-    background: rgba(239, 68, 68, 0.1);
-    border: 1px solid rgba(239, 68, 68, 0.2);
+    background: rgba(255, 180, 171, 0.1);
+    border: 1px solid rgba(255, 180, 171, 0.2);
     color: var(--color-destructive);
     font-weight: 500;
 }
@@ -611,12 +734,17 @@ body.room-page {
 /* ---------- Right panel: camera + controls ---------- */
 .room-camera {
     width: 350px;
+    min-width: 350px;
     flex-shrink: 0;
     border-left: 1px solid var(--color-border);
     background: var(--color-surface);
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    /* No justify-content:space-between: .room-camera-top now flexes to fill whatever space is
+       left after .room-camera-actions (fixed size, see below) instead of the two ends just being
+       pushed apart — on short viewports the CONTENT of top+actions combined can exceed 100vh
+       (measured ~776px total vs ~650-720px usable on common laptop screens), which used to push
+       End Interview (in .room-camera-actions) off-screen with no way to scroll to it. */
 }
 
 .room-camera-top {
@@ -624,6 +752,12 @@ body.room-page {
     display: flex;
     flex-direction: column;
     gap: 24px;
+    /* Scrolls independently when camera preview + AI Voice section don't fit; .room-camera-actions
+       (Quick Actions incl. End Interview) is a flex-shrink:0 sibling below, so it always keeps its
+       full natural size and is never pushed past the viewport — no scrolling needed to reach it. */
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
 }
 
 .camera-section {
@@ -709,7 +843,9 @@ body.room-page {
     font-size: 16px;
 }
 
-.btn-camera {
+/* Status indicator, not a control — camera is mandatory, there is nothing to click here. */
+.camera-status {
+    display: block;
     padding: 10px;
     background: var(--color-surface-container);
     border: 1px solid var(--color-border);
@@ -717,11 +853,13 @@ body.room-page {
     color: var(--color-text-primary);
     font-family: inherit;
     font-size: 13px;
-    cursor: pointer;
+    text-align: center;
 }
 
-.btn-camera:hover {
-    background: var(--color-surface-container-high);
+.camera-status.camera-status-warning {
+    background: rgba(255, 180, 171, 0.1);
+    border-color: rgba(255, 180, 171, 0.2);
+    color: var(--color-destructive);
 }
 
 /* AI Voice section */
@@ -822,6 +960,9 @@ body.room-page {
     flex-direction: column;
     gap: 12px;
     background: var(--color-surface-container-lowest);
+    /* Fixed size, never shrinks — keeps End Interview always visible at the bottom of the panel
+       regardless of viewport height (see .room-camera-top above for the scrolling counterpart). */
+    flex-shrink: 0;
 }
 
 .quick-actions-label {
@@ -883,24 +1024,34 @@ body.room-page {
 
 .btn-cancel-interview {
     width: 100%;
+    /* Room's fixed 350px camera panel has plenty of room for this label even at "Cancel
+       Interview" length (~185px needed vs ~300px available inside the panel's padding) — the
+       clipping bug was the PANEL getting pushed off-canvas on narrow viewports (fixed above),
+       not this button being internally too narrow. min-width/flex-wrap here are extra
+       insurance: if the button is ever squeezed further than today, the label wraps onto a
+       second line instead of being cut off.
+       */
+    min-width: 200px;
     margin-top: 4px;
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: center;
     gap: 8px;
     padding: 12px;
-    background: rgba(239, 68, 68, 0.1);
+    background: rgba(255, 180, 171, 0.1);
     color: var(--color-destructive);
-    border: 1px solid rgba(239, 68, 68, 0.2);
+    border: 1px solid rgba(255, 180, 171, 0.2);
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s;
     font-size: 14px;
     font-weight: 500;
+    text-align: center;
 }
 
 .btn-cancel-interview:hover {
-    background: rgba(239, 68, 68, 0.2);
+    background: rgba(255, 180, 171, 0.2);
 }
 
 .btn-cancel-interview .material-symbols-outlined {
@@ -1079,4 +1230,40 @@ body.room-page {
     border: 1px solid var(--color-border);
     color: var(--color-text-secondary);
     font-size: 14px;
+}
+
+/* Content-filter warning under the input bar (client mirror of the server check). Same
+   error-tint pattern as .idle-banner.tier2 / .btn-end (--color-error at 10%/20%). */
+.content-warning {
+    max-width: 896px;
+    margin: 8px auto 0;
+    padding: 10px 14px;
+    border-radius: 8px;
+    background: rgba(255, 180, 171, 0.1);
+    border: 1px solid rgba(255, 180, 171, 0.2);
+    color: var(--color-destructive);
+    font-size: 13px;
+    line-height: 18px;
+}
+
+/* design.md: "Respect prefers-reduced-motion: disable all animations." Covers the 4 looping
+   animations in this file (online-status ping, typing-bounce dots, mic recording pulse,
+   voice waveform bars) — static end states only, no id/class changes, JS untouched. This is
+   correct accessibility behavior (the OS/browser asked for no motion), NOT a bug — the fix
+   below only stops the bars from disappearing while reduced-motion is on, it does not make
+   them animate again. */
+@media (prefers-reduced-motion: reduce) {
+    .status-dot::before,
+    .typing-dot,
+    .btn-mic.is-recording,
+    .waveform-bar {
+        animation: none !important;
+    }
+
+    /* .waveform-bar's height only exists inside the pulse-wave keyframes (see above) — with the
+       animation off, it has no height at all and disappears. .visualizer.paused already has this
+       same static-height fallback; mirror it here for the reduced-motion case. */
+    .waveform-bar {
+        height: 8px;
+    }
 }

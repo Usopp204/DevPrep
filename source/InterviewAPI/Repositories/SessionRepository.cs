@@ -75,6 +75,11 @@ public class SessionRepository : ISessionRepository
             .OrderBy(m => m.SentAt)
             .ToListAsync(ct);
 
+    public Task<bool> HasUserAnswerAsync(Guid sessionQuestionId, CancellationToken ct) =>
+        _db.ChatMessages.AnyAsync(m => m.SessionQuestionId == sessionQuestionId
+                                     && m.SenderType == "User"
+                                     && m.MessageType == "Answer", ct);
+
     // Câu hỏi đầu tiên sau afterOrderIndex chưa có User Answer nào — dùng để xác định câu tiếp theo.
     public Task<SessionQuestion?> GetNextUnansweredQuestionAsync(
         Guid sessionId, int afterOrderIndex, CancellationToken ct) =>
@@ -155,7 +160,9 @@ public class SessionRepository : ISessionRepository
         if (normalized.Keyword is not null)
         {
             var keyword = normalized.Keyword.ToLower();
-            sessions = sessions.Where(s => s.Position != null && s.Position.ToLower().Contains(keyword));
+            // Title column was removed from the schema — search by Position only.
+            sessions = sessions.Where(s =>
+                s.Position != null && s.Position.ToLower().Contains(keyword));
         }
 
         var totalItems = await sessions.CountAsync(ct);
@@ -213,6 +220,44 @@ public class SessionRepository : ISessionRepository
         _logger.LogInformation("UpdateStatusIfAsync: rowsAffected={RowsAffected}, params(sessionId={SessionId}, userId={UserId}, currentStatus={CurrentStatus}, newStatus={NewStatus})",
             rowsAffected, sessionId, userId, currentStatus, newStatus);
         return rowsAffected > 0;
+    }
+
+    public async Task<bool> IncrementAnsweredIfAsync(Guid sessionId, int expectedCurrentCount, CancellationToken ct)
+    {
+        var rowsAffected = await _db.InterviewSessions
+            .Where(s => s.SessionId == sessionId && s.AnsweredQuestions == expectedCurrentCount && !s.IsDeleted)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.AnsweredQuestions, x => x.AnsweredQuestions + 1)
+                                      .SetProperty(x => x.UpdatedAt, VietnamTime.Now), ct);
+        _logger.LogInformation(
+            "IncrementAnsweredIfAsync: rowsAffected={RowsAffected}, sessionId={SessionId}, expectedCurrentCount={ExpectedCurrentCount}",
+            rowsAffected, sessionId, expectedCurrentCount);
+        return rowsAffected > 0;
+    }
+
+    public async Task DecrementAnsweredAsync(Guid sessionId, CancellationToken ct)
+    {
+        await _db.InterviewSessions
+            .Where(s => s.SessionId == sessionId && !s.IsDeleted)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.AnsweredQuestions, x => x.AnsweredQuestions - 1)
+                                      .SetProperty(x => x.UpdatedAt, VietnamTime.Now), ct);
+    }
+
+    // Flag-only audit counter (mandatory-camera policy) — plain increment, no expected-value
+    // claim needed like IncrementAnsweredIfAsync: this is just a tally, not a per-turn guard.
+    public async Task<int> IncrementCameraViolationAsync(Guid sessionId, CancellationToken ct)
+    {
+        await _db.InterviewSessions
+            .Where(s => s.SessionId == sessionId && !s.IsDeleted)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.CameraViolationCount, x => x.CameraViolationCount + 1)
+                                      .SetProperty(x => x.UpdatedAt, VietnamTime.Now), ct);
+
+        // ExecuteUpdateAsync bypasses the change tracker — re-read the confirmed new value
+        // instead of trusting an in-memory guess (same reasoning as elsewhere in this file).
+        var count = await _db.InterviewSessions.AsNoTracking()
+            .Where(s => s.SessionId == sessionId)
+            .Select(s => s.CameraViolationCount)
+            .FirstOrDefaultAsync(ct);
+        return count;
     }
 
     public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);

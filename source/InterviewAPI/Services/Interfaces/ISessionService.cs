@@ -19,6 +19,11 @@ public interface ISessionService
     Task<PauseResponse>   PauseSessionAsync(Guid userId, Guid sessionId, CancellationToken ct);
     Task<UnpauseResponse> UnpauseSessionAsync(Guid userId, Guid sessionId, CancellationToken ct);
 
+    // Mandatory-camera policy (Room UX): flags a permission-denied or mid-session disconnect.
+    // Flag-only per Biometrics:InSessionStrictness="Flag" — never blocks entry or answering.
+    Task<ReportCameraViolationResponse> ReportCameraViolationAsync(
+        Guid userId, Guid sessionId, ReportCameraViolationRequest req, CancellationToken ct);
+
     // Room UX Phase 3 — marks the onboarding tour as seen for this user (once ever, not per session).
     Task MarkRoomTourSeenAsync(Guid userId, CancellationToken ct);
 

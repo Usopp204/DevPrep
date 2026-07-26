@@ -76,10 +76,10 @@ source/CvJdAPI/uploads/
 CLAUDE.md
 infra/cloudflared.deb
 ai-service/chroma_data_docker/
+ai-service/chroma_data_backup/
 
 # Local-only dev convenience script (not shared with the team)
 /start-all.ps1
-
 
 infra/*.jpg
 infra/*.json

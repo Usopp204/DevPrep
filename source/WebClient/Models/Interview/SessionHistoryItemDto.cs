@@ -16,7 +16,9 @@ public class SessionHistoryItemDto
     public DateTime? EndedAt { get; set; }
     public DateTime CreatedAt { get; set; }
 
-    public string DisplayTitle => Title ?? Position ?? "Interview Session";
+    // Title is never populated (the server column was removed) — Position is the real display
+    // source.
+    public string DisplayTitle => Position ?? "Interview Session";
     public bool IsCompleted => string.Equals(Status, "Completed", StringComparison.OrdinalIgnoreCase);
     public bool IsCancelled => string.Equals(Status, "Cancelled", StringComparison.OrdinalIgnoreCase);
     public bool IsExpired => string.Equals(Status, "Expired", StringComparison.OrdinalIgnoreCase);

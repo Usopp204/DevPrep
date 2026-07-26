@@ -275,6 +275,24 @@ public class InterviewSessionController : ControllerBase
         }
     }
 
+    /// <summary>Ghi nhận vi phạm camera (từ chối quyền / mất kết nối giữa chừng) — chỉ để lưu vết,
+    /// KHÔNG chặn vào phòng hay chặn trả lời (Biometrics:InSessionStrictness="Flag").</summary>
+    [HttpPost("{id:guid}/camera-violation")]
+    public async Task<IActionResult> ReportCameraViolation(
+        Guid id, [FromBody] ReportCameraViolationRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var result = await _service.ReportCameraViolationAsync(userId, id, request, cancellationToken);
+            return Ok(ApiResponse<ReportCameraViolationResponse>.Ok(result));
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+        }
+    }
+
     /// <summary>Tái tạo trạng thái phiên (lịch sử chat + câu hỏi hiện tại + timer) để client tiếp tục.</summary>
     [HttpGet("{id:guid}/resume")]
     public async Task<IActionResult> ResumeSession(Guid id, CancellationToken cancellationToken)

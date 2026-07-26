@@ -50,6 +50,11 @@ public partial class InterviewSession
 
     public int PauseCount { get; set; }
 
+    // Mandatory-camera policy audit counter (Room UX): permission denied or the camera
+    // disconnecting mid-session. Flag-only (Biometrics:InSessionStrictness="Flag") — never
+    // blocks entry or answering, just records how many times it happened for later review.
+    public int CameraViolationCount { get; set; }
+
     public int TotalQuestions { get; set; }
 
     public int AnsweredQuestions { get; set; }

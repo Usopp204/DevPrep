@@ -99,6 +99,20 @@ public class BiometricVerificationService : IBiometricVerificationService
             throw new ArgumentException("At least one frame is required.");
         await EnsureSessionOwnedAsync(userId, sessionId, ct);
 
+        // Entry retry cap (per session): once EntryMaxRetries face attempts have failed for
+        // this session, reject before consuming a challenge or calling ai-service. The user
+        // must create a new session, which starts with a fresh budget.
+        if (phase == "Entry")
+        {
+            var maxRetries = _configuration.GetValue("Biometrics:EntryMaxRetries", 3);
+            var entryEvents = await _eventRepository.ListBySessionAsync(sessionId, "Entry", ct);
+            var failedAttempts = entryEvents.Count(
+                e => e.Modality == ProfileBiometricsService.ModalityFace && e.Decision != "Pass");
+            if (failedAttempts >= maxRetries)
+                throw new InvalidOperationException(
+                    "Maximum verification attempts reached for this session. Please create a new session.");
+        }
+
         var challenge = await ConsumeChallengeAsync(
             sessionId, ProfileBiometricsService.ModalityFace, ct);
         var embedding = await GetStoredEmbeddingAsync(
@@ -169,87 +183,215 @@ public class BiometricVerificationService : IBiometricVerificationService
         };
     }
 
+    // Face-only entry gate: the room opens once THIS session has one passed Entry/Face
+    // liveness check. Voice stays out of the entry decision (the fusion helper remains
+    // dormant for the future in-session strictness work). Failed attempts are counted
+    // per session, so a fresh session always starts with the full retry budget.
     public async Task<EntryGateStatusResponse> GetEntryGateStatusAsync(
         Guid userId, Guid sessionId, CancellationToken ct)
     {
+        var maxRetries = _configuration.GetValue("Biometrics:EntryMaxRetries", 3);
+
         if (!_configuration.GetValue("Biometrics:Enabled", false))
-            return new EntryGateStatusResponse { Allowed = true, Reason = "Biometric verification is disabled." };
+            return new EntryGateStatusResponse
+            {
+                FaceEnrolled = true,
+                Allowed = true,
+                AttemptsRemaining = maxRetries,
+                Reason = "Biometric verification is disabled.",
+            };
 
         await EnsureSessionOwnedAsync(userId, sessionId, ct);
 
         var faceRow = await _biometricsRepository.GetAsync(userId, ProfileBiometricsService.ModalityFace, ct);
-        var voiceRow = await _biometricsRepository.GetAsync(userId, ProfileBiometricsService.ModalityVoice, ct);
-        if (faceRow is null || voiceRow is null)
+        if (faceRow is null)
         {
             return new EntryGateStatusResponse
             {
+                FaceEnrolled = false,
                 Allowed = false,
-                Reason = "Please enroll both face and voice on your profile before entering the room.",
+                AttemptsRemaining = maxRetries,
+                Reason = "Please enroll your face on your profile before entering the room.",
             };
         }
 
         var events = await _eventRepository.ListBySessionAsync(sessionId, "Entry", ct);
-        var latestFace = events.FirstOrDefault(e => e.Modality == ProfileBiometricsService.ModalityFace);
-        var latestVoice = events.FirstOrDefault(e => e.Modality == ProfileBiometricsService.ModalityVoice);
-        var facePassed = latestFace?.Decision == "Pass";
-        var voicePassed = latestVoice?.Decision == "Pass";
+        var faceEvents = events.Where(e => e.Modality == ProfileBiometricsService.ModalityFace).ToList();
+        var facePassed = faceEvents.Any(e => e.Decision == "Pass");
+        var failedAttempts = faceEvents.Count(e => e.Decision != "Pass");
+        var attemptsRemaining = Math.Max(0, maxRetries - failedAttempts);
 
-        // Prefer the fused decision when real calibration data (Milestone 3) is available;
-        // otherwise fall back to requiring both modalities to independently pass, per the
-        // master plan. Right now no real calibration.json exists, so this branch is dormant.
-        var calibrationPath = _configuration.GetValue<string?>("Biometrics:CalibrationJsonPath");
-        var fusionWeights = FusionDecisionHelper.TryLoadFusionWeights(calibrationPath);
-        if (fusionWeights is not null && latestFace?.Score is double faceScore && latestVoice?.Score is double voiceScore)
+        if (facePassed)
         {
-            var fused = FusionDecisionHelper.Decide(fusionWeights, faceScore, voiceScore);
-            if (fused)
-                return new EntryGateStatusResponse { Allowed = true, Reason = "Entry verification passed (fusion).", FacePassed = facePassed, VoicePassed = voicePassed };
+            return new EntryGateStatusResponse
+            {
+                FaceEnrolled = true,
+                Allowed = true,
+                AttemptsUsed = failedAttempts,
+                AttemptsRemaining = attemptsRemaining,
+                Reason = "Entry verification passed.",
+            };
         }
-        else if (facePassed && voicePassed)
-        {
-            return new EntryGateStatusResponse { Allowed = true, Reason = "Entry verification already passed.", FacePassed = true, VoicePassed = true };
-        }
-
-        var maxRetries = _configuration.GetValue("Biometrics:EntryMaxRetries", 3);
-        var failedAttempts = events.Count(e => e.Decision != "Pass");
-        var retriesRemaining = Math.Max(0, maxRetries - failedAttempts);
 
         return new EntryGateStatusResponse
         {
+            FaceEnrolled = true,
             Allowed = false,
-            Reason = retriesRemaining == 0 && failedAttempts > 0
-                ? "Maximum verification attempts exceeded. Please contact support."
-                : "Face and voice verification required before entering the room.",
-            FacePassed = facePassed,
-            VoicePassed = voicePassed,
-            RetriesRemaining = retriesRemaining,
+            AttemptsUsed = failedAttempts,
+            AttemptsRemaining = attemptsRemaining,
+            Reason = attemptsRemaining == 0
+                ? "Maximum verification attempts reached for this session. Please create a new session."
+                : "Face verification required before entering the room.",
         };
     }
 
-    public async Task<InSessionCheckDueResponse> IsInSessionCheckDueAsync(Guid sessionId, CancellationToken ct)
+    // In-session cheating check: single-frame face match against the enrolled template, no
+    // challenge/liveness (see AiServiceClient.VerifyFaceAsync — POST /internal/biometrics/verify).
+    // Two strike-worthy outcomes ONLY: identity mismatch, and multiple faces in frame. "No face
+    // detected" is deliberately NOT a strike (looking down at notes, sitting off-frame, ... are
+    // too easy to mistake for cheating) — it's recorded separately and only shown as a gentle
+    // reminder. Biometrics:InSessionStrictness controls what happens once the strike cap is
+    // hit: "Flag" (default) only ever records/reports, "Strict" ends the session on the strike
+    // that reaches the cap.
+    //
+    // The Room calls this once per NEW QUESTION, so the rate-limit below is what actually
+    // protects ai-service: skipping questions rapidly would otherwise fire a burst of calls,
+    // and each one occupies ai-service for ~130-350ms (single uvicorn worker, no thread pool —
+    // a burst stalls every other ai-service consumer, not just this check).
+    // TODO: ai-service runs --workers 1 with synchronous handlers; consider a thread pool or
+    // more workers before raising the check frequency any further.
+    public async Task<InSessionVerifyResponse> VerifyInSessionAsync(
+        Guid userId, Guid sessionId, IFormFile frame, CancellationToken ct)
+    {
+        EnsureEnabled();
+        if (frame is null || frame.Length == 0)
+            throw new ArgumentException("A frame is required.");
+
+        var session = await _sessionRepository.GetByIdAsync(sessionId, ct);
+        if (session is null || session.UserId != userId)
+            throw new KeyNotFoundException("Session not found.");
+        if (session.Status != "InProgress")
+            throw new InvalidOperationException("Session is not in progress.");
+
+        var maxStrikes = _configuration.GetValue("Biometrics:InSessionMaxStrikes", 3);
+        var strictness = _configuration.GetValue("Biometrics:InSessionStrictness", "Flag");
+        var minIntervalSeconds = _configuration.GetValue("Biometrics:InSessionMinIntervalSeconds", 25);
+
+        // Rate limit (server-side on purpose — the client mirrors nothing here, this IS the
+        // guard): too soon after the previous check, no-op. Returns a neutral "passed" result
+        // rather than an error so a rapid-skip burst is silently absorbed instead of surfacing
+        // scary warnings; nothing is recorded and no strike is counted for a skipped check.
+        var priorEvents = await _eventRepository.ListBySessionAsync(sessionId, "InSession", ct);
+        var lastCheckAt = priorEvents.FirstOrDefault()?.CreatedAt;
+        if (lastCheckAt is not null
+            && (VietnamTime.Now - lastCheckAt.Value).TotalSeconds < minIntervalSeconds)
+        {
+            var priorStrikes = priorEvents.Count(
+                e => e.Modality == ProfileBiometricsService.ModalityFace && e.Decision == "Flag");
+            return new InSessionVerifyResponse
+            {
+                Passed = true,
+                NoFaceDetected = false,
+                StrikeCount = priorStrikes,
+                MaxStrikes = maxStrikes,
+                ShouldEndSession = false,
+                Message = "Check skipped (too soon after the previous one).",
+            };
+        }
+
+        var embedding = await GetStoredEmbeddingAsync(userId, ProfileBiometricsService.ModalityFace, ct);
+
+        bool isStrike;
+        bool noFaceDetected = false;
+        string decision;
+        object detail;
+        string message;
+
+        try
+        {
+            var result = await _aiServiceClient.VerifyFaceAsync(frame, embedding, ct);
+            isStrike = !result.Match;
+            decision = result.Match ? "Pass" : "Flag";
+            detail = new { result.Score, result.Threshold, Reason = result.Match ? null : "Identity mismatch" };
+            message = result.Match
+                ? "Identity confirmed."
+                : "The face in frame does not match your enrolled profile.";
+        }
+        catch (BiometricQualityException ex) when (ex.FaceCount is int faceCount)
+        {
+            isStrike = true;
+            decision = "Flag";
+            detail = new { Reason = "Multiple faces detected", FaceCount = faceCount };
+            message = $"Multiple faces detected in frame ({faceCount}).";
+        }
+        catch (BiometricQualityException)
+        {
+            // No face / blurry / too small / ... — not a strike, see the method comment above.
+            isStrike = false;
+            noFaceDetected = true;
+            decision = "NoFace";
+            detail = new { Reason = "No face detected" };
+            message = "We couldn't see your face — please make sure you're in frame.";
+        }
+
+        await RecordEventAsync(sessionId, userId, "InSession", ProfileBiometricsService.ModalityFace,
+            score: null, livenessPassed: null, matched: !isStrike && !noFaceDetected,
+            decision: decision, detail: detail, ct);
+
+        var events = await _eventRepository.ListBySessionAsync(sessionId, "InSession", ct);
+        var strikeCount = events.Count(e => e.Modality == ProfileBiometricsService.ModalityFace && e.Decision == "Flag");
+
+        var shouldEndSession = isStrike
+            && string.Equals(strictness, "Strict", StringComparison.OrdinalIgnoreCase)
+            && strikeCount >= maxStrikes;
+
+        if (shouldEndSession)
+        {
+            await EndSessionForCheatingAsync(sessionId, ct);
+            message = $"Maximum cheating warnings reached ({strikeCount}/{maxStrikes}). This interview has been ended.";
+        }
+        else if (isStrike)
+        {
+            message += $" Warning {strikeCount}/{maxStrikes}.";
+        }
+
+        return new InSessionVerifyResponse
+        {
+            Passed = !isStrike && !noFaceDetected,
+            NoFaceDetected = noFaceDetected,
+            StrikeCount = strikeCount,
+            MaxStrikes = maxStrikes,
+            ShouldEndSession = shouldEndSession,
+            Message = message,
+        };
+    }
+
+    // Ends the session for exceeding the in-session cheating strike cap (Strictness="Strict").
+    // Status="Cancelled" — distinct from the normal Completed/Expired outcomes EndSessionAsync
+    // produces, so history/reports can tell a cheating-ended session apart. Deliberately does
+    // NOT touch credit (no refund call) — SessionService.EndSessionAsync doesn't refund on a
+    // normal end either, so simply never calling refund here is enough; awarding a refund here
+    // specifically would let someone deliberately trigger this to end a session for free.
+    private async Task EndSessionForCheatingAsync(Guid sessionId, CancellationToken ct)
     {
         var session = await _sessionRepository.GetByIdAsync(sessionId, ct);
-        if (session is null)
-            throw new KeyNotFoundException("Session not found.");
+        if (session is null) return;
 
-        var cadenceMinutes = _configuration.GetValue("Biometrics:InSessionCheckCadenceMinutes", 10.0);
-        var events = await _eventRepository.ListBySessionAsync(sessionId, "InSession", ct);
-        var anchor = events.FirstOrDefault()?.CreatedAt ?? session.StartedAt ?? session.CreatedAt;
-        var elapsedMinutes = (VietnamTime.Now - anchor).TotalMinutes;
+        session.Status = "Cancelled";
+        session.EndedAt = VietnamTime.Now;
+        session.UpdatedAt = VietnamTime.Now;
 
-        // Deterministic-but-unpredictable target within [0.5x, 1.5x] cadence, reseeded only
-        // when the anchor changes (i.e. once per completed window), so repeated polls within
-        // the same window agree on the same due instant instead of flapping every call.
-        var seed = HashCode.Combine(sessionId, anchor.Ticks);
-        var rng = new Random(seed);
-        var targetMinutes = cadenceMinutes * (0.5 + rng.NextDouble());
-
-        return new InSessionCheckDueResponse
+        var room = await _sessionRepository.GetRoomBySessionAsync(sessionId, ct);
+        if (room is not null)
         {
-            Due = elapsedMinutes >= targetMinutes,
-            ElapsedMinutes = Math.Round(elapsedMinutes, 1),
-            TargetMinutes = Math.Round(targetMinutes, 1),
-        };
+            room.Status = "Closed";
+            room.ClosedAt = VietnamTime.Now;
+            await _sessionRepository.UpdateRoomAsync(room, ct);
+        }
+        else
+        {
+            await _sessionRepository.SaveChangesAsync(ct);
+        }
     }
 
     private async Task RecordEventAsync(
