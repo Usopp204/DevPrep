@@ -179,3 +179,42 @@ def get_hint(body: HintIn, x_internal_api_key: str | None = Header(default=None)
     if not hint:
         hint = "Think about the core concept this question targets, and start from its definition."
     return {"hint": hint}
+
+
+# ---- 6. Question index sync (incremental, QuestionAPI admin CRUD) ------------
+# QuestionAPI's QuestionIndexClient calls these after every admin create/update/delete so the
+# ChromaDB index stays in sync with SQL Server without a full re-seed. Document ID = the SQL
+# QuestionId (GUID) — the same scheme the batch seed (chroma_store.index_from_api) uses.
+# The client only checks the HTTP status code, so a plain 200 + {"ok": true} is the contract.
+class IndexUpsertIn(BaseModel):
+    question_id: str
+    question: str
+    answer: str | None = None
+    category: str | None = None
+    difficulty: str | None = None
+    position: str | None = None
+
+
+@router.post("/questions/index/upsert")
+def upsert_question_index(body: IndexUpsertIn, x_internal_api_key: str | None = Header(default=None)):
+    _check_key(x_internal_api_key)
+    question_id = body.question_id.strip()
+    question = body.question.strip()
+    if not question_id or not question:
+        raise HTTPException(status_code=400, detail="question_id and question are required.")
+    chroma_store.upsert_question(
+        question_id=question_id,
+        question=question,
+        answer=body.answer,
+        category=body.category,
+        difficulty=body.difficulty,   # DB casing ("Junior") — normalized to lowercase inside
+        position=body.position,
+    )
+    return {"ok": True}
+
+
+@router.delete("/questions/index/{question_id}")
+def delete_question_index(question_id: str, x_internal_api_key: str | None = Header(default=None)):
+    _check_key(x_internal_api_key)
+    chroma_store.delete_question(question_id.strip())
+    return {"ok": True}

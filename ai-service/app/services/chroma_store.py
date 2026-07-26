@@ -58,26 +58,34 @@ def _uid(question: str, position: str) -> str:
     return hashlib.sha1(f"{position}|{question}".encode()).hexdigest()
 
 
-def index_csv(csv_path: str | Path, batch_size: int = 1000) -> int:
-    """Load a CSV (Question, Answer, Category, Difficulty, Position) into ChromaDB.
+def _collect_records(rows) -> dict[str, tuple[str, dict]]:
+    """Normalize raw rows into {uid: (question_text, metadata)} — the single shared code path
+    for every question source (CSV file, QuestionAPI export), so document text / metadata /
+    ID / dedup can never drift between sources.
 
-    Collapses exact (Position + Question) duplicates to a single record so the upsert
-    never receives duplicate ids, and upserts in batches to stay within ChromaDB limits.
+    Rows use the CSV header key casing: Question, Answer, Category, Difficulty, Position.
+    Document ID: the row's explicit "Id" (SQL QuestionId GUID — stable across content edits,
+    required for the incremental upsert/delete flow) when present; otherwise the legacy
+    SHA1(position|question) content hash (CSV path — kept unchanged as fallback, where
+    duplicate ids also collapse exact Position+Question duplicates, last occurrence wins).
     """
     records: dict[str, tuple[str, dict]] = {}
-    with open(csv_path, newline="", encoding="utf-8") as f:
-        for row in csv.DictReader(f):
-            question = (row["Question"] or "").strip()
-            if not question:
-                continue
-            uid = _uid(question, row["Position"])
-            records[uid] = (question, {                    # last occurrence wins
-                "answer": _clean(row["Answer"]),
-                "category": (row["Category"] or "").strip(),
-                "difficulty": (row["Difficulty"] or "").strip().lower(),  # 'Junior' -> 'junior'
-                "position": (row["Position"] or "").strip(),
-            })
+    for row in rows:
+        question = (row["Question"] or "").strip()
+        if not question:
+            continue
+        uid = (row.get("Id") or "").strip() or _uid(question, row["Position"])
+        records[uid] = (question, {                    # last occurrence wins
+            "answer": _clean(row["Answer"]),
+            "category": (row["Category"] or "").strip(),
+            "difficulty": (row["Difficulty"] or "").strip().lower(),  # 'Junior' -> 'junior'
+            "position": (row["Position"] or "").strip(),
+        })
+    return records
 
+
+def _upsert_records(records: dict[str, tuple[str, dict]], batch_size: int) -> int:
+    """Upsert normalized records in batches to stay within ChromaDB limits."""
     items = list(records.items())
     for i in range(0, len(items), batch_size):
         chunk = items[i:i + batch_size]
@@ -87,6 +95,94 @@ def index_csv(csv_path: str | Path, batch_size: int = 1000) -> int:
             metadatas=[meta for _, (_, meta) in chunk],
         )
     return len(records)
+
+
+def index_csv(csv_path: str | Path, batch_size: int = 1000) -> int:
+    """Load a CSV (Question, Answer, Category, Difficulty, Position) into ChromaDB."""
+    with open(csv_path, newline="", encoding="utf-8") as f:
+        records = _collect_records(csv.DictReader(f))
+    return _upsert_records(records, batch_size)
+
+
+def _reset_collection() -> None:
+    """Clear every existing document so the re-seed starts from an empty index. Needed when
+    re-seeding from the API: document IDs are SQL GUIDs there, so upserting over an old index
+    (SHA1 content-hash IDs) would ADD documents next to the stale ones — the collection would
+    double. Deletes by id (batched) instead of dropping the collection: dropping invalidates
+    the handle a running service holds AND the chromadb client can hand back a stale cached
+    handle for the recreated collection (upserts then fail with 'Collection does not exist')."""
+    total = _collection.count()
+    if not total:
+        return
+    print(f"[chroma_store] WARNING: clearing {total} existing documents from collection "
+          f"'{COLLECTION}' at {CHROMA_DIR} (full re-seed, ID scheme = SQL QuestionId).")
+    while True:
+        ids = _collection.get(limit=5000)["ids"]
+        if not ids:
+            break
+        _collection.delete(ids=ids)
+
+
+def index_from_api(base_url: str, api_key: str, batch_size: int = 1000) -> int:
+    """Load the question bank from QuestionAPI's internal export endpoint into ChromaDB.
+
+    Replaces the CSV as the question source: GET {base_url}/internal/questions/export
+    (auth: X-Internal-Api-Key). The endpoint returns the SQL question bank as a JSON array of
+    {questionId, question, answer, position, category, difficulty} with difficulty in DB casing
+    ("Senior"/"Middle"); _collect_records lowercases it exactly like the CSV path did, which
+    build_question_pool's filters depend on.
+
+    Document ID = questionId (SQL GUID), matching the incremental upsert/delete endpoints, so
+    admin edits update the same document instead of leaving stale content-hash twins. Because of
+    that, this ALWAYS drops and recreates the collection first (see _reset_collection).
+
+    Run OFFLINE from the ai-service venv on the HOST (not inside Docker) so localhost:7004
+    reaches QuestionAPI — see build_index.py for the full seeding procedure.
+    """
+    import requests
+
+    url = f"{base_url.rstrip('/')}/internal/questions/export"
+    resp = requests.get(url, headers={"X-Internal-Api-Key": api_key}, timeout=300)
+    resp.raise_for_status()
+
+    # Map the API's JSON keys onto the CSV header casing so both sources share _collect_records.
+    rows = (
+        {
+            "Id": r.get("questionId"),
+            "Question": r.get("question"),
+            "Answer": r.get("answer"),
+            "Category": r.get("category"),
+            "Difficulty": r.get("difficulty"),
+            "Position": r.get("position"),
+        }
+        for r in resp.json()
+    )
+    records = _collect_records(rows)
+    _reset_collection()
+    return _upsert_records(records, batch_size)
+
+
+def upsert_question(question_id: str, question: str, answer: str | None = None,
+                    category: str | None = None, difficulty: str | None = None,
+                    position: str | None = None) -> None:
+    """Incremental single-document upsert (called by QuestionAPI on admin create/update/restore).
+    Runs through _collect_records so normalization (difficulty lowercase, answer _clean) can
+    never drift from the batch seed path."""
+    records = _collect_records([{
+        "Id": question_id,
+        "Question": question,
+        "Answer": answer,
+        "Category": category,
+        "Difficulty": difficulty,
+        "Position": position,
+    }])
+    _upsert_records(records, batch_size=1)
+
+
+def delete_question(question_id: str) -> None:
+    """Remove one document by ID (called by QuestionAPI on admin soft-delete). Deleting an id
+    that is not in the collection is a no-op."""
+    _collection.delete(ids=[question_id])
 
 
 def _drop_near_duplicates(pool: list[dict], embeddings) -> list[dict]:
