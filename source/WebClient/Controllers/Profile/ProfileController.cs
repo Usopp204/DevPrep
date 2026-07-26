@@ -175,7 +175,7 @@ public class ProfileController(
         var contentType = string.IsNullOrEmpty(face.ContentType) ? "image/jpeg" : face.ContentType;
         var fileName = string.IsNullOrEmpty(face.FileName) ? "face.jpg" : face.FileName;
 
-        var (success, error) = await biometricsService.EnrollAsync(
+        var (success, result, error) = await biometricsService.EnrollAsync(
             "face", stream.ToArray(), fileName, contentType, cancellationToken);
 
         if (!success)
@@ -183,7 +183,7 @@ public class ProfileController(
             return BadRequest(new { error = error ?? "Could not enroll face." });
         }
 
-        return Json(new { enrolled = true });
+        return Json(new { enrolled = true, bonusAwarded = result?.BonusAwarded ?? false });
     }
 
     // Same-origin proxy for voice enrollment (recorded sample as multipart, like Interview/Stt).
@@ -200,7 +200,7 @@ public class ProfileController(
         var contentType = string.IsNullOrEmpty(voice.ContentType) ? "audio/webm" : voice.ContentType;
         var fileName = string.IsNullOrEmpty(voice.FileName) ? "voice.webm" : voice.FileName;
 
-        var (success, error) = await biometricsService.EnrollAsync(
+        var (success, result, error) = await biometricsService.EnrollAsync(
             "voice", stream.ToArray(), fileName, contentType, cancellationToken);
 
         if (!success)
@@ -208,7 +208,7 @@ public class ProfileController(
             return BadRequest(new { error = error ?? "Could not enroll voice." });
         }
 
-        return Json(new { enrolled = true });
+        return Json(new { enrolled = true, bonusAwarded = result?.BonusAwarded ?? false });
     }
 
     // ============================ Transaction History ============================

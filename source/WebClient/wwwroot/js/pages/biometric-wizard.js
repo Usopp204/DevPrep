@@ -87,6 +87,7 @@
     let sessionId = null;         // verify mode only
     let facePassed = false;
     let voiceResult = null;
+    let bonusAwarded = false; // enroll mode only — set true if either enroll call reports it
     let cameraStream = null;
     let micStream = null;
     let mediaRecorder = null;
@@ -366,7 +367,8 @@
             } else {
                 const form = new FormData();
                 form.append("face", blobs[0], "face.jpg");
-                await fetchJson(urls.enrollFace, { method: "POST", body: form });
+                const enrollResult = await fetchJson(urls.enrollFace, { method: "POST", body: form });
+                if (enrollResult && enrollResult.bonusAwarded) bonusAwarded = true;
                 hide(faceProcessing);
             }
         } catch (err) {
@@ -548,7 +550,8 @@
             } else {
                 const form = new FormData();
                 form.append("voice", blob, "voice.webm");
-                await fetchJson(urls.enrollVoice, { method: "POST", body: form });
+                const enrollResult = await fetchJson(urls.enrollVoice, { method: "POST", body: form });
+                if (enrollResult && enrollResult.bonusAwarded) bonusAwarded = true;
                 hide(voiceProcessing);
             }
             voiceResult = result;
@@ -593,6 +596,9 @@
         } else {
             doneTitle.textContent = "You're all set";
             doneMessage.textContent = "Identity verification is set up. You can re-enroll any time.";
+            if (bonusAwarded) {
+                doneMessage.textContent += " 🎉 You've been awarded 100 free credits for completing both Face and Voice enrollment!";
+            }
             doneCta.textContent = "Done";
             doneCta.onclick = function () { window.location.href = urls.profile; };
             hide(doneTranscript);
