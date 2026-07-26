@@ -10,6 +10,8 @@
     const cancelUrl = root.dataset.cancelUrl;
     const pauseUrl = root.dataset.pauseUrl;
     const unpauseUrl = root.dataset.unpauseUrl;
+    const cameraViolationUrl = root.dataset.cameraViolationUrl;
+    const verifyInSessionUrl = root.dataset.verifyInSessionUrl;
     const tourSeenUrl = root.dataset.tourSeenUrl;
     const ttsUrl = root.dataset.ttsUrl;
     const sttUrl = root.dataset.sttUrl;
@@ -33,6 +35,14 @@
     let idleSeconds = parseInt(root.dataset.idleElapsedSeconds, 10) || 0;
     let idleTier = 0; // 0 = none shown, 1 = reminder shown, 2 = warning+countdown shown
     const TIER2_LEAD_SECONDS = 20;
+
+    // Reentrancy guard for autoAdvance(): unlike sendAnswer/skipQuestion (locked by disabling the
+    // button that triggers them), autoAdvance is fired by tickIdle() on a recurring 1s timer, which
+    // keeps calling it every tick until idleSeconds resets — and that reset only happens once THIS
+    // call's response is applied. Without this flag, several ticks queued up (e.g. after the tab was
+    // backgrounded/throttled and catches up) each fire their own autoAdvance() while the first is
+    // still in flight, producing duplicate "Auto-advanced" notes/requests for the same question.
+    let autoAdvanceInFlight = false;
 
     // "AI is typing" delay before the next question is revealed, scaled to question length so a
     // long question doesn't feel instant and a short one doesn't feel sluggish.
@@ -81,6 +91,7 @@
     const progressHeadEl = document.querySelector(".room-progress-head .v");
     const statusEl = document.getElementById("status-text");
     const idleBannerEl = document.getElementById("idle-banner");
+    const idleModalBackdropEl = document.getElementById("idle-modal-backdrop");
     const replayTourBtn = document.getElementById("replay-tour-btn");
 
     // Static, interviewer-voice reminder copy — placeholders pending the final UX copy deck.
@@ -133,8 +144,21 @@
     }
 
     function updateProgressDisplay() {
-        if (progressEl) progressEl.textContent = `${answeredQuestions}/${totalQuestions}`;
-        if (progressHeadEl) progressHeadEl.textContent = `${answeredQuestions} / ${totalQuestions}`;
+        // Clamp the shown number so a race that slipped past the server guard (or any other
+        // drift) can never display more than the session's real total.
+        const shown = Math.min(answeredQuestions, totalQuestions);
+        if (progressEl) progressEl.textContent = `${shown}/${totalQuestions}`;
+        if (progressHeadEl) progressHeadEl.textContent = `${shown} / ${totalQuestions}`;
+    }
+
+    // Server is the source of truth for progress (SessionService.SendMessageAsync now returns
+    // it on every turn) — sync from the response instead of blindly incrementing locally, so a
+    // duplicate/racing round-trip can't push the displayed count past reality. Falls back to a
+    // local +1 only if an older/unexpected response shape omits the field.
+    function syncAnsweredFrom(data) {
+        answeredQuestions = typeof data.answeredQuestions === "number"
+            ? data.answeredQuestions
+            : answeredQuestions + 1;
     }
 
     // Reflects the server-computed pause quota in the sidebar button and the overlay. Disables
@@ -148,6 +172,31 @@
         const quotaExhausted = pausesRemaining <= 0 || pausedSecondsRemaining <= 0;
         if (pauseBtn) pauseBtn.disabled = ended || paused || quotaExhausted;
         if (pauseBtnLabel) pauseBtnLabel.textContent = quotaExhausted ? "Pause limit reached" : "Pause Interview";
+    }
+
+    // Ticks the pause-time-remaining display down once per second WHILE paused, separate from
+    // countdownHandle (which intentionally freezes — see setPausedUI below — so it can't drive
+    // this). Purely a local display countdown: the server is still the source of truth and
+    // overwrites pausedSecondsRemaining with the real value the moment Resume responds, so this
+    // can't drift the actual quota, only how live the number looks while sitting on this screen.
+    let pauseQuotaTickHandle = null;
+
+    function startPauseQuotaTick() {
+        if (pauseQuotaTickHandle) return;
+        pauseQuotaTickHandle = setInterval(() => {
+            // Clamp at 0 — the server has no upper bound on an ONGOING pause's duration (only
+            // the NEXT pause request is rejected once the quota is already spent), so there is
+            // no "auto-resume/auto-end at 0" to mirror here; this just stops counting negative.
+            if (pausedSecondsRemaining > 0) pausedSecondsRemaining -= 1;
+            updatePauseQuotaUI();
+        }, 1000);
+    }
+
+    function stopPauseQuotaTick() {
+        if (pauseQuotaTickHandle) {
+            clearInterval(pauseQuotaTickHandle);
+            pauseQuotaTickHandle = null;
+        }
     }
 
     // Paused freezes the countdown timer and the idle clock (both live in the same 1s interval —
@@ -165,6 +214,8 @@
         if (skipBtn) skipBtn.disabled = disableWhilePaused;
         if (hintBtn) hintBtn.disabled = disableWhilePaused;
         if (micBtn) micBtn.disabled = disableWhilePaused;
+
+        if (isPaused) startPauseQuotaTick(); else stopPauseQuotaTick();
 
         updatePauseQuotaUI();
     }
@@ -238,7 +289,7 @@
                 element: ".camera-section",
                 popover: {
                     title: "Camera Preview",
-                    description: "Turn your camera on to practice looking at the camera like a real interview — it's a local preview only, never uploaded or recorded."
+                    description: "Your camera stays on for the whole interview (anti-cheating) — it's a local preview only, never uploaded or recorded."
                 }
             },
             {
@@ -345,6 +396,7 @@
     });
 
     function hideIdleBanner() {
+        idleModalBackdropEl?.classList.add("d-none");
         if (!idleBannerEl) return;
         idleBannerEl.className = "idle-banner d-none";
         idleBannerEl.innerHTML = "";
@@ -355,7 +407,21 @@
         const picked = pickVariant(TIER1_REMINDERS, lastTier1Index);
         lastTier1Index = picked.index;
         idleBannerEl.className = "idle-banner tier1";
-        idleBannerEl.textContent = picked.text;
+        idleBannerEl.innerHTML = "";
+        const msg = document.createElement("p");
+        msg.className = "idle-banner-message";
+        msg.textContent = picked.text;
+        const okBtn = document.createElement("button");
+        okBtn.type = "button";
+        okBtn.className = "idle-banner-ok";
+        okBtn.textContent = "OK";
+        // Same reset the tier2 "I'm still answering" button uses: closes the popup and
+        // restarts the local idle clock — counts as the user having interacted.
+        okBtn.addEventListener("click", resetIdle);
+        idleBannerEl.appendChild(msg);
+        idleBannerEl.appendChild(okBtn);
+        idleModalBackdropEl?.classList.remove("d-none");
+        okBtn.focus();
     }
 
     function showTier2Banner(secondsLeft) {
@@ -451,6 +517,13 @@
             inputEl.disabled = false;
             sendBtn.disabled = false;
             inputEl.focus();
+
+            // One cheating check per new question, fired once the question is actually on
+            // screen. Not awaited — the check runs in the background and must never delay the
+            // interview. This is only ever reached for question 2 onward: the first question of
+            // a session is server-rendered into the page, never routed through here, which is
+            // exactly the "skip the first question" rule (the entry gate just verified this face).
+            captureAndVerifyInSession();
         }, typingDelayFor(nextQuestion.content));
     }
 
@@ -594,13 +667,46 @@
         }
     }
 
+    // Polite inline warning under the input (content filter) — auto-hides after a few seconds
+    // or as soon as the user edits their answer. Not an alert(): stays in the Room's own UI.
+    const contentWarningEl = document.getElementById("content-warning");
+    let contentWarningTimer = null;
+
+    function showContentWarning(text) {
+        if (!contentWarningEl) return;
+        contentWarningEl.textContent = text;
+        contentWarningEl.classList.remove("d-none");
+        if (contentWarningTimer) clearTimeout(contentWarningTimer);
+        contentWarningTimer = setTimeout(hideContentWarning, 6000);
+    }
+
+    function hideContentWarning() {
+        if (contentWarningTimer) { clearTimeout(contentWarningTimer); contentWarningTimer = null; }
+        contentWarningEl?.classList.add("d-none");
+    }
+
+    inputEl?.addEventListener("input", hideContentWarning);
+
     async function sendAnswer() {
         const content = inputEl.value.trim();
         if (!content || !currentQuestionId || ended) return;
 
+        // Content filter (client mirror — server re-checks in SendMessageAsync). Runs BEFORE
+        // the input is cleared / buttons locked / bubble appended, so a rejected answer stays
+        // in the box for the user to fix and nothing about the Đợt-2 locking flow is touched.
+        const filter = window.DevPrepContentFilter;
+        if (filter && !filter.isAcceptable(content)) {
+            showContentWarning("Your answer appears to contain inappropriate or unreadable content. Please review it and try again.");
+            return;
+        }
+
         inputEl.value = "";
         inputEl.disabled = true;
         sendBtn.disabled = true;
+        // Was previously left enabled here, so a Skip click while Send was still in flight could
+        // fire a second /message request for the SAME question (client-side half of the race that
+        // caused duplicate bubbles) — close that gap.
+        if (skipBtn) skipBtn.disabled = true;
         appendBubble("User", content);
 
         try {
@@ -609,7 +715,7 @@
                 content
             });
 
-            answeredQuestions += 1;
+            syncAnsweredFrom(data);
             updateProgressDisplay();
 
             if (data.ended || !data.nextQuestion) {
@@ -618,10 +724,12 @@
             }
 
             applyNextQuestion(data.nextQuestion);
+            if (skipBtn) skipBtn.disabled = false;
         } catch (err) {
             appendBubble("AI", `Error: ${err.message}. Please try again.`);
             inputEl.disabled = false;
             sendBtn.disabled = false;
+            if (skipBtn) skipBtn.disabled = false;
         }
     }
 
@@ -649,7 +757,7 @@
                 reason: "Skipped"
             });
 
-            answeredQuestions += 1;
+            syncAnsweredFrom(data);
             updateProgressDisplay();
 
             if (data.ended || !data.nextQuestion) {
@@ -671,7 +779,8 @@
     // interaction. Submits the same empty answer as Skip, tagged reason "TimedOut" so the server
     // (and later, transcript/report views) can tell an inactivity timeout apart from a manual Skip.
     async function autoAdvance() {
-        if (!currentQuestionId || ended) return;
+        if (!currentQuestionId || ended || autoAdvanceInFlight) return;
+        autoAdvanceInFlight = true;
         idleTier = 0;
         hideIdleBanner();
 
@@ -692,7 +801,7 @@
                 reason: "TimedOut"
             });
 
-            answeredQuestions += 1;
+            syncAnsweredFrom(data);
             updateProgressDisplay();
 
             if (data.ended || !data.nextQuestion) {
@@ -707,6 +816,8 @@
             inputEl.disabled = false;
             sendBtn.disabled = false;
             if (skipBtn) skipBtn.disabled = false;
+        } finally {
+            autoAdvanceInFlight = false;
         }
     }
 
@@ -799,11 +910,28 @@
         else startRecording();
     });
 
-    // Camera preview — decorative only, the stream is never uploaded anywhere.
+    // Camera preview — decorative only, the stream is never uploaded anywhere. Mandatory
+    // (anti-cheating): no toggle to turn it off. Declining permission or losing the camera
+    // mid-session is FLAGGED (server-side counter), never blocked — the interview continues
+    // either way (Biometrics:InSessionStrictness="Flag").
     const cameraVideo = document.getElementById("camera-video");
     const cameraPlaceholder = document.getElementById("camera-placeholder");
-    const cameraToggleBtn = document.getElementById("camera-toggle");
+    const cameraStatusEl = document.getElementById("camera-status");
     let cameraStream = null;
+
+    function setCameraStatus(text, isWarning) {
+        if (!cameraStatusEl) return;
+        cameraStatusEl.textContent = text;
+        cameraStatusEl.classList.toggle("camera-status-warning", !!isWarning);
+    }
+
+    // Fire-and-forget, best-effort — a failed report must never affect the interview itself.
+    // Called once per actual state change (permission denial, or a track actually ending) —
+    // never on a timer/poll, so this cannot spam the counter.
+    function reportCameraViolation(reason) {
+        if (!cameraViolationUrl) return;
+        postProxy(cameraViolationUrl, { reason }).catch(() => {});
+    }
 
     async function startCamera() {
         try {
@@ -813,25 +941,111 @@
                 cameraVideo.classList.remove("d-none");
             }
             cameraPlaceholder?.classList.add("d-none");
-            if (cameraToggleBtn) cameraToggleBtn.textContent = "Turn Off Camera";
+            setCameraStatus("Camera: On", false);
+
+            // Fires once if the track stops unexpectedly (device unplugged, OS-level permission
+            // revoked, ...) — NOT for our own track.stop() calls, since nothing in this file calls
+            // stop() anymore (there is no user-facing "turn off" path left).
+            const [track] = cameraStream.getVideoTracks();
+            if (track) {
+                track.addEventListener("ended", () => {
+                    if (cameraVideo) {
+                        cameraVideo.srcObject = null;
+                        cameraVideo.classList.add("d-none");
+                    }
+                    cameraPlaceholder?.classList.remove("d-none");
+                    setCameraStatus("Camera: Disconnected — please reconnect it", true);
+                    reportCameraViolation("Disconnected");
+                });
+            }
         } catch {
-            // Camera unavailable or permission denied — keep the placeholder.
+            // Permission denied or no device — keep the placeholder, flag it, do not retry
+            // automatically (the user can reconnect/re-grant and the tour/support flow can point
+            // them at it; auto-retrying getUserMedia in a loop would just re-prompt repeatedly).
+            setCameraStatus("Camera: Off — please allow camera access", true);
+            reportCameraViolation("PermissionDenied");
         }
     }
 
-    function stopCamera() {
-        cameraStream?.getTracks().forEach((track) => track.stop());
-        cameraStream = null;
-        if (cameraVideo) {
-            cameraVideo.srcObject = null;
-            cameraVideo.classList.add("d-none");
-        }
-        cameraPlaceholder?.classList.remove("d-none");
-        if (cameraToggleBtn) cameraToggleBtn.textContent = "Turn On Camera";
-    }
-
-    cameraToggleBtn?.addEventListener("click", () => (cameraStream ? stopCamera() : startCamera()));
     if (isActive) startCamera();
+
+    // In-session cheating check — runs once per NEW QUESTION (see applyNextQuestion), grabbing
+    // ONE frame from the already-running cameraStream (same canvas.drawImage → toBlob technique
+    // as biometric-wizard.js/entry-verify.js) and posting it for a single-frame match +
+    // multi-face check. Flag-only by default (server config) — never blocks answering on its
+    // own; only ends the session when the server says shouldEndSession (Strictness="Strict" +
+    // strike cap hit).
+    //
+    // The first question is deliberately NOT checked: the entry gate verified this same face
+    // seconds earlier, so re-checking immediately costs an ai-service call for no new signal.
+    // Rapid skipping is absorbed server-side (Biometrics:InSessionMinIntervalSeconds) rather
+    // than here — a client-side interval could be bypassed, and this protects a shared resource.
+    const cheatingWarningEl = document.getElementById("cheating-warning");
+    const inSessionCanvas = document.createElement("canvas");
+    let inSessionCheckInFlight = false;
+
+    function setCheatingWarning(text) {
+        if (!cheatingWarningEl) return;
+        if (!text) {
+            cheatingWarningEl.textContent = "";
+            cheatingWarningEl.classList.add("d-none");
+            return;
+        }
+        cheatingWarningEl.textContent = text;
+        cheatingWarningEl.classList.remove("d-none");
+    }
+
+    async function captureAndVerifyInSession() {
+        if (ended || paused || !verifyInSessionUrl) return;
+        if (!cameraStream || !cameraVideo || inSessionCheckInFlight) return;
+        inSessionCheckInFlight = true;
+        try {
+            inSessionCanvas.width = cameraVideo.videoWidth || 640;
+            inSessionCanvas.height = cameraVideo.videoHeight || 480;
+            const ctx = inSessionCanvas.getContext("2d");
+            ctx.drawImage(cameraVideo, 0, 0, inSessionCanvas.width, inSessionCanvas.height);
+            const blob = await new Promise((resolve) => inSessionCanvas.toBlob(resolve, "image/jpeg", 0.9));
+            if (!blob) return;
+
+            const form = new FormData();
+            form.append("frame", blob, "frame.jpg");
+            // Not postProxy: this is multipart (an image blob), not JSON — same reasoning as the
+            // capture uploads in biometric-wizard.js/entry-verify.js. Never set Content-Type
+            // manually for FormData; the browser adds the multipart boundary itself.
+            const response = await fetch(verifyInSessionUrl, { method: "POST", body: form });
+            const data = await response.json().catch(() => null);
+            if (!response.ok || !data) return;
+
+            if (data.noFaceDetected) {
+                setCheatingWarning("Please make sure your face is visible to the camera.");
+                return;
+            }
+
+            if (data.passed) {
+                setCheatingWarning(null);
+                return;
+            }
+
+            setCheatingWarning(`Cheating warning: ${data.strikeCount}/${data.maxStrikes} — ${data.message}`);
+
+            if (data.shouldEndSession) {
+                ended = true;
+                if (inputEl) inputEl.disabled = true;
+                if (sendBtn) sendBtn.disabled = true;
+                if (endBtn) endBtn.disabled = true;
+                if (skipBtn) skipBtn.disabled = true;
+                if (hintBtn) hintBtn.disabled = true;
+                appendBubble("AI", data.message);
+                await new Promise((resolve) => setTimeout(resolve, 3000));
+                window.location.href = "/Interview";
+            }
+        } catch {
+            // Best-effort — a failed check must never interrupt the interview.
+        } finally {
+            inSessionCheckInFlight = false;
+        }
+    }
+
 
     // AI Voice (TTS) — speaks AI questions when the toggle is on. Text/message flow is unchanged;
     // this only adds audio playback of the AI bubbles.

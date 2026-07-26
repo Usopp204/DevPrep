@@ -35,6 +35,13 @@ public interface IAiServiceClient
         IReadOnlyList<IFormFile> frames, float[] storedEmbedding, string challengeJson,
         CancellationToken ct = default);
 
+    // Single-frame identity match via POST /internal/biometrics/verify — no challenge, no
+    // liveness/burst. Used by the in-session cheating check (VerifyFaceLiveAsync/face-verify-live
+    // stays the one entry verification uses). Throws BiometricQualityException with FaceCount
+    // set when the rejection reason is specifically "multiple faces detected".
+    Task<AiFaceVerifyResponse> VerifyFaceAsync(
+        IFormFile frame, float[] storedEmbedding, CancellationToken ct = default);
+
     // Voice speaker + challenge-phrase check via POST /internal/biometrics/voice/verify-challenge.
     Task<AiVoiceVerifyChallengeResponse> VerifyVoiceChallengeAsync(
         IFormFile file, float[] storedEmbedding, string expectedPhrase,

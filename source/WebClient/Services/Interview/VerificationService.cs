@@ -21,6 +21,13 @@ public interface IVerificationService
     Task<(bool Success, VerificationResultModel? Result, string? Error)> VerifyVoiceAsync(
         Guid sessionId, byte[] audio, string fileName, string contentType,
         CancellationToken cancellationToken);
+
+    Task<(bool Success, EntryGateStatusModel? Status, string? Error)> GetEntryGateAsync(
+        Guid sessionId, CancellationToken cancellationToken);
+
+    Task<(bool Success, InSessionVerifyResultModel? Result, string? Error)> VerifyInSessionAsync(
+        Guid sessionId, byte[] frame, string fileName, string contentType,
+        CancellationToken cancellationToken);
 }
 
 public sealed class VerificationService(IApiClient apiClient) : IVerificationService
@@ -71,6 +78,40 @@ public sealed class VerificationService(IApiClient apiClient) : IVerificationSer
         using var response = await apiClient.HttpClient.PostAsync(
             $"api/interview/sessions/{sessionId}/verify/voice", content, cancellationToken);
         return await ReadResultAsync(response, cancellationToken);
+    }
+
+    public async Task<(bool Success, EntryGateStatusModel? Status, string? Error)> GetEntryGateAsync(
+        Guid sessionId, CancellationToken cancellationToken)
+    {
+        using var response = await apiClient.HttpClient.GetAsync(
+            $"api/interview/sessions/{sessionId}/verify/entry-gate", cancellationToken);
+        var envelope = await ReadEnvelopeAsync<EntryGateStatusModel>(response, cancellationToken);
+        if (!response.IsSuccessStatusCode || envelope is null || !envelope.Success || envelope.Data is null)
+        {
+            return (false, null, envelope?.Message ?? $"Could not check the entry gate ({(int)response.StatusCode}).");
+        }
+
+        return (true, envelope.Data, null);
+    }
+
+    public async Task<(bool Success, InSessionVerifyResultModel? Result, string? Error)> VerifyInSessionAsync(
+        Guid sessionId, byte[] frame, string fileName, string contentType,
+        CancellationToken cancellationToken)
+    {
+        using var content = new MultipartFormDataContent();
+        var fileContent = new ByteArrayContent(frame);
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+        content.Add(fileContent, "frame", fileName);
+
+        using var response = await apiClient.HttpClient.PostAsync(
+            $"api/interview/sessions/{sessionId}/verify/in-session", content, cancellationToken);
+        var envelope = await ReadEnvelopeAsync<InSessionVerifyResultModel>(response, cancellationToken);
+        if (!response.IsSuccessStatusCode || envelope is null || !envelope.Success || envelope.Data is null)
+        {
+            return (false, null, envelope?.Message ?? $"In-session check failed ({(int)response.StatusCode}).");
+        }
+
+        return (true, envelope.Data, null);
     }
 
     private static async Task<(bool Success, VerificationResultModel? Result, string? Error)> ReadResultAsync(

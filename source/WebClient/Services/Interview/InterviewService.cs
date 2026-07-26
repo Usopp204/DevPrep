@@ -20,6 +20,11 @@ public interface IInterviewService
 
     Task<(bool Success, RoomViewModel? Room, string? Error)> GetRoomAsync(Guid sessionId, CancellationToken cancellationToken);
 
+    // Materializes the current/first question (SessionQuestion + AI chat message) for the Room.
+    // Safe to call on every Room entry (server-side idempotent — see GenerateQuestionAsync).
+    // Must only be called after the biometric entry gate has passed.
+    Task<(bool Success, string? Error)> GenerateQuestionAsync(Guid sessionId, CancellationToken cancellationToken);
+
     Task<(bool Success, MessageResponse? Message, string? Error)> SendMessageAsync(
         Guid sessionId, SendMessageRequest request, CancellationToken cancellationToken);
 
@@ -34,6 +39,11 @@ public interface IInterviewService
 
     Task<(bool Success, UnpauseResponse? Unpause, string? Error)> UnpauseSessionAsync(
         Guid sessionId, CancellationToken cancellationToken);
+
+    // Mandatory-camera policy audit flag (permission denied / disconnected mid-session).
+    // Flag-only — never blocks the Room or answering, see InterviewAPI's ReportCameraViolationAsync.
+    Task<(bool Success, string? Error)> ReportCameraViolationAsync(
+        Guid sessionId, string reason, CancellationToken cancellationToken);
 
     Task<(bool Success, string? Error)> MarkRoomTourSeenAsync(CancellationToken cancellationToken);
 
@@ -125,14 +135,20 @@ public sealed class InterviewService(IApiClient apiClient) : IInterviewService
         if (!init.Success || init.Data is null)
             return StartInterviewResult.Failure(init.Error ?? "Could not initialize the session.");
 
-        var firstQuestion = await SendAsync<GenerateQuestionResponse>(HttpMethod.Post,
+        // Question generation (materializing the first question + credit deduction) happens
+        // later, in the Room action, once the biometric entry gate has passed — NOT here.
+        // Calling it at Start time would always fail (no session can be verified yet).
+        return StartInterviewResult.Ok(sessionId);
+    }
+
+    public async Task<(bool Success, string? Error)> GenerateQuestionAsync(
+        Guid sessionId, CancellationToken cancellationToken)
+    {
+        var result = await SendAsync<GenerateQuestionResponse>(HttpMethod.Post,
             $"api/interview/sessions/{sessionId}/questions/generate",
             body: null,
             cancellationToken);
-        if (!firstQuestion.Success || firstQuestion.Data is null)
-            return StartInterviewResult.Failure(firstQuestion.Error ?? "Could not load the first question.");
-
-        return StartInterviewResult.Ok(sessionId);
+        return (result.Success, result.Error);
     }
 
     public async Task<(bool Success, RoomViewModel? Room, string? Error)> GetRoomAsync(
@@ -216,6 +232,16 @@ public sealed class InterviewService(IApiClient apiClient) : IInterviewService
             body: null,
             cancellationToken);
         return (result.Success, result.Data, result.Error);
+    }
+
+    public async Task<(bool Success, string? Error)> ReportCameraViolationAsync(
+        Guid sessionId, string reason, CancellationToken cancellationToken)
+    {
+        var result = await SendAsync<object>(HttpMethod.Post,
+            $"api/interview/sessions/{sessionId}/camera-violation",
+            new { reason },
+            cancellationToken);
+        return (result.Success, result.Error);
     }
 
     public async Task<(bool Success, string? Error)> MarkRoomTourSeenAsync(CancellationToken cancellationToken)

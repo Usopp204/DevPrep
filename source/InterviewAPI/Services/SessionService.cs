@@ -61,6 +61,9 @@ public class SessionService : ISessionService
     private readonly ILogger<SessionService> _logger;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly IProfileBiometricsRepository _biometricsRepository;
+    private readonly ISessionVerificationEventRepository _verificationEventRepository;
+    private readonly IConfiguration _configuration;
 
     public SessionService(
         ISessionRepository repo,
@@ -69,7 +72,10 @@ public class SessionService : ISessionService
         InterviewDbContext db,
         ILogger<SessionService> logger,
         IServiceScopeFactory scopeFactory,
-        IHttpContextAccessor httpContextAccessor)
+        IHttpContextAccessor httpContextAccessor,
+        IProfileBiometricsRepository biometricsRepository,
+        ISessionVerificationEventRepository verificationEventRepository,
+        IConfiguration configuration)
     {
         _repo = repo;
         _aiServiceClient = aiServiceClient;
@@ -78,7 +84,14 @@ public class SessionService : ISessionService
         _logger = logger;
         _scopeFactory = scopeFactory;
         _httpContextAccessor = httpContextAccessor;
+        _biometricsRepository = biometricsRepository;
+        _verificationEventRepository = verificationEventRepository;
+        _configuration = configuration;
     }
+
+    // Biometric entry gate is active only when the feature flag is on — with the flag off,
+    // sessions init and run exactly as before (guards below become no-ops).
+    private bool BiometricsEnabled => _configuration.GetValue("Biometrics:Enabled", false);
 
     public async Task<ConfigResponse> ConfigDurationAsync(Guid userId, ConfigDurationRequest req, CancellationToken ct)
     {
@@ -191,6 +204,18 @@ public class SessionService : ISessionService
         if (session.Status != "Configured")
             throw new InvalidOperationException("Session already initialized.");
 
+        // Step A.1: Biometric entry gate — a face enrollment is required before a session can
+        // be created at all (server-side, so calling the API directly cannot bypass the UI).
+        // TODO (future backlog): award a one-time credit bonus on first biometric enrollment.
+        if (BiometricsEnabled)
+        {
+            var faceRow = await _biometricsRepository.GetAsync(
+                userId, ProfileBiometricsService.ModalityFace, ct);
+            if (faceRow is null)
+                throw new InvalidOperationException(
+                    "Please enroll your face before starting an interview.");
+        }
+
         // Step B: TODO — deduct credit via PaymentApiClient (PaymentAPI not implemented yet).
         // const bool CreditsEnabled = false;
         // if (CreditsEnabled) await _paymentClient.DeductCreditAsync(userId, ct);
@@ -300,6 +325,19 @@ public class SessionService : ISessionService
         if (session.Status != "Initialized" && session.Status != "InProgress")
             throw new InvalidOperationException("Session not available.");
 
+        // Step A.1: Biometric entry gate (server-enforced). The session must hold at least one
+        // passed Entry/Face verification event BEFORE any question is served — and therefore
+        // before the Initialized→InProgress transition and the credit deduction below. Calling
+        // this API directly without passing the Verify screen is rejected here.
+        if (BiometricsEnabled)
+        {
+            var entryEvents = await _verificationEventRepository.ListBySessionAsync(sessionId, "Entry", ct);
+            var facePassed = entryEvents.Any(
+                e => e.Modality == ProfileBiometricsService.ModalityFace && e.Decision == "Pass");
+            if (!facePassed)
+                throw new InvalidOperationException("Identity verification required before starting the interview.");
+        }
+
         // Step B: Tìm câu hỏi đầu tiên chưa có câu trả lời của User.
         SessionQuestion? nextQuestion = null;
         foreach (var q in session.SessionQuestions) // đã OrderBy OrderIndex từ GetWithQuestionsAsync
@@ -361,17 +399,29 @@ public class SessionService : ISessionService
         }
 
         // Step E: Lưu tin nhắn câu hỏi của AI vào ChatMessages.
+        // Defensive idempotency guard: this endpoint is normally called once per session (at
+        // creation, from StartInterviewAsync), but a duplicate/racing call would otherwise
+        // insert a second identical AI Question message — skip the insert if one already exists
+        // for this question. Does not touch the credit/refund logic below in any way.
+        var alreadyAsked = await _db.ChatMessages.AnyAsync(
+            m => m.SessionQuestionId == nextQuestion.SessionQuestionId
+              && m.SenderType == "AI"
+              && m.MessageType == "Question",
+            ct);
         try
         {
-            await _repo.AddChatMessageAsync(new ChatMessage
+            if (!alreadyAsked)
             {
-                MessageId = Guid.NewGuid(),
-                SessionQuestionId = nextQuestion.SessionQuestionId,
-                SenderType = "AI",
-                MessageType = "Question",
-                Content = nextQuestion.Content,
-                SentAt = VietnamTime.Now
-            }, ct);
+                await _repo.AddChatMessageAsync(new ChatMessage
+                {
+                    MessageId = Guid.NewGuid(),
+                    SessionQuestionId = nextQuestion.SessionQuestionId,
+                    SenderType = "AI",
+                    MessageType = "Question",
+                    Content = nextQuestion.Content,
+                    SentAt = VietnamTime.Now
+                }, ct);
+            }
         }
         catch (Exception ex)
         {
@@ -416,100 +466,217 @@ public class SessionService : ISessionService
         if (currentQuestion is null || currentQuestion.SessionId != sessionId)
             throw new InvalidOperationException("Question not found.");
 
-        // Step C: Xác thực reason client gửi lên — "TimedOut" chỉ được tin khi server tự tính lại
-        // idle từ AskedAt (nguồn sự thật) đã vượt ngưỡng cứng; nếu không đủ, không tin nhãn đó.
-        // "Skipped" là hành động chủ động tức thời của user nên không cần kiểm tra idle.
-        string? answerReason = null;
-        if (req.Reason == "Skipped")
+        // Content filter — runs BEFORE the Step B.1 idempotency claim below on purpose: a
+        // rejected answer must not consume the turn (no claim, no counter bump, no ChatMessage).
+        // Skip/auto-advance turns carry empty content (reason Skipped/TimedOut) and are not real
+        // answers, so they bypass the filter. The client mirrors this check for instant feedback
+        // (content-filter.js), but THIS is the enforcement a direct API call cannot dodge.
+        if (req.Reason != "Skipped" && !string.IsNullOrWhiteSpace(req.Content)
+            && !ContentModerationHelper.IsAcceptable(req.Content))
         {
-            answerReason = "Skipped";
-        }
-        else if (req.Reason == "TimedOut")
-        {
-            const int graceSeconds = 5;
-            var (_, hardSeconds) = GetIdleThresholds(null);
-            var elapsedSeconds = currentQuestion.AskedAt is null
-                ? 0
-                : (VietnamTime.Now - currentQuestion.AskedAt.Value).TotalSeconds - GetEffectivePausedSeconds(session);
-            if (elapsedSeconds >= hardSeconds - graceSeconds)
-                answerReason = "TimedOut";
+            throw new InvalidOperationException(
+                "Your answer appears to contain inappropriate or unreadable content. Please review it and try again.");
         }
 
-        // Step D: Lưu câu trả lời của user vào ChatMessages.
-        await _repo.AddChatMessageAsync(new ChatMessage
+        // Step B.1: Per-question existence guard. Catches duplicate submissions that arrive with
+        // enough of a gap that each one reads a fresh (already-advanced) AnsweredQuestions counter
+        // — e.g. several idle-timer ticks firing in a burst (see interview-room.js autoAdvance).
+        // The counter-based claim below only serializes requests that read the SAME counter value
+        // at the SAME instant (true concurrency); it has no memory of "was THIS SessionQuestionId
+        // already answered," so a request arriving after an earlier duplicate has already
+        // completed would otherwise sail through and re-insert. Real-data evidence (2026-07-24):
+        // 5 near-simultaneous auto-advance retries all succeeded and inserted 5 ChatMessages for
+        // the same question because each read the counter fresh.
+        if (await _repo.HasUserAnswerAsync(req.SessionQuestionId, ct))
         {
-            MessageId = Guid.NewGuid(),
-            SessionQuestionId = req.SessionQuestionId,
-            SenderType = "User",
-            MessageType = "Answer",
-            Content = req.Content,
-            ResponseTimeMs = req.ResponseTimeMs,
-            AnswerReason = answerReason,
-            SentAt = VietnamTime.Now
-        }, ct);
+            _logger.LogInformation(
+                "SendMessage: question {SessionQuestionId} already has a User/Answer message — no-op, returning current state.",
+                req.SessionQuestionId);
+            return await BuildCurrentTurnResponseAsync(sessionId, currentQuestion.OrderIndex, ct);
+        }
 
-        // Step E: Tăng số câu đã trả lời, lưu session.
-        session.AnsweredQuestions += 1;
-        session.UpdatedAt = VietnamTime.Now;
-        await _repo.SaveChangesAsync(ct);
-
-        ScheduleGrading(sessionId, currentQuestion, req.Content);
-
-        // Step F: Tìm câu hỏi tiếp theo chưa được trả lời.
-        var nextQuestion = await _repo.GetNextUnansweredQuestionAsync(
-            sessionId, currentQuestion.OrderIndex, ct);
-
-        // Step G: Còn câu hỏi tiếp theo — phát câu hỏi AI, cập nhật AskedAt.
-        if (nextQuestion is not null)
+        // Step B.2: Atomic idempotency guard (per-turn). Claims this turn by incrementing
+        // AnsweredQuestions only if it still equals what we just read — same conditional-UPDATE
+        // pattern as UpdateStatusIfAsync uses for credit. Handles TRUE concurrent duplicates (same
+        // question, requests landing at the exact same instant) that the existence check above
+        // can race past (both could read "not answered yet" before either commits) — this claim
+        // only lets one of them through regardless.
+        bool claimed = await _repo.IncrementAnsweredIfAsync(sessionId, session.AnsweredQuestions, ct);
+        if (!claimed)
         {
+            _logger.LogInformation(
+                "SendMessage: duplicate/racing call for session {SessionId}, question {SessionQuestionId} — no-op, returning current state.",
+                sessionId, req.SessionQuestionId);
+            return await BuildCurrentTurnResponseAsync(sessionId, currentQuestion.OrderIndex, ct);
+        }
+
+        try
+        {
+            // Step C: Xác thực reason client gửi lên — "TimedOut" chỉ được tin khi server tự tính lại
+            // idle từ AskedAt (nguồn sự thật) đã vượt ngưỡng cứng; nếu không đủ, không tin nhãn đó.
+            // "Skipped" là hành động chủ động tức thời của user nên không cần kiểm tra idle.
+            string? answerReason = null;
+            if (req.Reason == "Skipped")
+            {
+                answerReason = "Skipped";
+            }
+            else if (req.Reason == "TimedOut")
+            {
+                const int graceSeconds = 5;
+                var (_, hardSeconds) = GetIdleThresholds(null);
+                var elapsedSeconds = currentQuestion.AskedAt is null
+                    ? 0
+                    : (VietnamTime.Now - currentQuestion.AskedAt.Value).TotalSeconds - GetEffectivePausedSeconds(session);
+                if (elapsedSeconds >= hardSeconds - graceSeconds)
+                    answerReason = "TimedOut";
+            }
+
+            // Step D: Lưu câu trả lời của user vào ChatMessages.
             await _repo.AddChatMessageAsync(new ChatMessage
             {
                 MessageId = Guid.NewGuid(),
-                SessionQuestionId = nextQuestion.SessionQuestionId,
-                SenderType = "AI",
-                MessageType = "Question",
-                Content = nextQuestion.Content,
+                SessionQuestionId = req.SessionQuestionId,
+                SenderType = "User",
+                MessageType = "Answer",
+                Content = req.Content,
+                ResponseTimeMs = req.ResponseTimeMs,
+                AnswerReason = answerReason,
                 SentAt = VietnamTime.Now
             }, ct);
 
-            nextQuestion.AskedAt = VietnamTime.Now;
-            await _repo.SaveChangesAsync(ct);
+            // Step E: (đã tăng AnsweredQuestions atomically ở guard phía trên — không tăng lại ở đây.)
 
-            var (reminderSeconds, hardSeconds) = GetIdleThresholds(null);
+            // Step E.1: Grade this answer in the background so the interview turn stays fast and the
+            // report is ready by the time the user reaches it. Empty content (Skip) is graded as
+            // score 0 "No answer provided." by ai-service — no special handling needed here.
+            ScheduleGrading(sessionId, currentQuestion, req.Content);
+
+            // Step F: Tìm câu hỏi tiếp theo chưa được trả lời.
+            var nextQuestion = await _repo.GetNextUnansweredQuestionAsync(
+                sessionId, currentQuestion.OrderIndex, ct);
+
+            // Step G: Còn câu hỏi tiếp theo — phát câu hỏi AI, cập nhật AskedAt.
+            if (nextQuestion is not null)
+            {
+                await _repo.AddChatMessageAsync(new ChatMessage
+                {
+                    MessageId = Guid.NewGuid(),
+                    SessionQuestionId = nextQuestion.SessionQuestionId,
+                    SenderType = "AI",
+                    MessageType = "Question",
+                    Content = nextQuestion.Content,
+                    SentAt = VietnamTime.Now
+                }, ct);
+
+                nextQuestion.AskedAt = VietnamTime.Now;
+                await _repo.SaveChangesAsync(ct);
+
+                var (reminderSeconds, hardSeconds) = GetIdleThresholds(null);
+                return new MessageResponse
+                {
+                    Ended = false,
+                    // session.AnsweredQuestions is the PRE-claim value read at Step A; the claim
+                    // above (IncrementAnsweredIfAsync) only succeeds when the DB still matches
+                    // that exact value, so "+1" is the confirmed new value — no need to re-read
+                    // (GetByIdAsync is tracking and would return the SAME stale in-memory entity;
+                    // ExecuteUpdateAsync bypasses the change tracker and never refreshes it).
+                    AnsweredQuestions = session.AnsweredQuestions + 1,
+                    TotalQuestions = session.TotalQuestions,
+                    NextQuestion = new NextQuestionDto
+                    {
+                        SessionQuestionId = nextQuestion.SessionQuestionId,
+                        OrderIndex = nextQuestion.OrderIndex,
+                        Content = nextQuestion.Content,
+                        IdleReminderSeconds = reminderSeconds,
+                        IdleHardSeconds = hardSeconds,
+                        IdleElapsedSeconds = 0
+                    }
+                };
+            }
+
+            // Step H: Đã trả lời hết — đóng phiên và phòng phỏng vấn.
+            var hasSubstantiveAnswer = await _repo.HasSubstantiveAnswerAsync(sessionId, ct);
+            session.Status = hasSubstantiveAnswer ? "Completed" : "Expired";
+            session.EndedAt = VietnamTime.Now;
+            session.UpdatedAt = VietnamTime.Now;
+
+            var room = await _repo.GetRoomBySessionAsync(sessionId, ct);
+            if (room is not null)
+            {
+                room.Status = "Closed";
+                room.ClosedAt = VietnamTime.Now;
+                await _repo.UpdateRoomAsync(room, ct); // lưu cả session + room cùng lúc
+            }
+            else
+            {
+                await _repo.SaveChangesAsync(ct); // chỉ lưu session
+            }
+
             return new MessageResponse
             {
-                Ended = false,
-                NextQuestion = new NextQuestionDto
-                {
-                    SessionQuestionId = nextQuestion.SessionQuestionId,
-                    OrderIndex = nextQuestion.OrderIndex,
-                    Content = nextQuestion.Content,
-                    IdleReminderSeconds = reminderSeconds,
-                    IdleHardSeconds = hardSeconds,
-                    IdleElapsedSeconds = 0
-                }
+                Ended = true,
+                NextQuestion = null,
+                // Same reasoning as the Step G response above: session.AnsweredQuestions is the
+                // pre-claim Step A snapshot (ExecuteUpdateAsync never refreshes it), so the
+                // confirmed post-claim value is +1, not the raw field.
+                AnsweredQuestions = session.AnsweredQuestions + 1,
+                TotalQuestions = session.TotalQuestions
+            };
+        }
+        catch
+        {
+            // A step after the successful claim failed (e.g. ChatMessage insert threw) — roll
+            // the claim back so this turn is not permanently stuck (a retry would otherwise
+            // always lose the race against a claim nothing ever completed).
+            await _repo.DecrementAnsweredAsync(sessionId, ct);
+            throw;
+        }
+    }
+
+    // Read-only reconstruction of "what SendMessageAsync's response would be right now" for a
+    // duplicate/racing call that lost the idempotency claim — mirrors Step F/G/H's response
+    // shape without inserting anything, so the loser sees the SAME state the winner produced.
+    private async Task<MessageResponse> BuildCurrentTurnResponseAsync(Guid sessionId, int afterOrderIndex, CancellationToken ct)
+    {
+        // AsNoTracking + a fresh query here on purpose: this method runs in a request that
+        // already tracked an InterviewSession earlier at Step A (via _repo.GetByIdAsync). A
+        // second tracked read for the SAME id would return that same cached in-memory instance
+        // instead of the winner's committed update (ExecuteUpdateAsync never refreshes tracked
+        // entities), which is exactly the bug this method exists to report around.
+        var session = await _db.InterviewSessions.AsNoTracking()
+            .FirstOrDefaultAsync(s => s.SessionId == sessionId && !s.IsDeleted, ct);
+        var nextQuestion = await _repo.GetNextUnansweredQuestionAsync(sessionId, afterOrderIndex, ct);
+
+        if (nextQuestion is null)
+        {
+            return new MessageResponse
+            {
+                Ended = true,
+                NextQuestion = null,
+                AnsweredQuestions = session?.AnsweredQuestions ?? 0,
+                TotalQuestions = session?.TotalQuestions ?? 0
             };
         }
 
-        // Step H: Đã trả lời hết — đóng phiên và phòng phỏng vấn.
-        var hasSubstantiveAnswer = await _repo.HasSubstantiveAnswerAsync(sessionId, ct);
-        session.Status = hasSubstantiveAnswer ? "Completed" : "Expired";
-        session.EndedAt = VietnamTime.Now;
-        session.UpdatedAt = VietnamTime.Now;
-
-        var room = await _repo.GetRoomBySessionAsync(sessionId, ct);
-        if (room is not null)
+        var (reminderSeconds, hardSeconds) = GetIdleThresholds(null);
+        var elapsedSeconds = nextQuestion.AskedAt is null || session is null
+            ? 0
+            : Math.Max(0, (int)(VietnamTime.Now - nextQuestion.AskedAt.Value).TotalSeconds - GetEffectivePausedSeconds(session));
+        return new MessageResponse
         {
-            room.Status = "Closed";
-            room.ClosedAt = VietnamTime.Now;
-            await _repo.UpdateRoomAsync(room, ct); // lưu cả session + room cùng lúc
-        }
-        else
-        {
-            await _repo.SaveChangesAsync(ct); // chỉ lưu session
-        }
-
-        return new MessageResponse { Ended = true, NextQuestion = null };
+            Ended = false,
+            AnsweredQuestions = session?.AnsweredQuestions ?? 0,
+            TotalQuestions = session?.TotalQuestions ?? 0,
+            NextQuestion = new NextQuestionDto
+            {
+                SessionQuestionId = nextQuestion.SessionQuestionId,
+                OrderIndex = nextQuestion.OrderIndex,
+                Content = nextQuestion.Content,
+                IdleReminderSeconds = reminderSeconds,
+                IdleHardSeconds = hardSeconds,
+                IdleElapsedSeconds = elapsedSeconds
+            }
+        };
     }
 
     public async Task<TimerResponse> GetTimerAsync(Guid userId, Guid sessionId, CancellationToken ct)
@@ -694,6 +861,20 @@ public class SessionService : ISessionService
         };
     }
 
+    public async Task<ReportCameraViolationResponse> ReportCameraViolationAsync(
+        Guid userId, Guid sessionId, ReportCameraViolationRequest req, CancellationToken ct)
+    {
+        var session = await _repo.GetByIdAsync(sessionId, ct);
+        if (session is null || session.UserId != userId)
+            throw new InvalidOperationException("Session not found.");
+
+        _logger.LogInformation(
+            "ReportCameraViolation: session {SessionId}, reason={Reason}", sessionId, req.Reason);
+
+        var count = await _repo.IncrementCameraViolationAsync(sessionId, ct);
+        return new ReportCameraViolationResponse { CameraViolationCount = count };
+    }
+
     public async Task<ResumeResponse> ResumeSessionAsync(Guid userId, Guid sessionId, CancellationToken ct)
     {
         var session = await _repo.GetWithFullHistoryAsync(sessionId, ct);
@@ -713,23 +894,33 @@ public class SessionService : ISessionService
         }
 
         // Tìm câu hỏi hiện tại chưa có User Answer (dùng in-memory vì ChatMessages đã load sẵn).
+        // Defense in depth: only for a session that is still active. A session ended EARLY (e.g.
+        // "End Interview" while questions remain unanswered) still has a real unanswered
+        // SessionQuestion row — without this guard this would keep handing back a "live" current
+        // question for a session that has already ended, letting a stale/bfcache'd Room page look
+        // interactive again. This method intentionally does NOT throw for a terminal status (it
+        // still needs to succeed and report Status truthfully — see InterviewController.Room's
+        // own status check, which is the primary guard and decides where to redirect).
         NextQuestionDto? currentQuestion = null;
-        foreach (var q in session.SessionQuestions) // đã OrderBy OrderIndex
+        if (session.Status is "Initialized" or "InProgress" or "Paused")
         {
-            var hasAnswer = q.ChatMessages.Any(m => m.SenderType == "User" && m.MessageType == "Answer");
-            if (!hasAnswer)
+            foreach (var q in session.SessionQuestions) // đã OrderBy OrderIndex
             {
-                var (reminderSeconds, hardSeconds) = GetIdleThresholds(null);
-                currentQuestion = new NextQuestionDto
+                var hasAnswer = q.ChatMessages.Any(m => m.SenderType == "User" && m.MessageType == "Answer");
+                if (!hasAnswer)
                 {
-                    SessionQuestionId = q.SessionQuestionId,
-                    OrderIndex = q.OrderIndex,
-                    Content = q.Content,
-                    IdleReminderSeconds = reminderSeconds,
-                    IdleHardSeconds = hardSeconds,
-                    IdleElapsedSeconds = 0
-                };
-                break;
+                    var (reminderSeconds, hardSeconds) = GetIdleThresholds(null);
+                    currentQuestion = new NextQuestionDto
+                    {
+                        SessionQuestionId = q.SessionQuestionId,
+                        OrderIndex = q.OrderIndex,
+                        Content = q.Content,
+                        IdleReminderSeconds = reminderSeconds,
+                        IdleHardSeconds = hardSeconds,
+                        IdleElapsedSeconds = 0
+                    };
+                    break;
+                }
             }
         }
 
@@ -849,7 +1040,8 @@ public class SessionService : ISessionService
             Items = sessions.Select(s => new SessionHistoryItemDto
             {
                 SessionId = s.SessionId,
-                Title = s.Title,
+                // Title column was removed from the schema — DTO field stays unset (null);
+                // clients fall back to Position for display.
                 Position = s.Position,
                 Level = s.Level,
                 InteractionMode = s.InteractionMode,
