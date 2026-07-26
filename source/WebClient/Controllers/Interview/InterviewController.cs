@@ -28,7 +28,7 @@ public class InterviewController(
     public async Task<IActionResult> Start(DashboardViewModel model, CancellationToken cancellationToken)
     {
         var result = await interviewService.StartInterviewAsync(
-            model.DurationMinutes, model.Level, model.Position, model.Jd,
+            model.DurationMinutes, model.Level, model.Position, model.Jd, model.JdId,
             model.FocusAreas ?? new List<string>(), cancellationToken);
 
         if (!result.Success)
@@ -38,6 +38,7 @@ public class InterviewController(
             dashboard.Level = model.Level;
             dashboard.Position = model.Position;
             dashboard.Jd = model.Jd;
+            dashboard.JdId = model.JdId;
             dashboard.FocusAreas = model.FocusAreas ?? new List<string>();
             dashboard.ErrorMessage = result.ErrorMessage;
             return View("Index", dashboard);

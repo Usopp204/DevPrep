@@ -199,6 +199,8 @@ public class SessionService : ISessionService
         // in History/Report). Falls back to the existing/default when the caller omits it.
         if (!string.IsNullOrWhiteSpace(req.Position))
             session.Position = req.Position;
+        if (req.JdId.HasValue)
+            session.JdId = req.JdId;
 
         // Step C: Ask ai-service to plan all questions for this session, tailored by role/focus/JD.
         var planRequest = new AiQuestionPlanRequest

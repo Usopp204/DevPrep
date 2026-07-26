@@ -491,6 +491,61 @@ textarea.dash-input {
     transform: translateY(-2px);
 }
 
+/* ---- Job Description widget (shared JD with Profile/CvJd) ---- */
+.ijd-card {
+    padding: 16px;
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(70, 69, 85, 0.4);
+    background: rgba(14, 14, 19, 0.5);
+    margin-top: 8px;
+}
+
+.ijd-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.ijd-pos { font-weight: 600; color: var(--color-on-surface); }
+.ijd-co { font-size: 13px; color: var(--color-on-surface-variant); }
+
+.ijd-group-label {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    margin: 10px 0 6px;
+}
+
+.ijd-group-label.ijd-req { color: #f59e0b; }
+.ijd-group-label.ijd-nice { color: #2dd4bf; }
+
+.ijd-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.ijd-tags .dash-chip { padding: 4px 10px; font-size: 12px; cursor: default; }
+
+.ijd-tabs { display: flex; gap: 8px; margin-top: 8px; }
+
+.ijd-drop {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 24px;
+    border: 1px dashed rgba(70, 69, 85, 0.5);
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    text-align: center;
+    color: var(--color-on-surface-variant);
+}
+
+.ijd-drop:hover { border-color: var(--color-primary); }
+
+.ijd-parse-actions { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+
 /* ---- Alerts ---- */
 .dash-alert {
     padding: 12px 16px;

@@ -13,7 +13,7 @@ public interface IInterviewService
     Task<DashboardViewModel> GetDashboardAsync(CancellationToken cancellationToken);
 
     Task<StartInterviewResult> StartInterviewAsync(
-        int durationMinutes, string level, string position, string? jd, List<string> focusAreas,
+        int durationMinutes, string level, string position, string? jd, Guid? jdId, List<string> focusAreas,
         CancellationToken cancellationToken);
 
     Task<(bool Success, CatalogResponse? Catalog, string? Error)> GetCatalogAsync(CancellationToken cancellationToken);
@@ -92,7 +92,7 @@ public sealed class InterviewService(IApiClient apiClient) : IInterviewService
     }
 
     public async Task<StartInterviewResult> StartInterviewAsync(
-        int durationMinutes, string level, string position, string? jd, List<string> focusAreas,
+        int durationMinutes, string level, string position, string? jd, Guid? jdId, List<string> focusAreas,
         CancellationToken cancellationToken)
     {
         var duration = await SendAsync<ConfigResponse>(HttpMethod.Put,
@@ -120,7 +120,7 @@ public sealed class InterviewService(IApiClient apiClient) : IInterviewService
 
         var init = await SendAsync<InitResponse>(HttpMethod.Post,
             "api/interview/sessions/init",
-            new InitRequest { SessionId = sessionId, Position = position, Jd = jd, FocusAreas = focusAreas },
+            new InitRequest { SessionId = sessionId, Position = position, Jd = jd, JdId = jdId, FocusAreas = focusAreas },
             cancellationToken);
         if (!init.Success || init.Data is null)
             return StartInterviewResult.Failure(init.Error ?? "Could not initialize the session.");

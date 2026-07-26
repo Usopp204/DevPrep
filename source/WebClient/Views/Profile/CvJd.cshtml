@@ -127,7 +127,9 @@
                             <div class="row g-2 mb-3">
                                 <div class="col-12">
                                     <label class="cvjd-label">Vị trí tuyển dụng *</label>
-                                    <input id="jdPosition" class="cvjd-input" placeholder="Vd: Senior Backend Developer, QC Engineer..." />
+                                    <select id="jdPosition" class="cvjd-input">
+                                        <option value="">Đang tải danh sách vị trí...</option>
+                                    </select>
                                 </div>
                                 <div class="col-12">
                                     <label class="cvjd-label">Công ty (không bắt buộc)</label>
@@ -495,6 +497,22 @@ window.cancelJdParse = function() {
     setStatus('jdStatus','Đã hủy phân tích JD.','info');
 };
 
+// Vị trí tuyển dụng dropdown — cùng nguồn role voi trang Interview setup (/Interview/Catalog),
+// đồng bộ danh mục thay vì để người dùng gõ tự do.
+async function loadJdPositionOptions(preselect) {
+    const sel = $('jdPosition');
+    let roles = [];
+    try {
+        const resp = await fetch('/Interview/Catalog');
+        const catalog = await safeJson(resp);
+        if (catalog && Array.isArray(catalog.roles)) roles = catalog.roles;
+    } catch {}
+    sel.innerHTML = roles.length
+        ? '<option value="">-- Chọn vị trí --</option>' + roles.map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join('')
+        : '<option value="">Không tải được danh sách vị trí</option>';
+    if (preselect && roles.includes(preselect)) sel.value = preselect;
+}
+
 window.changeJd = function() {
     $('jdParsed').style.display = 'none';
     $('jdInputArea').style.display = 'block';
@@ -704,13 +722,14 @@ function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')
             }
         }
     } catch{}
+    let existingJdPosition = '';
     try {
         const r = await fetch('/CvJd/GetJdInfo');
         if(r.ok){
             const jd = await safeJson(r);
             if(jd && !jd.error){
                 if(jd.rawText) $('jdText').value = jd.rawText;
-                if(jd.position) $('jdPosition').value = jd.position||'';
+                existingJdPosition = jd.position||'';
                 if(jd.clarifiedJson){
                     try { renderJdParsed(JSON.parse(jd.clarifiedJson), jd.position||''); setStatus('jdStatus','JD hiện tại đã tải.','ok'); }
                     catch{}
@@ -718,6 +737,7 @@ function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')
             }
         }
     } catch{}
+    await loadJdPositionOptions(existingJdPosition);
 })();
 })();
 </script>

@@ -9,6 +9,9 @@ public class DashboardViewModel
     // Role, JD and focus technologies now drive the ai-service question plan (loaded from /catalog).
     public string Position { get; set; } = "Backend";
     public string? Jd { get; set; }
+
+    // The CvJdAPI JobDescription backing Jd above — shared with Profile/CvJd (same record).
+    public Guid? JdId { get; set; }
     public List<string> FocusAreas { get; set; } = new();
 
     // Newest completed/expired sessions shown in the sidebar "Recent Sessions" list.
