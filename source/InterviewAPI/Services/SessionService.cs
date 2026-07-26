@@ -849,7 +849,6 @@ public class SessionService : ISessionService
             Items = sessions.Select(s => new SessionHistoryItemDto
             {
                 SessionId = s.SessionId,
-                Title = s.Title,
                 Position = s.Position,
                 Level = s.Level,
                 InteractionMode = s.InteractionMode,
