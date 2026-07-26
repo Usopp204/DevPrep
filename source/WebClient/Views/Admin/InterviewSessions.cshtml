@@ -37,14 +37,6 @@
     <style>
         body { background-color: #0e1323; color: #e5e1e7; }
         .glass-card { background: rgba(32,31,35,0.4); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); border-top: 1px solid rgba(255,255,255,0.15); }
-        /* Detail hiển thị dạng modal lớn giữa màn hình (thay cho drawer trượt bên phải). */
-        .detail-modal {
-            position: fixed; left: 50%; top: 50%;
-            transform: translate(-50%, -50%) scale(1);
-            width: min(1100px, 94vw); height: min(88vh, 860px);
-            transition: opacity .25s ease, transform .25s ease;
-        }
-        .modal-hidden { opacity: 0; transform: translate(-50%, -50%) scale(.96); pointer-events: none; }
         .ad-sidebar h2, .ad-sidebar p, .ad-sidebar a { margin-bottom: 0; }
         .iv-main { margin-left: 250px; padding-top: 80px; padding-left: 24px; padding-right: 24px; min-height: 100vh; background: #0e1323; }
         .iv-select { background: #11121a !important; border: 1px solid #292c3d !important; border-radius: 10px; padding: 6px 12px; color: #ffffff !important; font-size: 13px; }
@@ -105,18 +97,6 @@
         </div>
     </main>
 
-    <!-- Detail Modal (transcript) -->
-    <div class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] hidden opacity-0 transition-opacity duration-300" id="drawer-overlay" onclick="toggleDrawer(false)"></div>
-    <aside class="z-[70] glass-card modal-hidden detail-modal rounded-2xl overflow-hidden shadow-2xl flex flex-col" id="iv-drawer">
-        <div class="p-lg border-b border-border-subtle flex items-center justify-between">
-            <h2 class="font-headline-md text-primary">Session Detail</h2>
-            <button class="p-2 rounded-full hover:bg-surface-container-high text-on-surface-variant" onclick="toggleDrawer(false)"><span class="material-symbols-outlined">close</span></button>
-        </div>
-        <div id="iv-detail-body" class="flex-1 overflow-y-auto p-lg space-y-lg">
-            <p class="text-on-surface-variant">Loading...</p>
-        </div>
-    </aside>
-
     <!-- Confirm modal -->
     <div id="confirm-modal" class="fixed inset-0 z-[80] hidden items-center justify-center bg-black/50 backdrop-blur-sm">
         <div class="glass-card rounded-2xl p-lg w-[360px]">
@@ -130,7 +110,7 @@
     </div>
 
     <script>
-        const API_BASE = 'http://localhost:7005/api/admin/interviews';
+        const API_BASE = 'http://localhost:7000/api/admin/interviews';
         const token = '@token';
         const STATUSES = ['Completed', 'Expired'];
         const LEVELS = ['Intern', 'Junior', 'Middle', 'Senior'];
@@ -170,7 +150,7 @@
                 const json = await res.json();
                 if (json.success) { renderTable(json.data.items || []); renderPagination(json.data); }
                 else tbody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-error">Failed: ${escapeHtml(json.message)}</td></tr>`;
-            } catch (e) { tbody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-error">Failed to load data. Please sign in again or check InterviewAPI (:7005).</td></tr>`; }
+            } catch (e) { tbody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-error">Failed to load data. Please sign in again or check ApiGateway (:7000).</td></tr>`; }
         }
 
         function renderTable(items) {
@@ -201,78 +181,9 @@
                 </tr>`).join('');
         }
 
-        async function openDetail(id) {
-            toggleDrawer(true);
-            const body = document.getElementById('iv-detail-body');
-            body.innerHTML = `<p class="text-on-surface-variant">Loading...</p>`;
-            try {
-                const res = await fetch(`${API_BASE}/${id}`, { headers: { 'Authorization': `Bearer ${token}` } });
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const json = await res.json();
-                if (json.success && json.data) renderDetail(json.data);
-                else body.innerHTML = `<p class="text-error">Failed to load details.</p>`;
-            } catch (e) { body.innerHTML = `<p class="text-error">Failed to load details. Check permissions / connection.</p>`; }
-        }
-
-        function renderDetail(d) {
-            const meta = [
-                ['Level', badge(d.level)], ['Mode', badge(d.interactionMode)], ['Type', badge(d.questionType)],
-                ['Planned', `${d.durationMinutes} min`], ['Started', fmtDateTime(d.startedAt)], ['Ended', fmtDateTime(d.endedAt)],
-                ['Actual', actualDuration(d.startedAt, d.endedAt)], ['Credit', String(d.creditCost)],
-                ['Questions', `${d.answeredQuestions}/${d.totalQuestions}`], ['Avg response', msToSec(d.avgResponseTimeMs)],
-                ['CV / JD', `${d.cvId ? 'CV' : '—'} / ${d.jdId ? 'JD' : '—'}`], ['Created', fmtDateTime(d.createdAt)]
-            ];
-            const metaHtml = meta.map(m => `<div class="flex justify-between gap-sm py-1 border-b border-border-subtle/40"><span class="font-code-label text-[11px] uppercase text-on-surface-variant">${m[0]}</span><span class="font-body-sm text-on-surface text-right">${m[1]}</span></div>`).join('');
-
-            const questions = (d.questions || []);
-            const transcriptHtml = questions.length ? questions.map(qz => `
-                <div class="glass-card rounded-xl p-md">
-                    <div class="flex items-start gap-sm mb-2">
-                        <span class="font-code-label text-[11px] text-primary uppercase whitespace-nowrap">Q ${qz.orderIndex}</span>
-                        <span class="px-xs py-0.5 rounded text-[9px] uppercase font-code-label ${qz.isAiGenerated ? 'bg-secondary-container/20 text-secondary' : 'bg-tertiary-container/20 text-tertiary'}">${qz.isAiGenerated ? 'AI' : 'Bank'}</span>
-                        <span class="text-on-surface-variant text-[10px] ml-auto whitespace-nowrap">${fmtDateTime(qz.askedAt)}</span>
-                    </div>
-                    <p class="font-body-sm text-on-surface mb-3">${escapeHtml(qz.content || '')}</p>
-                    <div class="space-y-2">${(qz.messages || []).map(msgBubble).join('') || '<p class="text-on-surface-variant text-[12px] italic">No messages yet.</p>'}</div>
-                </div>`).join('') : '<p class="text-on-surface-variant text-[13px] italic">No questions / transcript yet.</p>';
-
-            document.getElementById('iv-detail-body').innerHTML = `
-                <div class="flex items-start gap-md">
-                    <div class="w-14 h-14 rounded-2xl bg-primary/20 text-primary flex items-center justify-center font-bold text-xl">${initial(d.userFullName)}</div>
-                    <div>
-                        <h3 class="text-headline-md font-bold">${escapeHtml(userLabel(d))}</h3>
-                        <p class="text-on-surface-variant font-code-label text-[12px]">${escapeHtml(d.userEmail || '—')}</p>
-                        <p class="font-body-sm text-on-surface mt-1">${statusBadge(d.status)}${d.isDeleted ? deletedBadge() : ''}</p>
-                    </div>
-                </div>
-                <div class="glass-card rounded-xl p-md grid grid-cols-1 md:grid-cols-2 gap-x-xl">${metaHtml}</div>
-                <div>
-                    <div class="flex items-center justify-between mb-2"><span class="font-code-label text-[11px] uppercase text-on-surface-variant">Transcript</span></div>
-                    <div class="space-y-md">${transcriptHtml}</div>
-                </div>
-                <div class="pt-2 border-t border-border-subtle">
-                    ${d.isDeleted
-                        ? `<button class="w-full px-lg py-sm rounded-xl border border-success text-success font-bold hover:bg-success/10 flex items-center justify-center gap-xs" onclick="restoreSession('${d.sessionId}')">
-                        <span class="material-symbols-outlined text-[20px]">restore_from_trash</span> Restore
-                    </button>`
-                        : `<button class="w-full px-lg py-sm rounded-xl border border-error text-error font-bold hover:bg-error/10 flex items-center justify-center gap-xs" onclick="deleteSession('${d.sessionId}')">
-                        <span class="material-symbols-outlined text-[20px]">delete</span> Delete
-                    </button>`}
-                </div>`;
-        }
-
-        function msgBubble(m) {
-            const s = m.senderType;
-            const align = s === 'User' ? 'items-end' : (s === 'System' ? 'items-center' : 'items-start');
-            const color = s === 'User' ? 'bg-primary-container/20 text-on-surface' : (s === 'System' ? 'bg-surface-container-highest/40 text-on-surface-variant italic' : 'bg-secondary-container/15 text-on-surface');
-            const audio = (m.messageType === 'Audio' && m.audioUrl) ? `<audio controls src="${escapeHtml(m.audioUrl)}" class="mt-1 h-8"></audio>` : '';
-            const rt = (s === 'User' && m.responseTimeMs) ? `<span class="text-on-surface-variant text-[9px]">${msToSec(m.responseTimeMs)}</span>` : '';
-            return `<div class="flex flex-col ${align}">
-                <div class="max-w-[85%] rounded-xl px-3 py-2 ${color}">
-                    <div class="flex items-center gap-xs mb-0.5"><span class="text-[9px] font-code-label uppercase opacity-70">${s}</span>${rt}</div>
-                    <p class="font-body-sm whitespace-pre-wrap">${escapeHtml(m.content || '')}</p>${audio}
-                </div>
-            </div>`;
+        // Detail giờ là TRANG RIÊNG (/Admin/InterviewSessionDetail/{id}) thay vì modal.
+        function openDetail(id) {
+            window.location.href = '/Admin/InterviewSessionDetail/' + id;
         }
 
         function deleteSession(id) {
@@ -281,7 +192,7 @@
                     const res = await fetch(`${API_BASE}/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
                     if (res.status === 403) { alert('Only Admin can delete.'); return; }
                     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                    toggleDrawer(false); fetchList();
+                    fetchList();
                 } catch (e) { alert('Delete failed.'); }
             });
         }
@@ -292,7 +203,7 @@
                     const res = await fetch(`${API_BASE}/${id}/restore`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
                     if (res.status === 403) { alert('Only Admin can restore.'); return; }
                     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                    toggleDrawer(false); fetchList();
+                    fetchList();
                 } catch (e) { alert('Restore failed.'); }
             });
         }
@@ -315,9 +226,6 @@
             DevPrepPagination.render({ container: 'iv-pages', currentPage, totalPages, onPageChange: pageNumber => { currentPage = pageNumber; fetchList(); } });
         }
         function fmtDate(d) { if (!d) return '—'; const x = new Date(d); const m = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"]; return `${m[x.getMonth()]} ${x.getDate().toString().padStart(2,'0')}`; }
-        function fmtDateTime(d) { if (!d) return '—'; const x = new Date(d); return x.toLocaleString(); }
-        function msToSec(ms) { if (!ms && ms !== 0) return '—'; return (ms / 1000).toFixed(1) + 's'; }
-        function actualDuration(a, b) { if (!a || !b) return '—'; const ms = new Date(b) - new Date(a); if (ms < 0) return '—'; const min = Math.floor(ms / 60000), sec = Math.floor((ms % 60000) / 1000); return `${min}m ${sec}s`; }
         function cleanText(value) {
             let text = String(value || '');
             for (let i = 0; i < 2; i++) {
@@ -346,11 +254,6 @@
             return text;
         }
         function escapeHtml(u) { return cleanText(u).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;"); }
-        function toggleDrawer(show) {
-            const drawer = document.getElementById('iv-drawer'), overlay = document.getElementById('drawer-overlay');
-            if (show) { drawer.classList.remove('modal-hidden'); overlay.classList.remove('hidden'); setTimeout(() => overlay.classList.add('opacity-100'), 10); document.body.style.overflow = 'hidden'; }
-            else { drawer.classList.add('modal-hidden'); overlay.classList.remove('opacity-100'); setTimeout(() => { overlay.classList.add('hidden'); document.body.style.overflow = 'auto'; }, 300); }
-        }
     </script>
     <script src="~/js/components/pagination.js" asp-append-version="true"></script>
 </body>

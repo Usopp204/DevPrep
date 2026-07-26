@@ -274,6 +274,26 @@ public class AdminController(
         return View();
     }
 
+    // Trang chi tiết 1 phiên phỏng vấn (tách khỏi trang list — trước là modal).
+    // Route mặc định {controller}/{action}/{id?} -> /Admin/InterviewSessionDetail/{guid}.
+    public IActionResult InterviewSessionDetail(string? id)
+    {
+        if (!IsAdminRole())
+        {
+            TempData["Error"] = "You must sign in with an Admin account to access the dashboard.";
+            return RedirectToAction("Login", "Auth");
+        }
+
+        // Validate Guid trước khi nhúng vào JS của view (chặn giá trị rác trên URL).
+        if (!Guid.TryParse(id, out var sessionId))
+        {
+            return RedirectToAction(nameof(InterviewSessions));
+        }
+
+        ViewBag.SessionId = sessionId;
+        return View();
+    }
+
     /// <summary>
     /// Đọc role từ access_token (JWT trong cookie HttpOnly) và kiểm tra hết hạn.
     /// CHỈ cho phép role Admin (Manager KHÔNG được vào khu Admin).
