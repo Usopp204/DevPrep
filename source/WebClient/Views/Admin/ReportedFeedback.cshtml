@@ -1,0 +1,100 @@
+@using WebClient.Models.Feedback
+@model ReportedFeedbackPageViewModel
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reported Feedback - DevPrep Admin</title>
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/components/pagination.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/components/safe-text.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/components/star-rating.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/pages/reported-feedback.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/pages/admin-reported-feedback.css" asp-append-version="true" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@@100..700,0..1&display=swap" rel="stylesheet" />
+</head>
+<body class="reported-feedback-admin-page admin-reported-feedback-page">
+    @await Html.PartialAsync("_AdminTopbar")
+    @await Html.PartialAsync("_AdminSidebar")
+
+    <main class="reported-feedback-main">
+        <header class="reported-feedback-page-header">
+            <div>
+                <p>Feedback management</p>
+                <h1>Reported Feedback</h1>
+                <span>Review community reports, dismiss invalid reports, or remove feedback that violates the standards.</span>
+            </div>
+        </header>
+
+        <nav class="feedback-management-tabs" aria-label="Feedback management sections">
+            <a asp-controller="Admin" asp-action="AiFeedback">AI Feedback</a>
+            <a asp-controller="Admin" asp-action="SystemFeedback">System Feedback</a>
+            <a class="active" asp-controller="Admin" asp-action="ReportedFeedback" aria-current="page">Reported Feedback</a>
+        </nav>
+
+        @if (!string.IsNullOrWhiteSpace(Model.SuccessMessage))
+        {
+            <div class="reported-feedback-alert success" role="status">@Model.SuccessMessage</div>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+        {
+            <div class="reported-feedback-alert error" role="alert">@Model.ErrorMessage</div>
+        }
+
+        <partial name="_ReportedFeedbackList" model="Model" />
+    </main>
+
+    <partial name="_ReportedFeedbackDetails" model="Model" />
+
+    @foreach (var resolution in new[]
+    {
+        new { Kind = "dismiss", Title = "Dismiss report", Description = "The report will be marked as dismissed. The feedback will remain public.", Action = "DismissFeedbackReport", Submit = "Dismiss Report" },
+        new { Kind = "delete", Title = "Delete reported feedback", Description = "The feedback will be removed from public view. Every Pending report for the same feedback will be resolved.", Action = "DeleteReportedFeedback", Submit = "Delete Feedback" }
+    })
+    {
+        <div class="report-resolution-modal" data-resolution-modal="@resolution.Kind" hidden>
+            <div class="report-resolution-backdrop" data-resolution-close></div>
+            <section role="dialog" aria-modal="true" aria-labelledby="@resolution.Kind-resolution-title" class="report-resolution-dialog">
+                <header>
+                    <div>
+                        <p>Admin action</p>
+                        <h2 id="@resolution.Kind-resolution-title">@resolution.Title</h2>
+                    </div>
+                    <button type="button" data-resolution-close aria-label="Close @resolution.Title">
+                        <span class="material-symbols-outlined" aria-hidden="true">close</span>
+                    </button>
+                </header>
+                <p>@resolution.Description</p>
+                <div class="report-resolution-target safe-long-text" data-resolution-target></div>
+                <form method="post" asp-controller="Admin" asp-action="@resolution.Action" data-resolution-form>
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="reportId" data-resolution-report-id />
+                    <input type="hidden" name="page" value="@Model.Reports.Page" />
+                    <input type="hidden" name="feedbackType" value="@Model.FeedbackType" />
+                    <input type="hidden" name="status" value="@Model.Status" />
+                    <input type="hidden" name="reasonCode" value="@Model.ReasonCode" />
+                    <input type="hidden" name="keyword" value="@Model.Keyword" />
+                    <label for="@resolution.Kind-resolution-note">Resolution note <span>(optional)</span></label>
+                    <textarea id="@resolution.Kind-resolution-note" name="ResolutionNote" maxlength="@FeedbackReportRules.MaxResolutionNoteLength" rows="4" data-resolution-note></textarea>
+                    <div class="feedback-field-meta">
+                        <span></span>
+                        <span class="feedback-character-counter" data-resolution-counter>0 / @FeedbackReportRules.MaxResolutionNoteLength</span>
+                    </div>
+                    <div class="report-resolution-actions">
+                        <button type="button" class="resolution-cancel" data-resolution-close>Cancel</button>
+                        <button type="submit" class="resolution-submit @resolution.Kind" data-resolution-submit data-pending-text="Working...">@resolution.Submit</button>
+                    </div>
+                </form>
+            </section>
+        </div>
+    }
+
+    <script src="~/js/components/pagination.js" asp-append-version="true"></script>
+    <script src="~/js/pages/admin-reported-feedback.js" asp-append-version="true"></script>
+</body>
+</html>

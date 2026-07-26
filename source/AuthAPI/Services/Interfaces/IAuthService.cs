@@ -10,6 +10,9 @@ public interface IAuthService
 
     Task<ResendEmailOtpResponse> ResendEmailOtpAsync(ResendEmailOtpRequest request);
 
+    /// <summary>Xác thực email bằng token trong link (người dùng bấm nút xác nhận trong email).</summary>
+    Task<VerifyEmailOtpResponse> VerifyEmailByLinkAsync(VerifyEmailLinkRequest request);
+
     /// <summary>Đăng nhập thường (mọi role).</summary>
     Task<LoginResponse> LoginAsync(LoginRequest request);
 
@@ -42,4 +45,7 @@ public interface IAuthService
 
     /// <summary>Đăng xuất: thu hồi refresh token.</summary>
     Task<LogoutResponse> LogoutAsync(LogoutRequest request);
+
+    /// <summary>Trạng thái + role hiện tại của tài khoản (null nếu không tồn tại) — cho WebClient check block giữa phiên.</summary>
+    Task<AccountStatusResponse?> GetAccountStatusAsync(Guid accountId);
 }

@@ -19,6 +19,9 @@ public class EmailTemplateRepository : IEmailTemplateRepository
     public Task<bool> ExistsByCodeAsync(string code) =>
         _context.EmailTemplates.AnyAsync(t => t.Code == code);
 
+    public Task<EmailTemplate?> GetByCodeAsync(string code) =>
+        _context.EmailTemplates.FirstOrDefaultAsync(t => t.Code == code);
+
     public async Task AddAsync(EmailTemplate template) =>
         await _context.EmailTemplates.AddAsync(template);
 

@@ -3,7 +3,6 @@ namespace InterviewAPI.DTOs.Session;
 public class SessionListItemDto
 {
     public Guid SessionId { get; set; }
-    public string? Title { get; set; }
     public string? Position { get; set; }
     public string Level { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;

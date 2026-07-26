@@ -19,5 +19,5 @@ public class BiometricsViewModel
 
     // Recent sessions for the temporary "Test verification" section (Milestone 2).
     // Removed in Milestone 4 when the modal moves to the Room entry gate.
-    public List<SessionListItemDto> RecentSessions { get; set; } = new();
+    public List<SessionHistoryItemDto> RecentSessions { get; set; } = new();
 }

@@ -1,4 +1,4 @@
-@model WebClient.Models.Shared.PagedResult<WebClient.Models.Manager.QuestionBankListItemViewModel>
+﻿@model WebClient.Models.Shared.PagedResult<WebClient.Models.Manager.QuestionBankListItemViewModel>
 
 @{
     Layout = null;
@@ -21,25 +21,24 @@
     var keyword = ViewBag.Keyword as string;
     var difficultyFilter = ViewBag.Difficulty as string;
     var statusFilter = ViewBag.Status as string;
-    Guid? selectedCategoryId = ViewBag.CategoryId is Guid categoryId ? categoryId : null;
+    Guid? selectedCategoryId = ViewBag.CategoryId is Guid categoryId ? categoryId : (Guid.TryParse(ViewBag.CategoryId?.ToString(), out Guid parsedCatId) ? parsedCatId : null);
 
     string BuildPageUrl(int page)
     {
         var values = new Dictionary<string, string?>
-                {
-                    ["keyword"] = keyword,
-                    ["difficulty"] = difficultyFilter,
-                    ["status"] = statusFilter,
-                    ["categoryId"] = selectedCategoryId?.ToString(),
-                    ["page"] = page.ToString(),
-                    ["pageSize"] = pageSize.ToString()
-                };
+        {
+            ["keyword"] = keyword,
+            ["difficulty"] = difficultyFilter,
+            ["status"] = statusFilter,
+            ["categoryId"] = selectedCategoryId?.ToString(),
+            ["page"] = page.ToString(),
+            ["pageSize"] = pageSize.ToString()
+        };
 
         return Microsoft.AspNetCore.WebUtilities.QueryHelpers.AddQueryString("/Manager/QuestionBank", values);
     }
 
-    var categories = ViewBag.Categories as List<WebClient.Models.Manager.QuestionBankCategoryViewModel>
-        ?? [];
+    var categories = ViewBag.Categories as List<WebClient.Models.Manager.QuestionBankCategoryViewModel> ?? [];
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -124,17 +123,17 @@
             height: 42px;
             border-radius: 7px;
             border: 1px solid #30384e;
-            background: #0f1322;
-            color: #ffffff;
+            background: #0f1322 !important;
+            color: #ffffff !important;
             font-size: 14px;
             box-shadow: none !important;
         }
 
         .admin-input:focus,
         .admin-select:focus {
-            border-color: var(--primary);
-            background: #0f1322;
-            color: #ffffff;
+            border-color: var(--primary) !important;
+            background: #161824 !important;
+            color: #ffffff !important;
         }
 
         .admin-input::placeholder {
@@ -142,8 +141,8 @@
         }
 
         .admin-select option {
-            background: #111827;
-            color: #ffffff;
+            background-color: #11121a !important;
+            color: #ffffff !important;
         }
         
         .btn-filter {
@@ -230,7 +229,7 @@
         .question-title {
             color: #ffffff;
             font-weight: 800;
-            max-width: 560px;
+            max-width: 650px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -304,7 +303,8 @@
             background: rgba(255, 255, 255, 0.08);
         }
 
-        .action-view { color: #93c5fd; }
+        .action-view { color: #94a3b8; }
+        .action-view:hover { color: #ffffff; }
 
         .empty-row {
             height: 140px;
@@ -378,6 +378,7 @@
             }
         }
     </style>
+    <link rel="stylesheet" href="~/css/components/pagination.css" asp-append-version="true" />
 </head>
 <body class="admin-page">
     @await Html.PartialAsync("_ManagerTopbar")
@@ -392,44 +393,44 @@
                 </div>
             </div>
 
-            <form method="get" action="/Manager/QuestionBank" class="filter-card">
-                <input type="hidden" name="page" value="1" />
+            <form method="get" action="/Manager/QuestionBank" id="managerFilterForm" class="filter-card" onsubmit="document.getElementById('pageIdxInput').value = 1;">
+                <input type="hidden" name="page" id="pageIdxInput" value="@pageIndex" />
                 <input type="hidden" name="pageSize" value="@pageSize" />
                 <div class="row g-3 align-items-end">
                     <div class="col-12 col-xl-4">
-                        <label class="filter-label">Search</label>
+                        <div class="filter-label">Search</div>
                         <input name="keyword" value="@keyword" type="text" class="form-control admin-input" placeholder="Search questions" />
                     </div>
 
                     <div class="col-12 col-sm-6 col-xl-2">
-                        <label class="filter-label">Category</label>
+                        <div class="filter-label">Category</div>
                         <select name="categoryId" class="form-select admin-select">
                             <option value="">All Categories</option>
-                            @foreach (var category in categories.Where(category => category is not null))
+                            @foreach (var category in categories.Where(c => c is not null))
                             {
-                                <option value="@category.CategoryId" selected="@(selectedCategoryId == category.CategoryId ? "selected" : null)">@category.Category</option>
+                                <option value="@category.CategoryId" selected="@(selectedCategoryId.HasValue && selectedCategoryId.Value == category.CategoryId ? "selected" : null)">@category.Category</option>
                             }
                         </select>
                     </div>
 
                     <div class="col-12 col-sm-6 col-xl-2">
-                        <label class="filter-label">Difficulty</label>
+                        <div class="filter-label">Difficulty</div>
                         <select name="difficulty" class="form-select admin-select">
                             <option value="">All Difficulty</option>
-                            @foreach (var difficulty in new[] { "Intern", "Fresher", "Junior", "Middle", "Senior" })
+                            @foreach (var diff in new[] { "Intern", "Fresher", "Junior", "Middle", "Senior" })
                             {
-                                <option value="@difficulty" selected="@(string.Equals(difficultyFilter, difficulty, StringComparison.OrdinalIgnoreCase) ? "selected" : null)">@difficulty</option>
+                                <option value="@diff" selected="@(string.Equals(difficultyFilter, diff, StringComparison.OrdinalIgnoreCase) ? "selected" : null)">@diff</option>
                             }
                         </select>
                     </div>
 
                     <div class="col-12 col-sm-6 col-xl-2">
-                        <label class="filter-label">Status</label>
+                        <div class="filter-label">Status</div>
                         <select name="status" class="form-select admin-select">
                             <option value="">All Statuses</option>
-                            @foreach (var status in new[] { "Active", "Draft", "Archived", "Deleted" })
+                            @foreach (var st in new[] { "Active", "Draft", "Archived", "Deleted" })
                             {
-                                <option value="@status" selected="@(string.Equals(statusFilter, status, StringComparison.OrdinalIgnoreCase) ? "selected" : null)">@status</option>
+                                <option value="@st" selected="@(string.Equals(statusFilter, st, StringComparison.OrdinalIgnoreCase) ? "selected" : null)">@st</option>
                             }
                         </select>
                     </div>
@@ -481,12 +482,21 @@
                                     <tr class="@(isSoftDeleted ? "deleted-row" : string.Empty)">
                                         <td>
                                             <a href="/Manager/QuestionBank/@item.QuestionId" class="question-title text-decoration-none d-block" title="@item.Question">@item.Question</a>
-                                            <div class="question-meta">ID: Q-@item.QuestionId.ToString().Substring(0, 8).ToUpper() &middot; @(string.IsNullOrWhiteSpace(item.Category) ? "Uncategorized" : item.Category)</div>
+                                            <div class="question-meta">
+                                                ID:
+                                                @(item.QuestionId.ToString().Length > 8
+                                                    ? "Q-" + item.QuestionId.ToString().Substring(0, 8).ToUpper()
+                                                    : item.QuestionId.ToString())
+                                                @if (!string.IsNullOrWhiteSpace(item.Category))
+                                                {
+                                                    <span class="ms-2">Category: @item.Category</span>
+                                                }
+                                            </div>
                                         </td>
                                         <td><span class="pill @diffClass">@(string.IsNullOrWhiteSpace(item.Difficulty) ? "N/A" : item.Difficulty)</span></td>
                                         <td>
                                             <span class="status-badge @statusClass">
-                                                <span style="font-size: 8px;">●</span>
+                                                <span style="font-size: 8px;">ΓùÅ</span>
                                                 @statusText
                                             </span>
                                         </td>
@@ -494,7 +504,7 @@
                                             <a class="action-btn action-view"
                                                href="/Manager/QuestionBank/@item.QuestionId"
                                                title="View details">
-                                                <i class="fa-regular fa-eye"></i>
+                                                <span class="material-symbols-outlined fs-5">visibility</span>
                                             </a>
                                         </td>
                                     </tr>
@@ -523,27 +533,12 @@
                         var prevPage = pageIndex <= 1 ? 1 : pageIndex - 1;
                         var nextPage = pageIndex >= totalPages ? totalPages : pageIndex + 1;
 
-                        <div class="pager">
-                            <a href="@BuildPageUrl(prevPage)">
-                                <i class="fa-solid fa-chevron-left"></i>
-                            </a>
-
-                            @for (var i = Math.Max(1, pageIndex - 15); i <= Math.Min(totalPages, Math.Max(1, pageIndex - 15) + 29); i++)
-                            {
-                                if (i == pageIndex)
-                                {
-                                    <span class="active-page">@i</span>
-                                }
-                                else
-                                {
-                                    <a href="@BuildPageUrl(i)">@i</a>
-                                }
-                            }
-
-                            <a href="@BuildPageUrl(nextPage)">
-                                <i class="fa-solid fa-chevron-right"></i>
-                            </a>
-                        </div>
+                        <partial name="_Pagination" model="new WebClient.Models.Shared.PaginationViewModel
+                        {
+                            CurrentPage = pageIndex,
+                            TotalPages = totalPages,
+                            PageUrl = BuildPageUrl
+                        }" />
                     }
                 </div>
             </div>

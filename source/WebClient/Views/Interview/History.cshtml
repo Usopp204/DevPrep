@@ -1,251 +1,163 @@
 @model WebClient.Models.Interview.HistoryViewModel
 
 @{
-    Layout = null;
-    var detail = Model.Detail;
-    var report = detail?.Report;
-
-    string Band(decimal score) =>
-        score >= 80 ? "var(--color-success)" : score >= 60 ? "var(--color-warning)" : "var(--color-destructive)";
-
-    void ScoreBar(string label, decimal score)
+    Layout = "_InterviewLayout";
+    ViewData["Title"] = "Interview History";
+    ViewData["BodyClass"] = "history-page history-list-page";
+    var currentPage = Math.Max(1, Model.Sessions.Page == 0 ? Model.Page : Model.Sessions.Page);
+    var totalPages = Math.Max(1, Model.Sessions.TotalPages);
+    string PageUrl(int page) => Url.Action("History", "Interview", new
     {
-        var color = Band(score);
-        <div class="h-bar-row">
-            <div class="h-bar-head"><span style="color:var(--color-text-secondary)">@label</span><span style="color:@color">@Math.Round(score)/100</span></div>
-            <div class="h-bar-track"><div class="h-bar-fill" style="width:@(Math.Round(score))%; background:@color"></div></div>
-        </div>
-    }
+        page,
+        pageSize = Model.PageSize,
+        status = Model.Status,
+        position = Model.Position,
+        keyword = Model.Keyword
+    }) ?? "#";
+    string StatusClass(string status) => status switch
+    {
+        "Completed" => "status-completed",
+        "Cancelled" => "status-cancelled",
+        _ => "status-expired"
+    };
 }
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Interview History - DevPrep</title>
-    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="~/css/theme-session.css" asp-append-version="true" />
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/theme.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/pages/dashboard.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/pages/history.css" asp-append-version="true" />
-</head>
-<body class="history-page">
+    <link rel="stylesheet" href="~/css/components/safe-text.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/components/pagination.css" asp-append-version="true" />
+}
+
     <div class="history-layout">
+        <partial name="_InterviewSidebar" model="Model.Sidebar" />
 
-        <!-- Left: session list -->
-        <aside class="history-sidebar">
-            <div class="history-brand">InterviewAI</div>
-            <a class="history-new-btn" asp-controller="Interview" asp-action="Index">
-                <span class="material-symbols-outlined">add</span> New Interview
-            </a>
-            <div class="history-sidebar-label">Past Sessions</div>
+        <main class="history-main-list">
+            <header class="history-list-header">
+                <div>
+                    <p class="history-kicker">Session History</p>
+                    <h1>Completed, cancelled, and expired interviews</h1>
+                </div>
+                <a class="history-ghost-btn" asp-controller="Interview" asp-action="Index">
+                    <span class="material-symbols-outlined">add</span> New Interview
+                </a>
+            </header>
 
-            @if (Model.Sessions.Count == 0)
+            @if (!string.IsNullOrEmpty(Model.SuccessMessage))
             {
-                <div class="history-empty">No interviews yet.</div>
+                <div class="history-alert success">@Model.SuccessMessage</div>
+            }
+            @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+            {
+                <div class="history-alert error">@Model.ErrorMessage</div>
+            }
+
+            <form method="get" asp-controller="Interview" asp-action="History" class="history-filter-bar">
+                <label>
+                    <span>Status</span>
+                    <select name="status">
+                        <option value="">All final sessions</option>
+                        <option value="Completed" selected="@(Model.Status == "Completed")">Completed</option>
+                        <option value="Cancelled" selected="@(Model.Status == "Cancelled")">Cancelled</option>
+                        <option value="Expired" selected="@(Model.Status == "Expired")">Expired</option>
+                    </select>
+                </label>
+                <label>
+                    <span>Position</span>
+                    <select name="position">
+                        <option value="">All positions</option>
+                        @foreach (var option in Model.Sessions.PositionOptions)
+                        {
+                            <option value="@option" selected="@(string.Equals(Model.Position, option, StringComparison.OrdinalIgnoreCase))">@option</option>
+                        }
+                    </select>
+                </label>
+                <label>
+                    <span>Keyword</span>
+                    <input name="keyword" value="@Model.Keyword" placeholder="Search title or role" />
+                </label>
+                <input type="hidden" name="pageSize" value="@Model.PageSize" />
+                <button type="submit" class="history-filter-btn">
+                    <span class="material-symbols-outlined">filter_alt</span> Apply
+                </button>
+            </form>
+
+            @if (Model.Sessions.Items.Count == 0)
+            {
+                <section class="history-empty-panel">
+                    <span class="material-symbols-outlined">forum</span>
+                    <h2>No interview history yet</h2>
+                    <p>Completed, cancelled, and expired sessions will appear here after an interview ends.</p>
+                    <a asp-controller="Interview" asp-action="Index">Start a new interview</a>
+                </section>
             }
             else
             {
-                <ul class="session-list">
-                    @foreach (var session in Model.Sessions)
-                    {
-                        var active = session.SessionId == Model.SelectedSessionId ? "session-item-active" : "";
-                        <li>
-                            <a class="session-item @active" asp-controller="Interview" asp-action="History" asp-route-sessionId="@session.SessionId">
-                                <span class="session-item-title">@(session.Title ?? session.Position ?? "Interview") &middot; @session.Level</span>
-                                <span class="session-item-meta">
-                                    <span class="session-badge">@session.Status</span>
-                                    @session.DurationMinutes min &middot; @session.AnsweredQuestions/@session.TotalQuestions Qs
-                                </span>
-                            </a>
-                        </li>
-                    }
-                </ul>
-            }
-        </aside>
-
-        <!-- Center: transcript -->
-        <main class="history-transcript">
-            @if (detail is null)
-            {
-                <div class="transcript-header"><h2 class="transcript-title">Transcript</h2></div>
-                <div class="transcript-body"><p class="panel-empty">Select a session from the sidebar.</p></div>
-            }
-            else
-            {
-                <div class="transcript-header">
-                    <h2 class="transcript-title">@(detail.Position ?? "Interview") &middot; @detail.Level</h2>
-                    <div class="transcript-meta">
-                        <span class="chip"><span class="material-symbols-outlined" style="font-size:14px">signal_cellular_alt</span>@detail.Level</span>
-                        <span class="chip"><span class="material-symbols-outlined" style="font-size:14px">forum</span>@detail.AnsweredQuestions/@detail.TotalQuestions answered</span>
-                        <span class="chip"><span class="material-symbols-outlined" style="font-size:14px">flag</span>@detail.Status</span>
+                <section class="history-table-shell">
+                    <div class="history-table-head">
+                        <span>Session</span>
+                        <span>Level</span>
+                        <span>Status</span>
+                        <span>Questions</span>
+                        <span>Duration</span>
+                        <span>Timeline</span>
+                        <span class="history-actions-heading">Actions</span>
                     </div>
-                </div>
-                <div class="transcript-body">
-                    @foreach (var question in detail.Questions.OrderBy(q => q.OrderIndex))
+                    @foreach (var session in Model.Sessions.Items)
                     {
-                        var userAnswer = detail.ChatHistory
-                            .FirstOrDefault(m => m.SessionQuestionId == question.SessionQuestionId
-                                                  && m.SenderType == "User" && m.MessageType == "Answer");
-                        // A skipped question is stored as a User "Answer" with blank content — show it
-                        // as "No answer recorded" rather than an empty bubble.
-                        var hasAnswer = userAnswer is not null && !string.IsNullOrWhiteSpace(userAnswer.Content);
-                        <div class="q-divider">
-                            <div class="line"></div>
-                            <div class="label">Question @question.OrderIndex</div>
-                            <div class="line"></div>
-                        </div>
-                        <div class="chat-row chat-row-ai">
-                            <div class="chat-bubble chat-bubble-ai">@question.Content</div>
-                        </div>
-                        <div class="chat-row chat-row-user">
-                            <div class="chat-bubble @(hasAnswer ? "chat-bubble-user" : "chat-bubble-no-answer")">
-                                @(hasAnswer ? userAnswer!.Content : "No answer recorded")
+                        var detailsUrl = Url.Action("Details", "Interview", new { id = session.SessionId });
+                        <article class="history-row" data-href="@detailsUrl">
+                            <a class="history-row-main" href="@detailsUrl">
+                                <strong>@session.DisplayTitle</strong>
+                                <span class="safe-long-text">@(session.Position ?? "Interview") &middot; @session.QuestionType</span>
+                            </a>
+                            <div class="history-cell-center">@session.Level</div>
+                            <div class="history-cell-center"><span class="history-status @StatusClass(session.Status)">@session.DisplayStatus</span></div>
+                            <div class="history-cell-center">@session.AnsweredQuestions/@session.TotalQuestions</div>
+                            <div class="history-cell-center">@session.DurationMinutes min</div>
+                            <div class="history-date">
+                                <span>Created @WebClient.Helpers.TimeFormat.RelativeTime(session.CreatedAt)</span>
+                                @if (session.EndedAt is not null)
+                                {
+                                    <span>Ended @session.EndedAt.Value.ToString("MMM d, yyyy HH:mm")</span>
+                                }
                             </div>
-                        </div>
+                            <div class="history-actions history-cell-center">
+                                <a class="history-action-btn history-icon-action history-view-btn"
+                                   href="@detailsUrl"
+                                   aria-label="View Details"
+                                   title="View Details">
+                                    <span class="material-symbols-outlined history-action-icon" aria-hidden="true">visibility</span>
+                                </a>
+                                <form method="post" asp-controller="Interview" asp-action="DeleteSession" asp-route-id="@session.SessionId" onsubmit="return confirm('Remove this session from your history?');">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="page" value="@currentPage" />
+                                    <input type="hidden" name="pageSize" value="@Model.PageSize" />
+                                    <input type="hidden" name="status" value="@Model.Status" />
+                                    <input type="hidden" name="position" value="@Model.Position" />
+                                    <input type="hidden" name="keyword" value="@Model.Keyword" />
+                                    <button type="submit"
+                                            class="history-action-btn history-icon-action history-delete-btn"
+                                            aria-label="Delete"
+                                            title="Delete">
+                                        <span class="material-symbols-outlined history-action-icon" aria-hidden="true">delete</span>
+                                    </button>
+                                </form>
+                            </div>
+                        </article>
                     }
+                </section>
 
-                    @if (detail.Status is "Completed" or "Expired")
-                    {
-                        <div class="ended-marker">
-                            <span class="material-symbols-outlined">flag</span>
-                            Interview @detail.Status
-                            @if (detail.StartedAt is not null && detail.EndedAt is not null)
-                            {
-                                <text> &middot; @((detail.EndedAt.Value - detail.StartedAt.Value).ToString(@"mm\m\ ss\s"))</text>
-                            }
-                        </div>
-                    }
-                </div>
+                <partial name="_Pagination" model="new WebClient.Models.Shared.PaginationViewModel
+                {
+                    CurrentPage = currentPage,
+                    TotalPages = totalPages,
+                    PageUrl = PageUrl
+                }" />
             }
         </main>
-
-        <!-- Right: score / feedback -->
-        <aside class="history-panel">
-            @if (detail is not null)
-            {
-                <div class="panel-tabs">
-                    <button class="panel-tab active" data-tab="score" type="button" onclick="switchTab('score')">Score &amp; Stats</button>
-                    <button class="panel-tab" data-tab="feedback" type="button" onclick="switchTab('feedback')">Detailed Feedback</button>
-                </div>
-                <div class="panel-body">
-                    <!-- Score & Stats -->
-                    <div class="panel-view active" id="view-score">
-                        @if (report is null)
-                        {
-                            <p class="panel-empty">No report yet for this session.</p>
-                        }
-                        else
-                        {
-                            var color = Band(report.OverallScore);
-                            <div class="score-hero">
-                                <span class="num" style="color:@color">@Math.Round(report.OverallScore)<span style="font-size:14px; color:var(--color-text-tertiary)">/100</span></span>
-                                @if (!string.IsNullOrEmpty(report.Grade))
-                                {
-                                    <span class="grade">Grade @report.Grade</span>
-                                }
-                            </div>
-                            <div class="h-bars">
-                                @if (report.TechnicalScore is not null) { ScoreBar("Technical", report.TechnicalScore.Value); }
-                                @if (report.TheoryScore is not null) { ScoreBar("Theory", report.TheoryScore.Value); }
-                                @if (report.CommunicationScore is not null) { ScoreBar("Communication", report.CommunicationScore.Value); }
-                                @if (report.ProblemSolvingScore is not null) { ScoreBar("Problem Solving", report.ProblemSolvingScore.Value); }
-                            </div>
-                        }
-
-                        @if (detail.Evaluations.Count > 0)
-                        {
-                            <div>
-                                <div class="panel-section-title">Per-Question Scores</div>
-                                @foreach (var ev in detail.Evaluations)
-                                {
-                                    var q = detail.Questions.FirstOrDefault(x => x.SessionQuestionId == ev.SessionQuestionId);
-                                    var c = Band(ev.Score);
-                                    <div class="per-q">
-                                        <span class="txt">Q@(q?.OrderIndex.ToString() ?? "?") &mdash; @q?.Content</span>
-                                        <span class="score" style="color:@c; border:1px solid @c">@Math.Round(ev.Score)</span>
-                                    </div>
-                                }
-                            </div>
-                        }
-                    </div>
-
-                    <!-- Detailed Feedback -->
-                    <div class="panel-view" id="view-feedback">
-                        @if (report is not null && !string.IsNullOrEmpty(report.Summary))
-                        {
-                            <div class="fb-card summary">
-                                <h4><span class="material-symbols-outlined" style="font-size:16px">auto_awesome</span> AI Coach Summary</h4>
-                                <p>@report.Summary</p>
-                            </div>
-                        }
-                        @if (report is not null && !string.IsNullOrEmpty(report.Strengths))
-                        {
-                            <div class="fb-card strengths">
-                                <h4>Strengths</h4>
-                                <ul>
-                                    @foreach (var item in report.Strengths.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-                                    {
-                                        <li>@item</li>
-                                    }
-                                </ul>
-                            </div>
-                        }
-                        @if (report is not null && !string.IsNullOrEmpty(report.Improvements))
-                        {
-                            <div class="fb-card improve">
-                                <h4>Areas to Improve</h4>
-                                <ul>
-                                    @foreach (var item in report.Improvements.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-                                    {
-                                        <li>@item</li>
-                                    }
-                                </ul>
-                            </div>
-                        }
-
-                        @if (detail.Evaluations.Count == 0 && report is null)
-                        {
-                            <p class="panel-empty">No evaluation data for this session yet.</p>
-                        }
-                        else if (detail.Evaluations.Count > 0)
-                        {
-                            <div>
-                                <div class="panel-section-title">Question-by-Question Feedback</div>
-                                @foreach (var ev in detail.Evaluations)
-                                {
-                                    var q = detail.Questions.FirstOrDefault(x => x.SessionQuestionId == ev.SessionQuestionId);
-                                    var c = Band(ev.Score);
-                                    <div class="fb-q">
-                                        <div class="fb-q-head">
-                                            <strong>Q@(q?.OrderIndex.ToString() ?? "?")</strong>
-                                            <span style="color:@c">@Math.Round(ev.Score)/100</span>
-                                        </div>
-                                        @if (!string.IsNullOrEmpty(ev.AiFeedback))
-                                        {
-                                            <p style="font-size:13px; color:var(--color-text-secondary); margin:0 0 6px">@ev.AiFeedback</p>
-                                        }
-                                        @if (!string.IsNullOrEmpty(ev.Strengths))
-                                        {
-                                            <p style="font-size:13px; color:var(--color-success); margin:0">&check; @ev.Strengths</p>
-                                        }
-                                    </div>
-                                }
-                            </div>
-                        }
-                    </div>
-                </div>
-            }
-        </aside>
     </div>
-
-    <script>
-        function switchTab(tab) {
-            document.querySelectorAll('.panel-tab').forEach(function (b) {
-                b.classList.toggle('active', b.dataset.tab === tab);
-            });
-            document.getElementById('view-score').classList.toggle('active', tab === 'score');
-            document.getElementById('view-feedback').classList.toggle('active', tab === 'feedback');
-        }
-    </script>
-</body>
-</html>
+@section Scripts {
+    <script src="~/js/pages/dashboard.js" asp-append-version="true"></script>
+}

@@ -11,8 +11,13 @@ public class AuthController(IAuthService authService) : Controller
 {
     // ============================ Login ============================
     [HttpGet]
-    public IActionResult Login()
+    public IActionResult Login(string? blocked = null)
     {
+        // ?blocked=1: BlockedAccountMiddleware vừa đăng xuất cưỡng bức vì tài khoản bị khoá giữa phiên.
+        if (blocked == "1")
+        {
+            ModelState.AddModelError(string.Empty, "Your account has been blocked. Please contact support.");
+        }
         return View(new LoginViewModel());
     }
 
@@ -142,6 +147,40 @@ public class AuthController(IAuthService authService) : Controller
         var result = await authService.ResendOtpAsync(email);
         TempData["Message"] = result.Message;
         return RedirectToAction(nameof(VerifyEmail), new { email });
+    }
+
+    // ============================ Confirm Email (link trong email) ============================
+    // GET chỉ hiện trang có nút xác nhận; verify thật chạy ở POST — tránh việc trình quét
+    // email (SafeLinks, antivirus...) tự truy cập link làm account bị kích hoạt ngoài ý muốn.
+    [HttpGet]
+    public IActionResult ConfirmEmail(string? token)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            ModelState.AddModelError(string.Empty, "The verification link is invalid or has expired.");
+        }
+
+        return View(new ConfirmEmailViewModel { Token = token ?? string.Empty });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ConfirmEmail(ConfirmEmailViewModel model)
+    {
+        if (!ModelState.IsValid)
+        {
+            return View(model);
+        }
+
+        var result = await authService.ConfirmEmailAsync(model.Token);
+        if (result.Success)
+        {
+            TempData["Message"] = "Your email has been verified. Please log in.";
+            return RedirectToAction(nameof(Login));
+        }
+
+        ModelState.AddModelError(string.Empty, result.Message);
+        return View(model);
     }
 
     // ============================ Forgot Password ============================

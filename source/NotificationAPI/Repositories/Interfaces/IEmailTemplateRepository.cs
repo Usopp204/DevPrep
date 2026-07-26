@@ -11,6 +11,11 @@ public interface IEmailTemplateRepository
 
     Task<bool> ExistsByCodeAsync(string code);
 
+    /// <summary>
+    /// Lấy template theo mã bất kể IsActive (tracked) — phục vụ seeder nâng cấp nội dung template cũ.
+    /// </summary>
+    Task<EmailTemplate?> GetByCodeAsync(string code);
+
     Task AddAsync(EmailTemplate template);
 
     Task<int> SaveChangesAsync();

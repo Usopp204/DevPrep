@@ -1,3 +1,4 @@
+using InterviewAPI.DTOs.Session;
 using InterviewAPI.Helpers;
 using InterviewAPI.Models;
 using InterviewAPI.Repositories.Interfaces;
@@ -86,6 +87,17 @@ public class SessionRepository : ISessionRepository
             .OrderBy(q => q.OrderIndex)
             .FirstOrDefaultAsync(ct);
 
+    public Task<bool> HasSubstantiveAnswerAsync(Guid sessionId, CancellationToken ct) =>
+        _db.ChatMessages.AnyAsync(m =>
+            m.SessionQuestion.SessionId == sessionId &&
+            m.SenderType == "User" &&
+            m.MessageType == "Answer" &&
+            m.Content != null &&
+            m.Content.Trim() != string.Empty &&
+            (m.AnswerReason == null ||
+             (m.AnswerReason != "TimedOut" && m.AnswerReason != "Skipped")),
+            ct);
+
     // Lấy tất cả phiên của một user (không bao gồm đã xoá mềm), mới nhất trước.
     public Task<List<InterviewSession>> GetByUserAsync(Guid userId, CancellationToken ct) =>
         _db.InterviewSessions
@@ -94,6 +106,99 @@ public class SessionRepository : ISessionRepository
             .OrderByDescending(s => s.CreatedAt)
             .ToListAsync(ct);
 
+
+    public async Task<(IReadOnlyList<InterviewSession> Items, int TotalItems, IReadOnlyList<string> PositionOptions)> GetHistoryAsync(
+        Guid userId,
+        SessionHistoryQuery query,
+        CancellationToken ct)
+    {
+        var normalized = SessionHistoryQueryNormalizer.Normalize(query);
+
+        var ownedFinalSessions = _db.InterviewSessions
+            .AsNoTracking()
+            .Where(s => s.UserId == userId && !s.IsDeleted)
+            .Where(s => s.Status == "Completed" || s.Status == "Cancelled" || s.Status == "Expired");
+
+        var rawPositionOptions = await ownedFinalSessions
+            .Where(s => s.Position != null && s.Position.Trim() != string.Empty)
+            .Select(s => s.Position!.Trim())
+            .ToListAsync(ct);
+
+        var positionOptions = rawPositionOptions
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(position => position, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var sessions = ownedFinalSessions;
+
+        if (normalized.Status is not null)
+            sessions = sessions.Where(s => s.Status == normalized.Status);
+
+        if (normalized.DateFrom.HasValue)
+        {
+            var start = normalized.DateFrom.Value.ToDateTime(TimeOnly.MinValue);
+            sessions = sessions.Where(s => (s.StartedAt ?? s.CreatedAt) >= start);
+        }
+
+        if (normalized.DateTo.HasValue)
+        {
+            var endExclusive = normalized.DateTo.Value.AddDays(1).ToDateTime(TimeOnly.MinValue);
+            sessions = sessions.Where(s => (s.StartedAt ?? s.CreatedAt) < endExclusive);
+        }
+
+        if (normalized.Position is not null)
+        {
+            var position = normalized.Position.ToLower();
+            sessions = sessions.Where(s => s.Position != null && s.Position.ToLower() == position);
+        }
+
+        if (normalized.Keyword is not null)
+        {
+            var keyword = normalized.Keyword.ToLower();
+            sessions = sessions.Where(s =>
+                (s.Title != null && s.Title.ToLower().Contains(keyword)) ||
+                (s.Position != null && s.Position.ToLower().Contains(keyword)));
+        }
+
+        var totalItems = await sessions.CountAsync(ct);
+
+        var items = await sessions
+            .OrderByDescending(s => s.EndedAt ?? s.UpdatedAt)
+            .ThenByDescending(s => s.CreatedAt)
+            .ThenBy(s => s.SessionId)
+            .Skip((normalized.Page - 1) * normalized.PageSize)
+            .Take(normalized.PageSize)
+            .ToListAsync(ct);
+
+        return (items, totalItems, positionOptions);
+    }
+
+    public Task<InterviewSession?> GetChatLogAsync(Guid userId, Guid sessionId, CancellationToken ct) =>
+        _db.InterviewSessions
+            .AsNoTracking()
+            .Include(s => s.SessionQuestions.OrderBy(q => q.OrderIndex).ThenBy(q => q.SessionQuestionId))
+                .ThenInclude(q => q.ChatMessages.OrderBy(m => m.SentAt).ThenBy(m => m.MessageId))
+            .FirstOrDefaultAsync(s => s.SessionId == sessionId && s.UserId == userId && !s.IsDeleted, ct);
+
+    public Task<int> CountFeedbackEligibleSessionsAsync(Guid userId, CancellationToken ct) =>
+        _db.InterviewSessions
+            .AsNoTracking()
+            .Where(s => s.UserId == userId && !s.IsDeleted)
+            .Where(s => s.Status == "Completed" || s.Status == "Expired")
+            .CountAsync(ct);
+
+    public Task<InterviewSession?> GetFeedbackEligibilitySessionAsync(Guid userId, Guid sessionId, CancellationToken ct) =>
+        _db.InterviewSessions
+            .AsNoTracking()
+            .Where(s => s.SessionId == sessionId && s.UserId == userId && !s.IsDeleted)
+            .Select(s => new InterviewSession
+            {
+                SessionId = s.SessionId,
+                UserId = s.UserId,
+                Status = s.Status,
+                IsDeleted = s.IsDeleted
+            })
+            .FirstOrDefaultAsync(ct);
     public Task<InterviewRoom?> GetRoomBySessionAsync(Guid sessionId, CancellationToken ct) =>
         _db.InterviewRooms.FirstOrDefaultAsync(r => r.SessionId == sessionId, ct);
 

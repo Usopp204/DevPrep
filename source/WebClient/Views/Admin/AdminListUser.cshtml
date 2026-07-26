@@ -1,4 +1,4 @@
-﻿@model WebClient.Models.Admin.AdminUserViewModel
+@model WebClient.Models.Admin.AdminUserViewModel
 
 @{
     Layout = null;
@@ -298,12 +298,13 @@
                 background: rgba(255, 255, 255, 0.08);
             }
 
-        .action-view {
-            color: #93c5fd;
+        .action-view,
+        .action-edit {
+            color: #94a3b8;
         }
 
-        .action-edit {
-            color: #a78bfa;
+        .action-btn:hover {
+            color: #ffffff;
         }
 
         .action-block {
@@ -477,7 +478,7 @@
                                 <th style="width: 32%;">User Information</th>
                                 <th style="width: 13%;">Role</th>
                                 <th style="width: 18%;">Registered</th>
-                               
+
                                 <th style="width: 13%;">Status</th>
                                 <th style="width: 12%;" class="text-end">Actions</th>
                             </tr>
@@ -498,7 +499,7 @@
                                 foreach (var user in users)
                                 {
                                     var displayName = string.IsNullOrWhiteSpace(user.FullName) ? "Unknown User" : user.FullName;
-                                  
+
 
                                     var roleClass = (user.Role ?? "").ToLowerInvariant() switch
                                     {
@@ -536,7 +537,7 @@
                                             <div class="muted-small">@user.CreatedAt.ToString("HH:mm")</div>
                                         </td>
 
-                                        
+
 
                                         <td>
                                             <span class="status-badge @statusClass">
@@ -555,7 +556,7 @@
                                             <a class="action-btn action-edit"
                                                href="/Admin/User/Edit/@user.UserId"
                                                title="Edit role">
-                                                <i class="fa-regular fa-pen-to-square"></i>
+                                                <span class="material-symbols-outlined fs-5">edit</span>
                                             </a>
 
                                             @if (isBlocked)

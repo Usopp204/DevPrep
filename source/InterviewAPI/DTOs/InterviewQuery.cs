@@ -1,13 +1,13 @@
 namespace InterviewAPI.DTOs;
 
 /// <summary>
-/// Filter and search parameters for the interview session list. 
+/// Filter and search parameters for the interview session list.
 /// All fields are optional (leaving them empty means no filter is applied).
-/// The Keyword field is used to search within the Title.
+/// The Keyword field searches by user name/email (admin) plus Position/channel (manager).
 /// </summary>
 public class InterviewQuery
 {
-    // Search term for filtering by title
+    // Search term (user name/email; manager list also matches Position/channel)
     public string? Keyword { get; set; }
 
     // Combined status from both local and remote branches, including 'Paused'
@@ -34,6 +34,12 @@ public class InterviewQuery
     // End date for filtering sessions
     public DateTime? DateTo { get; set; }
     
+    // true = include soft-deleted sessions in the list (for admin recovery + dashboard totals)
+    public bool IncludeDeleted { get; set; } = false;
+
+    // true = list ONLY soft-deleted sessions (admin "Show deleted" view). Takes precedence over IncludeDeleted.
+    public bool OnlyDeleted { get; set; } = false;
+
     // Current page number for pagination, default is 1
     public int Page { get; set; } = 1;
     

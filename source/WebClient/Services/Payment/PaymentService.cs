@@ -11,6 +11,7 @@ public interface IPaymentService
     Task<CreateOrderResponse> CreateOrderAsync(Guid packageId, Guid userId, CancellationToken ct = default);
     Task<CreditBalanceDto> GetCreditBalanceAsync(Guid userId, CancellationToken ct = default);
     Task<TransactionHistoryViewModel> GetTransactionHistoryAsync(Guid userId, int page = 1, int pageSize = 10, CancellationToken ct = default);
+    Task<CreditHistoryViewModel> GetCreditHistoryAsync(Guid userId, int page = 1, int pageSize = 10, string? type = null, CancellationToken ct = default);
 }
 
 public sealed class PaymentService(IApiClient apiClient) : IPaymentService
@@ -91,11 +92,57 @@ public sealed class PaymentService(IApiClient apiClient) : IPaymentService
         }
     }
 
+    public async Task<CreditHistoryViewModel> GetCreditHistoryAsync(
+        Guid userId, int page = 1, int pageSize = 10, string? type = null, CancellationToken ct = default)
+    {
+        try
+        {
+            var balanceTask = GetCreditBalanceAsync(userId, ct);
+
+            var url = $"api/payment/credits/ledger?page={page}&pageSize={pageSize}";
+            if (!string.IsNullOrWhiteSpace(type)) url += $"&type={Uri.EscapeDataString(type)}";
+
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.Add("X-User-Id", userId.ToString());
+            var response = await apiClient.HttpClient.SendAsync(request, ct);
+            response.EnsureSuccessStatusCode();
+
+            var result = await response.Content.ReadFromJsonAsync<LedgerPageResult>(JsonOpts, ct);
+            var balance = await balanceTask;
+
+            return new CreditHistoryViewModel
+            {
+                Balance       = balance,
+                TotalUsed     = result?.TotalUsed ?? 0,
+                TotalRefunded = result?.TotalRefunded ?? 0,
+                Type          = string.IsNullOrWhiteSpace(type) ? null : type,
+                Items         = result?.Items ?? [],
+                TotalCount    = result?.TotalCount ?? 0,
+                Page          = page,
+                PageSize      = pageSize
+            };
+        }
+        catch (Exception ex)
+        {
+            return new CreditHistoryViewModel { ErrorMessage = ex.Message };
+        }
+    }
+
     private sealed class TransactionPageResult
     {
         public int TotalCount { get; set; }
         public int Page { get; set; }
         public int PageSize { get; set; }
         public List<TransactionDto> Items { get; set; } = [];
+    }
+
+    private sealed class LedgerPageResult
+    {
+        public int TotalCount { get; set; }
+        public int Page { get; set; }
+        public int PageSize { get; set; }
+        public int TotalUsed { get; set; }
+        public int TotalRefunded { get; set; }
+        public List<CreditLedgerItemDto> Items { get; set; } = [];
     }
 }

@@ -187,19 +187,76 @@ public class InternalAccountsController : ControllerBase
     // =========================================================
     // 5. TỰ ĐỘNG KHÓA VÀ LƯU LỊCH SỬ AUTO-BLOCK
     // =========================================================
-    [HttpPost("auto-block-inactive")]
-    public async Task<IActionResult> AutoBlockInactive([FromQuery] int days = 30)
-    {
-        var cutoffDate = VietnamTime.Now.AddDays(-days);
+    //[HttpPost("auto-block-inactive")]
+    //public async Task<IActionResult> AutoBlockInactive([FromQuery] int days = 30)
+    //{
+    //    var cutoffDate = VietnamTime.Now.AddDays(-days);
 
-        var inactiveUsers = await _context.Accounts
-            .Where(a => a.Role == "User" &&
-                        a.Status == "Active" &&
-                        (a.LastLoginAt == null ? a.CreatedAt : a.LastLoginAt) < cutoffDate)
+    //    var inactiveUsers = await _context.Accounts
+    //        .Where(a => a.Role == "User" &&
+    //                    a.Status == "Active" &&
+    //                    (a.LastLoginAt == null ? a.CreatedAt : a.LastLoginAt) < cutoffDate)
+    //        .ToListAsync();
+
+    //    int blockedCount = 0;
+    //    foreach (var user in inactiveUsers)
+    //    {
+    //        user.Status = "Blocked";
+    //        var reason = $"System Auto-Blocked due to inactivity for {days} days.";
+    //        user.BlockedReason = reason;
+    //        user.BlockedAt = VietnamTime.Now;
+    //        user.UpdatedAt = VietnamTime.Now;
+    //        user.BlockedBy = Guid.Empty;
+    //        blockedCount++;
+
+    //        var autoHistory = new AccountBlockHistory
+    //        {
+    //            BlockHistoryId = Guid.NewGuid(),
+    //            AccountId = user.AccountId,
+    //            Action = "Block",
+    //            Reason = reason,
+    //            PerformedBy = Guid.Empty,
+    //            CreatedAt = VietnamTime.Now
+    //        };
+    //        _context.AccountBlockHistories.Add(autoHistory);
+
+    //        var tokensToDelete = _context.RefreshTokens.Where(rt => rt.AccountId == user.AccountId);
+    //        _context.RefreshTokens.RemoveRange(tokensToDelete);
+    //    }
+
+    //    if (blockedCount > 0)
+    //    {
+    //        await _context.SaveChangesAsync();
+    //    }
+
+    //    return Ok(new
+    //    {
+    //        InactiveDays = days,
+    //        BlockedCount = blockedCount
+    //    });
+    //}
+
+    // =========================================================
+    // 5. BLOCK HÀNG LOẠT THEO DANH SÁCH ACCOUNTID (do UserAPI tính toán gửi sang)
+    // =========================================================
+    [HttpPost("batch-block-inactive")]
+    public async Task<IActionResult> BatchBlockInactive(
+        [FromBody] List<Guid> accountIds,
+        [FromQuery] int days = 30)
+    {
+        if (accountIds == null || !accountIds.Any())
+        {
+            return Ok(new { BlockedCount = 0 });
+        }
+
+        var users = await _context.Accounts
+            .Where(a => accountIds.Contains(a.AccountId) &&
+                        a.Role == "User" &&
+                        a.Status == "Active")
             .ToListAsync();
 
         int blockedCount = 0;
-        foreach (var user in inactiveUsers)
+        foreach (var user in users)
         {
             user.Status = "Blocked";
             var reason = $"System Auto-Blocked due to inactivity for {days} days.";

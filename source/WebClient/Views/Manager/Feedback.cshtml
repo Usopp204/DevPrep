@@ -1,8 +1,8 @@
-@{
+﻿@{
     var token = Context.Request.Cookies["access_token"];
     var feedbackTitle = ViewData["FeedbackTitle"] as string ?? "System Feedback";
     var feedbackKind = ViewData["FeedbackKind"] as string ?? "system";
-    var feedbackApiBase = ViewData["FeedbackApiBase"] as string ?? "http://localhost:7007/api/admin/manager/feedbacks";
+    var feedbackApiBase = ViewData["FeedbackApiBase"] as string ?? "http://localhost:7000/api/admin/manager/feedbacks";
     Layout = null;
 }
 <!DOCTYPE html>
@@ -14,6 +14,7 @@
 
     <!-- Include admin.css for Topbar and Sidebar -->
     <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/components/star-rating.css" asp-append-version="true" />
 
     <!-- Extract Tailwind and Fonts from code.html -->
 
@@ -155,6 +156,8 @@
             background: #0e1323;
         }
     </style>
+    <link rel="stylesheet" href="~/css/components/pagination.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/components/safe-text.css" asp-append-version="true" />
 </head>
 <body class="font-body-md overflow-x-hidden">
     @await Html.PartialAsync("_ManagerTopbar")
@@ -174,11 +177,11 @@
                     <span class="font-code-label text-[11px] uppercase text-on-surface-variant">Rating</span>
                     <div class="flex gap-xs" id="feedback-rating">
                         <button data-val="" class="chip active px-md py-1 rounded-full bg-primary-container/10 border border-primary-container text-primary-container font-code-label text-[10px] uppercase">All</button>
-                        <button data-val="5" class="chip px-md py-1 rounded-full bg-surface-container border border-border-subtle text-on-surface-variant text-[10px] uppercase font-code-label hover:text-primary transition-all">5★</button>
-                        <button data-val="4" class="chip px-md py-1 rounded-full bg-surface-container border border-border-subtle text-on-surface-variant text-[10px] uppercase font-code-label hover:text-primary transition-all">4★</button>
-                        <button data-val="3" class="chip px-md py-1 rounded-full bg-surface-container border border-border-subtle text-on-surface-variant text-[10px] uppercase font-code-label hover:text-primary transition-all">3★</button>
-                        <button data-val="2" class="chip px-md py-1 rounded-full bg-surface-container border border-border-subtle text-on-surface-variant text-[10px] uppercase font-code-label hover:text-primary transition-all">2★</button>
-                        <button data-val="1" class="chip px-md py-1 rounded-full bg-surface-container border border-border-subtle text-on-surface-variant text-[10px] uppercase font-code-label hover:text-primary transition-all">1★</button>
+                        <button data-val="5" class="chip px-md py-1 rounded-full bg-surface-container border border-border-subtle text-on-surface-variant text-[10px] uppercase font-code-label hover:text-primary transition-all">5Γÿà</button>
+                        <button data-val="4" class="chip px-md py-1 rounded-full bg-surface-container border border-border-subtle text-on-surface-variant text-[10px] uppercase font-code-label hover:text-primary transition-all">4Γÿà</button>
+                        <button data-val="3" class="chip px-md py-1 rounded-full bg-surface-container border border-border-subtle text-on-surface-variant text-[10px] uppercase font-code-label hover:text-primary transition-all">3Γÿà</button>
+                        <button data-val="2" class="chip px-md py-1 rounded-full bg-surface-container border border-border-subtle text-on-surface-variant text-[10px] uppercase font-code-label hover:text-primary transition-all">2Γÿà</button>
+                        <button data-val="1" class="chip px-md py-1 rounded-full bg-surface-container border border-border-subtle text-on-surface-variant text-[10px] uppercase font-code-label hover:text-primary transition-all">1Γÿà</button>
                     </div>
                 </div>
                 @if (feedbackKind == "ai")
@@ -203,6 +206,10 @@
                         </div>
                     </div>
                 }
+                <button id="feedback-deleted" type="button" title="Show only soft-deleted feedback"
+                        class="chip px-md py-1 rounded-full bg-surface-container border border-border-subtle text-on-surface-variant text-[10px] uppercase font-code-label hover:text-error transition-all">
+                    <span class="material-symbols-outlined text-[14px] align-middle">delete_history</span> Show deleted
+                </button>
                 <div class="ml-auto relative min-w-[300px]">
                     <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
                     <input id="feedback-search" class="w-full bg-surface-container border-border-subtle border rounded-xl pl-4 pr-10 py-1.5 font-body-sm focus:ring-1 focus:ring-primary-container" placeholder="Search comments..." type="text" />
@@ -216,8 +223,8 @@
 <th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">User</th>
 <th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">Rating</th>
 <th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">Comment</th>
-<th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">Date</th>
 <th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">@(feedbackKind == "ai" ? "Helpful" : "Status")</th>
+<th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">Date</th>
 <th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant text-right">Actions</th>
 </tr>
 </thead>
@@ -228,9 +235,7 @@
 <div class="px-lg py-md flex items-center justify-between border-t border-border-subtle bg-surface-container/20">
 <p id="feedback-summary" class="font-code-label text-[11px] text-on-surface-variant uppercase">Loading feedback entries...</p>
 <div class="flex items-center gap-xs">
-<button id="feedback-prev" class="w-9 h-9 inline-flex items-center justify-center rounded-lg bg-surface-container border border-border-subtle text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors disabled:opacity-40 disabled:pointer-events-none" type="button"><span class="material-symbols-outlined text-[18px]">chevron_left</span></button>
-<span id="feedback-page" class="w-9 h-9 inline-flex items-center justify-center rounded-lg bg-primary-container text-on-primary-container font-code-label text-[11px] font-bold">1</span>
-<button id="feedback-next" class="w-9 h-9 inline-flex items-center justify-center rounded-lg bg-surface-container border border-border-subtle text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-colors disabled:opacity-40 disabled:pointer-events-none" type="button"><span class="material-symbols-outlined text-[18px]">chevron_right</span></button>
+<nav id="feedback-pages" class="devprep-pagination devprep-pagination-inline" aria-label="Pagination"></nav>
 </div>
 </div>
 </section>
@@ -285,7 +290,7 @@
 <div class="space-y-sm">
     <span class="font-code-label text-[11px] uppercase text-on-surface-variant">User Comment</span>
     <div class="glass-card rounded-xl p-md inner-glow">
-        <p id="drawer-comment" class="font-body-md text-on-surface italic leading-relaxed">
+        <p id="drawer-comment" class="font-body-md text-on-surface italic leading-relaxed safe-long-text">
             --
         </p>
     </div>
@@ -319,21 +324,9 @@
         let currentRating = '';
         let currentHelpful = '';
         let currentStatus = '';
+        let showDeleted = false;
 
         document.addEventListener("DOMContentLoaded", () => {
-            document.getElementById('feedback-prev').addEventListener('click', () => {
-                if (currentPage > 1) {
-                    currentPage -= 1;
-                    fetchFeedbackList();
-                }
-            });
-
-            document.getElementById('feedback-next').addEventListener('click', () => {
-                if (currentPage < totalPages) {
-                    currentPage += 1;
-                    fetchFeedbackList();
-                }
-            });
 
             document.getElementById('feedback-search').addEventListener('input', () => {
                 clearTimeout(searchTimer);
@@ -346,6 +339,18 @@
             chipGroup('feedback-rating', v => { currentRating = v; });
             chipGroup('feedback-helpful', v => { currentHelpful = v; });
             chipGroup('feedback-status', v => { currentStatus = v; });
+
+            const delBtn = document.getElementById('feedback-deleted');
+            if (delBtn) {
+                delBtn.addEventListener('click', () => {
+                    showDeleted = !showDeleted;
+                    delBtn.classList.toggle('active', showDeleted);
+                    delBtn.classList.toggle('text-error', showDeleted);
+                    delBtn.classList.toggle('border-error', showDeleted);
+                    currentPage = 1;
+                    fetchFeedbackList();
+                });
+            }
 
             fetchFeedbackList();
         });
@@ -374,6 +379,7 @@
                 if (currentRating) query.set('rating', currentRating);
                 if (FEEDBACK_KIND === 'ai' && currentHelpful !== '') query.set('isHelpful', currentHelpful);
                 if (FEEDBACK_KIND === 'system' && currentStatus) query.set('status', currentStatus);
+                if (showDeleted) query.set('onlyDeleted', 'true');
 
                 const res = await fetch(`${API_BASE}?${query}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
@@ -417,7 +423,7 @@
                     <td class="px-lg py-lg">
                         <div class="flex items-center gap-sm">
                             <div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary font-code-label">
-                                ${initial(item)}
+                                ${escapeHtml(initial(item))}
                             </div>
                             <span class="font-semibold text-on-surface">${escapeHtml(userLabel(item))}</span>
                         </div>
@@ -430,12 +436,12 @@
                     </td>
                     <td class="px-lg py-lg max-w-xs">
                         ${FEEDBACK_KIND === 'system' ? `<div class="flex items-center gap-xs mb-1">${getTypeBadge(getFeedbackType(item))}${item.replyCount ? `<span class="text-on-surface-variant text-[11px] font-code-label">Replies ${item.replyCount}</span>` : ''}</div>` : ''}
-                        <p class="truncate opacity-80 italic text-on-surface">"${escapeHtml(fixText(item.content || item.subject || ''))}"</p>
+                        <p class="opacity-80 italic text-on-surface safe-long-text">"${escapeHtml(fixText(item.content || item.subject || ''))}"</p>
                     </td>
-                    <td class="px-lg py-lg font-code-label text-on-surface-variant">${formatDate(item.createdAt)}</td>
                     <td class="px-lg py-lg">
                         ${FEEDBACK_KIND === 'ai' ? helpfulBadge(item.isHelpful) : getStatusBadge(item.status)}
                     </td>
+                    <td class="px-lg py-lg font-code-label text-on-surface-variant">${formatDate(item.createdAt)}</td>
                     <td class="px-lg py-lg text-right">
                         <div class="flex justify-end gap-md">
                             <button class="text-on-surface-variant hover:text-primary transition-colors" onclick="event.stopPropagation(); openFeedbackDetail('${item.id}')" title="View details"><span class="material-symbols-outlined text-[20px]">visibility</span></button>
@@ -479,7 +485,7 @@
                 ? (item.sessionId ? `Session ${String(item.sessionId).substring(0, 8)}` : '')
                 : (item.replyCount ? `${item.replyCount} replies` : '');
             document.getElementById('drawer-date').innerText = formatDate(item.createdAt);
-            document.getElementById('drawer-rating').innerHTML = getStars(item.rating || 0);
+            document.getElementById('drawer-rating').innerHTML = getStars(item.rating || 0, false);
             const isSystem = FEEDBACK_KIND === 'system';
             document.getElementById('drawer-subject-section').classList.toggle('hidden', !isSystem);
             document.getElementById('drawer-replies-section').classList.toggle('hidden', !isSystem);
@@ -562,7 +568,7 @@
                         <span class="font-code-label text-[11px] text-primary uppercase">${escapeHtml(reply.repliedByName || 'Admin')}</span>
                         <span class="text-on-surface-variant text-[11px] font-code-label">${formatDate(reply.createdAt || reply.repliedAt)}</span>
                     </div>
-                    <p class="text-on-surface text-[13px] leading-relaxed">${escapeHtml(fixText(reply.replyContent || reply.content || ''))}</p>
+                    <p class="text-on-surface text-[13px] leading-relaxed safe-long-text">${escapeHtml(fixText(reply.replyContent || reply.content || ''))}</p>
                 </div>
             `).join('');
         }
@@ -604,18 +610,18 @@
             const start = totalItems === 0 ? 0 : ((page - 1) * size) + 1;
             const end = Math.min(page * size, totalItems);
 
+            currentPage = page;
             document.getElementById('feedback-summary').innerText = `Showing ${start}-${end} of ${totalItems} feedback entries`;
-            document.getElementById('feedback-page').innerText = `${page}`;
-            document.getElementById('feedback-prev').disabled = page <= 1;
-            document.getElementById('feedback-next').disabled = page >= totalPages;
+            DevPrepPagination.render({ container: 'feedback-pages', currentPage, totalPages, onPageChange: pageNumber => { currentPage = pageNumber; fetchFeedbackList(); } });
         }
 
-        function getStars(num) {
-            let s = '';
+        function getStars(num, compact = true) {
+            num = Math.max(0, Math.min(5, parseInt(num) || 0));
+            let s = `<span class="star-rating ${compact ? 'star-rating--compact' : 'star-rating--full'}" role="img" aria-label="${num} out of 5 stars">`;
             for(let i=1; i<=5; i++) {
-                s += `<span class="material-symbols-outlined text-[18px]" ${i <= num ? `style="font-variation-settings: 'FILL' 1;"` : ''}>star</span>`;
+                s += `<span class="material-symbols-outlined star-rating-icon ${i <= num ? 'is-filled' : 'is-empty'}" aria-hidden="true">${i <= num ? 'star' : 'star_border'}</span>`;
             }
-            return s;
+            return `${s}</span>`;
         }
 
         function formatDate(dateString) {
@@ -648,5 +654,6 @@
         }
     </script>
 
+    <script src="~/js/components/pagination.js" asp-append-version="true"></script>
 </body>
 </html>

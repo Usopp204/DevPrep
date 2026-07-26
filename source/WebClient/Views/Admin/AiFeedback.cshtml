@@ -9,6 +9,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AI Feedback - DevPrep AI</title>
     <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/components/star-rating.css" asp-append-version="true" />
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@@400;500;600;700;800;900&family=JetBrains+Mono:wght@@500&display=swap" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@@100..700,0..1&display=swap" rel="stylesheet" />
@@ -46,6 +47,8 @@
         .ai-main { margin-left: 250px; padding-top: 80px; padding-left: 24px; padding-right: 24px; min-height: 100vh; background: #0e1323; }
         .chip.active { outline: 2px solid currentColor; }
     </style>
+    <link rel="stylesheet" href="~/css/components/pagination.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/components/safe-text.css" asp-append-version="true" />
 </head>
 <body class="font-body-md overflow-x-hidden">
     @await Html.PartialAsync("_AdminTopbar")
@@ -80,7 +83,11 @@
                         <button data-val="false" class="chip px-md py-1 rounded-full bg-warning/10 border border-warning/40 text-warning text-[10px] uppercase font-code-label hover:bg-warning/20 transition-all">Not helpful</button>
                     </div>
                 </div>
-                <div class="ml-auto relative min-w-[300px]">
+                <button id="ai-deleted" type="button" title="Show only soft-deleted feedback (to restore)"
+                        class="chip px-md py-1 rounded-full bg-surface-container border border-border-subtle text-on-surface-variant text-[10px] uppercase font-code-label hover:text-error transition-all">
+                    <span class="material-symbols-outlined text-[14px] align-middle">delete_history</span> Show deleted
+                </button>
+                <div class="ml-auto relative flex-1 min-w-[160px] max-w-[320px]">
                     <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
                     <input id="ai-search" class="w-full bg-surface-container border-border-subtle border rounded-xl pl-4 pr-10 py-1.5 font-body-sm focus:ring-1 focus:ring-primary-container" placeholder="Search comments..." type="text" />
                 </div>
@@ -106,9 +113,7 @@
                 <div class="px-lg py-md flex items-center justify-between border-t border-border-subtle bg-surface-container/20">
                     <p id="ai-summary" class="font-code-label text-[11px] text-on-surface-variant uppercase">Loading...</p>
                     <div class="flex gap-xs items-center">
-                        <button id="ai-prev" class="p-1 rounded bg-surface-container border border-border-subtle text-on-surface-variant hover:text-primary transition-colors" type="button"><span class="material-symbols-outlined">chevron_left</span></button>
-                        <span id="ai-page" class="px-3 py-1 rounded bg-primary-container text-on-primary-container font-code-label text-[11px] font-bold">1 / 1</span>
-                        <button id="ai-next" class="p-1 rounded bg-surface-container border border-border-subtle text-on-surface-variant hover:text-primary transition-colors" type="button"><span class="material-symbols-outlined">chevron_right</span></button>
+                        <nav id="ai-pages" class="devprep-pagination devprep-pagination-inline" aria-label="Pagination"></nav>
                     </div>
                 </div>
             </section>
@@ -143,7 +148,7 @@
             <div class="space-y-sm">
                 <span class="font-code-label text-[11px] uppercase text-on-surface-variant">User Comment</span>
                 <div class="glass-card rounded-xl p-md inner-glow">
-                    <p id="d-comment" class="font-body-md text-on-surface italic leading-relaxed">--</p>
+                    <p id="d-comment" class="font-body-md text-on-surface italic leading-relaxed safe-long-text">--</p>
                 </div>
             </div>
             <div class="pt-4 border-t border-border-subtle">
@@ -157,8 +162,8 @@
     <!-- Confirm modal (OK / Cancel) -->
     <div id="confirm-modal" class="fixed inset-0 z-[80] hidden items-center justify-center bg-black/50 backdrop-blur-sm">
         <div class="glass-card rounded-2xl p-lg w-[360px]">
-            <h3 class="font-headline-md text-primary mb-2">Xác nhận</h3>
-            <p id="confirm-msg" class="text-on-surface-variant font-body-sm mb-lg">Bạn có chắc?</p>
+            <h3 class="font-headline-md text-primary mb-2">Confirm</h3>
+            <p id="confirm-msg" class="text-on-surface-variant font-body-sm mb-lg">Are you sure?</p>
             <div class="flex justify-end gap-sm">
                 <button id="confirm-cancel" class="px-lg py-sm rounded-xl border border-border-subtle text-on-surface hover:bg-surface-container-high transition-colors">Cancel</button>
                 <button id="confirm-ok" class="px-lg py-sm rounded-xl bg-error/90 text-white font-bold hover:bg-error transition-colors">OK</button>
@@ -167,14 +172,13 @@
     </div>
 
     <script>
-        const API_BASE = 'http://localhost:7007/api/admin/feedbacks/ai';
+        const API_BASE = 'http://localhost:7000/api/admin/feedbacks/ai';
         const token = '@token';
         let currentPage = 1, pageSize = 10, totalPages = 1, searchTimer = null;
         let helpful = '', rating = '', lastItems = [], currentId = null, confirmCb = null;
+        let showDeleted = false; // true = CHỈ hiện feedback đã xoá mềm (kèm nút Restore)
 
         document.addEventListener("DOMContentLoaded", () => {
-            document.getElementById('ai-prev').addEventListener('click', () => { if (currentPage > 1) { currentPage--; fetchList(); } });
-            document.getElementById('ai-next').addEventListener('click', () => { if (currentPage < totalPages) { currentPage++; fetchList(); } });
             document.getElementById('ai-search').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => { currentPage = 1; fetchList(); }, 300); });
             document.getElementById('ai-rating').addEventListener('click', (e) => {
                 const btn = e.target.closest('.chip'); if (!btn) return;
@@ -186,7 +190,19 @@
                 document.querySelectorAll('#ai-helpful .chip').forEach(c => c.classList.remove('active'));
                 btn.classList.add('active'); helpful = btn.getAttribute('data-val'); currentPage = 1; fetchList();
             });
-            document.getElementById('d-delete').addEventListener('click', () => { if (currentId) deleteFeedback(currentId); });
+            document.getElementById('ai-deleted').addEventListener('click', () => {
+                showDeleted = !showDeleted;
+                const b = document.getElementById('ai-deleted');
+                b.classList.toggle('active', showDeleted);
+                b.classList.toggle('text-error', showDeleted);
+                b.classList.toggle('border-error', showDeleted);
+                currentPage = 1; fetchList();
+            });
+            document.getElementById('d-delete').addEventListener('click', () => {
+                if (!currentId) return;
+                const it = lastItems.find(x => x.id === currentId);
+                if (it && it.isDeleted) restoreFeedback(currentId); else deleteFeedback(currentId);
+            });
             document.getElementById('confirm-ok').addEventListener('click', () => { const cb = confirmCb; hideConfirm(); if (cb) cb(); });
             document.getElementById('confirm-cancel').addEventListener('click', hideConfirm);
             fetchList();
@@ -211,6 +227,7 @@
                 if (keyword) query.set('keyword', keyword);
                 if (rating) query.set('rating', rating);
                 if (helpful !== '') query.set('isHelpful', helpful);
+                if (showDeleted) query.set('onlyDeleted', 'true');
 
                 const res = await fetch(`${API_BASE}?${query}`, { headers: { 'Authorization': `Bearer ${token}` } });
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -223,8 +240,7 @@
                     tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-error">Failed: ${escapeHtml(json.message)}</td></tr>`;
                 }
             } catch (err) {
-                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-error">Lỗi tải dữ liệu. Đăng nhập lại hoặc kiểm tra FeedbackAPI (:7007).</td></tr>`;
-            }
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-error">Failed to load data. Please sign in again or check ApiGateway (:7000).</td></tr>`;            }
         }
 
         function renderTable(items) {
@@ -234,18 +250,20 @@
                 <tr class="border-b border-border-subtle/50 hover:bg-surface-container-high/30 transition-colors cursor-pointer group" onclick="openDetail('${it.id}')">
                     <td class="px-lg py-lg">
                         <div class="flex items-center gap-sm">
-                            <div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary font-code-label">${initial(it.userFullName)}</div>
-                            <span class="font-semibold text-on-surface">${escapeHtml(userLabel(it))}</span>
+                            <div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary font-code-label">${escapeHtml(initial(it.userFullName))}</div>
+                            <span class="font-semibold text-on-surface">${escapeHtml(userLabel(it))}</span>${it.isDeleted ? deletedBadge() : ''}
                         </div>
                     </td>
                     <td class="px-lg py-lg"><div class="flex text-warning">${stars(it.rating || 0)}<span class="ml-xs text-on-surface-variant font-code-label">${it.rating || 0}</span></div></td>
-                    <td class="px-lg py-lg max-w-xs"><p class="truncate opacity-80 italic text-on-surface">"${escapeHtml(it.content || '')}"</p></td>
+                    <td class="px-lg py-lg max-w-xs"><p class="opacity-80 italic text-on-surface safe-long-text">"${escapeHtml(it.content || '')}"</p></td>
                     <td class="px-lg py-lg">${helpfulBadge(it.isHelpful)}</td>
                     <td class="px-lg py-lg font-code-label text-on-surface-variant">${formatDate(it.createdAt)}</td>
                     <td class="px-lg py-lg text-right">
                         <div class="flex justify-end gap-md">
                             <button class="text-on-surface-variant hover:text-primary transition-colors" onclick="event.stopPropagation(); openDetail('${it.id}')" title="View"><span class="material-symbols-outlined text-[20px]">visibility</span></button>
-                            <button class="text-on-surface-variant hover:text-error transition-colors" onclick="event.stopPropagation(); deleteFeedback('${it.id}')" title="Delete"><span class="material-symbols-outlined text-[20px]">delete</span></button>
+                            ${it.isDeleted
+                                ? `<button class="text-on-surface-variant hover:text-success transition-colors" onclick="event.stopPropagation(); restoreFeedback('${it.id}')" title="Restore"><span class="material-symbols-outlined text-[20px]">restore_from_trash</span></button>`
+                                : `<button class="text-on-surface-variant hover:text-error transition-colors" onclick="event.stopPropagation(); deleteFeedback('${it.id}')" title="Delete"><span class="material-symbols-outlined text-[20px]">delete</span></button>`}
                         </div>
                     </td>
                 </tr>`).join('');
@@ -259,24 +277,41 @@
             document.getElementById('d-email').innerText = it.userEmail || '--';
             document.getElementById('d-session').innerText = it.sessionId || '--';
             document.getElementById('d-date').innerText = formatDate(it.createdAt);
-            document.getElementById('d-rating').innerHTML = stars(it.rating || 0);
+            document.getElementById('d-rating').innerHTML = stars(it.rating || 0, false);
             document.getElementById('d-helpful').innerHTML = helpfulBadge(it.isHelpful);
             document.getElementById('d-comment').innerText = `"${it.content || ''}"`;
+            // Nút dưới drawer đổi theo trạng thái: item đã xoá -> Restore, chưa xoá -> Delete.
+            document.getElementById('d-delete').innerHTML = it.isDeleted
+                ? `<span class="material-symbols-outlined text-[20px]">restore_from_trash</span> Restore`
+                : `<span class="material-symbols-outlined text-[20px]">delete</span> Delete`;
             toggleDrawer(true);
         }
 
         function deleteFeedback(id) {
-            showConfirm('Xoá feedback này? (soft delete)', async () => {
+            showConfirm('Delete this feedback? (soft delete)', async () => {
                 try {
                     const res = await fetch(`${API_BASE}/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
-                    if (res.status === 403) { alert('Chỉ Admin mới được xoá.'); return; }
+                    if (res.status === 403) { alert('Only Admin can delete.'); return; }
                     if (!res.ok) throw new Error(`HTTP ${res.status}`);
                     toggleDrawer(false);
                     fetchList();
-                } catch (e) { alert('Xoá thất bại. Kiểm tra quyền / kết nối.'); }
+                } catch (e) { alert('Delete failed. Check permissions / connection.'); }
             });
         }
 
+        function restoreFeedback(id) {
+            showConfirm('Restore this deleted feedback?', async () => {
+                try {
+                    const res = await fetch(`${API_BASE}/${id}/restore`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+                    if (res.status === 403) { alert('Only Admin can restore.'); return; }
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    toggleDrawer(false);
+                    fetchList();
+                } catch (e) { alert('Restore failed. Check permissions / connection.'); }
+            });
+        }
+
+        function deletedBadge() { return ` <span class="px-xs py-0.5 rounded-full border text-[9px] font-bold uppercase bg-error/15 border-error/40 text-error">Deleted</span>`; }
         function userLabel(it) { return it.userFullName || (it.userId ? 'User ' + String(it.userId).substring(0, 5) : 'Unknown'); }
         function initial(name) { return name && name.trim() ? name.trim()[0].toUpperCase() : 'U'; }
         function helpfulBadge(v) {
@@ -288,12 +323,16 @@
             totalPages = Math.max(data.totalPages || 1, 1);
             const totalItems = data.totalItems || 0, page = data.page || currentPage, size = data.pageSize || pageSize;
             const start = totalItems === 0 ? 0 : ((page - 1) * size) + 1, end = Math.min(page * size, totalItems);
+            currentPage = page;
             document.getElementById('ai-summary').innerText = `Showing ${start}-${end} of ${totalItems} entries`;
-            document.getElementById('ai-page').innerText = `${page} / ${totalPages}`;
-            document.getElementById('ai-prev').disabled = page <= 1;
-            document.getElementById('ai-next').disabled = page >= totalPages;
+            DevPrepPagination.render({ container: 'ai-pages', currentPage, totalPages, onPageChange: pageNumber => { currentPage = pageNumber; fetchList(); } });
         }
-        function stars(n) { let s = ''; for (let i = 1; i <= 5; i++) s += `<span class="material-symbols-outlined text-[18px]" ${i <= n ? `style="font-variation-settings:'FILL' 1;"` : ''}>star</span>`; return s; }
+        function stars(n, compact = true) {
+            const value = Math.max(0, Math.min(5, Number(n) || 0));
+            let s = `<span class="star-rating ${compact ? 'star-rating--compact' : 'star-rating--full'}" role="img" aria-label="${value} out of 5 stars">`;
+            for (let i = 1; i <= 5; i++) s += `<span class="material-symbols-outlined star-rating-icon ${i <= value ? 'is-filled' : 'is-empty'}" aria-hidden="true">${i <= value ? 'star' : 'star_border'}</span>`;
+            return `${s}</span>`;
+        }
         function formatDate(d) { if (!d) return ''; const x = new Date(d); const m = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"]; return `${m[x.getMonth()]} ${x.getDate().toString().padStart(2,'0')}`; }
         function escapeHtml(u) { return (u || '').replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;"); }
         function toggleDrawer(show) {
@@ -302,5 +341,6 @@
             else { drawer.classList.add('drawer-hidden'); overlay.classList.remove('opacity-100'); setTimeout(() => { overlay.classList.add('hidden'); document.body.style.overflow = 'auto'; }, 300); }
         }
     </script>
+    <script src="~/js/components/pagination.js" asp-append-version="true"></script>
 </body>
 </html>

@@ -18,7 +18,7 @@ public class ManagerUserService : IManagerUserService
         _apiClient = apiClient;
     }
 
-    public async Task<PagedResult<UserListItemViewModel>> GetListAsync(int page = 1, int pageSize = 10, string? keyword = null)
+    public async Task<PagedResult<UserListItemViewModel>> GetListAsync(int page = 1, int pageSize = 10, string? keyword = null, string? role = null, string? status = null, DateTime? createdFrom = null, DateTime? createdTo = null)
     {
         var url = "/api/admin/manager/users";
         var queryParams = new Dictionary<string, string?>
@@ -28,6 +28,10 @@ public class ManagerUserService : IManagerUserService
         };
 
         if (!string.IsNullOrEmpty(keyword)) queryParams["keyword"] = keyword;
+        if (!string.IsNullOrEmpty(role)) queryParams["role"] = role;
+        if (!string.IsNullOrEmpty(status)) queryParams["status"] = status;
+        if (createdFrom.HasValue) queryParams["createdFrom"] = createdFrom.Value.ToString("yyyy-MM-dd");
+        if (createdTo.HasValue) queryParams["createdTo"] = createdTo.Value.ToString("yyyy-MM-dd");
 
         var requestUrl = QueryHelpers.AddQueryString(url, queryParams);
         

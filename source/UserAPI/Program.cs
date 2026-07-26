@@ -187,6 +187,18 @@ app.MapPost("/internal/profiles/search-by-name",
     })
     .ExcludeFromDescription();
 
+// Xoá hồ sơ theo AccountId — AuthAPI gọi khi dọn account Pending hết hạn xác thực email.
+// Idempotent: không có hồ sơ tương ứng thì bỏ qua.
+app.MapPost("/internal/profiles/delete",
+    async (UserAPI.DTOs.ProfileDeleteRequest body, HttpRequest request, IUserProfileRepository repository) =>
+    {
+        if (!IsInternalCallAuthorized(request, internalApiKey)) return Results.Unauthorized();
+        if (body.AccountIds is null || body.AccountIds.Count == 0) return Results.Ok();
+        await repository.DeleteByAccountIdsAsync(body.AccountIds.Distinct().ToList());
+        return Results.Ok();
+    })
+    .ExcludeFromDescription();
+
 app.Run();
 
 // So khớp header X-Internal-Api-Key với khoá cấu hình. Chưa cấu hình khoá -> cho qua (tiện chạy dev).

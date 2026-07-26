@@ -50,6 +50,19 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
+    /// Xác thực email bằng token trong link (người dùng bấm nút xác nhận ở trang ConfirmEmail).
+    /// Không cần email/OTP — token dài trong link là đủ định danh lượt đăng ký.
+    /// </summary>
+    [HttpPost("verify-email-link")]
+    [ProducesResponseType(typeof(ApiResponse<VerifyEmailOtpResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> VerifyEmailLink([FromBody] VerifyEmailLinkRequest request)
+    {
+        var result = await _authService.VerifyEmailByLinkAsync(request);
+        return Ok(ApiResponse<VerifyEmailOtpResponse>.Ok(result, "Email verified successfully."));
+    }
+
+    /// <summary>
     /// Gửi lại mã OTP xác thực email. Các OTP cũ chưa dùng sẽ bị vô hiệu hoá.
     /// </summary>
     [HttpPost("resend-otp")]
@@ -196,6 +209,35 @@ public class AuthController : ControllerBase
     {
         var result = await _authService.RefreshTokenAsync(request);
         return Ok(ApiResponse<LoginResponse>.Ok(result, "Token refreshed successfully."));
+    }
+
+    /// <summary>
+    /// Trạng thái + role hiện tại của tài khoản đang đăng nhập. WebClient poll endpoint này
+    /// (cache ngắn) để tự đăng xuất ngay khi tài khoản bị block giữa phiên.
+    /// </summary>
+    [Authorize]
+    [HttpGet("me/status")]
+    [ProducesResponseType(typeof(ApiResponse<AccountStatusResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> MyStatus()
+    {
+        var accountIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+
+        if (!Guid.TryParse(accountIdValue, out var accountId))
+        {
+            return Unauthorized();
+        }
+
+        var status = await _authService.GetAccountStatusAsync(accountId);
+        if (status is null)
+        {
+            // Tài khoản không còn tồn tại -> coi như blocked để client đăng xuất.
+            return Ok(ApiResponse<AccountStatusResponse>.Ok(
+                new AccountStatusResponse { Status = "Blocked", Role = string.Empty }));
+        }
+
+        return Ok(ApiResponse<AccountStatusResponse>.Ok(status));
     }
 
     /// <summary>

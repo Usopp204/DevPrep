@@ -56,6 +56,23 @@ builder.Services.AddScoped<IQuestionService, QuestionService>();
 builder.Services.AddScoped<IAdminQuestionRepository, AdminQuestionRepository>();
 builder.Services.AddScoped<IAdminQuestionService, AdminQuestionService>();
 builder.Services.AddScoped<InternalQuestionService>();
+builder.Services.AddScoped<ITechStackRepository, TechStackRepository>();
+builder.Services.AddScoped<ITechStackService, TechStackService>();
+builder.Services.AddScoped<IPositionRepository, PositionRepository>();
+builder.Services.AddScoped<IPositionService, PositionService>();
+
+// CORS cho trang admin WebClient gọi trực tiếp (cùng policy các service khác).
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("WebClientDev", policy => policy
+        .WithOrigins(
+            "http://localhost:5130",
+            "http://localhost:3000",
+            "http://localhost:4200",
+            "http://localhost:5500")
+        .AllowAnyHeader()
+        .AllowAnyMethod());
+});
 
 
 //------ SỬA LẠI ĐOẠN NÀY -------
@@ -109,6 +126,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseCors("WebClientDev");
 app.UseAuthentication();
 app.UseAuthorization();
 

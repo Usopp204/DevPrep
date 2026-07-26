@@ -1,0 +1,91 @@
+@using WebClient.Models.Feedback
+@model ReportedFeedbackPageViewModel
+
+@if (Model.SelectedReport is not null)
+{
+    var report = Model.SelectedReport;
+    var controller = Model.IsAdmin ? "Admin" : "Manager";
+    var closeUrl = Url.Action("ReportedFeedback", controller, new
+    {
+        page = Model.Reports.Page,
+        feedbackType = Model.FeedbackType,
+        status = Model.Status,
+        reasonCode = Model.ReasonCode,
+        keyword = Model.Keyword
+    });
+    <div class="report-detail-overlay">
+        <a class="report-detail-backdrop" href="@closeUrl" aria-label="Close report details"></a>
+        <aside class="report-detail-drawer" role="dialog" aria-modal="true" aria-labelledby="report-detail-title">
+            <header>
+                <div>
+                    <p>Report @report.ReportId</p>
+                    <h2 id="report-detail-title">Reported feedback details</h2>
+                </div>
+                <a href="@closeUrl" class="report-detail-close" title="Close" aria-label="Close report details">
+                    <span class="material-symbols-outlined" aria-hidden="true">close</span>
+                </a>
+            </header>
+
+            <div class="report-detail-body">
+                <section class="report-detail-summary">
+                    <span class="report-badge report-type-@report.FeedbackType.ToLowerInvariant()">@(report.FeedbackType == FeedbackReportRules.InterviewType ? "AI Feedback" : "System")</span>
+                    <span class="report-badge report-status-@report.Status.ToLowerInvariant()">@report.Status</span>
+                    <span class="report-badge">@(report.IsFeedbackDeleted ? "Deleted" : report.IsFeedbackVisible ? "Public" : "Hidden")</span>
+                </section>
+
+                <section class="report-detail-section">
+                    <h3>Reported feedback</h3>
+                    <p class="safe-long-text">@(string.IsNullOrWhiteSpace(report.FeedbackContent) ? "No written content." : report.FeedbackContent)</p>
+                </section>
+
+                <section class="report-detail-grid">
+                    <div><span>Overall rating</span>@await Html.PartialAsync("_StarRating", new WebClient.Models.Shared.StarRatingViewModel { Label = "Overall rating", Value = report.OverallRating })</div>
+                    @if (report.FeedbackType == FeedbackReportRules.InterviewType)
+                    {
+                        <div><span>Question quality</span>@await Html.PartialAsync("_StarRating", new WebClient.Models.Shared.StarRatingViewModel { Label = "Question quality", Value = report.QuestionQualityRating })</div>
+                        <div><span>AI accuracy</span>@await Html.PartialAsync("_StarRating", new WebClient.Models.Shared.StarRatingViewModel { Label = "AI accuracy", Value = report.AiAccuracyRating })</div>
+                        <div><span>Scoring fairness</span>@await Html.PartialAsync("_StarRating", new WebClient.Models.Shared.StarRatingViewModel { Label = "Scoring fairness", Value = report.ScoringFairnessRating })</div>
+                        <div><span>Usefulness</span>@await Html.PartialAsync("_StarRating", new WebClient.Models.Shared.StarRatingViewModel { Label = "Feedback usefulness", Value = report.FeedbackUsefulnessRating })</div>
+                    }
+                    else
+                    {
+                        <div><span>UI/UX</span>@await Html.PartialAsync("_StarRating", new WebClient.Models.Shared.StarRatingViewModel { Label = "UI/UX", Value = report.UiUxRating })</div>
+                        <div><span>Usability</span>@await Html.PartialAsync("_StarRating", new WebClient.Models.Shared.StarRatingViewModel { Label = "Usability", Value = report.UsabilityRating })</div>
+                        <div><span>Feature quality</span>@await Html.PartialAsync("_StarRating", new WebClient.Models.Shared.StarRatingViewModel { Label = "Feature quality", Value = report.FeatureQualityRating })</div>
+                    }
+                </section>
+
+                <section class="report-detail-section">
+                    <h3>@report.ReasonLabel</h3>
+                    <p class="safe-long-text">@(string.IsNullOrWhiteSpace(report.Details) ? "No additional details." : report.Details)</p>
+                </section>
+
+                <dl class="report-detail-metadata">
+                    <div><dt>Reporter ID</dt><dd>@report.ReporterUserId</dd></div>
+                    <div><dt>Reported at</dt><dd>@report.CreatedAt.ToString("MMM d, yyyy HH:mm")</dd></div>
+                    <div><dt>Publication state</dt><dd>@report.FeedbackModerationStatus</dd></div>
+                    <div><dt>Reviewed at</dt><dd>@(report.ReviewedAt?.ToString("MMM d, yyyy HH:mm") ?? "Not reviewed")</dd></div>
+                    <div><dt>Reviewed by</dt><dd>@(report.ReviewedBy?.ToString() ?? "—")</dd></div>
+                    <div><dt>Resolution note</dt><dd class="safe-long-text">@(string.IsNullOrWhiteSpace(report.ResolutionNote) ? "—" : report.ResolutionNote)</dd></div>
+                </dl>
+
+                <section class="report-detail-section">
+                    <h3>Related reports (@report.RelatedReportCount)</h3>
+                    <div class="related-report-list">
+                        @foreach (var related in report.RelatedReports)
+                        {
+                            <article>
+                                <header>
+                                    <strong>@related.ReasonLabel</strong>
+                                    <span class="report-badge report-status-@related.Status.ToLowerInvariant()">@related.Status</span>
+                                </header>
+                                <p class="safe-long-text">@(string.IsNullOrWhiteSpace(related.Details) ? "No additional details." : related.Details)</p>
+                                <small>@related.CreatedAt.ToString("MMM d, yyyy HH:mm") · Reporter @related.ReporterUserId</small>
+                            </article>
+                        }
+                    </div>
+                </section>
+            </div>
+        </aside>
+    </div>
+}

@@ -1,5 +1,10 @@
+@model WebClient.Models.Admin.AdminDashboardViewModel
 @{
     Layout = null;
+    var nowVn = DateTime.UtcNow.AddHours(7);
+    // "—" khi nguồn dữ liệu tương ứng đang lỗi/chưa chạy.
+    string Num(long? v) => v.HasValue ? v.Value.ToString("N0") : "—";
+    string Vnd(decimal? v) => v.HasValue ? v.Value.ToString("N0") + " VND" : "—";
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -13,6 +18,27 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@@100..900&family=JetBrains+Mono:wght@@500&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+    <style>
+        /* Bộ chọn khoảng ngày cho chart doanh thu (theo theme dark-glass admin) */
+        .ad-range { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .ad-range label { font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: .05em; text-transform: uppercase; color: #c8c5d0; }
+        .ad-range input[type="date"] {
+            background: rgba(26, 31, 48, .8); border: 1px solid rgba(255, 255, 255, .12);
+            color: #e5e1e7; border-radius: .5rem; padding: 6px 10px; font-size: 14px; outline: none;
+            color-scheme: dark;
+        }
+        .ad-range input[type="date"]:focus { border-color: #4f46e5; }
+        .ad-range .ad-apply {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: #fff; border: none;
+            border-radius: .5rem; padding: 7px 18px; font-weight: 600; font-size: 14px; cursor: pointer;
+        }
+        .ad-range .ad-apply:hover { opacity: .9; }
+        .ad-rev-summary { font-size: 14px; color: #c8c5d0; }
+        .ad-rev-summary b { color: #c3c0ff; font-size: 16px; }
+        .ad-chart-note { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #928f9a; font-size: 14px; }
+        .ad-chart-bar .bar { min-height: 0; }
+        .ad-chart-bar span { white-space: nowrap; }
+    </style>
 </head>
 <body class="admin-page">
     @await Html.PartialAsync("_AdminTopbar")
@@ -21,20 +47,32 @@
     <main class="ad-main">
         <header class="mb-4">
             <h1 class="ad-page-title">System Overview</h1>
-            <p class="ad-page-date">July 12, 2026</p>
+            <p class="ad-page-date">@nowVn.ToString("MMMM dd, yyyy")</p>
         </header>
 
-        <!-- Top Stats -->
+        <!-- Top Stats (dữ liệu thật) -->
         <section class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4 mb-4">
             <div class="col">
                 <div class="glass-card ad-stat">
                     <div class="ad-stat-top">
-                        <span class="ad-stat-label">New Users This Month</span>
-                        <span class="material-symbols-outlined" style="color:#e2dfff; opacity:.6;">person_add</span>
+                        <span class="ad-stat-label">Total Users</span>
+                        <span class="material-symbols-outlined" style="color:#e2dfff; opacity:.6;">group</span>
                     </div>
                     <div>
-                        <div class="ad-stat-value">247</div>
-                        <div class="ad-stat-delta"><span class="material-symbols-outlined" style="font-size:16px;">trending_up</span> +12% vs last month</div>
+                        <div class="ad-stat-value">@Num(Model.TotalUsers)</div>
+                        <div class="ad-stat-label" style="text-transform:none; margin-top:8px;">All registered accounts</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="glass-card ad-stat">
+                    <div class="ad-stat-top">
+                        <span class="ad-stat-label">New Users This Month</span>
+                        <span class="material-symbols-outlined" style="color:#4cd7f6; opacity:.6;">person_add</span>
+                    </div>
+                    <div>
+                        <div class="ad-stat-value">@Num(Model.NewUsersThisMonth)</div>
+                        <div class="ad-stat-label" style="text-transform:none; margin-top:8px;">Since @Model.DefaultFrom.ToString("MMM dd")</div>
                     </div>
                 </div>
             </div>
@@ -42,20 +80,11 @@
                 <div class="glass-card ad-stat">
                     <div class="ad-stat-top">
                         <span class="ad-stat-label">Total Sessions Run</span>
-                        <span class="material-symbols-outlined" style="color:#4cd7f6; opacity:.6;">play_circle</span>
+                        <span class="material-symbols-outlined" style="color:#F9D949; opacity:.6;">play_circle</span>
                     </div>
                     <div>
-                        <div class="ad-stat-value">3,842</div>
-                        <div class="ad-spark">
-                            <span style="height:16px; opacity:.3;"></span>
-                            <span style="height:24px; opacity:.5;"></span>
-                            <span style="height:11px; opacity:.4;"></span>
-                            <span style="height:21px; opacity:.7;"></span>
-                            <span style="height:32px; opacity:.9;"></span>
-                            <span style="height:26px;"></span>
-                            <span style="height:16px; opacity:.6;"></span>
-                            <span style="height:32px;"></span>
-                        </div>
+                        <div class="ad-stat-value">@Num(Model.TotalSessions)</div>
+                        <div class="ad-stat-label" style="text-transform:none; margin-top:8px;">Interview sessions</div>
                     </div>
                 </div>
             </div>
@@ -66,147 +95,123 @@
                         <span class="material-symbols-outlined" style="color:#c3c0ff; opacity:.6;">account_balance_wallet</span>
                     </div>
                     <div>
-                        <div class="ad-stat-value" style="font-size:24px; color:#c3c0ff; line-height:1.2;">48,200,000 VND</div>
+                        <div class="ad-stat-value" style="font-size:24px; color:#c3c0ff; line-height:1.2;">@Vnd(Model.RevenueThisMonth)</div>
                         <div class="ad-stat-label" style="text-transform:none; margin-top:8px;">This month</div>
                     </div>
                 </div>
             </div>
-            <div class="col">
-                <div class="glass-card ad-stat">
-                    <div class="ad-stat-top">
-                        <span class="ad-stat-label">Active Users Today</span>
-                        <span class="material-symbols-outlined" style="color:#F9D949; opacity:.6;">bolt</span>
-                    </div>
-                    <div>
-                        <div class="ad-stat-value">89</div>
-                        <div class="d-flex align-items-center gap-2 mt-1">
-                            <span style="width:8px; height:8px; border-radius:9999px; background:#10B981; display:inline-block;" class="active-pulse"></span>
-                            <span style="color:#10B981; font-size:14px; font-weight:500;">Live</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </section>
 
-        <!-- Revenue Chart -->
+        <!-- Revenue Chart (chọn khoảng ngày) -->
         <section class="glass-card ad-section">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h3 class="ad-section-title">Monthly Revenue &amp; Sessions</h3>
-                <div class="ad-legend">
-                    <div><span style="width:12px; height:12px; background:#e2dfff; border-radius:2px; display:inline-block;"></span><span class="k">Revenue</span></div>
-                    <div><span style="width:12px; height:2px; background:#4cd7f6; display:inline-block;"></span><span class="k">Sessions</span></div>
-                </div>
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-3">
+                <h3 class="ad-section-title mb-0">Revenue</h3>
+                <form class="ad-range" id="rev-range" onsubmit="return false;">
+                    <label for="rev-from">From</label>
+                    <input type="date" id="rev-from" value="@Model.DefaultFrom.ToString("yyyy-MM-dd")" />
+                    <label for="rev-to">To</label>
+                    <input type="date" id="rev-to" value="@Model.DefaultTo.ToString("yyyy-MM-dd")" />
+                    <button type="submit" class="ad-apply" id="rev-apply">Apply</button>
+                </form>
             </div>
-            <div class="ad-chart">
+            <div class="ad-rev-summary mb-3" id="rev-summary">Loading…</div>
+            <div class="ad-chart" id="rev-chart">
                 <div class="ad-chart-grid">
                     <div></div><div></div><div></div><div></div>
                 </div>
-                <div class="ad-chart-bar"><div class="bar" style="height:96px;"></div><span>JAN</span></div>
-                <div class="ad-chart-bar"><div class="bar" style="height:128px;"></div><span>FEB</span></div>
-                <div class="ad-chart-bar"><div class="bar" style="height:192px;"></div><span>MAR</span></div>
-                <div class="ad-chart-bar"><div class="bar" style="height:160px;"></div><span>APR</span></div>
-                <div class="ad-chart-bar"><div class="bar" style="height:224px;"></div><span>MAY</span></div>
-                <div class="ad-chart-bar"><div class="bar" style="height:176px;"></div><span>JUN</span></div>
-                <svg style="position:absolute; bottom:44px; left:0; width:100%; height:192px; pointer-events:none; overflow:visible; padding:0 24px;" preserveAspectRatio="none">
-                    <path d="M 0 150 Q 100 120 200 80 T 400 40 T 600 90 T 800 30" fill="none" stroke="#4cd7f6" stroke-width="3"></path>
-                    <circle cx="20" cy="150" fill="#4cd7f6" r="4"></circle>
-                    <circle cx="180" cy="100" fill="#4cd7f6" r="4"></circle>
-                    <circle cx="350" cy="50" fill="#4cd7f6" r="4"></circle>
-                    <circle cx="520" cy="70" fill="#4cd7f6" r="4"></circle>
-                    <circle cx="700" cy="110" fill="#4cd7f6" r="4"></circle>
-                </svg>
+                <div class="ad-chart-note" id="rev-note">Loading revenue…</div>
             </div>
         </section>
-
-        <!-- Lower grid -->
-        <div class="ad-lower">
-            <!-- Recent Activity -->
-            <section class="glass-card ad-panel ad-lower-main">
-                <div class="ad-panel-head">
-                    <h3><span class="material-symbols-outlined" style="font-size:16px;">list_alt</span> Recent Activity</h3>
-                </div>
-                <div class="ad-panel-body">
-                    <div class="ad-activity">
-                        <div class="ad-activity-left">
-                            <div class="ad-activity-icon"><span class="material-symbols-outlined" style="color:#4cd7f6;">person_add</span></div>
-                            <div><p class="ad-activity-title">New user registered: <span style="color:#4cd7f6;">minh_nguyen</span></p><p class="ad-activity-meta">12:45 PM • SYSTEM_AUTH</p></div>
-                        </div>
-                        <span class="material-symbols-outlined chev">chevron_right</span>
-                    </div>
-                    <div class="ad-activity">
-                        <div class="ad-activity-left">
-                            <div class="ad-activity-icon"><span class="material-symbols-outlined" style="color:#e2dfff;">task_alt</span></div>
-                            <div><p class="ad-activity-title">Session completed: <span style="color:#e2dfff;">#S-492</span></p><p class="ad-activity-meta">12:30 PM • ENGINE_V2</p></div>
-                        </div>
-                        <span class="material-symbols-outlined chev">chevron_right</span>
-                    </div>
-                    <div class="ad-activity">
-                        <div class="ad-activity-left">
-                            <div class="ad-activity-icon"><span class="material-symbols-outlined" style="color:#10B981;">payments</span></div>
-                            <div><p class="ad-activity-title">Payment received: <span style="color:#10B981;">#P-882</span></p><p class="ad-activity-meta">11:58 AM • VNPAY_GATEWAY</p></div>
-                        </div>
-                        <span class="material-symbols-outlined chev">chevron_right</span>
-                    </div>
-                    <div class="ad-activity">
-                        <div class="ad-activity-left">
-                            <div class="ad-activity-icon"><span class="material-symbols-outlined" style="color:#ffb4ab;">block</span></div>
-                            <div><p class="ad-activity-title">User blocked: <span style="color:#ffb4ab;">spam_bot_01</span></p><p class="ad-activity-meta">11:20 AM • MODERATION_API</p></div>
-                        </div>
-                        <span class="material-symbols-outlined chev">chevron_right</span>
-                    </div>
-                    <div class="ad-activity">
-                        <div class="ad-activity-left">
-                            <div class="ad-activity-icon"><span class="material-symbols-outlined" style="color:#c3c0ff;">forum</span></div>
-                            <div><p class="ad-activity-title">New feedback submitted: <span style="color:#c3c0ff;">#F-102</span></p><p class="ad-activity-meta">10:15 AM • USER_CARE</p></div>
-                        </div>
-                        <span class="material-symbols-outlined chev">chevron_right</span>
-                    </div>
-                    <div class="ad-activity">
-                        <div class="ad-activity-left">
-                            <div class="ad-activity-icon"><span class="material-symbols-outlined" style="color:#F9D949;">update</span></div>
-                            <div><p class="ad-activity-title">Schema update applied: <span style="color:#F9D949;">v2.4.0</span></p><p class="ad-activity-meta">09:00 AM • DEPLOY_BOT</p></div>
-                        </div>
-                        <span class="material-symbols-outlined chev">chevron_right</span>
-                    </div>
-                    <div class="ad-activity">
-                        <div class="ad-activity-left">
-                            <div class="ad-activity-icon"><span class="material-symbols-outlined" style="color:#4cd7f6;">database</span></div>
-                            <div><p class="ad-activity-title">Database backup successful</p><p class="ad-activity-meta">04:00 AM • AUTO_CRON</p></div>
-                        </div>
-                        <span class="material-symbols-outlined chev">chevron_right</span>
-                    </div>
-                    <div class="ad-activity">
-                        <div class="ad-activity-left">
-                            <div class="ad-activity-icon"><span class="material-symbols-outlined" style="color:#c8c5d0;">history_edu</span></div>
-                            <div><p class="ad-activity-title">Audit logs rotated</p><p class="ad-activity-meta">00:00 AM • SYSTEM_MAINTENANCE</p></div>
-                        </div>
-                        <span class="material-symbols-outlined chev">chevron_right</span>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Quick Actions & Status -->
-            <section class="ad-lower-side d-flex flex-column gap-4">
-                <div class="glass-card ad-panel" style="padding:24px;">
-                    <h3 style="display:flex; align-items:center; gap:8px; margin:0 0 32px; font-family:'JetBrains Mono',monospace; font-size:13px; letter-spacing:.05em; text-transform:uppercase; color:#c8c5d0;">
-                        <span class="material-symbols-outlined" style="font-size:16px;">bolt</span> Quick Actions
-                    </h3>
-                    <div class="d-flex flex-column gap-3">
-                        <button class="ad-action ad-action-primary primary-gradient" type="button"><span class="material-symbols-outlined">add_circle</span> Add New Question</button>
-                        <button class="ad-action ad-action-secondary" type="button"><span class="material-symbols-outlined" style="color:#e2dfff;">feedback</span> View Pending Feedbacks</button>
-                        <button class="ad-action ad-action-secondary" type="button"><span class="material-symbols-outlined" style="color:#4cd7f6;">inventory_2</span> Manage Credit Packages</button>
-                    </div>
-                </div>
-                <div class="glass-card ad-panel" style="padding:24px;">
-                    <h3 style="margin:0 0 24px; font-family:'JetBrains Mono',monospace; font-size:13px; letter-spacing:.05em; text-transform:uppercase; color:#c8c5d0;">System Status</h3>
-                    <div class="d-flex flex-column gap-2">
-                        <div class="ad-status-row"><div class="left"><span class="material-symbols-outlined" style="color:#10B981;">check_circle</span><span style="font-size:14px;">API Status</span></div><span class="ok">Operational</span></div>
-                        <div class="ad-status-row"><div class="left"><span class="material-symbols-outlined" style="color:#10B981;">check_circle</span><span style="font-size:14px;">AI Inference Service</span></div><span class="ok">Operational</span></div>
-                        <div class="ad-status-row"><div class="left"><span class="material-symbols-outlined" style="color:#10B981;">check_circle</span><span style="font-size:14px;">VNPay Gateway</span></div><span class="ok">Operational</span></div>
-                    </div>
-                </div>
-            </section>
-        </div>
     </main>
+
+    <script>
+        (function () {
+            const fromEl = document.getElementById('rev-from');
+            const toEl = document.getElementById('rev-to');
+            const applyBtn = document.getElementById('rev-apply');
+            const chartEl = document.getElementById('rev-chart');
+            const summaryEl = document.getElementById('rev-summary');
+
+            const vnd = n => Number(n).toLocaleString('en-US');
+
+            function setNote(text, isError) {
+                chartEl.querySelectorAll('.ad-chart-bar, .ad-chart-note').forEach(e => e.remove());
+                const note = document.createElement('div');
+                note.className = 'ad-chart-note';
+                if (isError) note.style.color = '#ffb4ab';
+                note.textContent = text;
+                chartEl.appendChild(note);
+            }
+
+            // Ghép chuỗi ngày liên tục from..to, điền 0 cho ngày không có doanh thu.
+            function zeroFill(from, to, days) {
+                const map = {};
+                (days || []).forEach(d => { map[d.date.substring(0, 10)] = d; });
+                const out = [];
+                const cur = new Date(from + 'T00:00:00');
+                const end = new Date(to + 'T00:00:00');
+                while (cur <= end) {
+                    const key = cur.toISOString().substring(0, 10);
+                    out.push(map[key] || { date: key, revenue: 0, orders: 0, credits: 0 });
+                    cur.setDate(cur.getDate() + 1);
+                    if (out.length > 400) break; // an toàn: chặn khoảng quá dài
+                }
+                return out;
+            }
+
+            function render(data) {
+                const days = zeroFill(fromEl.value, toEl.value, data.days);
+                summaryEl.innerHTML =
+                    'Total: <b>' + vnd(data.totalRevenue) + ' VND</b>' +
+                    ' • ' + data.totalOrders + ' paid order' + (data.totalOrders === 1 ? '' : 's') +
+                    ' • ' + vnd(data.totalCredits) + ' credits sold' +
+                    ' <span style="color:#928f9a;">(' + fromEl.value + ' → ' + toEl.value + ')</span>';
+
+                chartEl.querySelectorAll('.ad-chart-bar, .ad-chart-note').forEach(e => e.remove());
+
+                const max = Math.max(...days.map(d => Number(d.revenue)));
+                if (!max) { setNote('No revenue in this date range.'); return; }
+
+                const labelStep = Math.ceil(days.length / 12); // tối đa ~12 nhãn cho dễ đọc
+                days.forEach((d, i) => {
+                    const wrap = document.createElement('div');
+                    wrap.className = 'ad-chart-bar';
+                    const h = Math.round(Number(d.revenue) / max * 200);
+
+                    const bar = document.createElement('div');
+                    bar.className = 'bar';
+                    bar.style.height = (Number(d.revenue) > 0 ? Math.max(h, 3) : 0) + 'px';
+                    bar.title = d.date.substring(0, 10) + ' — ' + vnd(d.revenue) + ' VND (' + d.orders + ' order' + (d.orders === 1 ? '' : 's') + ')';
+
+                    const label = document.createElement('span');
+                    label.textContent = (i % labelStep === 0) ? d.date.substring(8, 10) + '/' + d.date.substring(5, 7) : '';
+
+                    wrap.appendChild(bar);
+                    wrap.appendChild(label);
+                    chartEl.appendChild(wrap);
+                });
+            }
+
+            async function load() {
+                if (!fromEl.value || !toEl.value) return;
+                if (fromEl.value > toEl.value) { setNote('"From" date must be before "To" date.', true); return; }
+                setNote('Loading revenue…');
+                summaryEl.textContent = 'Loading…';
+                try {
+                    const res = await fetch('/Admin/RevenueSeries?from=' + fromEl.value + '&to=' + toEl.value, { headers: { 'Accept': 'application/json' } });
+                    const json = await res.json();
+                    if (!res.ok || !json.success) throw new Error(json.message || ('HTTP ' + res.status));
+                    render(json.data);
+                } catch (err) {
+                    summaryEl.textContent = '';
+                    setNote('Could not load revenue: ' + err.message, true);
+                }
+            }
+
+            applyBtn.addEventListener('click', load);
+            document.getElementById('rev-range').addEventListener('submit', load);
+            load();
+        })();
+    </script>
 </body>
 </html>

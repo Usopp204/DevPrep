@@ -41,6 +41,16 @@ public class AdminSystemFeedbackController : ControllerBase
         return Ok(ApiResponse<object>.Ok(new { id }, "System feedback deleted (soft) successfully."));
     }
 
+    /// <summary>Khôi phục một System feedback đã xoá mềm. Chỉ Admin.</summary>
+    [HttpPost("{id:guid}/restore")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Restore(Guid id)
+    {
+        var ok = await _service.RestoreAsync(id);
+        if (!ok) return NotFound(ApiResponse<object>.Fail("System feedback not found or not deleted."));
+        return Ok(ApiResponse<object>.Ok(new { id }, "System feedback restored successfully."));
+    }
+
     /// <summary>Admin thêm một trả lời cho System feedback. Chỉ Admin.</summary>
     [HttpPost("{id:guid}/replies")]
     [Authorize(Roles = "Admin")]

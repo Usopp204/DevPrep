@@ -13,11 +13,16 @@ public class EvaluationService : IEvaluationService
 {
     private readonly IEvaluationRepository _repo;
     private readonly IAiServiceClient _aiServiceClient;
+    private readonly IInterviewApiClient _interviewApiClient;
 
-    public EvaluationService(IEvaluationRepository repo, IAiServiceClient aiServiceClient)
+    public EvaluationService(
+        IEvaluationRepository repo,
+        IAiServiceClient aiServiceClient,
+        IInterviewApiClient interviewApiClient)
     {
         _repo = repo;
         _aiServiceClient = aiServiceClient;
+        _interviewApiClient = interviewApiClient;
     }
 
     public async Task<EvaluateAnswerResponse> EvaluateAnswerAsync(
@@ -65,7 +70,6 @@ public class EvaluationService : IEvaluationService
         // Step D: Trả về DTO từ entity đã lưu.
         return ToResponse(eval);
     }
-
     private static EvaluateAnswerResponse ToResponse(AnswerEvaluation e) => new()
     {
         EvaluationId = e.EvaluationId,
@@ -79,8 +83,10 @@ public class EvaluationService : IEvaluationService
     };
 
     public async Task<ReportResponse> BuildReportAsync(
-        Guid sessionId, BuildReportRequest req, CancellationToken ct)
+        Guid sessionId, BuildReportRequest req, string? bearerToken, CancellationToken ct)
     {
+        await EnsureCompletedSessionAsync(sessionId, bearerToken, ct);
+
         // Step A: Không tạo lại báo cáo nếu đã có.
         if (await _repo.ReportExistsAsync(sessionId, ct))
             throw new InvalidOperationException("Report already generated.");
@@ -191,28 +197,31 @@ public class EvaluationService : IEvaluationService
             GeneratedAt = report.GeneratedAt
         };
     }
-
-    public async Task<ReportResponse?> GetExistingReportAsync(Guid sessionId, CancellationToken ct)
+    public async Task<ReportResponse?> GetExistingReportAsync(
+        Guid sessionId,
+        string? bearerToken,
+        CancellationToken ct)
     {
+        await EnsureCompletedSessionAsync(sessionId, bearerToken, ct);
         var report = await _repo.GetReportBySessionAsync(sessionId, ct);
-        if (report is null) return null;
+        return report is null ? null : ToReportResponse(report);
+    }
 
-        return new ReportResponse
-        {
-            ReportId = report.ReportId,
-            SessionId = report.SessionId,
-            OverallScore = report.OverallScore,
-            TechnicalScore = report.TechnicalScore,
-            TheoryScore = report.TheoryScore,
-            CommunicationScore = report.CommunicationScore,
-            ProblemSolvingScore = report.ProblemSolvingScore,
-            Summary = report.Summary,
-            Strengths = report.Strengths,
-            Improvements = report.Improvements,
-            Recommendations = report.Recommendations,
-            Grade = report.Grade,
-            GeneratedAt = report.GeneratedAt
-        };
+    public async Task<PerformanceReportResponse> GetPerformanceReportAsync(
+        Guid userId,
+        Guid sessionId,
+        string? bearerToken,
+        CancellationToken ct)
+    {
+        _ = userId;
+
+        await EnsureCompletedSessionAsync(sessionId, bearerToken, ct);
+
+        var report = await _repo.GetReportBySessionAsync(sessionId, ct);
+        if (report is null)
+            throw new ReportNotFoundException();
+
+        return ToPerformanceReportResponse(report);
     }
 
     public async Task<List<EvaluateAnswerResponse>> GetAnswerEvaluationsAsync(Guid sessionId, CancellationToken ct)
@@ -230,4 +239,113 @@ public class EvaluationService : IEvaluationService
             ModelUsed = e.ModelUsed
         }).ToList();
     }
+
+
+    private async Task EnsureCompletedSessionAsync(
+        Guid sessionId,
+        string? bearerToken,
+        CancellationToken ct)
+    {
+        var eligibility = await _interviewApiClient.GetSessionFeedbackEligibilityAsync(sessionId, bearerToken, ct);
+        if (eligibility.Status != "Completed" || !eligibility.Eligible)
+            throw new SessionNotEligibleForPerformanceReportException(eligibility.Status);
+    }
+
+    private static ReportResponse ToReportResponse(FeedbackReport report) => new()
+    {
+        ReportId = report.ReportId,
+        SessionId = report.SessionId,
+        OverallScore = report.OverallScore,
+        TechnicalScore = report.TechnicalScore,
+        TheoryScore = report.TheoryScore,
+        CommunicationScore = report.CommunicationScore,
+        ProblemSolvingScore = report.ProblemSolvingScore,
+        Summary = report.Summary,
+        Strengths = report.Strengths,
+        Improvements = report.Improvements,
+        Recommendations = report.Recommendations,
+        Grade = report.Grade,
+        GeneratedAt = report.GeneratedAt
+    };
+
+    private static PerformanceReportResponse ToPerformanceReportResponse(FeedbackReport report) => new()
+    {
+        SessionId = report.SessionId,
+        OverallScore = report.OverallScore,
+        TechnicalScore = report.TechnicalScore,
+        CommunicationScore = report.CommunicationScore,
+        ProblemSolvingScore = report.ProblemSolvingScore,
+        Summary = report.Summary,
+        Strengths = ParseStoredStringCollection(report.Strengths),
+        Improvements = ParseStoredStringCollection(report.Improvements),
+        Grade = report.Grade,
+        GeneratedAt = report.GeneratedAt,
+        SkillBreakdown = new List<SkillBreakdownItemDto>
+        {
+            new() { Name = "Technical", Score = report.TechnicalScore },
+            new() { Name = "Communication", Score = report.CommunicationScore },
+            new() { Name = "Problem Solving", Score = report.ProblemSolvingScore }
+        }
+    };
+
+    public static List<string> ParseStoredStringCollection(string? stored)
+    {
+        if (string.IsNullOrWhiteSpace(stored))
+            return new List<string>();
+
+        var trimmed = stored.Trim();
+        if (trimmed.StartsWith("[") || trimmed.StartsWith("{") || trimmed.StartsWith("\""))
+        {
+            try
+            {
+                using var document = JsonDocument.Parse(trimmed);
+                return ExtractJsonStrings(document.RootElement)
+                    .Select(SanitizeText)
+                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                    .Distinct()
+                    .ToList();
+            }
+            catch (JsonException)
+            {
+                return new List<string>();
+            }
+        }
+
+        return SplitLegacyText(trimmed);
+    }
+
+    private static IEnumerable<string> ExtractJsonStrings(JsonElement element)
+    {
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.String:
+                var value = element.GetString();
+                if (!string.IsNullOrWhiteSpace(value))
+                    yield return value;
+                break;
+            case JsonValueKind.Array:
+                foreach (var item in element.EnumerateArray())
+                {
+                    foreach (var extracted in ExtractJsonStrings(item))
+                        yield return extracted;
+                }
+                break;
+            case JsonValueKind.Object:
+                foreach (var property in element.EnumerateObject())
+                {
+                    foreach (var extracted in ExtractJsonStrings(property.Value))
+                        yield return extracted;
+                }
+                break;
+        }
+    }
+
+    private static List<string> SplitLegacyText(string value) =>
+        value.Split(new[] { ';', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(SanitizeText)
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .ToList();
+
+    private static string SanitizeText(string value) =>
+        value.Replace("\r", " ").Replace("\n", " ").Trim();
 }

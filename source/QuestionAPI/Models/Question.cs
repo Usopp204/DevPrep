@@ -35,9 +35,8 @@ public class Question
     //[MaxLength(500)]
     //public string? Tags { get; set; }
 
-    // Bổ sung Position
-    [MaxLength(50)]
-    public string? Position { get; set; }
+    // Position chuẩn hoá thành FK tới bảng Positions (cột text cũ đã bỏ — Migration_2026-07-24).
+    public Guid? PositionId { get; set; }
 
     [MaxLength(20)]
     public string Status { get; set; } = "Active";
@@ -56,4 +55,7 @@ public class Question
 
     [ForeignKey(nameof(CategoryId))]
     public QuestionCategory? Category { get; set; }
+
+    [ForeignKey(nameof(PositionId))]
+    public Position? Position { get; set; }
 }

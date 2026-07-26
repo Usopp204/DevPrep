@@ -38,4 +38,14 @@ public class AdminAiFeedbackController : ControllerBase
         if (!ok) return NotFound(ApiResponse<object>.Fail("AI feedback not found or already deleted."));
         return Ok(ApiResponse<object>.Ok(new { id }, "AI feedback deleted (soft) successfully."));
     }
+
+    /// <summary>Khôi phục một AI feedback đã xoá mềm. Chỉ Admin.</summary>
+    [HttpPost("{id:guid}/restore")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Restore(Guid id)
+    {
+        var ok = await _service.RestoreAsync(id);
+        if (!ok) return NotFound(ApiResponse<object>.Fail("AI feedback not found or not deleted."));
+        return Ok(ApiResponse<object>.Ok(new { id }, "AI feedback restored successfully."));
+    }
 }

@@ -1,0 +1,169 @@
+@model WebClient.Models.Admin.TechStacks.AdminTechStackListViewModel
+@{
+    ViewData["Title"] = "Tech Stack Management";
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tech Stack Management - DevPrep Admin</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/pages/tech-stack-list.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/pages/admin-tech-stacks.css" asp-append-version="true" />
+</head>
+<body class="admin-page">
+    @await Html.PartialAsync("_AdminTopbar")
+    @await Html.PartialAsync("_AdminSidebar")
+
+    <main class="ad-main tech-stacks-page">
+        <header class="tech-stacks-header">
+            <div>
+                <p class="tech-stacks-eyebrow">Question Administration</p>
+                <h1 class="ad-page-title">Tech Stack Management</h1>
+                <p class="tech-stacks-subtitle">Manage the technologies available for question classification.</p>
+            </div>
+            <button type="button" class="ts-button ts-button-primary" id="createTechStackButton">
+                <span class="material-symbols-outlined">add</span>
+                Create Tech Stack
+            </button>
+        </header>
+
+        <section class="tech-stacks-card tech-stacks-filters" aria-label="Tech Stack filters">
+            <form method="get" action="/Admin/TechStacks" class="tech-stacks-filter-form">
+                <div class="tech-stacks-filter-field">
+                    <label for="adminTechStackSearch">Search</label>
+                    <div class="tech-stacks-search">
+                        <input id="adminTechStackSearch" type="search" name="search" value="@Model.Search"
+                               maxlength="200" placeholder="Search by name or description" />
+                        <button type="submit" class="tech-stacks-search-button" id="techStackSearchButton"
+                                data-tech-stack-search-button aria-label="Search Tech Stacks" title="Search">
+                            <span class="material-symbols-outlined" aria-hidden="true">search</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="tech-stacks-filter-field tech-stacks-status-filter">
+                    <label for="techStackStatusFilter">Status</label>
+                    <select id="techStackStatusFilter" name="status">
+                        <option value="All" selected="@(Model.Status == "All")">All</option>
+                        <option value="Active" selected="@(Model.Status == "Active")">Active</option>
+                        <option value="Inactive" selected="@(Model.Status == "Inactive")">Inactive</option>
+                    </select>
+                </div>
+                <button type="submit" class="ts-button ts-button-secondary">Apply filters</button>
+                <a href="/Admin/TechStacks"
+                   class="ts-button ts-button-ghost js-reset-tech-stack-filters @(Model.IsFiltered ? string.Empty : "d-none")">Reset filters</a>
+            </form>
+        </section>
+        @await Html.PartialAsync("_TechStackResults", Model)
+    </main>
+
+    <div class="modal fade" id="techStackModal" tabindex="-1" aria-labelledby="techStackModalTitle"
+         aria-describedby="techStackModalSubtitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content tech-stack-modal-content">
+                <form id="techStackForm" novalidate>
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" id="techStackId" />
+
+                    <div class="modal-header tech-stack-modal-header">
+                        <div class="tech-stack-modal-heading">
+                            <span class="tech-stack-modal-icon material-symbols-outlined" aria-hidden="true">stacks</span>
+                            <div>
+                                <h2 class="modal-title" id="techStackModalTitle">Create Tech Stack</h2>
+                                <p id="techStackModalSubtitle">Add a new technology or interview focus area.</p>
+                            </div>
+                        </div>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body tech-stack-modal-body">
+                        <section class="tech-stack-form-section" aria-labelledby="techStackDetailsHeading">
+                            <div class="tech-stack-section-heading">
+                                <span class="material-symbols-outlined" aria-hidden="true">description</span>
+                                <div>
+                                    <h3 id="techStackDetailsHeading">Basic Information</h3>
+                                    <p>Use a clear, recognizable name and a concise description.</p>
+                                </div>
+                            </div>
+
+                            <div class="tech-stack-form-field">
+                                <div class="tech-stack-label-row">
+                                    <label for="techStackName">Name <span class="required-mark" aria-hidden="true">*</span></label>
+                                    <span class="tech-stack-counter"><span id="nameCount">0</span>/200</span>
+                                </div>
+                                <input id="techStackName" name="Name" type="text" maxlength="200" required
+                                       autocomplete="off" aria-describedby="techStackNameHint techStackNameError" />
+                                <span class="tech-stack-field-helper" id="techStackNameHint">Examples: React, .NET, PostgreSQL</span>
+                                <span class="tech-stack-field-error" id="techStackNameError"></span>
+                            </div>
+
+                            <div class="tech-stack-form-field">
+                                <div class="tech-stack-label-row">
+                                    <label for="techStackDescription">Description</label>
+                                    <span class="tech-stack-counter"><span id="descriptionCount">0</span>/500</span>
+                                </div>
+                                <textarea id="techStackDescription" name="Description" maxlength="500" rows="4"
+                                          aria-describedby="techStackDescriptionHint"></textarea>
+                                <span class="tech-stack-field-helper" id="techStackDescriptionHint">Briefly explain where this technology is used.</span>
+                            </div>
+                        </section>
+
+                        <p class="tech-stack-create-status-note" id="techStackCreateStatusNote">
+                            <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
+                            New Tech Stacks are active by default.
+                        </p>
+
+                        <fieldset class="tech-stack-form-section tech-stack-status-section" id="techStackStatusField" hidden>
+                            <legend class="visually-hidden">Availability</legend>
+                            <div class="tech-stack-section-heading">
+                                <span class="material-symbols-outlined" aria-hidden="true">toggle_on</span>
+                                <div>
+                                    <h3>Availability</h3>
+                                    <p>Choose whether this Tech Stack can be used for new classifications.</p>
+                                </div>
+                            </div>
+                            <div class="tech-stack-status-options">
+                                <input class="tech-stack-status-input" type="radio" id="techStackStatusActive"
+                                       name="IsActive" value="true" required disabled />
+                                <label class="tech-stack-status-card" for="techStackStatusActive">
+                                    <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
+                                    <span><strong>Active</strong><small>Available for management and downstream use.</small></span>
+                                </label>
+
+                                <input class="tech-stack-status-input" type="radio" id="techStackStatusInactive"
+                                       name="IsActive" value="false" required disabled />
+                                <label class="tech-stack-status-card" for="techStackStatusInactive">
+                                    <span class="material-symbols-outlined" aria-hidden="true">pause_circle</span>
+                                    <span><strong>Inactive</strong><small>Kept in the database but unavailable for new selection.</small></span>
+                                </label>
+                            </div>
+                        </fieldset>
+
+                        <div class="tech-stack-form-error" id="techStackFormError" role="alert"></div>
+                    </div>
+                    <div class="modal-footer tech-stack-modal-footer">
+                        <button type="button" class="ts-button ts-button-ghost" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="ts-button ts-button-primary" id="saveTechStackButton">
+                            <span class="material-symbols-outlined" id="saveTechStackIcon">add_circle</span>
+                            <span class="button-label">Create Tech Stack</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <form id="techStackAntiForgeryForm" class="d-none">@Html.AntiForgeryToken()</form>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="~/js/pages/tech-stack-live-list.js" asp-append-version="true" defer></script>
+    <script src="~/js/pages/admin-tech-stacks.js" asp-append-version="true" defer></script>
+</body>
+</html>

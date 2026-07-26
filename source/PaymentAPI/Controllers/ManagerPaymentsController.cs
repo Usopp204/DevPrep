@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using PaymentAPI.Data;
 using PaymentAPI.DTOs;
@@ -91,6 +92,8 @@ public class ManagerPaymentsController : ControllerBase
             .Take(pageSize)
             .ToListAsync(cancellationToken);
 
+        await EnrichWithUserNamesAsync(items, cancellationToken);
+
         var result = new ManagerPaymentListResultDto
         {
             Items = items,
@@ -158,6 +161,39 @@ public class ManagerPaymentsController : ControllerBase
             }
         };
 
+        await EnrichWithUserNamesAsync([detail], cancellationToken);
+
         return Ok(ApiResponse<ManagerPaymentDetailDto>.Ok(detail));
+    }
+
+    private async Task EnrichWithUserNamesAsync(List<ManagerPaymentListItemDto> items, CancellationToken ct)
+    {
+        if (items.Count == 0) return;
+        var userIds = items.Select(i => i.UserId).Distinct().ToList();
+        var connString = _db.Database.GetDbConnection().ConnectionString;
+        var nameMap = new Dictionary<Guid, (string? FullName, string? Email)>();
+
+        using var conn = new SqlConnection(connString);
+        await conn.OpenAsync(ct);
+        var idList = string.Join(",", userIds.Select(id => $"'{id}'"));
+        var sql = $@"SELECT p.UserId, p.FullName, a.Email FROM DevPrep_User.dbo.UserProfiles p LEFT JOIN DevPrep_Auth.dbo.Accounts a ON p.AccountId = a.AccountId WHERE p.UserId IN ({idList})";
+        using var cmd = new SqlCommand(sql, conn);
+        using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            var uid = reader.GetGuid(0);
+            var name = reader.IsDBNull(1) ? null : reader.GetString(1);
+            var email = reader.IsDBNull(2) ? null : reader.GetString(2);
+            nameMap[uid] = (name, email);
+        }
+
+        foreach (var item in items)
+        {
+            if (nameMap.TryGetValue(item.UserId, out var info))
+            {
+                item.FullName = info.FullName;
+                item.Email = info.Email;
+            }
+        }
     }
 }

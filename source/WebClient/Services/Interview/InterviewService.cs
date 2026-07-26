@@ -23,7 +23,11 @@ public interface IInterviewService
     Task<(bool Success, MessageResponse? Message, string? Error)> SendMessageAsync(
         Guid sessionId, SendMessageRequest request, CancellationToken cancellationToken);
 
-    Task<(bool Success, string? Error)> EndSessionAsync(Guid sessionId, CancellationToken cancellationToken);
+    Task<(bool Success, EndResponse? Completion, string? Error)> CompleteSessionAsync(
+        Guid sessionId, CancellationToken cancellationToken);
+
+    Task<(bool Success, EndResponse? Cancellation, string? Error)> EndSessionAsync(
+        Guid sessionId, CancellationToken cancellationToken);
 
     Task<(bool Success, PauseResponse? Pause, string? Error)> PauseSessionAsync(
         Guid sessionId, CancellationToken cancellationToken);
@@ -40,26 +44,42 @@ public interface IInterviewService
 
     Task<(bool Success, string? Hint, string? Error)> GetHintAsync(string question, CancellationToken cancellationToken);
 
-    Task<HistoryViewModel> GetHistoryAsync(Guid? selectedSessionId, CancellationToken cancellationToken);
+    Task<HistoryViewModel> GetHistoryAsync(
+        int page, int pageSize, string? status, string? position, string? keyword, CancellationToken cancellationToken);
+
+    Task<ApiCallResult<SessionHistoryResult>> GetRecentSessionsAsync(
+        int page, int pageSize, CancellationToken cancellationToken);
+
+    Task<SessionDetailViewModel> GetSessionDetailAsync(Guid sessionId, CancellationToken cancellationToken);
+
+    Task<(bool Success, string? Error, int StatusCode)> DeleteSessionAsync(Guid sessionId, CancellationToken cancellationToken);
+
+    Task<ApiCallResult<FeedbackEligibilityResponse>> GetFeedbackEligibilityAsync(CancellationToken cancellationToken);
+
+    Task<ApiCallResult<SessionFeedbackEligibilityResponse>> GetSessionFeedbackEligibilityAsync(
+        Guid sessionId, CancellationToken cancellationToken);
 }
 
 public sealed class InterviewService(IApiClient apiClient) : IInterviewService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
-
-    // Voice mode is not wired up in this UI (mic/TTS controls are not exposed through the
-    // Gateway), so every session is configured as Text.
     private const string InteractionMode = "Text";
+    private const int RecentSessionsPageSize = 6;
 
     public async Task<DashboardViewModel> GetDashboardAsync(CancellationToken cancellationToken)
     {
-        // Reuse the same list endpoint History uses; show only the 5 most recent in the sidebar.
-        var sessions = await SendAsync<List<SessionListItemDto>>(HttpMethod.Get,
-            "api/interview/sessions", body: null, cancellationToken);
-
+        var sessions = await GetRecentSessionsAsync(page: 1, RecentSessionsPageSize, cancellationToken);
+        var recent = sessions.Data?.Items ?? new List<SessionHistoryItemDto>();
         return new DashboardViewModel
         {
-            RecentSessions = (sessions.Data ?? new List<SessionListItemDto>()).Take(5).ToList()
+            RecentSessions = recent,
+            Sidebar = new InterviewSidebarViewModel
+            {
+                ActiveItem = "New",
+                RecentSessions = recent,
+                RecentError = sessions.Success ? null : sessions.Error
+            },
+            ErrorMessage = sessions.Success ? null : sessions.Error
         };
     }
 
@@ -105,9 +125,6 @@ public sealed class InterviewService(IApiClient apiClient) : IInterviewService
         if (!init.Success || init.Data is null)
             return StartInterviewResult.Failure(init.Error ?? "Could not initialize the session.");
 
-        // Init only returns the first question as plain text (no id). Call generate so the
-        // first question is materialized as a real SessionQuestion + AI chat message, the same
-        // way every later question is (Room fetches all of this back via Resume).
         var firstQuestion = await SendAsync<GenerateQuestionResponse>(HttpMethod.Post,
             $"api/interview/sessions/{sessionId}/questions/generate",
             body: null,
@@ -161,14 +178,24 @@ public sealed class InterviewService(IApiClient apiClient) : IInterviewService
         return (result.Success, result.Data, result.Error);
     }
 
-    public async Task<(bool Success, string? Error)> EndSessionAsync(
+    public async Task<(bool Success, EndResponse? Completion, string? Error)> CompleteSessionAsync(
+        Guid sessionId, CancellationToken cancellationToken)
+    {
+        var result = await SendAsync<EndResponse>(HttpMethod.Post,
+            $"api/interview/sessions/{sessionId}/complete",
+            body: null,
+            cancellationToken);
+        return (result.Success, result.Data, result.Error);
+    }
+
+    public async Task<(bool Success, EndResponse? Cancellation, string? Error)> EndSessionAsync(
         Guid sessionId, CancellationToken cancellationToken)
     {
         var result = await SendAsync<EndResponse>(HttpMethod.Post,
             $"api/interview/sessions/{sessionId}/end",
             body: null,
             cancellationToken);
-        return (result.Success, result.Error);
+        return (result.Success, result.Data, result.Error);
     }
 
     public async Task<(bool Success, PauseResponse? Pause, string? Error)> PauseSessionAsync(
@@ -200,8 +227,6 @@ public sealed class InterviewService(IApiClient apiClient) : IInterviewService
         return (result.Success, result.Error);
     }
 
-    // Binary proxy (NOT SendAsync, which parses JSON): forwards to the Gateway TTS endpoint and
-    // returns the raw mp3 bytes so the Room can play them.
     public async Task<(bool Success, byte[]? Audio, string? Error)> GetTtsAudioAsync(
         string text, CancellationToken cancellationToken)
     {
@@ -218,8 +243,6 @@ public sealed class InterviewService(IApiClient apiClient) : IInterviewService
         return (true, audio, null);
     }
 
-    // Multipart proxy (NOT SendAsync JSON): forwards the recorded audio to the Gateway STT endpoint
-    // and returns the transcribed text.
     public async Task<(bool Success, string? Text, string? Error)> TranscribeAudioAsync(
         byte[] audio, string fileName, string contentType, CancellationToken cancellationToken)
     {
@@ -254,106 +277,264 @@ public sealed class InterviewService(IApiClient apiClient) : IInterviewService
         return (result.Success, result.Data?.Hint, result.Error);
     }
 
-    public async Task<HistoryViewModel> GetHistoryAsync(Guid? selectedSessionId, CancellationToken cancellationToken)
+    public async Task<HistoryViewModel> GetHistoryAsync(
+        int page, int pageSize, string? status, string? position, string? keyword, CancellationToken cancellationToken)
     {
-        var sessions = await SendAsync<List<SessionListItemDto>>(HttpMethod.Get,
-            "api/interview/sessions",
-            body: null,
-            cancellationToken);
-
-        var sessionList = sessions.Data ?? new List<SessionListItemDto>();
-        var model = new HistoryViewModel
+        var result = await GetSessionHistoryPageAsync(page, pageSize, status, position, keyword, cancellationToken);
+        var recent = await GetRecentSessionsAsync(1, RecentSessionsPageSize, cancellationToken);
+        return new HistoryViewModel
         {
-            Sessions = sessionList,
-            ErrorMessage = sessions.Success ? null : sessions.Error
+            Sessions = result.Data ?? new SessionHistoryResult { Page = page, PageSize = pageSize },
+            Page = page,
+            PageSize = pageSize,
+            Status = status,
+            Position = position,
+            Keyword = keyword,
+            ErrorMessage = result.Success ? null : result.Error,
+            Sidebar = new InterviewSidebarViewModel
+            {
+                ActiveItem = "History",
+                RecentSessions = recent.Data?.Items ?? new List<SessionHistoryItemDto>(),
+                RecentError = recent.Success ? null : recent.Error
+            }
+        };
+    }
+
+    public Task<ApiCallResult<SessionHistoryResult>> GetRecentSessionsAsync(
+        int page, int pageSize, CancellationToken cancellationToken) =>
+        GetSessionHistoryPageAsync(page, pageSize, status: null, position: null, keyword: null, cancellationToken);
+
+    public async Task<SessionDetailViewModel> GetSessionDetailAsync(Guid sessionId, CancellationToken cancellationToken)
+    {
+        var model = new SessionDetailViewModel
+        {
+            SessionId = sessionId,
+            FeedbackForm = new WebClient.Models.Feedback.SubmitInterviewFeedbackRequest { SessionId = sessionId }
         };
 
-        var sessionId = selectedSessionId ?? sessionList.FirstOrDefault()?.SessionId;
-        if (sessionId is null)
+        var recent = await GetRecentSessionsAsync(1, RecentSessionsPageSize, cancellationToken);
+        model.Sidebar = new InterviewSidebarViewModel
         {
+            ActiveItem = "Recent",
+            ActiveSessionId = sessionId,
+            RecentSessions = recent.Data?.Items ?? new List<SessionHistoryItemDto>(),
+            RecentError = recent.Success ? null : recent.Error
+        };
+
+        model.Session = await FindSessionMetadataAsync(sessionId, cancellationToken);
+
+        var chat = await SendAsync<SessionChatLogResponse>(HttpMethod.Get,
+            $"api/interview/sessions/{sessionId}/chat-log",
+            body: null,
+            cancellationToken);
+        if (!chat.Success || chat.Data is null)
+        {
+            model.ErrorMessage = ToUserFacingError(chat.StatusCode, chat.Error, "Could not load the chat log.");
             return model;
         }
 
-        model.SelectedSessionId = sessionId;
+        model.ChatLog = chat.Data;
 
-        var transcript = await SendAsync<TranscriptResponse>(HttpMethod.Get,
-            $"api/interview/sessions/{sessionId}/transcript",
-            body: null,
-            cancellationToken);
-        if (!transcript.Success || transcript.Data is null)
+        var eligibility = await GetSessionFeedbackEligibilityAsync(sessionId, cancellationToken);
+        if (eligibility.Success)
         {
-            model.ErrorMessage = transcript.Error ?? "Could not load the session transcript.";
+            model.FeedbackEligibility = eligibility.Data;
+        }
+
+        if (!model.IsCompleted)
+        {
+            model.ReportMessage = model.IsCancelled
+                ? "This interview was cancelled, so no evaluation report was generated."
+                : "This interview expired, so no evaluation report was generated.";
             return model;
         }
 
-        // Read-only here: unlike the Report page, History never calls POST /report — it only
-        // shows one if it was already built elsewhere.
-        var report = await SendAsync<ReportResponse>(HttpMethod.Get,
-            $"api/evaluation/sessions/{sessionId}/report",
+        var performance = await SendAsync<PerformanceReportResponse>(HttpMethod.Get,
+            $"api/evaluation/sessions/{sessionId}/performance",
             body: null,
             cancellationToken);
-
-        var evaluations = await SendAsync<List<EvaluateAnswerResponse>>(HttpMethod.Get,
-            $"api/evaluation/sessions/{sessionId}/answers",
-            body: null,
-            cancellationToken);
-
-        model.Detail = new HistorySessionDetailViewModel
+        if (performance.Success)
         {
-            SessionId = sessionId.Value,
-            Position = transcript.Data.Position,
-            Level = transcript.Data.Level,
-            Status = transcript.Data.Status,
-            TotalQuestions = transcript.Data.TotalQuestions,
-            AnsweredQuestions = transcript.Data.AnsweredQuestions,
-            StartedAt = transcript.Data.StartedAt,
-            EndedAt = transcript.Data.EndedAt,
-            Questions = transcript.Data.Questions,
-            ChatHistory = transcript.Data.ChatHistory,
-            Report = report.Data,
-            Evaluations = evaluations.Data ?? new List<EvaluateAnswerResponse>()
-        };
+            model.PerformanceReport = performance.Data;
+        }
+        else if (performance.StatusCode == StatusCodes.Status404NotFound)
+        {
+            model.ReportMessage = "Report not available.";
+        }
+        else if (performance.StatusCode == StatusCodes.Status409Conflict)
+        {
+            model.ReportMessage = "Report not available for this session.";
+        }
+        else
+        {
+            model.ReportMessage = ToUserFacingError(performance.StatusCode, performance.Error, "Report not available.");
+        }
+
         return model;
     }
 
-    private async Task<(bool Success, T? Data, string? Error)> SendAsync<T>(
+    public async Task<(bool Success, string? Error, int StatusCode)> DeleteSessionAsync(
+        Guid sessionId, CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Delete, $"api/interview/sessions/{sessionId}");
+        using var response = await apiClient.HttpClient.SendAsync(request, cancellationToken);
+        if (response.IsSuccessStatusCode)
+        {
+            return (true, null, (int)response.StatusCode);
+        }
+
+        var error = await ReadErrorMessageAsync(response, cancellationToken);
+        return (false, ToUserFacingError((int)response.StatusCode, error, "Could not delete this session."), (int)response.StatusCode);
+    }
+
+    public Task<ApiCallResult<FeedbackEligibilityResponse>> GetFeedbackEligibilityAsync(CancellationToken cancellationToken) =>
+        SendAsync<FeedbackEligibilityResponse>(HttpMethod.Get, "api/interview/sessions/feedback-eligibility", body: null, cancellationToken);
+
+    public Task<ApiCallResult<SessionFeedbackEligibilityResponse>> GetSessionFeedbackEligibilityAsync(
+        Guid sessionId, CancellationToken cancellationToken) =>
+        SendAsync<SessionFeedbackEligibilityResponse>(HttpMethod.Get,
+            $"api/interview/sessions/{sessionId}/feedback-eligibility", body: null, cancellationToken);
+
+    private async Task<ApiCallResult<SessionHistoryResult>> GetSessionHistoryPageAsync(
+        int page, int pageSize, string? status, string? position, string? keyword, CancellationToken cancellationToken)
+    {
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, 50);
+
+        var query = new List<string>
+        {
+            $"page={page}",
+            $"pageSize={pageSize}"
+        };
+
+        if (!string.IsNullOrWhiteSpace(status)) query.Add($"status={Uri.EscapeDataString(status)}");
+        if (!string.IsNullOrWhiteSpace(position)) query.Add($"position={Uri.EscapeDataString(position)}");
+        if (!string.IsNullOrWhiteSpace(keyword)) query.Add($"keyword={Uri.EscapeDataString(keyword)}");
+
+        return await SendAsync<SessionHistoryResult>(
+            HttpMethod.Get,
+            "api/interview/sessions/history?" + string.Join("&", query),
+            body: null,
+            cancellationToken);
+    }
+
+    private async Task<SessionHistoryItemDto?> FindSessionMetadataAsync(Guid sessionId, CancellationToken cancellationToken)
+    {
+        const int pageSize = 50;
+        var page = 1;
+        var totalPages = 1;
+
+        while (page <= totalPages && page <= 20)
+        {
+            var result = await GetSessionHistoryPageAsync(page, pageSize, null, null, null, cancellationToken);
+            if (!result.Success || result.Data is null)
+            {
+                return null;
+            }
+
+            var found = result.Data.Items.FirstOrDefault(x => x.SessionId == sessionId);
+            if (found is not null)
+            {
+                return found;
+            }
+
+            totalPages = Math.Max(1, result.Data.TotalPages);
+            page++;
+        }
+
+        return null;
+    }
+
+    private async Task<ApiCallResult<T>> SendAsync<T>(
         HttpMethod method, string path, object? body, CancellationToken cancellationToken)
     {
-        using var request = new HttpRequestMessage(method, path);
-        if (body is not null)
-        {
-            request.Content = JsonContent.Create(body, options: JsonOptions);
-        }
-
-        using var response = await apiClient.HttpClient.SendAsync(request, cancellationToken);
-        var raw = await response.Content.ReadAsStringAsync(cancellationToken);
-
-        // A non-2xx or empty body (e.g. a 401 from the auth middleware, which returns no JSON)
-        // is not parseable — deserializing it throws "The input does not contain any JSON tokens".
-        // Surface the HTTP status (and any body snippet) instead of crashing.
-        if (!response.IsSuccessStatusCode || string.IsNullOrWhiteSpace(raw))
-        {
-            var snippet = string.IsNullOrWhiteSpace(raw)
-                ? string.Empty
-                : " " + (raw.Length > 200 ? raw[..200] : raw).Trim();
-            return (false, default, $"Request to {path} failed ({(int)response.StatusCode}).{snippet}");
-        }
-
-        ApiResponse<T>? envelope;
         try
         {
-            envelope = JsonSerializer.Deserialize<ApiResponse<T>>(raw, JsonOptions);
+            using var request = new HttpRequestMessage(method, path);
+            if (body is not null)
+            {
+                request.Content = JsonContent.Create(body, options: JsonOptions);
+            }
+
+            using var response = await apiClient.HttpClient.SendAsync(request, cancellationToken);
+            var raw = await response.Content.ReadAsStringAsync(cancellationToken);
+            var statusCode = (int)response.StatusCode;
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await ReadErrorMessageAsync(response, raw, cancellationToken);
+                return ApiCallResult<T>.Fail(error ?? $"Request failed ({statusCode}).", statusCode);
+            }
+
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                return ApiCallResult<T>.Ok(default, statusCode);
+            }
+
+            ApiResponse<T>? envelope;
+            try
+            {
+                envelope = JsonSerializer.Deserialize<ApiResponse<T>>(raw, JsonOptions);
+            }
+            catch (JsonException)
+            {
+                return ApiCallResult<T>.Fail($"Request to {path} returned an unreadable response ({statusCode}).", statusCode);
+            }
+
+            if (envelope is null || !envelope.Success)
+            {
+                return ApiCallResult<T>.Fail(envelope?.Message ?? $"Request failed ({statusCode}).", statusCode);
+            }
+
+            return ApiCallResult<T>.Ok(envelope.Data, statusCode);
+        }
+        catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            return ApiCallResult<T>.Fail("The request timed out. Please try again.", StatusCodes.Status504GatewayTimeout);
+        }
+        catch (HttpRequestException)
+        {
+            return ApiCallResult<T>.Fail("Cannot reach the server. Please make sure the API Gateway is running.", StatusCodes.Status503ServiceUnavailable);
+        }
+    }
+
+    private static async Task<string?> ReadErrorMessageAsync(
+        HttpResponseMessage response, CancellationToken cancellationToken)
+    {
+        var raw = await response.Content.ReadAsStringAsync(cancellationToken);
+        return await ReadErrorMessageAsync(response, raw, cancellationToken);
+    }
+
+    private static Task<string?> ReadErrorMessageAsync(
+        HttpResponseMessage response, string raw, CancellationToken cancellationToken)
+    {
+        _ = response;
+        _ = cancellationToken;
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return Task.FromResult<string?>(null);
+        }
+
+        try
+        {
+            var envelope = JsonSerializer.Deserialize<ApiResponse<object>>(raw, JsonOptions);
+            return Task.FromResult<string?>(envelope?.Message ?? raw);
         }
         catch (JsonException)
         {
-            return (false, default, $"Request to {path} returned an unreadable response ({(int)response.StatusCode}).");
+            return Task.FromResult<string?>(raw.Length > 200 ? raw[..200] : raw);
         }
-
-        if (envelope is null || !envelope.Success)
-        {
-            return (false, default, envelope?.Message ?? $"Request to {path} failed ({(int)response.StatusCode}).");
-        }
-
-        return (true, envelope.Data, null);
     }
+
+    private static string ToUserFacingError(int statusCode, string? backendMessage, string fallback) =>
+        statusCode switch
+        {
+            StatusCodes.Status401Unauthorized => "Please log in to continue.",
+            StatusCodes.Status403Forbidden => "You do not have permission to view this session.",
+            StatusCodes.Status404NotFound => "Session not found.",
+            StatusCodes.Status409Conflict => backendMessage ?? fallback,
+            StatusCodes.Status503ServiceUnavailable => "The service is temporarily unavailable. Please try again later.",
+            StatusCodes.Status504GatewayTimeout => "The request timed out. Please try again.",
+            _ => string.IsNullOrWhiteSpace(backendMessage) ? fallback : backendMessage
+        };
 }

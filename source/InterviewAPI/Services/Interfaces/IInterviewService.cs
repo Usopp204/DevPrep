@@ -20,4 +20,7 @@ public interface IInterviewService
 
     /// <summary>Xoá mềm (IsDeleted = true). Trả false nếu không tìm thấy hoặc đã xoá.</summary>
     Task<bool> SoftDeleteAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>Khôi phục phiên đã xoá mềm (IsDeleted = false). Trả false nếu không tìm thấy hoặc chưa bị xoá.</summary>
+    Task<bool> RestoreAsync(Guid id, CancellationToken cancellationToken = default);
 }

@@ -1,17 +1,16 @@
 @*
-    Thanh điều hướng dùng chung.
-    Cách include ở bất kỳ view nào:  @await Html.PartialAsync("_Navbar")
-    Lưu ý: trang include cần nạp ~/css/home.css để có style.
-    Đã đăng nhập (có cookie access_token) -> hiện avatar + dropdown (View Profile / Logout);
-    chưa đăng nhập -> hiện nút Login / Register.
+    Shared Home navbar. Pages including this partial should load ~/css/home.css.
+    Logged-in users see the profile dropdown; guests see Login/Register.
 *@
 @{
-    var navEmail = Context.Request.Cookies["user_email"];
     var navLoggedIn = !string.IsNullOrEmpty(Context.Request.Cookies["access_token"]);
     var navRole = Context.Request.Cookies["user_role"] ?? string.Empty;
     var navIsAdmin = string.Equals(navRole, "Admin", StringComparison.OrdinalIgnoreCase)
                   || string.Equals(navRole, "Manager", StringComparison.OrdinalIgnoreCase);
-    var navInitial = string.IsNullOrWhiteSpace(navEmail) ? "U" : navEmail.Trim().Substring(0, 1).ToUpper();
+    var activeController = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
+    bool IsActive(string controller) => string.Equals(activeController, controller, StringComparison.OrdinalIgnoreCase);
+    string NavClass(string controller) => IsActive(controller) ? "active" : string.Empty;
+    string? AriaCurrent(string controller) => IsActive(controller) ? "page" : null;
 }
 <nav class="hm-navbar" id="hm-navbar">
     <div class="hm-navbar-inner">
@@ -20,46 +19,29 @@
         <div class="hm-nav-links">
             @if (!navLoggedIn)
             {
-                <a href="#">Features</a>
-                <a href="#">Pricing</a>
-                <a asp-controller="News" asp-action="Index">News</a>
-                <a href="#">About</a>
+                <a class="@NavClass("Home")" aria-current="@AriaCurrent("Home")" asp-controller="Home" asp-action="Index">Features</a>
+                <a class="@NavClass("Payment")" aria-current="@AriaCurrent("Payment")" asp-controller="Payment" asp-action="Index">Pricing</a>
+                <a class="@NavClass("News")" aria-current="@AriaCurrent("News")" asp-controller="News" asp-action="Index">News</a>
+                <a class="@NavClass("Feedback")" aria-current="@AriaCurrent("Feedback")" asp-controller="Feedback" asp-action="System">Feedback</a>
             }
             else if (navIsAdmin)
             {
-                <a asp-controller="Admin" asp-action="Index">Admin Dashboard</a>
+                <a class="@NavClass("Admin")" aria-current="@AriaCurrent("Admin")" asp-controller="Admin" asp-action="Index">Admin Dashboard</a>
             }
             else
             {
-                <a asp-controller="Home" asp-action="Index">Home</a>
-                <a asp-controller="Payment" asp-action="Index">Payment</a>
-                <a asp-controller="News" asp-action="Index">News</a>
-                <a asp-controller="Evaluation" asp-action="Index">Feedback System</a>
-                <a asp-controller="Interview" asp-action="Index">Feedback AI</a>
+                <a class="@NavClass("Home")" aria-current="@AriaCurrent("Home")" asp-controller="Home" asp-action="Index">Home</a>
+                <a class="@NavClass("Interview")" aria-current="@AriaCurrent("Interview")" asp-controller="Interview" asp-action="Index">Interview</a>
+                <a class="@NavClass("Payment")" aria-current="@AriaCurrent("Payment")" asp-controller="Payment" asp-action="Index">Payment</a>
+                <a class="@NavClass("News")" aria-current="@AriaCurrent("News")" asp-controller="News" asp-action="Index">News</a>
+                <a class="@NavClass("Feedback")" aria-current="@AriaCurrent("Feedback")" asp-controller="Feedback" asp-action="System">Feedback</a>
             }
         </div>
 
         <div class="hm-nav-actions">
             @if (navLoggedIn)
             {
-                <div class="hm-user-menu" id="hm-user-menu">
-                    <button class="hm-avatar" id="hm-avatar-btn" type="button" aria-haspopup="true" aria-expanded="false" title="@navEmail">@navInitial</button>
-                    <div class="hm-dropdown" id="hm-dropdown" role="menu">
-                        <div class="hm-dropdown-head">
-                            <span class="hm-dropdown-avatar">@navInitial</span>
-                            <span class="hm-dropdown-email">@navEmail</span>
-                        </div>
-                        <a class="hm-dropdown-item" asp-controller="Profile" asp-action="Index" role="menuitem">
-                            <span class="material-symbols-outlined">person</span> View Profile
-                        </a>
-                        <form asp-controller="Auth" asp-action="Logout" method="post" class="m-0">
-                            <button type="submit" class="hm-dropdown-item hm-dropdown-logout" role="menuitem">
-                                <span class="material-symbols-outlined">logout</span> Logout
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            }
+                <partial name="_AuthenticatedAccountMenu" />            }
             else
             {
                 <a class="hm-btn-login" asp-controller="Auth" asp-action="Login">Login</a>
@@ -71,35 +53,21 @@
 
 <script>
     (function () {
-        // Hiệu ứng đổi nền navbar khi scroll
         const nav = document.getElementById('hm-navbar');
-        if (nav) {
-            window.addEventListener('scroll', function () {
-                if (window.scrollY > 50) {
-                    nav.style.backgroundColor = 'rgba(14, 19, 35, 0.9)';
-                    nav.style.boxShadow = '0 20px 25px -5px rgba(0,0,0,0.35)';
-                } else {
-                    nav.style.backgroundColor = 'rgba(17, 24, 39, 0.6)';
-                    nav.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.2)';
-                }
-            });
-        }
+        if (!nav || nav.dataset.navbarInitialized === 'true') return;
+        nav.dataset.navbarInitialized = 'true';
 
-        // Dropdown avatar
-        const btn = document.getElementById('hm-avatar-btn');
-        const menu = document.getElementById('hm-user-menu');
-        if (btn && menu) {
-            btn.addEventListener('click', function (e) {
-                e.stopPropagation();
-                const open = menu.classList.toggle('open');
-                btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-            });
-            document.addEventListener('click', function (e) {
-                if (!menu.contains(e.target)) { menu.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); }
-            });
-            document.addEventListener('keydown', function (e) {
-                if (e.key === 'Escape') { menu.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); }
-            });
-        }
-    })();
+        const syncNavbar = function () {
+            if (window.scrollY > 50) {
+                nav.style.backgroundColor = 'rgba(14, 19, 35, 0.9)';
+                nav.style.boxShadow = '0 20px 25px -5px rgba(0,0,0,0.35)';
+            } else {
+                nav.style.backgroundColor = 'rgba(17, 24, 39, 0.6)';
+                nav.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.2)';
+            }
+        };
+
+        window.addEventListener('scroll', syncNavbar, { passive: true });
+        window.addEventListener('pageshow', syncNavbar);
+        syncNavbar();    })();
 </script>

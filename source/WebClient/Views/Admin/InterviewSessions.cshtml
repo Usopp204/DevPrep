@@ -37,12 +37,20 @@
     <style>
         body { background-color: #0e1323; color: #e5e1e7; }
         .glass-card { background: rgba(32,31,35,0.4); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); border-top: 1px solid rgba(255,255,255,0.15); }
-        .side-drawer { transition: transform .3s cubic-bezier(.4,0,.2,1); }
-        .drawer-hidden { transform: translateX(100%); }
+        /* Detail hiển thị dạng modal lớn giữa màn hình (thay cho drawer trượt bên phải). */
+        .detail-modal {
+            position: fixed; left: 50%; top: 50%;
+            transform: translate(-50%, -50%) scale(1);
+            width: min(1100px, 94vw); height: min(88vh, 860px);
+            transition: opacity .25s ease, transform .25s ease;
+        }
+        .modal-hidden { opacity: 0; transform: translate(-50%, -50%) scale(.96); pointer-events: none; }
         .ad-sidebar h2, .ad-sidebar p, .ad-sidebar a { margin-bottom: 0; }
         .iv-main { margin-left: 250px; padding-top: 80px; padding-left: 24px; padding-right: 24px; min-height: 100vh; background: #0e1323; }
-        .iv-select { background: #353438; border: none; border-radius: 10px; padding: 6px 12px; color: #e5e1e7; font-size: 13px; }
+        .iv-select { background: #11121a !important; border: 1px solid #292c3d !important; border-radius: 10px; padding: 6px 12px; color: #ffffff !important; font-size: 13px; }
+        .iv-select option { background-color: #11121a !important; color: #ffffff !important; }
     </style>
+    <link rel="stylesheet" href="~/css/components/pagination.css" asp-append-version="true" />
 </head>
 <body class="font-body-md overflow-x-hidden">
     @await Html.PartialAsync("_AdminTopbar")
@@ -56,11 +64,13 @@
             <section class="glass-card rounded-2xl p-md mb-lg flex flex-wrap items-center gap-md">
                 <select id="iv-status" class="iv-select"><option value="">All status</option></select>
                 <select id="iv-level" class="iv-select"><option value="">All level</option></select>
-                <select id="iv-mode" class="iv-select"><option value="">All mode</option></select>
-                <select id="iv-type" class="iv-select"><option value="">All type</option></select>
+                <button id="iv-deleted" type="button" title="Show only soft-deleted sessions (to restore)"
+                        class="px-md py-1 rounded-full bg-surface-container border border-border-subtle text-on-surface-variant text-[10px] uppercase font-code-label hover:text-error transition-all">
+                    <span class="material-symbols-outlined text-[14px] align-middle">delete_history</span> Show deleted
+                </button>
                 <div class="ml-auto relative min-w-[280px]">
                     <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
-                    <input id="iv-search" class="w-full bg-surface-container border-border-subtle border rounded-xl pl-4 pr-10 py-1.5 font-body-sm focus:ring-1 focus:ring-primary-container" placeholder="Search title / user..." type="text" />
+                    <input id="iv-search" class="w-full bg-surface-container border-border-subtle border rounded-xl pl-4 pr-10 py-1.5 font-body-sm focus:ring-1 focus:ring-primary-container" placeholder="Search user..." type="text" />
                 </div>
             </section>
 
@@ -71,7 +81,6 @@
                         <thead>
                             <tr class="bg-surface-container-high/50 border-b border-border-subtle">
                                 <th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">User</th>
-                                <th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">Title</th>
                                 <th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">Level</th>
                                 <th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">Mode</th>
                                 <th class="px-lg py-md font-code-label text-[11px] uppercase text-on-surface-variant">Type</th>
@@ -82,25 +91,23 @@
                             </tr>
                         </thead>
                         <tbody id="iv-table-body" class="font-body-sm text-on-surface">
-                            <tr><td colspan="9" class="text-center py-4">Loading...</td></tr>
+                            <tr><td colspan="8" class="text-center py-4">Loading...</td></tr>
                         </tbody>
                     </table>
                 </div>
                 <div class="px-lg py-md flex items-center justify-between border-t border-border-subtle bg-surface-container/20">
                     <p id="iv-summary" class="font-code-label text-[11px] text-on-surface-variant uppercase">Loading...</p>
                     <div class="flex gap-xs items-center">
-                        <button id="iv-prev" class="p-1 rounded bg-surface-container border border-border-subtle text-on-surface-variant hover:text-primary" type="button"><span class="material-symbols-outlined">chevron_left</span></button>
-                        <span id="iv-page" class="px-3 py-1 rounded bg-primary-container text-on-primary-container font-code-label text-[11px] font-bold">1 / 1</span>
-                        <button id="iv-next" class="p-1 rounded bg-surface-container border border-border-subtle text-on-surface-variant hover:text-primary" type="button"><span class="material-symbols-outlined">chevron_right</span></button>
+                        <nav id="iv-pages" class="devprep-pagination devprep-pagination-inline" aria-label="Pagination"></nav>
                     </div>
                 </div>
             </section>
         </div>
     </main>
 
-    <!-- Detail Drawer (transcript) -->
+    <!-- Detail Modal (transcript) -->
     <div class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] hidden opacity-0 transition-opacity duration-300" id="drawer-overlay" onclick="toggleDrawer(false)"></div>
-    <aside class="fixed top-0 right-0 h-full w-[680px] max-w-full z-[70] glass-card drawer-hidden side-drawer shadow-2xl flex flex-col" id="iv-drawer">
+    <aside class="z-[70] glass-card modal-hidden detail-modal rounded-2xl overflow-hidden shadow-2xl flex flex-col" id="iv-drawer">
         <div class="p-lg border-b border-border-subtle flex items-center justify-between">
             <h2 class="font-headline-md text-primary">Session Detail</h2>
             <button class="p-2 rounded-full hover:bg-surface-container-high text-on-surface-variant" onclick="toggleDrawer(false)"><span class="material-symbols-outlined">close</span></button>
@@ -113,8 +120,8 @@
     <!-- Confirm modal -->
     <div id="confirm-modal" class="fixed inset-0 z-[80] hidden items-center justify-center bg-black/50 backdrop-blur-sm">
         <div class="glass-card rounded-2xl p-lg w-[360px]">
-            <h3 class="font-headline-md text-primary mb-2">Xác nhận</h3>
-            <p id="confirm-msg" class="text-on-surface-variant font-body-sm mb-lg">Bạn có chắc?</p>
+            <h3 class="font-headline-md text-primary mb-2">Confirm</h3>
+            <p id="confirm-msg" class="text-on-surface-variant font-body-sm mb-lg">Are you sure?</p>
             <div class="flex justify-end gap-sm">
                 <button id="confirm-cancel" class="px-lg py-sm rounded-xl border border-border-subtle text-on-surface hover:bg-surface-container-high">Cancel</button>
                 <button id="confirm-ok" class="px-lg py-sm rounded-xl bg-error/90 text-white font-bold hover:bg-error">OK</button>
@@ -125,18 +132,22 @@
     <script>
         const API_BASE = 'http://localhost:7005/api/admin/interviews';
         const token = '@token';
-        const STATUSES = ['Configured', 'Initialized', 'InProgress', 'Completed', 'Expired', 'Cancelled'];
-        const LEVELS = ['Intern', 'Junior', 'Middle', 'Senior', 'Lead'];
-        const MODES = ['Text', 'Voice', 'Video'];
-        const TYPES = ['Theory', 'Coding', 'Behavioral', 'Mixed'];
+        const STATUSES = ['Completed', 'Expired'];
+        const LEVELS = ['Intern', 'Junior', 'Middle', 'Senior'];
         let currentPage = 1, pageSize = 10, totalPages = 1, searchTimer = null, confirmCb = null;
+        let showDeleted = false; // true = CHỈ hiện phiên đã xoá mềm (kèm nút Restore)
 
         document.addEventListener("DOMContentLoaded", () => {
-            fillSelect('iv-status', STATUSES); fillSelect('iv-level', LEVELS); fillSelect('iv-mode', MODES); fillSelect('iv-type', TYPES);
-            ['iv-status', 'iv-level', 'iv-mode', 'iv-type'].forEach(id => document.getElementById(id).addEventListener('change', () => { currentPage = 1; fetchList(); }));
+            fillSelect('iv-status', STATUSES); fillSelect('iv-level', LEVELS);
+            ['iv-status', 'iv-level'].forEach(id => document.getElementById(id).addEventListener('change', () => { currentPage = 1; fetchList(); }));
+            document.getElementById('iv-deleted').addEventListener('click', () => {
+                showDeleted = !showDeleted;
+                const b = document.getElementById('iv-deleted');
+                b.classList.toggle('text-error', showDeleted);
+                b.classList.toggle('border-error', showDeleted);
+                currentPage = 1; fetchList();
+            });
             document.getElementById('iv-search').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => { currentPage = 1; fetchList(); }, 300); });
-            document.getElementById('iv-prev').addEventListener('click', () => { if (currentPage > 1) { currentPage--; fetchList(); } });
-            document.getElementById('iv-next').addEventListener('click', () => { if (currentPage < totalPages) { currentPage++; fetchList(); } });
             document.getElementById('confirm-ok').addEventListener('click', () => { const cb = confirmCb; hideConfirm(); if (cb) cb(); });
             document.getElementById('confirm-cancel').addEventListener('click', hideConfirm);
             fetchList();
@@ -153,19 +164,18 @@
                 const kw = document.getElementById('iv-search').value.trim(); if (kw) q.set('keyword', kw);
                 const st = document.getElementById('iv-status').value; if (st) q.set('status', st);
                 const lv = document.getElementById('iv-level').value; if (lv) q.set('level', lv);
-                const md = document.getElementById('iv-mode').value; if (md) q.set('interactionMode', md);
-                const tp = document.getElementById('iv-type').value; if (tp) q.set('questionType', tp);
+                if (showDeleted) q.set('onlyDeleted', 'true');
                 const res = await fetch(`${API_BASE}?${q}`, { headers: { 'Authorization': `Bearer ${token}` } });
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const json = await res.json();
                 if (json.success) { renderTable(json.data.items || []); renderPagination(json.data); }
-                else tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-error">Failed: ${escapeHtml(json.message)}</td></tr>`;
-            } catch (e) { tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-error">Lỗi tải dữ liệu. Đăng nhập lại hoặc kiểm tra InterviewAPI (:7005).</td></tr>`; }
+                else tbody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-error">Failed: ${escapeHtml(json.message)}</td></tr>`;
+            } catch (e) { tbody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-error">Failed to load data. Please sign in again or check InterviewAPI (:7005).</td></tr>`; }
         }
 
         function renderTable(items) {
             const tbody = document.getElementById('iv-table-body');
-            if (!items.length) { tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-on-surface-variant">No sessions found.</td></tr>`; return; }
+            if (!items.length) { tbody.innerHTML = `<tr><td colspan="8" class="text-center py-4 text-on-surface-variant">No sessions found.</td></tr>`; return; }
             tbody.innerHTML = items.map(it => `
                 <tr class="border-b border-border-subtle/50 hover:bg-surface-container-high/30 cursor-pointer" onclick="openDetail('${it.sessionId}')">
                     <td class="px-lg py-md">
@@ -174,17 +184,18 @@
                             <span class="font-semibold text-on-surface">${escapeHtml(userLabel(it))}</span>
                         </div>
                     </td>
-                    <td class="px-lg py-md max-w-[200px]"><p class="truncate">${escapeHtml(it.title || '(no title)')}</p></td>
                     <td class="px-lg py-md">${badge(it.level)}</td>
                     <td class="px-lg py-md">${badge(it.interactionMode)}</td>
                     <td class="px-lg py-md">${badge(it.questionType)}</td>
                     <td class="px-lg py-md font-code-label text-on-surface-variant">${it.answeredQuestions}/${it.totalQuestions}</td>
-                    <td class="px-lg py-md">${statusBadge(it.status)}</td>
+                    <td class="px-lg py-md">${statusBadge(it.status)}${it.isDeleted ? deletedBadge() : ''}</td>
                     <td class="px-lg py-md font-code-label text-on-surface-variant">${fmtDate(it.createdAt)}</td>
                     <td class="px-lg py-md text-right">
                         <div class="flex justify-end gap-md">
                             <button class="text-on-surface-variant hover:text-primary" onclick="event.stopPropagation(); openDetail('${it.sessionId}')" title="View"><span class="material-symbols-outlined text-[20px]">visibility</span></button>
-                            <button class="text-on-surface-variant hover:text-error" onclick="event.stopPropagation(); deleteSession('${it.sessionId}')" title="Delete"><span class="material-symbols-outlined text-[20px]">delete</span></button>
+                            ${it.isDeleted
+                                ? `<button class="text-on-surface-variant hover:text-success" onclick="event.stopPropagation(); restoreSession('${it.sessionId}')" title="Restore"><span class="material-symbols-outlined text-[20px]">restore_from_trash</span></button>`
+                                : `<button class="text-on-surface-variant hover:text-error" onclick="event.stopPropagation(); deleteSession('${it.sessionId}')" title="Delete"><span class="material-symbols-outlined text-[20px]">delete</span></button>`}
                         </div>
                     </td>
                 </tr>`).join('');
@@ -199,8 +210,8 @@
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const json = await res.json();
                 if (json.success && json.data) renderDetail(json.data);
-                else body.innerHTML = `<p class="text-error">Không tải được chi tiết.</p>`;
-            } catch (e) { body.innerHTML = `<p class="text-error">Lỗi tải chi tiết. Kiểm tra quyền / kết nối.</p>`; }
+                else body.innerHTML = `<p class="text-error">Failed to load details.</p>`;
+            } catch (e) { body.innerHTML = `<p class="text-error">Failed to load details. Check permissions / connection.</p>`; }
         }
 
         function renderDetail(d) {
@@ -217,13 +228,13 @@
             const transcriptHtml = questions.length ? questions.map(qz => `
                 <div class="glass-card rounded-xl p-md">
                     <div class="flex items-start gap-sm mb-2">
-                        <span class="font-code-label text-[11px] text-primary uppercase whitespace-nowrap">Câu ${qz.orderIndex}</span>
+                        <span class="font-code-label text-[11px] text-primary uppercase whitespace-nowrap">Q ${qz.orderIndex}</span>
                         <span class="px-xs py-0.5 rounded text-[9px] uppercase font-code-label ${qz.isAiGenerated ? 'bg-secondary-container/20 text-secondary' : 'bg-tertiary-container/20 text-tertiary'}">${qz.isAiGenerated ? 'AI' : 'Bank'}</span>
                         <span class="text-on-surface-variant text-[10px] ml-auto whitespace-nowrap">${fmtDateTime(qz.askedAt)}</span>
                     </div>
                     <p class="font-body-sm text-on-surface mb-3">${escapeHtml(qz.content || '')}</p>
-                    <div class="space-y-2">${(qz.messages || []).map(msgBubble).join('') || '<p class="text-on-surface-variant text-[12px] italic">Chưa có tin nhắn.</p>'}</div>
-                </div>`).join('') : '<p class="text-on-surface-variant text-[13px] italic">Phiên chưa có câu hỏi/đoạn chat.</p>';
+                    <div class="space-y-2">${(qz.messages || []).map(msgBubble).join('') || '<p class="text-on-surface-variant text-[12px] italic">No messages yet.</p>'}</div>
+                </div>`).join('') : '<p class="text-on-surface-variant text-[13px] italic">No questions / transcript yet.</p>';
 
             document.getElementById('iv-detail-body').innerHTML = `
                 <div class="flex items-start gap-md">
@@ -231,18 +242,22 @@
                     <div>
                         <h3 class="text-headline-md font-bold">${escapeHtml(userLabel(d))}</h3>
                         <p class="text-on-surface-variant font-code-label text-[12px]">${escapeHtml(d.userEmail || '—')}</p>
-                        <p class="font-body-sm text-on-surface mt-1">${escapeHtml(d.title || '(no title)')} ${statusBadge(d.status)}</p>
+                        <p class="font-body-sm text-on-surface mt-1">${statusBadge(d.status)}${d.isDeleted ? deletedBadge() : ''}</p>
                     </div>
                 </div>
-                <div class="glass-card rounded-xl p-md">${metaHtml}</div>
+                <div class="glass-card rounded-xl p-md grid grid-cols-1 md:grid-cols-2 gap-x-xl">${metaHtml}</div>
                 <div>
                     <div class="flex items-center justify-between mb-2"><span class="font-code-label text-[11px] uppercase text-on-surface-variant">Transcript</span></div>
                     <div class="space-y-md">${transcriptHtml}</div>
                 </div>
                 <div class="pt-2 border-t border-border-subtle">
-                    <button class="w-full px-lg py-sm rounded-xl border border-error text-error font-bold hover:bg-error/10 flex items-center justify-center gap-xs" onclick="deleteSession('${d.sessionId}')">
+                    ${d.isDeleted
+                        ? `<button class="w-full px-lg py-sm rounded-xl border border-success text-success font-bold hover:bg-success/10 flex items-center justify-center gap-xs" onclick="restoreSession('${d.sessionId}')">
+                        <span class="material-symbols-outlined text-[20px]">restore_from_trash</span> Restore
+                    </button>`
+                        : `<button class="w-full px-lg py-sm rounded-xl border border-error text-error font-bold hover:bg-error/10 flex items-center justify-center gap-xs" onclick="deleteSession('${d.sessionId}')">
                         <span class="material-symbols-outlined text-[20px]">delete</span> Delete
-                    </button>
+                    </button>`}
                 </div>`;
         }
 
@@ -261,15 +276,28 @@
         }
 
         function deleteSession(id) {
-            showConfirm('Xoá phiên phỏng vấn này? (soft delete)', async () => {
+            showConfirm('Delete this interview session? (soft delete)', async () => {
                 try {
                     const res = await fetch(`${API_BASE}/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
-                    if (res.status === 403) { alert('Chỉ Admin mới được xoá.'); return; }
+                    if (res.status === 403) { alert('Only Admin can delete.'); return; }
                     if (!res.ok) throw new Error(`HTTP ${res.status}`);
                     toggleDrawer(false); fetchList();
-                } catch (e) { alert('Xoá thất bại.'); }
+                } catch (e) { alert('Delete failed.'); }
             });
         }
+
+        function restoreSession(id) {
+            showConfirm('Restore this deleted interview session?', async () => {
+                try {
+                    const res = await fetch(`${API_BASE}/${id}/restore`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+                    if (res.status === 403) { alert('Only Admin can restore.'); return; }
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    toggleDrawer(false); fetchList();
+                } catch (e) { alert('Restore failed.'); }
+            });
+        }
+
+        function deletedBadge() { return ` <span class="px-xs py-1 rounded-full border text-[10px] font-bold uppercase bg-error/15 border-error/40 text-error">Deleted</span>`; }
 
         function userLabel(it) { return cleanText(it.userFullName) || (it.userId ? 'User ' + String(it.userId).substring(0, 5) : 'Unknown'); }
         function initial(n) { const clean = cleanText(n); return clean && clean.trim() ? clean.trim()[0].toUpperCase() : 'U'; }
@@ -282,10 +310,9 @@
             totalPages = Math.max(data.totalPages || 1, 1);
             const ti = data.totalItems || 0, pg = data.page || currentPage, sz = data.pageSize || pageSize;
             const start = ti === 0 ? 0 : ((pg - 1) * sz) + 1, end = Math.min(pg * sz, ti);
+            currentPage = pg;
             document.getElementById('iv-summary').innerText = `Showing ${start}-${end} of ${ti} sessions`;
-            document.getElementById('iv-page').innerText = `${pg} / ${totalPages}`;
-            document.getElementById('iv-prev').disabled = pg <= 1;
-            document.getElementById('iv-next').disabled = pg >= totalPages;
+            DevPrepPagination.render({ container: 'iv-pages', currentPage, totalPages, onPageChange: pageNumber => { currentPage = pageNumber; fetchList(); } });
         }
         function fmtDate(d) { if (!d) return '—'; const x = new Date(d); const m = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"]; return `${m[x.getMonth()]} ${x.getDate().toString().padStart(2,'0')}`; }
         function fmtDateTime(d) { if (!d) return '—'; const x = new Date(d); return x.toLocaleString(); }
@@ -321,9 +348,10 @@
         function escapeHtml(u) { return cleanText(u).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;"); }
         function toggleDrawer(show) {
             const drawer = document.getElementById('iv-drawer'), overlay = document.getElementById('drawer-overlay');
-            if (show) { drawer.classList.remove('drawer-hidden'); overlay.classList.remove('hidden'); setTimeout(() => overlay.classList.add('opacity-100'), 10); document.body.style.overflow = 'hidden'; }
-            else { drawer.classList.add('drawer-hidden'); overlay.classList.remove('opacity-100'); setTimeout(() => { overlay.classList.add('hidden'); document.body.style.overflow = 'auto'; }, 300); }
+            if (show) { drawer.classList.remove('modal-hidden'); overlay.classList.remove('hidden'); setTimeout(() => overlay.classList.add('opacity-100'), 10); document.body.style.overflow = 'hidden'; }
+            else { drawer.classList.add('modal-hidden'); overlay.classList.remove('opacity-100'); setTimeout(() => { overlay.classList.add('hidden'); document.body.style.overflow = 'auto'; }, 300); }
         }
     </script>
+    <script src="~/js/components/pagination.js" asp-append-version="true"></script>
 </body>
 </html>

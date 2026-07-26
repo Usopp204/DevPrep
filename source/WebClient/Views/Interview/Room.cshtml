@@ -14,6 +14,7 @@
                    "think and what you know — take your time, feel free to think out loud, and " +
                    "answer just as you would in a real interview. Ready when you are. Let's begin!";
 }
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -29,6 +30,7 @@
     <link rel="stylesheet" href="~/css/pages/interview-room.css" asp-append-version="true" />
 </head>
 <body class="room-page">
+
     <div id="room-app"
          class="room-layout"
          data-session-id="@Model.SessionId"
@@ -46,23 +48,20 @@
          data-has-seen-tour="@Model.HasSeenRoomTour.ToString().ToLowerInvariant()"
          data-tour-seen-url="@Url.Action("TourSeen", "Interview")"
          data-message-url="@Url.Action("Message", "Interview", new { id = Model.SessionId })"
-         data-end-url="@Url.Action("EndSession", "Interview", new { id = Model.SessionId })"
+         data-complete-url="@Url.Action("CompleteSession", "Interview", new { id = Model.SessionId })"
+         data-cancel-url="@Url.Action("EndSession", "Interview", new { id = Model.SessionId })"
          data-pause-url="@Url.Action("Pause", "Interview", new { id = Model.SessionId })"
          data-unpause-url="@Url.Action("Unpause", "Interview", new { id = Model.SessionId })"
          data-tts-url="@Url.Action("Tts", "Interview")"
          data-stt-url="@Url.Action("Stt", "Interview")"
          data-hint-url="@Url.Action("Hint", "Interview")"
          data-report-url="@Url.Action("Report", "Evaluation")"
+         data-details-url="@Url.Action("Details", "Interview", new { id = Model.SessionId })"
          data-is-active="@isActive.ToString().ToLowerInvariant()">
 
         <!-- LEFT PANEL: Session Info -->
         <aside class="room-sidebar">
             <div class="room-sidebar-top">
-                <div class="room-brand">
-                    <span class="material-symbols-outlined">auto_awesome</span>
-                    <span class="room-brand-name">InterviewAI</span>
-                </div>
-
                 <div class="timer-box">
                     <span class="timer-label">TIME REMAINING</span>
                     <div class="timer-value" id="timer">--:--</div>
@@ -224,13 +223,31 @@
                     <span id="pause-btn-label">Pause Interview</span>
                 </button>
                 <span class="quick-actions-note" id="pause-quota-text"></span>
-                <button id="end-btn" class="btn-end" type="button" @(isActive ? "" : "disabled")>
+                <button id="cancel-interview-btn" class="btn-cancel-interview" type="button" aria-label="Cancel Interview" @(isActive ? "" : "disabled")>
                     <span class="material-symbols-outlined">exit_to_app</span>
-                    End Interview
+                    Cancel Interview
                 </button>
             </div>
         </aside>
     </div>
+
+    <dialog id="cancel-interview-dialog"
+            class="cancel-interview-dialog"
+            aria-modal="true"
+            aria-labelledby="cancel-interview-title"
+            aria-describedby="cancel-interview-description">
+        <div class="cancel-interview-dialog-content">
+            <h2 id="cancel-interview-title">Cancel this interview?</h2>
+            <p id="cancel-interview-description">
+                Your current interview will be cancelled. You will not receive an evaluation report,
+                and you will not be able to submit interview feedback.
+            </p>
+            <div class="cancel-interview-dialog-actions">
+                <button id="continue-interview-btn" class="btn-continue-interview" type="button">Continue Interview</button>
+                <button id="confirm-cancel-interview-btn" class="btn-confirm-cancel" type="button">Cancel Interview</button>
+            </div>
+        </div>
+    </dialog>
 
     <script src="~/lib/driver.js/driver.js.iife.js" asp-append-version="true"></script>
     <script src="~/js/pages/interview-room.js" asp-append-version="true"></script>

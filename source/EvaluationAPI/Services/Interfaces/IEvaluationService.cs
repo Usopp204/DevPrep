@@ -5,7 +5,8 @@ namespace EvaluationAPI.Services.Interfaces;
 public interface IEvaluationService
 {
     Task<EvaluateAnswerResponse> EvaluateAnswerAsync(Guid sessionId, Guid answerId, EvaluateAnswerRequest req, CancellationToken ct);
-    Task<ReportResponse> BuildReportAsync(Guid sessionId, BuildReportRequest req, CancellationToken ct);
-    Task<ReportResponse?> GetExistingReportAsync(Guid sessionId, CancellationToken ct);
+    Task<ReportResponse> BuildReportAsync(Guid sessionId, BuildReportRequest req, string? bearerToken, CancellationToken ct);
+    Task<ReportResponse?> GetExistingReportAsync(Guid sessionId, string? bearerToken, CancellationToken ct);
+    Task<PerformanceReportResponse> GetPerformanceReportAsync(Guid userId, Guid sessionId, string? bearerToken, CancellationToken ct);
     Task<List<EvaluateAnswerResponse>> GetAnswerEvaluationsAsync(Guid sessionId, CancellationToken ct);
 }
