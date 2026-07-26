@@ -21,10 +21,11 @@ public interface ISourceMetricsClient
 }
 
 /// <summary>
-/// Gọi admin endpoint của các service ĐÃ chạy (User/Interview/Feedback/Payment) qua HTTP để lấy số liệu tổng hợp.
-/// KHÔNG join DB chéo (đúng tinh thần microservice). Đính JWT role=Admin tự ký cho các endpoint cần [Authorize];
+/// Gọi admin endpoint của các service nguồn (User/Interview/Feedback/Payment) QUA ApiGateway
+/// để lấy số liệu tổng hợp. KHÔNG join DB chéo (đúng tinh thần microservice). Đính JWT role=Admin
+/// tự ký cho các endpoint cần [Authorize] (gateway forward nguyên header Authorization);
 /// PaymentAPI /admin/payments/* không cần auth nhưng đính token cũng vô hại.
-/// Named HttpClient (user/interview/feedback/payment) đã set BaseAddress + UseProxy=false ở Program.cs.
+/// Named HttpClient "gateway" set BaseAddress (:7000) + UseProxy=false ở Program.cs.
 /// </summary>
 public sealed class SourceMetricsClient(
     IHttpClientFactory httpClientFactory,
@@ -41,7 +42,7 @@ public sealed class SourceMetricsClient(
         if (createdTo.HasValue) qs.Add("CreatedTo=" + Iso(createdTo.Value));
         if (!string.IsNullOrWhiteSpace(status)) qs.Add("Status=" + Uri.EscapeDataString(status));
 
-        using var doc = await GetJsonAsync("user", "api/admin/users?" + string.Join("&", qs), ct);
+        using var doc = await GetJsonAsync("api/admin/users?" + string.Join("&", qs), ct);
         return doc.RootElement.GetProperty("data").GetProperty("totalCount").GetInt64();
     }
 
@@ -53,7 +54,7 @@ public sealed class SourceMetricsClient(
         if (to.HasValue) qs.Add("dateTo=" + Iso(to.Value));
         if (includeDeleted) qs.Add("includeDeleted=true");
 
-        using var doc = await GetJsonAsync("interview", "api/admin/interviews?" + string.Join("&", qs), ct);
+        using var doc = await GetJsonAsync("api/admin/interviews?" + string.Join("&", qs), ct);
         return doc.RootElement.GetProperty("data").GetProperty("totalItems").GetInt64();
     }
 
@@ -63,14 +64,15 @@ public sealed class SourceMetricsClient(
         if (from.HasValue) qs.Add("dateFrom=" + Iso(from.Value));
         if (to.HasValue) qs.Add("dateTo=" + Iso(to.Value));
 
-        using var doc = await GetJsonAsync("feedback", $"api/admin/feedbacks/{kind}?" + string.Join("&", qs), ct);
+        using var doc = await GetJsonAsync($"api/admin/feedbacks/{kind}?" + string.Join("&", qs), ct);
         return doc.RootElement.GetProperty("data").GetProperty("totalItems").GetInt64();
     }
 
     public async Task<RevenueDailyData> GetRevenueDailyAsync(DateOnly from, DateOnly to, CancellationToken ct)
     {
-        var url = $"admin/payments/revenue-daily?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}";
-        using var doc = await GetJsonAsync("payment", url, ct);
+        // Qua gateway: route /api/payment/* strip prefix -> PaymentAPI nhận /admin/payments/...
+        var url = $"api/payment/admin/payments/revenue-daily?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}";
+        using var doc = await GetJsonAsync(url, ct);
         var root = doc.RootElement;
 
         var byDay = new Dictionary<DateOnly, (decimal, int)>();
@@ -93,15 +95,15 @@ public sealed class SourceMetricsClient(
 
     public async Task<decimal> GetRevenueReportTotalAsync(string period, CancellationToken ct)
     {
-        using var doc = await GetJsonAsync("payment", $"admin/payments/revenue-report?period={Uri.EscapeDataString(period)}", ct);
+        using var doc = await GetJsonAsync($"api/payment/admin/payments/revenue-report?period={Uri.EscapeDataString(period)}", ct);
         return doc.RootElement.GetProperty("totalRevenue").GetDecimal();
     }
 
     // --- helpers ---------------------------------------------------------------
 
-    private async Task<JsonDocument> GetJsonAsync(string clientName, string relativeUrl, CancellationToken ct)
+    private async Task<JsonDocument> GetJsonAsync(string relativeUrl, CancellationToken ct)
     {
-        var client = httpClientFactory.CreateClient(clientName);
+        var client = httpClientFactory.CreateClient("gateway");
         using var req = new HttpRequestMessage(HttpMethod.Get, relativeUrl);
         req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Token);
         using var resp = await client.SendAsync(req, ct);

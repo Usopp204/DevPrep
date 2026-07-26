@@ -46,23 +46,15 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 builder.Services.AddAuthorization();
 
-// ── Base URL các service nguồn (gọi trực tiếp, UseProxy=false vì proxy hệ thống chặn localhost) ──
-var userBaseUrl = builder.Configuration.GetValue<string>("USER_API_BASEURL", "http://localhost:7002")!;
-var interviewBaseUrl = builder.Configuration.GetValue<string>("INTERVIEW_API_BASEURL", "http://localhost:7005")!;
-var feedbackBaseUrl = builder.Configuration.GetValue<string>("FEEDBACK_API_BASEURL", "http://localhost:7007")!;
-var paymentBaseUrl = builder.Configuration.GetValue<string>("PAYMENT_API_BASEURL", "http://localhost:7008")!;
+// ── Gọi các service nguồn QUA ApiGateway (thống nhất một cửa; UseProxy=false vì
+// proxy hệ thống chặn localhost). Override bằng GATEWAY_BASEURL khi deploy.
+var gatewayBaseUrl = builder.Configuration.GetValue<string>("GATEWAY_BASEURL", "http://localhost:7000")!;
 
-void AddSource(string name, string baseUrl) =>
-    builder.Services.AddHttpClient(name, c =>
+builder.Services.AddHttpClient("gateway", c =>
     {
-        c.BaseAddress = new Uri(baseUrl);
+        c.BaseAddress = new Uri(gatewayBaseUrl);
         c.Timeout = TimeSpan.FromSeconds(20);
     }).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { UseProxy = false });
-
-AddSource("user", userBaseUrl);
-AddSource("interview", interviewBaseUrl);
-AddSource("feedback", feedbackBaseUrl);
-AddSource("payment", paymentBaseUrl);
 
 // ── DI ────────────────────────────────────────────────────────────────────────
 builder.Services.AddSingleton<IServiceTokenFactory, ServiceTokenFactory>();
