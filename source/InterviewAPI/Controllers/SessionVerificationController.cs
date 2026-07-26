@@ -126,15 +126,20 @@ public class SessionVerificationController : ControllerBase
         }
     }
 
-    // GET api/interview/sessions/{sessionId}/verify/in-session-check-due — Milestone 4
-    // groundwork. Randomized-cadence signal; not polled by any Room UI yet.
-    [HttpGet("in-session-check-due")]
-    public async Task<IActionResult> GetInSessionCheckDue(Guid sessionId, CancellationToken cancellationToken)
+    // POST api/interview/sessions/{sessionId}/verify/in-session — one background cheating check
+    // (single frame, no challenge/liveness), called by the Room once per new question and
+    // rate-limited server-side (Biometrics:InSessionMinIntervalSeconds). Flag-only by default
+    // (Biometrics:InSessionStrictness); only ends the session when Strictness="Strict" and the
+    // strike cap is reached.
+    [HttpPost("in-session")]
+    public async Task<IActionResult> VerifyInSession(
+        Guid sessionId, IFormFile frame, CancellationToken cancellationToken)
     {
         try
         {
-            var result = await _service.IsInSessionCheckDueAsync(sessionId, cancellationToken);
-            return Ok(ApiResponse<InSessionCheckDueResponse>.Ok(result));
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var result = await _service.VerifyInSessionAsync(userId, sessionId, frame, cancellationToken);
+            return Ok(ApiResponse<InSessionVerifyResponse>.Ok(result));
         }
         catch (KeyNotFoundException ex)
         {

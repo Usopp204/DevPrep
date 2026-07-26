@@ -23,7 +23,7 @@
     <title>Interview Room - DevPrep</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="~/css/theme-session.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/lib/driver.js/driver.css" asp-append-version="true" />
@@ -52,6 +52,8 @@
          data-cancel-url="@Url.Action("EndSession", "Interview", new { id = Model.SessionId })"
          data-pause-url="@Url.Action("Pause", "Interview", new { id = Model.SessionId })"
          data-unpause-url="@Url.Action("Unpause", "Interview", new { id = Model.SessionId })"
+         data-camera-violation-url="@Url.Action("CameraViolation", "Interview", new { id = Model.SessionId })"
+         data-verify-in-session-url="@Url.Action("VerifyInSession", "Verification", new { sessionId = Model.SessionId })"
          data-tts-url="@Url.Action("Tts", "Interview")"
          data-stt-url="@Url.Action("Stt", "Interview")"
          data-hint-url="@Url.Action("Hint", "Interview")"
@@ -89,6 +91,11 @@
                         <span class="info-val" id="progress-text">@Model.AnsweredQuestions/@Model.TotalQuestions</span>
                     </div>
                 </div>
+
+                <!-- In-session cheating check warning (identity mismatch / multiple faces).
+                     Hidden until interview-room.js's background check actually flags something —
+                     see the .camera-status-warning/.content-warning tint pattern this reuses. -->
+                <p class="cheating-warning d-none" id="cheating-warning" role="alert"></p>
             </div>
 
             <div class="room-progress">
@@ -142,6 +149,7 @@
                 <div class="room-ended-note">This interview has already ended (status: @Model.Status).</div>
             }
 
+            <div id="idle-modal-backdrop" class="idle-modal-backdrop d-none"></div>
             <div id="idle-banner" class="idle-banner d-none"></div>
 
             <div class="chat-input-bar">
@@ -159,6 +167,7 @@
                         <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">send</span>
                     </button>
                 </div>
+                <p id="content-warning" class="content-warning d-none" role="alert"></p>
                 <div class="input-hint">Press Enter to send, Shift + Enter for new line</div>
             </div>
 
@@ -186,7 +195,10 @@
                             <span>Camera off</span>
                         </div>
                     </div>
-                    <button id="camera-toggle" class="btn-camera" type="button">Turn On Camera</button>
+                    <!-- Camera is mandatory (anti-cheating) — no toggle, just a status indicator.
+                         Text is set by interview-room.js (Starting… / On / permission-denied /
+                         disconnected messaging); this is the pre-JS fallback. -->
+                    <span id="camera-status" class="camera-status">Camera: Starting…</span>
                 </div>
 
                 <div class="ai-voice-section">
@@ -250,6 +262,7 @@
     </dialog>
 
     <script src="~/lib/driver.js/driver.js.iife.js" asp-append-version="true"></script>
+    <script src="~/js/pages/content-filter.js" asp-append-version="true"></script>
     <script src="~/js/pages/interview-room.js" asp-append-version="true"></script>
 </body>
 </html>

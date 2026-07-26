@@ -1,29 +1,73 @@
 /* ============================================================================
    Biometric verification wizard — ported from .claude/biometric-wizard-mockup.html
-   (design source of truth). Four deliberately distinct full screens:
-   Guide (light card) → Face (dark camera) → Voice (audio orb) → Done (light success).
+   (design source of truth), then re-tokenized to docs/design.md (dark-mode-only
+   design system) so this cluster matches the rest of the app instead of its own
+   light-theme palette. Four deliberately distinct full screens:
+   Guide (glass card) → Face (dark camera) → Voice (audio orb) → Done (glass card).
    Only one .screen is rendered at a time ([hidden] => display:none).
    ============================================================================ */
 
 :root {
-    --indigo: #4F46E5; --violet: #7C3AED; --indigo-600: #4338CA;
-    --navy: #0B1020; --navy-2: #0F1530; --navy-3: #161d3d;
-    --ink: #0F172A; --muted: #64748B; --line: #E6E8F0;
-    --surface: #FFFFFF; --app: #F5F6FB;
-    --emerald: #10B981; --rose: #F43F5E; --amber: #F59E0B;
-    --on-dark: #E8ECF6; --on-dark-muted: #9AA3C4;
-    --radius: 24px; --radius-sm: 14px;
-    --shadow: 0 20px 50px -20px rgba(31, 38, 89, .35);
-    --grad: linear-gradient(135deg, var(--indigo), var(--violet));
-    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
+    /* ---- color tokens — copied verbatim from docs/design.md ---- */
+    --color-background: #0e1323;
+    --color-surface: #0e1323;
+    --color-surface-container-low: #161b2b;
+    --color-surface-container: #1a1f30;
+    --color-surface-container-high: #25293a;
+    --color-surface-container-highest: #2f3446;
+    --color-surface-bright: #34394a;
+
+    --color-primary: #c3c0ff;
+    --color-primary-container: #4f46e5;
+    --color-on-primary: #1d00a5;
+    --color-on-primary-container: #dad7ff;
+
+    --color-secondary: #4cd7f6;
+    --color-secondary-container: #03b5d3;
+    --color-on-secondary: #003640;
+
+    --color-tertiary: #d0bcff;
+    --color-tertiary-container: #6f3dd9;
+    --color-on-tertiary: #3c0091;
+
+    --color-on-surface: #dee1f9;
+    --color-on-surface-variant: #c7c4d8;
+
+    --color-success: #10B981;
+    --color-warning: #F9D949;
+    --color-error: #ffb4ab;
+    --color-error-container: #93000a;
+
+    --color-border-subtle: rgba(255, 255, 255, 0.08);
+    --color-glass-fill: rgba(17, 24, 39, 0.6);
+    --color-outline: #918fa1;
+    --color-outline-variant: #464555;
+
+    /* ---- gradient — design.md "Primary Button" component spec, verbatim
+       (the #7c3aed end-stop is that spec's literal value; it is not a general
+       accent token, so it is used ONLY here — see --color-tertiary-container
+       below for the general-purpose violet accent elsewhere in this file). */
+    --grad-primary: linear-gradient(135deg, var(--color-primary-container) 0%, #7c3aed 100%);
+
+    /* ---- radius scale — design.md (4 / 8 / 12 / 16 / 24 / 9999) ---- */
+    --radius-sm: 12px;   /* xl — reserved for smaller cards */
+    --radius: 24px;      /* 3xl — kept for the big wizard cards per explicit instruction */
+
+    /* ---- elevation — design.md defines glows, not a generic card drop-shadow;
+       kept neutral-black so the glass cards still read as elevated on a dark page. */
+    --shadow: 0 20px 50px -20px rgba(0, 0, 0, 0.6);
+
+    /* ---- fonts — design.md Typography (display/body = Inter, code/label = JetBrains Mono) ---- */
+    --font: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: 'JetBrains Mono', "SFMono-Regular", Consolas, monospace;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 .bw-page {
     font-family: var(--font);
-    background: var(--app);
-    color: var(--ink);
+    background: var(--color-background);
+    color: var(--color-on-surface);
     -webkit-font-smoothing: antialiased;
 }
 
@@ -42,6 +86,13 @@
     animation: rise .4s cubic-bezier(.2, .7, .2, 1);
 }
 
+/* Guide/Done are plain text cards — widen them on large viewports so they don't
+   look lost in a wide <main> (e.g. next to the 256px Profile sidebar). Face/Voice
+   keep the default 460px: they frame a fixed-size camera oval, so stretching them
+   would turn the camera box into an odd wide letterbox around a narrow portrait
+   oval instead of filling the extra space usefully. */
+#screen-guide.screen, #screen-done.screen { max-width: 760px; }
+
 @keyframes rise {
     from { opacity: 0; transform: translateY(14px); }
     to   { opacity: 1; transform: none; }
@@ -59,6 +110,9 @@
 }
 
 /* ---------------- shared stepper ---------------- */
+/* Dark-mode only now, so the base rule and the .on-dark modifier resolve to the
+   same tokens — the modifier class is left in the markup/CSS as-is (JS/HTML
+   untouched) rather than restructured. */
 
 .stepper { display: flex; align-items: center; gap: 10px; }
 
@@ -69,57 +123,67 @@
     border-radius: 50%;
     display: grid; place-items: center;
     font: 700 11px/1 var(--font);
-    border: 2px solid var(--line);
-    color: var(--muted);
-    background: #fff;
+    border: 2px solid var(--color-border-subtle);
+    color: var(--color-on-surface-variant);
+    background: var(--color-surface-container);
 }
 
-.stepper .bead.done { background: var(--emerald); border-color: var(--emerald); color: #fff; }
+.stepper .bead.done { background: var(--color-success); border-color: var(--color-success); color: #fff; }
 
 .stepper .bead.now {
-    background: var(--grad);
+    background: var(--grad-primary);
     border-color: transparent;
     color: #fff;
     box-shadow: 0 6px 16px -4px rgba(79, 70, 229, .6);
 }
 
-.stepper .seg { width: 34px; height: 2px; background: var(--line); border-radius: 2px; }
-.stepper .seg.done { background: var(--emerald); }
+.stepper .seg { width: 34px; height: 2px; background: var(--color-border-subtle); border-radius: 2px; }
+.stepper .seg.done { background: var(--color-success); }
 
-.stepper.on-dark .bead { background: transparent; border-color: #33406f; color: var(--on-dark-muted); }
-.stepper.on-dark .bead.done { background: var(--emerald); border-color: var(--emerald); color: #fff; }
-.stepper.on-dark .bead.now { background: var(--grad); border-color: transparent; color: #fff; }
-.stepper.on-dark .seg { background: #2a355e; }
-.stepper.on-dark .seg.done { background: var(--emerald); }
-.stepper.on-dark .lbl { color: var(--on-dark); }
+.stepper.on-dark .bead { background: transparent; border-color: var(--color-outline-variant); color: var(--color-on-surface-variant); }
+.stepper.on-dark .bead.done { background: var(--color-success); border-color: var(--color-success); color: #fff; }
+.stepper.on-dark .bead.now { background: var(--grad-primary); border-color: transparent; color: #fff; }
+.stepper.on-dark .seg { background: var(--color-outline-variant); }
+.stepper.on-dark .seg.done { background: var(--color-success); }
+.stepper.on-dark .lbl { color: var(--color-on-surface); }
 
 /* ---------------- buttons ---------------- */
+/* design.md "Primary Button" / "Ghost Button" component specs, applied verbatim
+   (padding 12px 24px, border-radius 12px). */
 
 .btn {
     width: 100%;
     border: 0;
-    border-radius: 16px;
-    padding: 16px;
+    border-radius: var(--radius-sm);
+    padding: 12px 24px;
     font: 700 15px/1 var(--font);
     cursor: pointer;
-    background: var(--grad);
+    background: var(--grad-primary);
     color: #fff;
-    box-shadow: 0 14px 30px -12px rgba(79, 70, 229, .7);
-    transition: transform .15s, filter .15s;
+    box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.20);
+    transition: opacity .2s, transform .1s;
 }
 
-.btn:hover { filter: brightness(1.05); }
-.btn:active { transform: translateY(1px); }
+.btn:hover { opacity: .9; }
+.btn:active { transform: scale(.98); }
 .btn:focus-visible { outline: 3px solid rgba(79, 70, 229, .4); outline-offset: 2px; }
 
 .btn[disabled] {
-    background: #E2E5F0;
-    color: #9AA1B8;
+    background: var(--color-surface-container-high);
+    color: var(--color-on-surface-variant);
     box-shadow: none;
     cursor: not-allowed;
+    opacity: .6;
 }
 
-.btn.ghost { background: #fff; color: var(--ink); border: 1.5px solid var(--line); box-shadow: none; }
+.btn.ghost {
+    background: transparent;
+    color: var(--color-on-surface);
+    border: 1px solid var(--color-border-subtle);
+    box-shadow: none;
+}
+
+.btn.ghost:hover { opacity: 1; background: rgba(255, 255, 255, .05); }
 
 .btn.dark {
     background: rgba(255, 255, 255, .1);
@@ -129,16 +193,24 @@
     backdrop-filter: blur(6px);
 }
 
-.btn.dark[disabled] { background: rgba(255, 255, 255, .05); color: #5d6795; border-color: rgba(255, 255, 255, .1); }
+.btn.dark[disabled] { background: rgba(255, 255, 255, .05); color: var(--color-outline); border-color: rgba(255, 255, 255, .1); }
 
 .btn.grant { margin-bottom: 14px; padding: 13px; font-size: 13.5px; }
 
-.btn.small { width: auto; padding: 12px 18px; font-size: 13px; border-radius: 12px; }
+.btn.small { width: auto; padding: 12px 18px; font-size: 13px; border-radius: var(--radius-sm); }
 
 /* ================= SCREEN 0 — GUIDE ================= */
+/* design.md "Glass Card" component spec (fill + blur + hairline border), radius
+   kept at var(--radius) (24px / 3xl) instead of the spec's 12px per explicit
+   instruction — these are the large, deliberately oversized wizard cards. */
 
 .card {
-    background: var(--surface);
+    background: var(--color-glass-fill);
+    backdrop-filter: blur(12px);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 0.5px solid rgba(255, 255, 255, 0.04);
+    border-right: 0.5px solid rgba(255, 255, 255, 0.04);
     border-radius: var(--radius);
     box-shadow: var(--shadow);
     padding: 30px 26px;
@@ -149,21 +221,24 @@
 .brand .logo {
     width: 30px; height: 30px;
     border-radius: 9px;
-    background: var(--grad);
+    background: var(--grad-primary);
     display: grid; place-items: center;
     color: #fff;
     font: 800 15px/1 var(--font);
 }
 
-.brand span { font: 700 15px/1 var(--font); letter-spacing: -.01em; }
+.brand span { font: 700 15px/1 var(--font); letter-spacing: -.01em; color: var(--color-on-surface); }
 
+/* Ambient glow blobs (design.md "Ambient / Motion": primary/10 + secondary/10
+   opacity), used here as an inline two-tone radial background instead of
+   absolutely-positioned divs — same effect, one element. */
 .g-hero {
     height: 150px;
-    border-radius: 18px;
+    border-radius: 16px;
     background:
-        radial-gradient(120px 90px at 30% 40%, rgba(124, 58, 237, .16), transparent 70%),
-        radial-gradient(120px 90px at 72% 60%, rgba(79, 70, 229, .16), transparent 70%),
-        #F3F1FE;
+        radial-gradient(120px 90px at 30% 40%, rgba(79, 70, 229, .16), transparent 70%),
+        radial-gradient(120px 90px at 72% 60%, rgba(76, 215, 246, .12), transparent 70%),
+        var(--color-surface-container);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -176,7 +251,7 @@
 .g-hero .orbit {
     position: absolute;
     inset: 0;
-    background: conic-gradient(from 0deg, transparent, rgba(124, 58, 237, .08), transparent 40%);
+    background: conic-gradient(from 0deg, transparent, rgba(111, 61, 217, .10), transparent 40%);
     animation: spin 8s linear infinite;
 }
 
@@ -184,9 +259,10 @@
 
 .g-hero .ic {
     width: 64px; height: 64px;
-    border-radius: 18px;
-    background: #fff;
-    box-shadow: 0 12px 26px -12px rgba(31, 38, 89, .4);
+    border-radius: 16px;
+    background: var(--color-surface-container-high);
+    border: 1px solid var(--color-border-subtle);
+    box-shadow: 0 12px 26px -12px rgba(0, 0, 0, .5);
     display: grid; place-items: center;
     position: relative;
     z-index: 1;
@@ -200,7 +276,7 @@
     50%      { transform: translateY(-7px); }
 }
 
-.g-hero .arrow { color: #B9B4E8; font-size: 20px; z-index: 1; }
+.g-hero .arrow { color: var(--color-primary); font-size: 20px; z-index: 1; }
 
 .card h1 {
     font: 800 24px/1.15 var(--font);
@@ -208,15 +284,17 @@
     text-align: center;
     margin-bottom: 8px;
     outline: none;
+    color: var(--color-on-surface);
 }
 
-.sub { color: var(--muted); text-align: center; font-size: 14.5px; line-height: 1.5; margin-bottom: 22px; }
+.sub { color: var(--color-on-surface-variant); text-align: center; font-size: 14.5px; line-height: 1.5; margin-bottom: 22px; }
 
+/* Error banner — design.md "Status Chips Reference" Failed/Blocked pattern. */
 .banner-error {
-    background: #FFF1F2;
-    border: 1px solid #fecdd3;
-    color: #be123c;
-    border-radius: 12px;
+    background: rgba(255, 180, 171, 0.10);
+    border: 1px solid rgba(255, 180, 171, 0.20);
+    color: var(--color-error);
+    border-radius: var(--radius-sm);
     padding: 11px 13px;
     font: 500 12.5px/1.4 var(--font);
     margin-bottom: 16px;
@@ -226,7 +304,7 @@
 
 .steps2 .s {
     flex: 1;
-    border: 1.5px solid var(--line);
+    border: 1px solid var(--color-border-subtle);
     border-radius: 16px;
     padding: 14px;
     display: flex;
@@ -237,15 +315,15 @@
 .steps2 .n {
     width: 26px; height: 26px;
     border-radius: 8px;
-    background: #EEF0FB;
-    color: var(--indigo);
+    background: rgba(195, 192, 255, 0.10);
+    color: var(--color-primary);
     font: 800 12px/1 var(--font);
     display: grid; place-items: center;
     flex: none;
 }
 
-.steps2 .t { font: 700 13px/1.2 var(--font); }
-.steps2 .d { font: 500 11.5px/1.3 var(--font); color: var(--muted); margin-top: 3px; }
+.steps2 .t { font: 700 13px/1.2 var(--font); color: var(--color-on-surface); }
+.steps2 .d { font: 500 11.5px/1.3 var(--font); color: var(--color-on-surface-variant); margin-top: 3px; }
 
 .pills { display: flex; gap: 8px; margin-bottom: 16px; }
 
@@ -254,26 +332,27 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    border-radius: 12px;
+    border-radius: var(--radius-sm);
     padding: 10px 12px;
     font: 600 12.5px/1 var(--font);
 }
 
 .pill .k { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; }
 
-.pill[data-state="ready"]   { background: #F0FDF6; color: #0f9d63; border: 1px solid #CFF3E0; }
-.pill[data-state="pending"] { background: #F4F5FA; color: var(--muted); border: 1px solid var(--line); }
-.pill[data-state="blocked"] { background: #FFF1F2; color: #e11d48; border: 1px solid #fecdd3; }
+/* Status chip tints — design.md "Status Chips Reference". */
+.pill[data-state="ready"]   { background: rgba(16, 185, 129, 0.10); color: var(--color-success); border: 1px solid rgba(16, 185, 129, 0.20); }
+.pill[data-state="pending"] { background: var(--color-surface-container-highest); color: var(--color-on-surface-variant); border: 1px solid transparent; }
+.pill[data-state="blocked"] { background: rgba(255, 180, 171, 0.10); color: var(--color-error); border: 1px solid rgba(255, 180, 171, 0.20); }
 
-.perm-help { font: 500 11.5px/1.5 var(--font); color: #be123c; margin: -6px 0 14px; }
+.perm-help { font: 500 11.5px/1.5 var(--font); color: var(--color-error); margin: -6px 0 14px; }
 
 .consent {
     display: flex;
     gap: 10px;
     align-items: flex-start;
-    background: #FAFAFF;
-    border: 1px solid var(--line);
-    border-radius: 14px;
+    background: var(--color-surface-container-low);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 16px;
     padding: 12px;
     margin-bottom: 18px;
     cursor: pointer;
@@ -287,9 +366,9 @@
 
 .consent .box {
     width: 18px; height: 18px;
-    border-radius: 6px;
-    background: #E9EBF5;
-    border: 1.5px solid #d5d9ec;
+    border-radius: 8px;
+    background: var(--color-surface-container-high);
+    border: 1px solid var(--color-outline-variant);
     flex: none;
     display: grid; place-items: center;
     color: transparent;
@@ -299,66 +378,33 @@
 }
 
 .consent input:checked ~ .box {
-    background: var(--grad);
+    background: var(--grad-primary);
     border-color: transparent;
     color: #fff;
 }
 
 .consent input:focus-visible ~ .box { outline: 3px solid rgba(79, 70, 229, .4); outline-offset: 1px; }
 
-.consent p { font: 500 11.5px/1.5 var(--font); color: var(--muted); }
+.consent p { font: 500 11.5px/1.5 var(--font); color: var(--color-on-surface-variant); }
 
 .back {
     display: block;
     text-align: center;
     margin-top: 14px;
-    color: var(--muted);
+    color: var(--color-on-surface-variant);
     font: 600 12.5px/1 var(--font);
     text-decoration: none;
 }
 
-.back:hover { color: var(--ink); }
-
-/* Temporary M2 test card (below the guide card) */
-.test-card { margin-top: 16px; padding: 20px 22px; }
-
-.test-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-.test-head .t { font: 700 13.5px/1 var(--font); }
-
-.test-head .tag {
-    font: 700 10px/1 var(--font);
-    letter-spacing: .06em;
-    text-transform: uppercase;
-    color: var(--amber);
-    border: 1px solid rgba(245, 158, 11, .4);
-    border-radius: 999px;
-    padding: 4px 9px;
-}
-
-.test-note { font: 500 12px/1.5 var(--font); color: var(--muted); margin-bottom: 12px; }
-
-.test-row { display: flex; gap: 8px; align-items: stretch; }
-
-.select {
-    flex: 1;
-    min-width: 0;
-    border: 1.5px solid var(--line);
-    border-radius: 12px;
-    padding: 10px 12px;
-    font: 500 12.5px/1.3 var(--font);
-    color: var(--ink);
-    background: #fff;
-}
-
-.select:focus-visible { outline: 3px solid rgba(79, 70, 229, .4); outline-offset: 1px; }
+.back:hover { color: var(--color-on-surface); }
 
 /* ================= SCREEN 1 — FACE (dark, immersive) ================= */
 
 .face {
-    background: radial-gradient(120% 90% at 50% -10%, #1a2350, var(--navy));
+    background: radial-gradient(120% 90% at 50% -10%, var(--color-surface-container), var(--color-background));
     border-radius: var(--radius);
     padding: 22px;
-    color: var(--on-dark);
+    color: var(--color-on-surface);
     box-shadow: var(--shadow);
     position: relative;
     overflow: hidden;
@@ -377,14 +423,14 @@
     font-size: 16px;
 }
 
-.topbar .x:focus-visible { outline: 3px solid rgba(124, 58, 237, .6); outline-offset: 2px; }
+.topbar .x:focus-visible { outline: 3px solid rgba(111, 61, 217, .6); outline-offset: 2px; }
 
 .camera {
     position: relative;
     height: 360px;
-    border-radius: 20px;
+    border-radius: 16px;
     overflow: hidden;
-    background: radial-gradient(70% 60% at 50% 42%, #3a4680, #141a3a 75%);
+    background: radial-gradient(70% 60% at 50% 42%, var(--color-surface-container-high), var(--color-background) 75%);
 }
 
 .camera video {
@@ -399,7 +445,7 @@
 .camera .mask {
     position: absolute;
     inset: 0;
-    background: rgba(11, 16, 32, .55);
+    background: rgba(14, 19, 35, .55);
     -webkit-mask: radial-gradient(120px 155px at 50% 45%, transparent 98%, #000 100%);
     mask: radial-gradient(120px 155px at 50% 45%, transparent 98%, #000 100%);
 }
@@ -411,22 +457,22 @@
     width: 236px; height: 306px;
     border-radius: 50%;
     border: 3px solid rgba(255, 255, 255, .35);
-    box-shadow: 0 0 0 2px rgba(124, 58, 237, .25);
+    box-shadow: 0 0 0 2px rgba(111, 61, 217, .25);
     pointer-events: none;
 }
 
 .oval.scanning {
-    border-color: var(--violet);
-    box-shadow: 0 0 30px rgba(124, 58, 237, .55);
+    border-color: var(--color-tertiary-container);
+    box-shadow: 0 0 30px rgba(111, 61, 217, .55);
     animation: pulse 1.6s ease-in-out infinite;
 }
 
-.oval.success { border-color: var(--emerald); box-shadow: 0 0 30px rgba(16, 185, 129, .55); animation: none; }
-.oval.error   { border-color: var(--rose); box-shadow: 0 0 24px rgba(244, 63, 94, .45); animation: none; }
+.oval.success { border-color: var(--color-success); box-shadow: 0 0 30px rgba(16, 185, 129, .55); animation: none; }
+.oval.error   { border-color: var(--color-error); box-shadow: 0 0 24px rgba(255, 180, 171, .45); animation: none; }
 
 @keyframes pulse {
-    0%, 100% { box-shadow: 0 0 24px rgba(124, 58, 237, .4); }
-    50%      { box-shadow: 0 0 44px rgba(124, 58, 237, .75); }
+    0%, 100% { box-shadow: 0 0 24px rgba(111, 61, 217, .4); }
+    50%      { box-shadow: 0 0 44px rgba(111, 61, 217, .75); }
 }
 
 .scanline {
@@ -434,7 +480,7 @@
     left: 50%; top: 45%;
     transform: translate(-50%, -50%);
     width: 230px; height: 2px;
-    background: linear-gradient(90deg, transparent, var(--violet), transparent);
+    background: linear-gradient(90deg, transparent, var(--color-tertiary-container), transparent);
     animation: scan 2s ease-in-out infinite;
     border-radius: 2px;
     pointer-events: none;
@@ -482,10 +528,10 @@
 
 .face .cta-row { margin-top: 18px; }
 
-.hint-dark { color: var(--on-dark-muted); text-align: center; font-size: 12.5px; margin-top: 12px; }
+.hint-dark { color: var(--color-on-surface-variant); text-align: center; font-size: 12.5px; margin-top: 12px; }
 
 .err {
-    color: #fda4af;
+    color: var(--color-error);
     text-align: center;
     font: 500 12.5px/1.5 var(--font);
     margin-top: 14px;
@@ -501,10 +547,10 @@
     align-items: center;
     justify-content: center;
     gap: 12px;
-    background: rgba(11, 16, 32, .78);
+    background: rgba(14, 19, 35, .78);
     backdrop-filter: blur(6px);
     font: 600 13.5px/1 var(--font);
-    color: var(--on-dark);
+    color: var(--color-on-surface);
 }
 
 /* .cam-overlay sets display:flex unconditionally, which as an author-level rule
@@ -517,8 +563,8 @@
 .spinner {
     width: 36px; height: 36px;
     border-radius: 50%;
-    border: 3px solid rgba(154, 163, 196, .3);
-    border-top-color: var(--violet);
+    border: 3px solid rgba(199, 196, 216, .3);
+    border-top-color: var(--color-tertiary-container);
     animation: spinner .8s linear infinite;
 }
 
@@ -527,10 +573,10 @@
 /* ================= SCREEN 2 — VOICE (audio world, distinct) ================= */
 
 .voice {
-    background: radial-gradient(120% 90% at 50% 120%, #241a4d, var(--navy-2));
+    background: radial-gradient(120% 90% at 50% 120%, var(--color-surface-container-high), var(--color-surface-container-low));
     border-radius: var(--radius);
     padding: 24px;
-    color: var(--on-dark);
+    color: var(--color-on-surface);
     box-shadow: var(--shadow);
     position: relative;
     overflow: hidden;
@@ -539,16 +585,16 @@
 .phrase {
     background: rgba(255, 255, 255, .06);
     border: 1px solid rgba(255, 255, 255, .12);
-    border-radius: 18px;
+    border-radius: 16px;
     padding: 18px;
     text-align: center;
     margin: 6px 0 26px;
 }
 
 .phrase .lab {
-    font: 700 11px/1 var(--font);
+    font: 700 11px/1 var(--font-mono);
     letter-spacing: .12em;
-    color: var(--on-dark-muted);
+    color: var(--color-on-surface-variant);
     text-transform: uppercase;
     margin-bottom: 9px;
 }
@@ -565,7 +611,7 @@
 .ring {
     position: absolute;
     border-radius: 50%;
-    border: 1.5px solid rgba(124, 58, 237, .35);
+    border: 1.5px solid rgba(111, 61, 217, .35);
     width: 150px; height: 150px;
     opacity: .25;
 }
@@ -583,10 +629,10 @@
 .orb {
     width: 118px; height: 118px;
     border-radius: 50%;
-    background: var(--grad);
+    background: var(--grad-primary);
     display: grid;
     place-items: center;
-    box-shadow: 0 20px 50px -12px rgba(124, 58, 237, .7);
+    box-shadow: 0 20px 50px -12px rgba(111, 61, 217, .7);
     z-index: 1;
 }
 
@@ -604,16 +650,16 @@
 .timer {
     text-align: center;
     font: 700 15px/1 var(--font);
-    color: var(--on-dark);
+    color: var(--color-on-surface);
     margin: 20px 0 6px;
     letter-spacing: .04em;
 }
 
-.timer small { color: var(--on-dark-muted); font-weight: 500; }
+.timer small { color: var(--color-on-surface-variant); font-weight: 500; }
 
 .voice-note {
     text-align: center;
-    color: var(--on-dark-muted);
+    color: var(--color-on-surface-variant);
     font: 500 12.5px/1.5 var(--font);
     min-height: 19px;
     margin-bottom: 14px;
@@ -625,7 +671,12 @@
 /* ================= SCREEN 3 — COMPLETION ================= */
 
 .done {
-    background: var(--surface);
+    background: var(--color-glass-fill);
+    backdrop-filter: blur(12px);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 0.5px solid rgba(255, 255, 255, 0.04);
+    border-right: 0.5px solid rgba(255, 255, 255, 0.04);
     border-radius: var(--radius);
     box-shadow: var(--shadow);
     padding: 38px 26px;
@@ -637,15 +688,18 @@
     letter-spacing: -.02em;
     margin-bottom: 8px;
     outline: none;
+    color: var(--color-on-surface);
 }
 
 .done-sub { margin-bottom: 0; }
 
+/* Solid success fill (no invented second green shade — design.md defines only
+   --color-success, so no gradient here). */
 .check {
     width: 96px; height: 96px;
     border-radius: 50%;
     margin: 0 auto 22px;
-    background: linear-gradient(135deg, #10B981, #059669);
+    background: var(--color-success);
     display: grid;
     place-items: center;
     box-shadow: 0 18px 40px -12px rgba(16, 185, 129, .6);
@@ -683,26 +737,30 @@
 
 .chips { display: flex; gap: 10px; justify-content: center; margin: 20px 0 26px; }
 
+/* Success status chip — design.md "Status Chips Reference" + Badge/Chip
+   typography (JetBrains Mono, uppercase, wide tracking). */
 .chip {
     display: flex;
     align-items: center;
     gap: 7px;
-    background: #F0FDF6;
-    color: #0f9d63;
-    border: 1px solid #CFF3E0;
+    background: rgba(16, 185, 129, 0.10);
+    color: var(--color-success);
+    border: 1px solid rgba(16, 185, 129, 0.20);
     border-radius: 999px;
-    padding: 8px 14px;
-    font: 700 12.5px/1 var(--font);
+    padding: 4px 12px;
+    font: 500 11px/1 var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: .05em;
 }
 
 .heard {
-    background: #FAFAFF;
-    border: 1px solid var(--line);
-    border-radius: 12px;
+    background: var(--color-surface-container-low);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-sm);
     padding: 11px;
     margin-bottom: 22px;
     font: 500 12.5px/1.4 var(--font);
-    color: var(--muted);
+    color: var(--color-on-surface-variant);
 }
 
 /* ---------------- lifecycle & preferences ---------------- */
@@ -724,8 +782,6 @@
         -webkit-mask: radial-gradient(100px 130px at 50% 45%, transparent 98%, #000 100%);
         mask: radial-gradient(100px 130px at 50% 45%, transparent 98%, #000 100%);
     }
-    .test-row { flex-direction: column; }
-    .test-row .btn.small { width: 100%; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -736,3 +792,73 @@
     }
     .check path { stroke-dashoffset: 0; }
 }
+
+/* ---------------- Ambient background blobs — design.md "Ambient / Motion" -----
+   "absolute div, width/height 384px, border-radius full, blur 120px,
+   pointer-events none. Use primary/10 or secondary/10 opacity. Place 1–2 per
+   page, off-screen edges." Static per that spec (no animation is listed for
+   blobs there, unlike the scanline/waveform/particle effects elsewhere in this
+   file), so no prefers-reduced-motion handling is needed for these. */
+.ambient-blob {
+    position: absolute;
+    width: 384px;
+    height: 384px;
+    border-radius: 9999px;
+    filter: blur(120px);
+    pointer-events: none;
+    z-index: 0;
+}
+
+.ambient-blob-primary { background: rgba(79, 70, 229, .10); }   /* --color-primary-container / 10 */
+.ambient-blob-secondary { background: rgba(76, 215, 246, .10); } /* --color-secondary / 10 */
+
+/* ---------------- Identity.cshtml only: Profile shell integration ----------------
+   .stage sits inside <main class="pf-main identity-main"> (fixed topbar + 256px
+   sidebar from profile.css, read-only/not modified here). Subtract the topbar
+   height (profile.css's own --pf-topbar-h, with a 64px fallback) so the wizard
+   card centers in the VISIBLE viewport instead of the full 100vh, which would
+   run under the fixed topbar and force a scroll. */
+.identity-main {
+    position: relative;
+    overflow-x: hidden; /* clip the off-screen-edge blobs without affecting vertical scroll */
+}
+
+/* profile.css's .pf-main already adds 40px page padding, so .stage's own 24px
+   would stack into an oversized gutter — zero it out here, scoped to this page.
+   position/z-index lifts the wizard above the blobs (which sit at z-index: 0). */
+.identity-main .stage {
+    min-height: calc(100vh - var(--pf-topbar-h, 64px));
+    padding: 0;
+    position: relative;
+    z-index: 1;
+}
+
+.identity-main .ambient-blob-primary   { top: 6%;  left: -140px; }
+.identity-main .ambient-blob-secondary { bottom: 8%; right: -140px; }
+
+/* ---------------- Verify.cshtml only: full-screen immersive blobs ----------------
+   #entry-verify IS the .stage here (no Profile shell, no sidebar) — same
+   position/overflow treatment, anchored to the full viewport instead of a
+   sidebar-narrowed <main>. */
+#entry-verify.stage {
+    position: relative;
+    overflow-x: hidden;
+}
+
+#entry-verify .screen { position: relative; z-index: 1; }
+
+#entry-verify .ambient-blob-primary   { top: 10%;  left: -140px; }
+#entry-verify .ambient-blob-secondary { bottom: 10%; right: -140px; }
+
+/* Footer under the wizard, inside .identity-main — never overlaps the sidebar. */
+.identity-footer {
+    max-width: 460px;
+    margin: 0 auto;
+    padding: 24px 24px 40px;
+    text-align: center;
+    font: 500 12px/1.5 var(--font);
+    color: var(--color-on-surface-variant);
+}
+
+.identity-footer a { color: var(--color-on-surface-variant); text-decoration: none; }
+.identity-footer a:hover { color: var(--color-on-surface); }

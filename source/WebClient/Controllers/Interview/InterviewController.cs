@@ -8,11 +8,14 @@ using WebClient.Models.Interview;
 using WebClient.Services.Evaluation;
 using WebClient.Services.Feedback;
 using WebClient.Services.Interview;
+using WebClient.Services.Profile;
 
 namespace WebClient.Controllers.Interview;
 
 public class InterviewController(
     IInterviewService interviewService,
+    IBiometricsService biometricsService,
+    IVerificationService verificationService,
     IFeedbackService feedbackService) : Controller
 {
     private const int HistoryPageSize = 5;
@@ -27,6 +30,17 @@ public class InterviewController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Start(DashboardViewModel model, CancellationToken cancellationToken)
     {
+        // Biometric entry gate: a face enrollment is required before any session is created.
+        // (InterviewAPI enforces this again server-side in InitAsync — this check just gives
+        // the user a friendly redirect instead of a raw API error.)
+        var (statusOk, biometricStatus, _) = await biometricsService.GetStatusAsync(cancellationToken);
+        if (statusOk && biometricStatus is not null && !biometricStatus.FaceEnrolled)
+        {
+            TempData["InfoMessage"] =
+                "Bạn cần xác thực khuôn mặt (enroll) trước khi bắt đầu phỏng vấn.";
+            return RedirectToAction("Identity", "Profile");
+        }
+
         var result = await interviewService.StartInterviewAsync(
             model.DurationMinutes, model.Level, model.Position, model.Jd,
             model.FocusAreas ?? new List<string>(), cancellationToken);
@@ -43,7 +57,49 @@ public class InterviewController(
             return View("Index", dashboard);
         }
 
-        return RedirectToAction(nameof(Room), new { id = result.SessionId });
+        // Entry gate: face verification happens on the Verify screen BEFORE the Room loads
+        // (and before any credit is deducted — the deduction fires on the Room's first
+        // question request, which InterviewAPI blocks until verification has passed).
+        return RedirectToAction(nameof(Verify), new { id = result.SessionId });
+    }
+
+    // Biometric entry gate screen: liveness face check for this session before the Room.
+    public async Task<IActionResult> Verify(Guid id, CancellationToken cancellationToken)
+    {
+        var (ok, gate, error) = await verificationService.GetEntryGateAsync(id, cancellationToken);
+        if (!ok || gate is null)
+        {
+            TempData["ErrorMessage"] = error ?? "Could not check the verification status.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        if (gate.Allowed)
+            return RedirectToAction(nameof(Room), new { id });
+
+        if (!gate.FaceEnrolled)
+        {
+            TempData["InfoMessage"] =
+                "Bạn cần xác thực khuôn mặt (enroll) trước khi bắt đầu phỏng vấn.";
+            return RedirectToAction("Identity", "Profile");
+        }
+
+        if (gate.AttemptsRemaining <= 0)
+        {
+            TempData["ErrorMessage"] =
+                "Xác thực khuôn mặt thất bại sau 3 lần. Phiên này đã bị huỷ — vui lòng tạo phiên phỏng vấn mới.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        return View(new VerifyViewModel { SessionId = id, AttemptsRemaining = gate.AttemptsRemaining });
+    }
+
+    // The Verify page's JS lands here after the final failed attempt: set the message
+    // server-side (TempData) and send the user back to the dashboard.
+    public IActionResult VerifyFailed()
+    {
+        TempData["ErrorMessage"] =
+            "Xác thực khuôn mặt thất bại sau 3 lần. Phiên này đã bị huỷ — vui lòng tạo phiên phỏng vấn mới.";
+        return RedirectToAction(nameof(Index));
     }
 
     public async Task<IActionResult> Catalog(CancellationToken cancellationToken)
@@ -57,14 +113,85 @@ public class InterviewController(
         return Json(catalog);
     }
 
+    // Statuses that may still render as an interactive Room. Anything else (Completed,
+    // Cancelled, Expired, ...) is a session that has already ended.
+    private static readonly string[] ActiveRoomStatuses = { "Initialized", "InProgress", "Paused" };
+
     public async Task<IActionResult> Room(Guid id, CancellationToken cancellationToken)
     {
-        var (success, room, error) = await interviewService.GetRoomAsync(id, cancellationToken);
+        // Never cache this response and disable the back/forward cache for it. Without this, a
+        // browser Back after the interview ends (redirected away by finishInterview()) can
+        // restore this exact page from bfcache with NO request to the server at all — skipping
+        // every guard below entirely. This is the primary fix for that: the status check right
+        // after only covers requests that DO reach the server (a fresh Back navigation once
+        // bfcache is disabled, a stale bookmark/link, etc).
+        Response.Headers.Append("Cache-Control", "no-cache, no-store, must-revalidate");
+        Response.Headers.Append("Pragma", "no-cache");
+        Response.Headers.Append("Expires", "0");
 
-        if (!success || room is null)
+        // Status guard FIRST, before the entry gate: a session that has already ended must never
+        // render as an interactive Room again, regardless of entry-gate state (a Completed
+        // session's gate is still Allowed=true from its original verification, so the gate check
+        // alone would let it through). Uses GetRoomAsync/Resume itself as the status source — it
+        // already returns Status, and is also the exact call the happy path needs anyway.
+        var (statusOk, room, statusError) = await interviewService.GetRoomAsync(id, cancellationToken);
+        if (!statusOk || room is null)
         {
-            TempData["ErrorMessage"] = error ?? "Could not load the session.";
+            TempData["ErrorMessage"] = statusError ?? "Could not load the session.";
             return RedirectToAction(nameof(Index));
+        }
+
+        if (!ActiveRoomStatuses.Contains(room.Status))
+        {
+            TempData["InfoMessage"] = "This interview has already ended.";
+            return RedirectToAction("Report", "Evaluation", new { sessionId = id, durationActualSec = 0 });
+        }
+
+        // Entry gate guard: typing the Room URL directly cannot skip the Verify screen.
+        // (InterviewAPI additionally blocks question serving server-side without a passed check.)
+        // Fail-CLOSED: if the entry-gate check itself fails, do not open the Room — the
+        // Room's first question request would only die with a confusing 400 anyway.
+        var (gateOk, gate, _) = await verificationService.GetEntryGateAsync(id, cancellationToken);
+        if (!gateOk || gate is null)
+        {
+            TempData["ErrorMessage"] = "Không thể xác minh danh tính, vui lòng thử lại.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        if (!gate.Allowed)
+        {
+            if (gate.FaceEnrolled && gate.AttemptsRemaining > 0)
+                return RedirectToAction(nameof(Verify), new { id });
+
+            TempData["ErrorMessage"] = gate.Reason;
+            return RedirectToAction(nameof(Index));
+        }
+
+        // Materialize the current/first question now that the entry gate has passed (this is
+        // also where the first-entry credit deduction happens, server-side). Idempotent — safe
+        // to call again on every Room entry/resume. Only for Initialized/InProgress — a Paused
+        // session already has a current question and GenerateQuestionAsync rejects any status
+        // other than those two, so calling it here for Paused would wrongly fail a simple
+        // page refresh while paused.
+        if (room.Status is "Initialized" or "InProgress")
+        {
+            var (generated, generateError) = await interviewService.GenerateQuestionAsync(id, cancellationToken);
+            if (!generated)
+            {
+                TempData["ErrorMessage"] = generateError ?? "Could not load the interview question.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // Re-fetch: generate may have materialized the first question / advanced the status,
+            // neither of which the room snapshot from the status check above reflects.
+            var (success, freshRoom, error) = await interviewService.GetRoomAsync(id, cancellationToken);
+            if (!success || freshRoom is null)
+            {
+                TempData["ErrorMessage"] = error ?? "Could not load the session.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            room = freshRoom;
         }
 
         return View(room);
@@ -325,6 +452,23 @@ public class InterviewController(
         return Json(pause);
     }
 
+    // Same-origin proxy for flagging a mandatory-camera policy violation (permission denied /
+    // disconnected mid-session). Flag-only — never blocks the Room or answering.
+    [HttpPost]
+    public async Task<IActionResult> CameraViolation(
+        Guid id, [FromBody] CameraViolationProxyRequest request, CancellationToken cancellationToken)
+    {
+        var (success, error) = await interviewService.ReportCameraViolationAsync(id, request.Reason, cancellationToken);
+
+        if (!success)
+        {
+            return BadRequest(new { error = error ?? "Could not report the camera violation." });
+        }
+
+        return Json(new { ok = true });
+    }
+
+    // Same-origin proxy for un-pausing the interview (Room UX Phase 2).
     [HttpPost]
     public async Task<IActionResult> Unpause(Guid id, CancellationToken cancellationToken)
     {

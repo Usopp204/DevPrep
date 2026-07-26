@@ -55,6 +55,49 @@ public class VerificationController(IVerificationService verificationService) : 
         return Json(result);
     }
 
+    // Entry-gate status for the Verify screen (attempts remaining, allowed) — same-origin proxy.
+    [HttpGet]
+    public async Task<IActionResult> EntryGate(Guid sessionId, CancellationToken cancellationToken)
+    {
+        if (sessionId == Guid.Empty)
+        {
+            return BadRequest(new { error = "sessionId is required." });
+        }
+
+        var (success, status, error) = await verificationService.GetEntryGateAsync(sessionId, cancellationToken);
+        if (!success || status is null)
+        {
+            return BadRequest(new { error = error ?? "Could not check the entry gate." });
+        }
+
+        return Json(status);
+    }
+
+    // One in-session cheating check (single frame, no challenge/liveness) — the Room posts here
+    // once per new question; InterviewAPI rate-limits how often a check actually runs.
+    [HttpPost]
+    public async Task<IActionResult> VerifyInSession(Guid sessionId, IFormFile frame, CancellationToken cancellationToken)
+    {
+        if (sessionId == Guid.Empty || frame is null || frame.Length == 0)
+        {
+            return BadRequest(new { error = "A frame is required." });
+        }
+
+        using var stream = new MemoryStream();
+        await frame.CopyToAsync(stream, cancellationToken);
+        var contentType = string.IsNullOrEmpty(frame.ContentType) ? "image/jpeg" : frame.ContentType;
+        var fileName = string.IsNullOrEmpty(frame.FileName) ? "frame.jpg" : frame.FileName;
+
+        var (success, result, error) = await verificationService.VerifyInSessionAsync(
+            sessionId, stream.ToArray(), fileName, contentType, cancellationToken);
+        if (!success || result is null)
+        {
+            return BadRequest(new { error = error ?? "In-session check failed." });
+        }
+
+        return Json(result);
+    }
+
     [HttpPost]
     public async Task<IActionResult> VerifyVoice(Guid sessionId, IFormFile audio, CancellationToken cancellationToken)
     {
