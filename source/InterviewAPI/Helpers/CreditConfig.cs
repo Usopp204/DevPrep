@@ -2,27 +2,31 @@ namespace InterviewAPI.Helpers;
 
 /// <summary>
 /// Centralized credit pricing configuration. Change here affects all credit-related logic
-/// (deduction, validation, UI messages). Temporary pricing: 1 credit per 15 minutes.
+/// (deduction, validation, UI messages). Pricing: 2 credits per minute.
 /// </summary>
 public static class CreditConfig
 {
-    /// <summary>Credit cost per 15 minutes. All pricing is a multiple of this.</summary>
-    private const int CreditPer15Minutes = 1;
+    /// <summary>Credit cost per minute. All pricing is a multiple of this.</summary>
+    private const int CreditPerMinute = 2;
+
+    /// <summary>One-time bonus for enrolling both Face and Voice biometrics (ever, per user) —
+    /// see ProfileBiometricsService.EnrollAsync.</summary>
+    public const int BiometricEnrollmentBonusCredits = 100;
 
     public static Dictionary<int, int> DurationToCreditCost { get; } = new()
     {
-        { 15, CreditPer15Minutes * 1 },      // 15 min = 1 credit
-        { 30, CreditPer15Minutes * 2 },      // 30 min = 2 credits
-        { 45, CreditPer15Minutes * 3 },      // 45 min = 3 credits
-        { 60, CreditPer15Minutes * 4 }       // 60 min = 4 credits
+        { 15, CreditPerMinute * 15 },      // 15 min = 30 credits
+        { 30, CreditPerMinute * 30 },      // 30 min = 60 credits
+        { 45, CreditPerMinute * 45 },      // 45 min = 90 credits
+        { 60, CreditPerMinute * 60 }       // 60 min = 120 credits
     };
 
     public static int GetCreditCost(int durationMinutes)
     {
         if (DurationToCreditCost.TryGetValue(durationMinutes, out var cost))
             return cost;
-        // Fallback: linear calculation (1 credit per 15 min)
-        return (durationMinutes + 14) / 15;
+        // Fallback: linear calculation (2 credits per minute)
+        return durationMinutes * CreditPerMinute;
     }
 
     public static bool TryGetSuitableDuration(int currentBalance, out int suggestedDuration)

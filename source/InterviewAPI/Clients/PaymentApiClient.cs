@@ -112,6 +112,55 @@ public class PaymentApiClient : IPaymentApiClient
         }
     }
 
+    public async Task<CreditAwardResponse> AwardCreditAsync(
+        Guid userId, int amount, Guid referenceId, string description, CancellationToken ct)
+    {
+        try
+        {
+            var request = new
+            {
+                UserId = userId,
+                Amount = amount,
+                ReferenceId = referenceId,
+                Description = description
+            };
+
+            var response = await _httpClient.PostAsJsonAsync(
+                "/api/internal/credit/award", request, ct);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning(
+                    "PaymentAPI award credit failed: status={StatusCode}, userId={UserId}, amount={Amount}",
+                    response.StatusCode, userId, amount);
+                return new CreditAwardResponse
+                {
+                    Success = false,
+                    Message = $"PaymentAPI error: {response.StatusCode}"
+                };
+            }
+
+            using var stream = await response.Content.ReadAsStreamAsync(ct);
+            var result = await JsonSerializer.DeserializeAsync<CreditAwardResponse>(stream, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }, ct)
+                ?? new CreditAwardResponse { Success = false, Message = "Empty response" };
+
+            _logger.LogInformation(
+                "PaymentAPI award credit result: userId={UserId}, amount={Amount}, success={Success}, awarded={Awarded}, balanceAfter={Balance}",
+                userId, amount, result.Success, result.Awarded, result.BalanceAfter);
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "PaymentAPI award credit exception: userId={UserId}, amount={Amount}", userId, amount);
+            return new CreditAwardResponse
+            {
+                Success = false,
+                Message = $"Error: {ex.Message}"
+            };
+        }
+    }
+
     public async Task<int> GetBalanceAsync(Guid userId, CancellationToken ct)
     {
         try
