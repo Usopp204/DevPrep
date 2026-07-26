@@ -15,7 +15,7 @@ from .config import (
     VOICE_MATCH_THRESHOLD, VOICE_MODEL_VERSION,
     load_calibration,
 )
-from .face_engine import FaceQualityError, extract_face_embedding
+from .face_engine import FaceQualityError, MultipleFacesError, extract_face_embedding
 from .liveness_face import verify_face_live
 from .liveness_voice import verify_voice_challenge
 from .schemas import (
@@ -93,6 +93,14 @@ async def verify(
             probe = extract_face_embedding(data)["embedding"]
         else:
             probe = extract_voice_embedding(data)["embedding"]
+    except MultipleFacesError as exc:
+        # Structured detail (not just a string) — the in-session cheating check is the only
+        # caller of this endpoint today and needs the actual face_count, not a message to parse.
+        raise HTTPException(status_code=422, detail={
+            "code": "multiple_faces",
+            "face_count": exc.face_count,
+            "message": str(exc),
+        })
     except (FaceQualityError, VoiceQualityError) as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 
@@ -123,7 +131,15 @@ async def verify_face_live_endpoint(
 
     threshold = _threshold_for("face")
     identity = result.get("identity_score")
-    passed = bool(result["live"] and identity is not None and identity >= threshold)
+    # Liveness (`result["live"]`) is intentionally NOT part of the pass/fail decision — the yaw
+    # measurement it depends on is broken on real hardware: real-rig data (2026-07-24) showed
+    # YawRange of just 0.55-1.61° during a clear, deliberate head turn (the 18° magnitude
+    # threshold assumes a working signal; it isn't one — see liveness_face.py). Entry gate is
+    # face-match only for now. `live`/`yaw_range`/`moved_enough`/`direction_ok` are still
+    # computed and returned/recorded (Detail JSON on the .NET side) purely as diagnostics, in
+    # case someone investigates and re-enables liveness later.
+    # TODO: investigate face.pose indexing / frame capture timing before re-enabling liveness.
+    passed = bool(identity is not None and identity >= threshold)
     return FaceVerifyLiveResponse(passed=passed, threshold=threshold, **result)
 
 

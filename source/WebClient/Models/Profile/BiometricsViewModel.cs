@@ -11,6 +11,15 @@ public class BiometricStatusModel
     public DateTime? VoiceUpdatedAt { get; set; }
 }
 
+// Mirrors InterviewAPI.DTOs.Biometrics.BiometricEnrollResponse.
+public class BiometricEnrollModel
+{
+    public string Modality { get; set; } = string.Empty;
+    public int Dim { get; set; }
+    public double? Quality { get; set; }
+    public bool BonusAwarded { get; set; }
+}
+
 // View model for Profile/Identity (biometric enrollment page).
 public class BiometricsViewModel
 {
