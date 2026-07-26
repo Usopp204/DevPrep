@@ -24,4 +24,7 @@ public interface IAdminQuestionService
 
     // Thêm hàm đồng bộ lại toàn bộ
     Task<AdminReindexResultDto> ReindexAllQuestionsAsync();
+
+    //thê,
+    Task<List<AdminPositionDto>> GetAllPositionsAsync();
 }
