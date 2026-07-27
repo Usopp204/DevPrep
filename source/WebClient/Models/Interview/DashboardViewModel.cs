@@ -15,5 +15,10 @@ public class DashboardViewModel
     public List<SessionHistoryItemDto> RecentSessions { get; set; } = new();
     public InterviewSidebarViewModel Sidebar { get; set; } = new() { ActiveItem = "New" };
 
+    // Current credit balance, shown next to the Duration options so the price/affordability of
+    // each is clear before Start (see WebClient.Helpers.CreditPricing). 0 if the balance lookup
+    // failed or the user could not be resolved from the auth cookie.
+    public int CreditBalance { get; set; }
+
     public string? ErrorMessage { get; set; }
 }
