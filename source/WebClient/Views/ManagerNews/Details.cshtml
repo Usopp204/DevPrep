@@ -2,8 +2,10 @@
 @{
     Layout = null;
     var status = Model.Status?.Trim() ?? "Draft";
+    var isDeleted = Model.IsDeleted;
     var isPublished = string.Equals(status, "Published", StringComparison.OrdinalIgnoreCase);
     var isDraft = string.Equals(status, "Draft", StringComparison.OrdinalIgnoreCase);
+    var displayStatus = isDeleted ? "Deleted" : status;
     var publishedAtText = Model.PublishedAt.HasValue ? Model.PublishedAt.Value.ToString("dd/MM/yyyy HH:mm") : "Not published";
 }
 <!DOCTYPE html>
@@ -36,9 +38,10 @@
         <div class="breadcrumb-custom"><span class="text-muted-custom">Manager</span><span class="text-muted-custom mx-2">&gt;</span><a href="/Manager/News" class="text-decoration-none" style="color:#94a3b8;">News</a><span class="text-muted-custom mx-2">&gt;</span><span style="color:#6366f1;">Article Detail</span></div>
         <div class="row g-4"><div class="col-lg-8">
             <div class="mb-3 d-flex align-items-center gap-2 flex-wrap">
-                @if (isPublished) { <span class="badge-published">Published</span> }
+                @if (isDeleted) { <span class="badge-archived">Deleted</span> }
+                else if (isPublished) { <span class="badge-published">Published</span> }
                 else if (isDraft) { <span class="badge-draft">Draft</span> }
-                else { <span class="badge-archived">@status</span> }
+                else { <span class="badge-archived">@displayStatus</span> }
                 <span class="small" style="color:#a5b4fc;">Category: @(Model.CategoryName ?? "None")</span>
             </div>
             <h1 class="content-title">@Model.Title</h1>
@@ -49,7 +52,7 @@
         </div><div class="col-lg-4">
             <div class="side-card"><div class="side-title">Performance Metrics</div><div class="text-muted-custom small mb-1">Views</div><div class="metric-value">@Model.ViewCount.ToString("N0")</div></div>
             <div class="side-card"><div class="side-title">Article Summary</div><div class="summary-text">@(string.IsNullOrWhiteSpace(Model.Summary) ? "No summary provided." : Model.Summary)</div></div>
-            <div class="side-card"><div class="side-title">Article Metadata</div><div class="meta-row"><div class="meta-label">Status</div><div class="meta-value">@if (isPublished) { <span class="badge-published">Published</span> } else if (isDraft) { <span class="badge-draft">Draft</span> } else { <span class="badge-archived">@status</span> }</div></div><div class="meta-row"><div class="meta-label">Slug</div><div class="meta-value"><span class="slug-box">@Model.Slug</span></div></div><div class="meta-row"><div class="meta-label">News ID</div><div class="meta-value">@Model.NewsId</div></div><div class="meta-row"><div class="meta-label">Category</div><div class="meta-value">@(Model.CategoryName ?? "Uncategorized")</div></div><div class="meta-row"><div class="meta-label">Published At</div><div class="meta-value">@publishedAtText</div></div><div class="meta-row"><div class="meta-label">Created At</div><div class="meta-value">@Model.CreatedAt.ToString("dd/MM/yyyy HH:mm")</div></div><div class="meta-row"><div class="meta-label">Updated At</div><div class="meta-value">@Model.UpdatedAt.ToString("dd/MM/yyyy HH:mm")</div></div></div>
+            <div class="side-card"><div class="side-title">Article Metadata</div><div class="meta-row"><div class="meta-label">Status</div><div class="meta-value">@if (isDeleted) { <span class="badge-archived">Deleted</span> } else if (isPublished) { <span class="badge-published">Published</span> } else if (isDraft) { <span class="badge-draft">Draft</span> } else { <span class="badge-archived">@displayStatus</span> }</div></div><div class="meta-row"><div class="meta-label">Slug</div><div class="meta-value"><span class="slug-box">@Model.Slug</span></div></div><div class="meta-row"><div class="meta-label">News ID</div><div class="meta-value">@Model.NewsId</div></div><div class="meta-row"><div class="meta-label">Category</div><div class="meta-value">@(Model.CategoryName ?? "Uncategorized")</div></div><div class="meta-row"><div class="meta-label">Published At</div><div class="meta-value">@publishedAtText</div></div><div class="meta-row"><div class="meta-label">Created At</div><div class="meta-value">@Model.CreatedAt.ToString("dd/MM/yyyy HH:mm")</div></div><div class="meta-row"><div class="meta-label">Updated At</div><div class="meta-value">@Model.UpdatedAt.ToString("dd/MM/yyyy HH:mm")</div></div></div>
         </div></div>
     </div></main>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

@@ -55,7 +55,7 @@ public class ManagerPaymentsController : ControllerBase
             orders = orders.Where(o => o.CreatedAt >= query.DateFrom.Value);
 
         if (query.DateTo.HasValue)
-            orders = orders.Where(o => o.CreatedAt <= query.DateTo.Value);
+            orders = orders.Where(o => o.CreatedAt < query.DateTo.Value.Date.AddDays(1));
 
         if (query.MinAmount.HasValue)
             orders = orders.Where(o => o.Amount >= query.MinAmount.Value);
@@ -195,7 +195,6 @@ public class ManagerPaymentsController : ControllerBase
             // Order.UserId chứa AccountId (lấy từ header X-User-Id do ApiGateway forward từ JWT sub = AccountId)
             var accountIds = items.Select(i => i.UserId).Distinct().ToList();
             var connString = _connString;
-            _logger.LogInformation("EnrichWithUserNames: connString starts with = {Start}", connString[..Math.Min(50, connString.Length)]);
             var nameMap = new Dictionary<Guid, (string? FullName, string? Email)>();
 
             using var conn = new SqlConnection(connString);
@@ -211,7 +210,7 @@ public class ManagerPaymentsController : ControllerBase
                 LEFT JOIN DevPrep_Auth.dbo.Accounts a ON a.AccountId = p.AccountId
                 WHERE p.UserId IN ({idList})";
 
-            _logger.LogInformation("EnrichWithUserNames: querying {Count} accountIds. SQL = {Sql}", accountIds.Count, sql);
+            _logger.LogInformation("EnrichWithUserNames: querying {Count} user profiles.", accountIds.Count);
 
             using var cmd = new SqlCommand(sql, conn);
             using var reader = await cmd.ExecuteReaderAsync(ct);

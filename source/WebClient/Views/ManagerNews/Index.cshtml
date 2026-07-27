@@ -18,6 +18,7 @@
                 {
                     ["keyword"] = ViewBag.Keyword,
                     ["status"] = ViewBag.Status,
+                    ["categoryId"] = ((Guid?)ViewBag.CategoryId)?.ToString(),
                     ["page"] = page.ToString(),
                     ["pageSize"] = pageSize.ToString()
                 };
@@ -183,6 +184,14 @@
         .status-published { background: rgba(16,185,129,.14); color: #34d399; }
         .status-draft { background: rgba(245,158,11,.16); color: #fbbf24; }
         .status-archived { background: rgba(239,68,68,.15); color: #f87171; }
+        .status-deleted { background: rgba(239,68,68,.15); color: #f87171; }
+
+        .deleted-row { opacity: 0.72; }
+        .deleted-row .news-title { color: #94a3b8 !important; text-decoration: line-through; }
+
+        .slug-text { color: var(--text-muted); font-size: 12px; }
+        .summary-text { color: var(--text-muted); font-size: 12px; max-width: 380px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .date-text { color: var(--text-muted); font-size: 12px; }
 
         .action-btn {
             width: 34px; height: 34px; border: none; background: transparent;
@@ -233,9 +242,22 @@
             <form method="get" action="/Manager/News" id="managerFilterForm" class="filter-card" onsubmit="document.getElementById('pageIdxInput').value = 1;">
                 <input type="hidden" name="page" id="pageIdxInput" value="@pageIndex" />
                 <div class="row g-3 align-items-end">
-                    <div class="col-12 col-lg-8">
+                    <div class="col-12 col-lg-5">
                         <div class="filter-label">Search</div>
                         <input name="keyword" value="@ViewBag.Keyword" type="text" class="form-control admin-input" placeholder="Search title, slug, or summary..." />
+                    </div>
+                    <div class="col-6 col-lg-2">
+                        <div class="filter-label">Category</div>
+                        <select name="categoryId" class="form-select admin-select">
+                            <option value="">All Categories</option>
+                            @if (ViewBag.Categories != null)
+                            {
+                                foreach (var cat in (List<WebClient.Models.Manager.ManagerNewsCategoryViewModel>)ViewBag.Categories)
+                                {
+                                    <option value="@cat.CategoryId" selected="@(ViewBag.CategoryId != null && ((Guid?)ViewBag.CategoryId).Value == cat.CategoryId ? "selected" : null)">@cat.Name</option>
+                                }
+                            }
+                        </select>
                     </div>
                     <div class="col-6 col-lg-2">
                         <div class="filter-label">Status</div>
@@ -244,14 +266,13 @@
                             <option value="Published" selected="@(ViewBag.Status == "Published")">Published</option>
                             <option value="Draft" selected="@(ViewBag.Status == "Draft")">Draft</option>
                             <option value="Archived" selected="@(ViewBag.Status == "Archived")">Archived</option>
+                            <option value="Deleted" selected="@(ViewBag.Status == "Deleted")">Deleted</option>
                         </select>
                     </div>
                     <div class="col-6 col-lg-2">
                         <button class="btn-filter" type="submit">Apply Filter</button>
                     </div>
-                </div>
-                <div class="row g-3 mt-1">
-                    <div class="col-12 col-lg-2 offset-lg-10">
+                    <div class="col-6 col-lg-2">
                         <a class="btn-clear" href="/Manager/News">Clear</a>
                     </div>
                 </div>
@@ -262,11 +283,11 @@
                     <table class="table admin-table align-middle">
                         <thead>
                             <tr>
-                                <th style="width: 40%;">Article</th>
-                                <th style="width: 15%;">Category</th>
+                                <th style="width: 28%;">Title & Slug</th>
+                                <th style="width: 28%;">Summary</th>
                                 <th style="width: 12%;">Status</th>
                                 <th style="width: 8%;">Views</th>
-                                <th style="width: 15%;">Published</th>
+                                <th style="width: 14%;">Created At</th>
                                 <th style="width: 8%;" class="text-end">Actions</th>
                             </tr>
                         </thead>
@@ -275,28 +296,42 @@
                             {
                                 foreach (var item in Model.Items)
                                 {
-                                    var statusClass = (item.Status ?? "").ToLowerInvariant() switch
+                                    var statusClass = item.IsDeleted ? "status-deleted" : (item.Status ?? "").ToLowerInvariant() switch
                                     {
                                         "published" => "status-published",
                                         "draft" => "status-draft",
                                         "archived" => "status-archived",
                                         _ => "status-draft"
                                     };
+                                    var statusText = item.IsDeleted ? "DELETED" : (item.Status ?? "Unknown").ToUpperInvariant();
 
-                                    <tr>
+                                    <tr class="@(item.IsDeleted ? "deleted-row" : "")">
                                         <td>
-                                            <div class="news-title">@item.Title</div>
-                                            <div class="news-summary">@(string.IsNullOrWhiteSpace(item.Summary) ? item.Slug : item.Summary)</div>
+                                            <div class="news-title" title="@item.Title">@item.Title</div>
+                                            <div class="slug-text">@item.Slug</div>
                                         </td>
-                                        <td>@(item.CategoryName ?? "Uncategorized")</td>
+                                        <td>
+                                            <div class="summary-text" title="@item.Summary">
+                                                @(string.IsNullOrWhiteSpace(item.Summary) ? "No summary provided." : item.Summary)
+                                            </div>
+                                        </td>
                                         <td>
                                             <span class="status-badge @statusClass">
-                                                <span style="font-size: 8px;">●</span>
-                                                @(item.Status ?? "Unknown")
+                                                <span style="font-size: 8px;">&bull;</span>
+                                                @statusText
                                             </span>
                                         </td>
-                                        <td>@item.ViewCount</td>
-                                        <td>@((item.PublishedAt ?? item.CreatedAt).ToString("MMM dd, yyyy"))</td>
+                                        <td>
+                                            @if (item.ViewCount >= 1000)
+                                            {
+                                                @((item.ViewCount / 1000.0).ToString("0.0") + "k")
+                                            }
+                                            else
+                                            {
+                                                @item.ViewCount
+                                            }
+                                        </td>
+                                        <td class="date-text">@item.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
                                         <td class="text-end">
                                             <a class="action-btn action-view" href="/Manager/News/@item.NewsId" title="View details">
                                                 <span class="material-symbols-outlined fs-5">visibility</span>

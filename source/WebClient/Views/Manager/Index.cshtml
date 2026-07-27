@@ -2,8 +2,8 @@
 @{
     Layout = null;
     var nowVn = DateTime.UtcNow.AddHours(7);
-    string Num(long? v) => v.HasValue ? v.Value.ToString("N0") : "—";
-    string Vnd(decimal? v) => v.HasValue ? v.Value.ToString("N0") + " VND" : "—";
+    string Num(long? v) => v.HasValue ? v.Value.ToString("N0") : "-";
+    string Vnd(decimal? v) => v.HasValue ? v.Value.ToString("N0") + " VND" : "-";
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -110,12 +110,12 @@
                     <button type="submit" class="ad-apply" id="rev-apply">Apply</button>
                 </form>
             </div>
-            <div class="ad-rev-summary mb-3" id="rev-summary">Loading…</div>
+            <div class="ad-rev-summary mb-3" id="rev-summary">Loading...</div>
             <div class="ad-chart" id="rev-chart">
                 <div class="ad-chart-grid">
                     <div></div><div></div><div></div><div></div>
                 </div>
-                <div class="ad-chart-note" id="rev-note">Loading revenue…</div>
+                <div class="ad-chart-note" id="rev-note">Loading revenue...</div>
             </div>
         </section>
     </main>
@@ -158,9 +158,9 @@
                 const days = zeroFill(fromEl.value, toEl.value, data.days);
                 summaryEl.innerHTML =
                     'Total: <b>' + vnd(data.totalRevenue) + ' VND</b>' +
-                    ' • ' + data.totalOrders + ' paid order' + (data.totalOrders === 1 ? '' : 's') +
-                    ' • ' + vnd(data.totalCredits) + ' credits sold' +
-                    ' <span style="color:#928f9a;">(' + fromEl.value + ' → ' + toEl.value + ')</span>';
+                    ' - ' + data.totalOrders + ' paid order' + (data.totalOrders === 1 ? '' : 's') +
+                    ' - ' + vnd(data.totalCredits) + ' credits sold' +
+                    ' <span style="color:#928f9a;">(' + fromEl.value + ' -> ' + toEl.value + ')</span>';
 
                 chartEl.querySelectorAll('.ad-chart-bar, .ad-chart-note').forEach(e => e.remove());
 
@@ -176,7 +176,7 @@
                     const bar = document.createElement('div');
                     bar.className = 'bar';
                     bar.style.height = (Number(d.revenue) > 0 ? Math.max(h, 3) : 0) + 'px';
-                    bar.title = d.date.substring(0, 10) + ' — ' + vnd(d.revenue) + ' VND (' + d.orders + ' order' + (d.orders === 1 ? '' : 's') + ')';
+                    bar.title = d.date.substring(0, 10) + ' - ' + vnd(d.revenue) + ' VND (' + d.orders + ' order' + (d.orders === 1 ? '' : 's') + ')';
 
                     const label = document.createElement('span');
                     label.textContent = (i % labelStep === 0) ? d.date.substring(8, 10) + '/' + d.date.substring(5, 7) : '';
@@ -190,8 +190,8 @@
             async function load() {
                 if (!fromEl.value || !toEl.value) return;
                 if (fromEl.value > toEl.value) { setNote('"From" date must be before "To" date.', true); return; }
-                setNote('Loading revenue…');
-                summaryEl.textContent = 'Loading…';
+                setNote('Loading revenue...');
+                summaryEl.textContent = 'Loading...';
                 try {
                     const res = await fetch('/Manager/RevenueSeries?from=' + fromEl.value + '&to=' + toEl.value, { headers: { 'Accept': 'application/json' } });
                     const json = await res.json();

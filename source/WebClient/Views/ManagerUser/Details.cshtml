@@ -304,13 +304,13 @@
                                 <div class="label">Verification</div>
                                 <div class="d-flex gap-3 flex-wrap">
                                     <span class="badge-soft @(Model.IsEmailVerified ? "badge-active" : "badge-blocked")">
-                                        @(Model.IsEmailVerified ? "Email ✓" : "Email ✗")
+                                        @(Model.IsEmailVerified ? "Email Verified" : "Email Not Verified")
                                     </span>
                                     <span class="badge-soft @(Model.IsFaceVerified ? "badge-active" : "badge-blocked")">
-                                        @(Model.IsFaceVerified ? "Face ✓" : "Face ✗")
+                                        @(Model.IsFaceVerified ? "Face Verified" : "Face Not Verified")
                                     </span>
                                     <span class="badge-soft @(Model.IsVoiceVerified ? "badge-active" : "badge-blocked")">
-                                        @(Model.IsVoiceVerified ? "Voice ✓" : "Voice ✗")
+                                        @(Model.IsVoiceVerified ? "Voice Verified" : "Voice Not Verified")
                                     </span>
                                 </div>
                             </div>

@@ -177,11 +177,11 @@
                     <span class="font-code-label text-[11px] uppercase text-on-surface-variant">Rating</span>
                     <div class="flex gap-xs" id="feedback-rating">
                         <button data-val="" class="chip active px-md py-1 rounded-full bg-primary-container/10 border border-primary-container text-primary-container font-code-label text-[10px] uppercase">All</button>
-                        <button data-val="5" class="chip px-md py-1 rounded-full bg-surface-container border border-border-subtle text-on-surface-variant text-[10px] uppercase font-code-label hover:text-primary transition-all">5Γÿà</button>
-                        <button data-val="4" class="chip px-md py-1 rounded-full bg-surface-container border border-border-subtle text-on-surface-variant text-[10px] uppercase font-code-label hover:text-primary transition-all">4Γÿà</button>
-                        <button data-val="3" class="chip px-md py-1 rounded-full bg-surface-container border border-border-subtle text-on-surface-variant text-[10px] uppercase font-code-label hover:text-primary transition-all">3Γÿà</button>
-                        <button data-val="2" class="chip px-md py-1 rounded-full bg-surface-container border border-border-subtle text-on-surface-variant text-[10px] uppercase font-code-label hover:text-primary transition-all">2Γÿà</button>
-                        <button data-val="1" class="chip px-md py-1 rounded-full bg-surface-container border border-border-subtle text-on-surface-variant text-[10px] uppercase font-code-label hover:text-primary transition-all">1Γÿà</button>
+                        <button data-val="5" class="chip px-md py-1 rounded-full bg-surface-container border border-border-subtle text-on-surface-variant text-[10px] uppercase font-code-label hover:text-on-surface transition-all">5*</button>
+                        <button data-val="4" class="chip px-md py-1 rounded-full bg-surface-container border border-border-subtle text-on-surface-variant text-[10px] uppercase font-code-label hover:text-on-surface transition-all">4*</button>
+                        <button data-val="3" class="chip px-md py-1 rounded-full bg-surface-container border border-border-subtle text-on-surface-variant text-[10px] uppercase font-code-label hover:text-on-surface transition-all">3*</button>
+                        <button data-val="2" class="chip px-md py-1 rounded-full bg-surface-container border border-border-subtle text-on-surface-variant text-[10px] uppercase font-code-label hover:text-on-surface transition-all">2*</button>
+                        <button data-val="1" class="chip px-md py-1 rounded-full bg-surface-container border border-border-subtle text-on-surface-variant text-[10px] uppercase font-code-label hover:text-on-surface transition-all">1*</button>
                     </div>
                 </div>
                 @if (feedbackKind == "ai")
@@ -444,7 +444,7 @@
                     <td class="px-lg py-lg font-code-label text-on-surface-variant">${formatDate(item.createdAt)}</td>
                     <td class="px-lg py-lg text-right">
                         <div class="flex justify-end gap-md">
-                            <button class="text-on-surface-variant hover:text-primary transition-colors" onclick="event.stopPropagation(); openFeedbackDetail('${item.id}')" title="View details"><span class="material-symbols-outlined text-[20px]">visibility</span></button>
+                            <button class="text-on-surface-variant hover:text-on-surface transition-colors" onclick="event.stopPropagation(); openFeedbackDetail('${item.id}')" title="View details"><span class="material-symbols-outlined text-[20px]">visibility</span></button>
                         </div>
                     </td>
                 </tr>
