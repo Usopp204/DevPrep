@@ -1,9 +1,10 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using PaymentAPI.Data;
 using PaymentAPI.DTOs;
+using PaymentAPI.Models;
 
 namespace PaymentAPI.Controllers;
 
@@ -13,10 +14,15 @@ namespace PaymentAPI.Controllers;
 public class ManagerPaymentsController : ControllerBase
 {
     private readonly PaymentDbContext _db;
+    private readonly ILogger<ManagerPaymentsController> _logger;
+    private readonly string _connString;
 
-    public ManagerPaymentsController(PaymentDbContext db)
+    public ManagerPaymentsController(PaymentDbContext db, ILogger<ManagerPaymentsController> logger, IConfiguration config)
     {
         _db = db;
+        _logger = logger;
+        _connString = config.GetValue<string>("PAYMENT_DB_CONNECTION_STRING")
+            ?? db.Database.GetDbConnection().ConnectionString;
     }
 
     [HttpGet]
@@ -64,13 +70,30 @@ public class ManagerPaymentsController : ControllerBase
             .SumAsync(o => (decimal?)o.Amount, cancellationToken) ?? 0m;
         var paidCount = await orders.CountAsync(o => o.Status == "Paid", cancellationToken);
 
-        var items = await (
-            from order in orders
-            join tx in _db.PaymentTransactions.AsNoTracking()
-                on order.OrderId equals tx.OrderId into txGroup
-            from tx in txGroup.OrderByDescending(t => t.CreatedAt).Take(1).DefaultIfEmpty()
-            orderby order.CreatedAt descending, order.OrderId descending
-            select new ManagerPaymentListItemDto
+        var pageOrders = await orders
+            .OrderByDescending(o => o.CreatedAt)
+            .ThenByDescending(o => o.OrderId)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        var orderIds = pageOrders.Select(o => o.OrderId).ToList();
+
+        var transactions = orderIds.Count > 0
+            ? await _db.PaymentTransactions.AsNoTracking()
+                .Where(t => orderIds.Contains(t.OrderId))
+                .OrderByDescending(t => t.CreatedAt)
+                .ToListAsync(cancellationToken)
+            : new List<PaymentTransaction>();
+
+        var txDict = transactions
+            .GroupBy(t => t.OrderId)
+            .ToDictionary(g => g.Key, g => g.First());
+
+        var items = pageOrders.Select(order =>
+        {
+            txDict.TryGetValue(order.OrderId, out var tx);
+            return new ManagerPaymentListItemDto
             {
                 OrderId = order.OrderId,
                 OrderCode = order.OrderCode,
@@ -83,14 +106,12 @@ public class ManagerPaymentsController : ControllerBase
                 Status = order.Status,
                 PaidAt = order.PaidAt,
                 CreatedAt = order.CreatedAt,
-                VnpTransactionNo = tx == null ? null : tx.VnpTransactionNo,
-                VnpBankCode = tx == null ? null : tx.VnpBankCode,
-                VnpResponseCode = tx == null ? null : tx.VnpResponseCode,
-                TransactionStatus = tx == null ? null : tx.Status
-            })
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync(cancellationToken);
+                VnpTransactionNo = tx?.VnpTransactionNo,
+                VnpBankCode = tx?.VnpBankCode,
+                VnpResponseCode = tx?.VnpResponseCode,
+                TransactionStatus = tx?.Status
+            };
+        }).ToList();
 
         await EnrichWithUserNamesAsync(items, cancellationToken);
 
@@ -169,31 +190,58 @@ public class ManagerPaymentsController : ControllerBase
     private async Task EnrichWithUserNamesAsync(List<ManagerPaymentListItemDto> items, CancellationToken ct)
     {
         if (items.Count == 0) return;
-        var userIds = items.Select(i => i.UserId).Distinct().ToList();
-        var connString = _db.Database.GetDbConnection().ConnectionString;
-        var nameMap = new Dictionary<Guid, (string? FullName, string? Email)>();
-
-        using var conn = new SqlConnection(connString);
-        await conn.OpenAsync(ct);
-        var idList = string.Join(",", userIds.Select(id => $"'{id}'"));
-        var sql = $@"SELECT p.UserId, p.FullName, a.Email FROM DevPrep_User.dbo.UserProfiles p LEFT JOIN DevPrep_Auth.dbo.Accounts a ON p.AccountId = a.AccountId WHERE p.UserId IN ({idList})";
-        using var cmd = new SqlCommand(sql, conn);
-        using var reader = await cmd.ExecuteReaderAsync(ct);
-        while (await reader.ReadAsync(ct))
+        try
         {
-            var uid = reader.GetGuid(0);
-            var name = reader.IsDBNull(1) ? null : reader.GetString(1);
-            var email = reader.IsDBNull(2) ? null : reader.GetString(2);
-            nameMap[uid] = (name, email);
-        }
+            // Order.UserId chứa AccountId (lấy từ header X-User-Id do ApiGateway forward từ JWT sub = AccountId)
+            var accountIds = items.Select(i => i.UserId).Distinct().ToList();
+            var connString = _connString;
+            _logger.LogInformation("EnrichWithUserNames: connString starts with = {Start}", connString[..Math.Min(50, connString.Length)]);
+            var nameMap = new Dictionary<Guid, (string? FullName, string? Email)>();
 
-        foreach (var item in items)
-        {
-            if (nameMap.TryGetValue(item.UserId, out var info))
+            using var conn = new SqlConnection(connString);
+            await conn.OpenAsync(ct);
+            var idList = string.Join(",", accountIds.Select(id => $"'{id}'"));
+            // Order.UserId = UserProfile.UserId (bảng DevPrep_User), KHÔNG phải AccountId
+            var sql = $@"
+                SELECT 
+                    p.UserId, 
+                    p.FullName, 
+                    a.Email 
+                FROM DevPrep_User.dbo.UserProfiles p
+                LEFT JOIN DevPrep_Auth.dbo.Accounts a ON a.AccountId = p.AccountId
+                WHERE p.UserId IN ({idList})";
+
+            _logger.LogInformation("EnrichWithUserNames: querying {Count} accountIds. SQL = {Sql}", accountIds.Count, sql);
+
+            using var cmd = new SqlCommand(sql, conn);
+            using var reader = await cmd.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
             {
-                item.FullName = info.FullName;
-                item.Email = info.Email;
+                var accId = reader.GetGuid(0);
+                var name = reader.IsDBNull(1) ? null : reader.GetString(1);
+                var email = reader.IsDBNull(2) ? null : reader.GetString(2);
+                nameMap[accId] = (name, email);
             }
+
+            _logger.LogInformation("EnrichWithUserNames: found {Count} user records", nameMap.Count);
+
+            foreach (var item in items)
+            {
+                if (nameMap.TryGetValue(item.UserId, out var info))
+                {
+                    item.FullName = !string.IsNullOrWhiteSpace(info.FullName) ? info.FullName : info.Email;
+                    item.Email = info.Email;
+                }
+                else
+                {
+                    _logger.LogWarning("EnrichWithUserNames: no user found for UserId (AccountId) = {UserId}", item.UserId);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log lỗi để debug, không crash endpoint
+            _logger.LogError(ex, "EnrichWithUserNamesAsync failed");
         }
     }
 }
