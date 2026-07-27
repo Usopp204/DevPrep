@@ -8,7 +8,9 @@ using WebClient.Models.Interview;
 using WebClient.Services.Evaluation;
 using WebClient.Services.Feedback;
 using WebClient.Services.Interview;
+using WebClient.Services.Payment;
 using WebClient.Services.Profile;
+using WebClient.Services.Shared;
 
 namespace WebClient.Controllers.Interview;
 
@@ -16,14 +18,31 @@ public class InterviewController(
     IInterviewService interviewService,
     IBiometricsService biometricsService,
     IVerificationService verificationService,
-    IFeedbackService feedbackService) : Controller
+    IFeedbackService feedbackService,
+    IPaymentService paymentService) : Controller
 {
     private const int HistoryPageSize = 5;
     private const int RecentSessionsPageSize = 6;
 
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
-        return View(await interviewService.GetDashboardAsync(cancellationToken));
+        return View(await BuildDashboardAsync(cancellationToken));
+    }
+
+    // Populates the dashboard plus the user's current credit balance (shown next to each
+    // duration option — see CreditPricing/Views/Interview/Index.cshtml). Balance stays 0 if the
+    // user id can't be resolved from the auth cookie or the lookup fails; PaymentService already
+    // swallows its own errors and returns an empty CreditBalanceDto (see GetCreditBalanceAsync).
+    private async Task<DashboardViewModel> BuildDashboardAsync(CancellationToken cancellationToken)
+    {
+        var dashboard = await interviewService.GetDashboardAsync(cancellationToken);
+        var userId = JwtUserId.FromToken(Request.Cookies["access_token"]);
+        if (userId is not null)
+        {
+            var balance = await paymentService.GetCreditBalanceAsync(userId.Value, cancellationToken);
+            dashboard.CreditBalance = balance.Balance;
+        }
+        return dashboard;
     }
 
     [HttpPost]
@@ -47,7 +66,7 @@ public class InterviewController(
 
         if (!result.Success)
         {
-            var dashboard = await interviewService.GetDashboardAsync(cancellationToken);
+            var dashboard = await BuildDashboardAsync(cancellationToken);
             dashboard.DurationMinutes = model.DurationMinutes;
             dashboard.Level = model.Level;
             dashboard.Position = model.Position;

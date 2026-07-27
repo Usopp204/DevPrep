@@ -152,11 +152,17 @@
             <div id="idle-modal-backdrop" class="idle-modal-backdrop d-none"></div>
             <div id="idle-banner" class="idle-banner d-none"></div>
 
+            <!-- In-session cheating strike popup — same .idle-banner/.idle-modal-backdrop shell as
+                 the idle Tier-1 reminder above, a separate DOM instance so the two can never
+                 collide (see interview-room.js showCheatingBanner/hideCheatingBanner). Only for a
+                 real strike (identity mismatch / multiple faces / no-face just converted) — the
+                 sidebar #cheating-warning above still carries the gentle no-face-not-yet-a-strike
+                 reminder on its own, this popup never covers that case. -->
+            <div id="cheating-banner-backdrop" class="idle-modal-backdrop d-none"></div>
+            <div id="cheating-banner" class="idle-banner d-none"></div>
+
             <div class="chat-input-bar">
                 <div class="chat-input-inner">
-                    <button type="button" class="icon-btn" title="Attach (coming soon)" disabled>
-                        <span class="material-symbols-outlined">attach_file</span>
-                    </button>
                     <textarea id="answer-input" class="chat-input" rows="1"
                               placeholder="Type your answer…"
                               @(isActive ? "" : "disabled")></textarea>
@@ -253,6 +259,7 @@
             <p id="cancel-interview-description">
                 Your current interview will be cancelled. You will not receive an evaluation report,
                 and you will not be able to submit interview feedback.
+                <strong>Credit already spent on this interview will not be refunded.</strong>
             </p>
             <div class="cancel-interview-dialog-actions">
                 <button id="continue-interview-btn" class="btn-continue-interview" type="button">Continue Interview</button>

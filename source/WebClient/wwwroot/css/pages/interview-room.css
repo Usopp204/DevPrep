@@ -164,6 +164,34 @@ body.room-page {
     line-height: 18px;
 }
 
+/* Three severity tones for the in-session cheating check (set via JS setCheatingWarning's tone
+   argument) — Strictness="Strict" means strike 3 ends the interview with no refund, so a real
+   strike (warning/critical) must read as visibly more serious than a no-face reminder (notice)
+   that hasn't cost anything yet. */
+.cheating-warning--notice {
+    background: rgba(249, 217, 73, 0.12);
+    border-color: rgba(249, 217, 73, 0.28);
+    color: var(--color-warning);
+}
+
+.cheating-warning--warning {
+    background: rgba(255, 180, 171, 0.12);
+    border-color: rgba(255, 180, 171, 0.3);
+    color: var(--color-destructive);
+    font-weight: 600;
+}
+
+.cheating-warning--critical {
+    background: rgba(255, 180, 171, 0.22);
+    border-color: var(--color-destructive);
+    color: var(--color-destructive);
+    font-weight: 700;
+}
+
+.cheating-warning--critical::before {
+    content: "⚠ ";
+}
+
 .room-progress {
     padding: 24px;
     border-top: 1px solid var(--color-border);
@@ -570,6 +598,23 @@ body.room-page {
     background: var(--color-surface-container-high);
 }
 
+/* Cheating strike popup (#cheating-banner) — reuses .idle-banner.tier1's popup shell as-is (see
+   interview-room.js showCheatingBanner). Both tones this popup can show for ("warning"/"critical"
+   in the sidebar, Nhóm 2) already read as red there, so the title keeps that same severity color
+   rather than introducing a second color scheme just for the popup. */
+.cheating-banner-title {
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--color-destructive);
+}
+
+/* Strike 2 of 3: the next one ends the interview with no refund — a plain border isn't enough
+   to separate "one more strike is fatal" from a routine reminder. */
+.idle-banner.tier1.cheating-banner--final {
+    border-color: var(--color-destructive);
+    box-shadow: 0 20px 50px -20px rgba(0, 0, 0, 0.6), 0 0 0 2px var(--color-destructive);
+}
+
 /* Pause overlay (Room UX Phase 2) — covers the whole chat panel (.room-chat has position:
    relative already) so the current question and history can't be read/looked-up while paused. */
 .pause-overlay {
@@ -636,23 +681,6 @@ body.room-page {
     box-shadow: 0 0 0 1px var(--color-primary);
 }
 
-.icon-btn {
-    padding: 12px;
-    background: none;
-    border: none;
-    color: var(--color-text-secondary);
-    cursor: pointer;
-    transition: color 0.2s;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.icon-btn:hover {
-    color: var(--color-primary);
-}
-
 .chat-input {
     width: 100%;
     background: transparent;
@@ -663,6 +691,13 @@ body.room-page {
     resize: none;
     padding: 12px 0;
     outline: none;
+    /* Auto-grows via JS (autoResizeInput) up to this cap, then scrolls — same "grow, then
+       scroll" pattern as Claude/ChatGPT's input box. line-height is inherited from
+       body.room-page (24px); 200px covers ~7 lines of wrapped text plus the 24px of vertical
+       padding above, landing in the middle of a 6-8 line comfort range before scrolling kicks
+       in. Keep MAX_INPUT_HEIGHT_PX in interview-room.js equal to this value. */
+    max-height: 200px;
+    overflow-y: auto;
 }
 
 .chat-input::placeholder {

@@ -49,5 +49,15 @@ public interface ISessionRepository
     // Flag-only audit counter (mandatory-camera policy) — see SessionService.ReportCameraViolationAsync.
     Task<int> IncrementCameraViolationAsync(Guid sessionId, CancellationToken ct);
 
+    // Atomic auto-resume for a pause whose quota has expired (SessionService.
+    // AutoResumeIfPauseExpiredAsync): only applies if the session is still exactly as read
+    // (Status=="Paused" AND PausedAt==expectedPausedAt) — same conditional-UPDATE pattern as
+    // UpdateStatusIfAsync/IncrementAnsweredIfAsync. Guards against two concurrent callers (e.g.
+    // overlapping GetTimerAsync polls) both computing and double-applying the paused-seconds
+    // delta: only the first to hit this WHERE clause wins, the second sees PausedAt already
+    // changed and no-ops.
+    Task<bool> TryAutoResumeExpiredPauseAsync(
+        Guid sessionId, DateTime expectedPausedAt, int newTotalPausedSeconds, CancellationToken ct);
+
     Task SaveChangesAsync(CancellationToken ct);
 }
