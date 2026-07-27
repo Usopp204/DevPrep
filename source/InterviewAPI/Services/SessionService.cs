@@ -54,6 +54,38 @@ public class SessionService : ISessionService
         return session.TotalPausedSeconds + ongoing;
     }
 
+    // Self-healing check for an ongoing pause that has outlived the quota — called at the top of
+    // every read path a client can hit while paused (ResumeSessionAsync on page load/F5,
+    // GetTimerAsync on the poll loop) so the server, not the client tab, is what actually ends an
+    // expired pause. Covers the case a client-side timer can't: the user closed the tab mid-pause
+    // and only comes back after the quota would have run out — nothing client-side ran in the
+    // meantime, so this is the only place that can catch it, on the next request that touches the
+    // session.
+    //
+    // Race safety: two overlapping callers (e.g. two GetTimerAsync polls) can both observe the
+    // same expired session before either writes. TryAutoResumeExpiredPauseAsync is an atomic
+    // conditional UPDATE keyed on the exact PausedAt this caller read, so only the first one to
+    // reach the database actually applies the resume; the loser's UPDATE affects zero rows. Either
+    // way, the resumed state below is written back onto the caller's in-memory `session` — neither
+    // ResumeSessionAsync nor GetTimerAsync calls SaveChangesAsync afterwards, so this mutation can
+    // never be persisted a second time.
+    private async Task AutoResumeIfPauseExpiredAsync(InterviewSession session, CancellationToken ct)
+    {
+        if (session.Status != "Paused" || session.PausedAt is null)
+            return;
+        if (GetEffectivePausedSeconds(session) < MaxTotalPausedSeconds)
+            return;
+
+        var pausedAt = session.PausedAt.Value;
+        var newTotalPausedSeconds = session.TotalPausedSeconds + (int)(VietnamTime.Now - pausedAt).TotalSeconds;
+        await _repo.TryAutoResumeExpiredPauseAsync(session.SessionId, pausedAt, newTotalPausedSeconds, ct);
+
+        session.Status = "InProgress";
+        session.TotalPausedSeconds = newTotalPausedSeconds;
+        session.PausedAt = null;
+        session.UpdatedAt = VietnamTime.Now;
+    }
+
     private readonly ISessionRepository _repo;
     private readonly IAiServiceClient _aiServiceClient;
     private readonly IPaymentApiClient _paymentApiClient;
@@ -685,6 +717,8 @@ public class SessionService : ISessionService
         if (session is null || session.UserId != userId)
             throw new InvalidOperationException("Session not found.");
 
+        await AutoResumeIfPauseExpiredAsync(session, ct);
+
         int remaining;
         if (session.StartedAt is null)
         {
@@ -828,7 +862,7 @@ public class SessionService : ISessionService
             Status = session.Status,
             PauseCount = session.PauseCount,
             PausesRemaining = Math.Max(0, MaxPauseCount - session.PauseCount),
-            PausedSecondsRemaining = Math.Max(0, MaxTotalPausedSeconds - session.TotalPausedSeconds)
+            PausedSecondsRemaining = Math.Max(0, MaxTotalPausedSeconds - GetEffectivePausedSeconds(session))
         };
     }
 
@@ -857,7 +891,7 @@ public class SessionService : ISessionService
             RemainingSeconds = remaining,
             PauseCount = session.PauseCount,
             PausesRemaining = Math.Max(0, MaxPauseCount - session.PauseCount),
-            PausedSecondsRemaining = Math.Max(0, MaxTotalPausedSeconds - session.TotalPausedSeconds)
+            PausedSecondsRemaining = Math.Max(0, MaxTotalPausedSeconds - GetEffectivePausedSeconds(session))
         };
     }
 
@@ -880,6 +914,8 @@ public class SessionService : ISessionService
         var session = await _repo.GetWithFullHistoryAsync(sessionId, ct);
         if (session is null || session.UserId != userId)
             throw new InvalidOperationException("Session not found.");
+
+        await AutoResumeIfPauseExpiredAsync(session, ct);
 
         // Tính thời gian còn lại.
         int remaining;
@@ -969,7 +1005,7 @@ public class SessionService : ISessionService
             AnsweredQuestions = session.AnsweredQuestions,
             PauseCount = session.PauseCount,
             PausesRemaining = Math.Max(0, MaxPauseCount - session.PauseCount),
-            PausedSecondsRemaining = Math.Max(0, MaxTotalPausedSeconds - session.TotalPausedSeconds),
+            PausedSecondsRemaining = Math.Max(0, MaxTotalPausedSeconds - GetEffectivePausedSeconds(session)),
             HasSeenRoomTour = tourStatus?.HasSeenRoomTour ?? false,
             ChatHistory = chatHistory
         };

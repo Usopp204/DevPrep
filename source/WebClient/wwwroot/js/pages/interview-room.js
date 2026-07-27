@@ -184,11 +184,19 @@
     function startPauseQuotaTick() {
         if (pauseQuotaTickHandle) return;
         pauseQuotaTickHandle = setInterval(() => {
-            // Clamp at 0 — the server has no upper bound on an ONGOING pause's duration (only
-            // the NEXT pause request is rejected once the quota is already spent), so there is
-            // no "auto-resume/auto-end at 0" to mirror here; this just stops counting negative.
-            if (pausedSecondsRemaining > 0) pausedSecondsRemaining -= 1;
-            updatePauseQuotaUI();
+            if (pausedSecondsRemaining > 0) {
+                pausedSecondsRemaining -= 1;
+                updatePauseQuotaUI();
+            }
+            // Reached 0: the server is the actual source of truth for ending an expired pause
+            // (SessionService.AutoResumeIfPauseExpiredAsync — it self-heals on the next
+            // Resume/Timer call even if this tab was closed the whole time). This call just makes
+            // an open tab react immediately instead of waiting for the next poll. Stop the tick
+            // first so a slow response can't be raced by a second call next second.
+            if (pausedSecondsRemaining <= 0) {
+                stopPauseQuotaTick();
+                resumeInterview();
+            }
         }, 1000);
     }
 
@@ -579,14 +587,18 @@
     function cleanupTransientUi() {
         closeCancelConfirmation();
         destroyRoomTour();
+        hideCheatingBanner();
     }
 
     function openCancelConfirmation() {
         if (ended) return;
 
         if (!cancelInterviewDialog || typeof cancelInterviewDialog.showModal !== "function") {
+            // Kept in sync with #cancel-interview-description in Room.cshtml — this is the
+            // fallback for browsers without <dialog> support, same warning either way.
             const warning = "Your current interview will be cancelled. " +
-                "You will not receive an evaluation report, and you will not be able to submit interview feedback.";
+                "You will not receive an evaluation report, and you will not be able to submit interview feedback. " +
+                "Credit already spent on this interview will not be refunded.";
             if (window.confirm(`Cancel this interview?\n\n${warning}`)) cancelInterview();
             return;
         }
@@ -613,6 +625,7 @@
         if (ended) return;
         cleanupTransientUi();
         ended = true;
+        clearDraft();
         hideIdleBanner();
         disableLifecycleControls();
         if (statusEl) statusEl.textContent = "Finalizing...";
@@ -650,6 +663,7 @@
         if (ended) return;
         cleanupTransientUi();
         ended = true;
+        clearDraft();
         hideIdleBanner();
         if (countdownHandle) clearInterval(countdownHandle);
         disableLifecycleControls();
@@ -687,6 +701,57 @@
 
     inputEl?.addEventListener("input", hideContentWarning);
 
+    // Auto-resize the answer textarea as the user types, up to MAX_INPUT_HEIGHT_PX (kept equal
+    // to .chat-input's max-height in interview-room.css), then it scrolls internally instead of
+    // pushing the rest of the Room around — same "grow, then scroll" pattern as Claude/ChatGPT.
+    // Resetting height to "auto" before reading scrollHeight is required: scrollHeight only ever
+    // grows otherwise, it never shrinks back down once text is deleted.
+    const MAX_INPUT_HEIGHT_PX = 200;
+
+    function autoResizeInput() {
+        if (!inputEl) return;
+        inputEl.style.height = "auto";
+        inputEl.style.height = Math.min(inputEl.scrollHeight, MAX_INPUT_HEIGHT_PX) + "px";
+    }
+
+    inputEl?.addEventListener("input", autoResizeInput);
+
+    // Answer draft persistence (Room UX) — sessionStorage so an F5 mid-answer doesn't lose what
+    // the user was typing. Keyed by sessionId so switching sessions in the same browser can't mix
+    // drafts up. Debounced on input (not saved on every keystroke); cleared once the answer is
+    // actually sent or the interview ends, so nothing lingers past its useful lifetime.
+    const answerDraftKey = `answer-draft:${root.dataset.sessionId}`;
+    let draftSaveTimeoutHandle = null;
+
+    function saveDraftNow() {
+        if (!inputEl) return;
+        if (inputEl.value) sessionStorage.setItem(answerDraftKey, inputEl.value);
+        else sessionStorage.removeItem(answerDraftKey);
+    }
+
+    function scheduleDraftSave() {
+        clearTimeout(draftSaveTimeoutHandle);
+        draftSaveTimeoutHandle = setTimeout(saveDraftNow, 300);
+    }
+
+    function clearDraft() {
+        clearTimeout(draftSaveTimeoutHandle);
+        sessionStorage.removeItem(answerDraftKey);
+    }
+
+    function restoreDraft() {
+        if (!inputEl || ended) return;
+        const saved = sessionStorage.getItem(answerDraftKey);
+        if (saved) {
+            inputEl.value = saved;
+            // Setting .value programmatically does not fire an "input" event, so the box would
+            // otherwise stay at its 1-row height even when the restored draft is several lines.
+            autoResizeInput();
+        }
+    }
+
+    inputEl?.addEventListener("input", scheduleDraftSave);
+
     async function sendAnswer() {
         const content = inputEl.value.trim();
         if (!content || !currentQuestionId || ended) return;
@@ -701,6 +766,8 @@
         }
 
         inputEl.value = "";
+        autoResizeInput();
+        clearDraft();
         inputEl.disabled = true;
         sendBtn.disabled = true;
         // Was previously left enabled here, so a Skip click while Send was still in flight could
@@ -897,6 +964,7 @@
             }
             // Fill the box; the user reviews/edits and presses Send (existing message flow).
             inputEl.value = data.text || "";
+            autoResizeInput();
             inputEl.focus();
         } catch (err) {
             appendBubble("AI", `Transcription error: ${err.message}.`);
@@ -984,15 +1052,83 @@
     const inSessionCanvas = document.createElement("canvas");
     let inSessionCheckInFlight = false;
 
-    function setCheatingWarning(text) {
+    // tone controls which .cheating-warning--* class is applied (see interview-room.css):
+    // "notice" (gentle no-face reminder, not yet a strike), "warning" (identity mismatch — could
+    // be a lighting/angle issue), "critical" (multiple faces / a strike just got recorded — the
+    // most serious category, worth a visually distinct look from a plain mismatch).
+    const cheatingWarningTones = ["notice", "warning", "critical"];
+
+    function setCheatingWarning(text, tone) {
         if (!cheatingWarningEl) return;
+        cheatingWarningTones.forEach((t) => cheatingWarningEl.classList.remove(`cheating-warning--${t}`));
         if (!text) {
             cheatingWarningEl.textContent = "";
             cheatingWarningEl.classList.add("d-none");
             return;
         }
         cheatingWarningEl.textContent = text;
+        if (tone) cheatingWarningEl.classList.add(`cheating-warning--${tone}`);
         cheatingWarningEl.classList.remove("d-none");
+    }
+
+    // Maps the server's WarningType to a client-rendered tone + prefix. NoFace only escalates to
+    // "critical" the exact check it converts into a strike (data.noFaceJustBecameStrike) — every
+    // other NoFace check is just a gentle heads-up, not a cheating accusation.
+    function toneForWarning(data) {
+        if (data.warningType === "MultiFace") return "critical";
+        if (data.warningType === "NoFace") return data.noFaceJustBecameStrike ? "critical" : "notice";
+        if (data.warningType === "IdentityMismatch") return "warning";
+        return "notice";
+    }
+
+    // Cheating strike popup — reuses the exact .idle-banner/.idle-modal-backdrop classes and
+    // "tier1" popup shell the idle reminder above already uses, as a separate DOM instance (own
+    // ids) so the two can never collide if they happen to fire close together. Only shown for a
+    // REAL strike (tone "warning"/"critical") — a "notice" (no-face, not yet a strike) stays
+    // sidebar-only via setCheatingWarning so it doesn't interrupt for something that isn't a
+    // strike yet. Dismissed by an OK button only, no auto-hide timer: Strictness="Strict" means
+    // missing a warning can cost the whole interview (and its credit, non-refundable), so this
+    // follows the same reasoning the idle Tier-1 popup already uses for its own OK-only button —
+    // an auto-hide timer risks the user never seeing it if they glance away right when it appears.
+    const cheatingBannerEl = document.getElementById("cheating-banner");
+    const cheatingBannerBackdropEl = document.getElementById("cheating-banner-backdrop");
+
+    function hideCheatingBanner() {
+        cheatingBannerBackdropEl?.classList.add("d-none");
+        if (!cheatingBannerEl) return;
+        cheatingBannerEl.className = "idle-banner d-none";
+        cheatingBannerEl.innerHTML = "";
+    }
+
+    // isFinalWarning = this strike is one away from the cap (e.g. 2/3) — the NEXT strike ends the
+    // interview, so this popup gets extra emphasis (its own title + an explicit "one more strike"
+    // line) instead of reading like a routine reminder.
+    function showCheatingBanner(strikeText, isFinalWarning) {
+        if (!cheatingBannerEl) return;
+        cheatingBannerEl.className = isFinalWarning ? "idle-banner tier1 cheating-banner--final" : "idle-banner tier1";
+        cheatingBannerEl.innerHTML = "";
+
+        const title = document.createElement("p");
+        title.className = "idle-banner-message cheating-banner-title";
+        title.textContent = isFinalWarning ? "Final Warning" : "Cheating Warning";
+
+        const body = document.createElement("p");
+        body.className = "idle-banner-message";
+        body.textContent = isFinalWarning
+            ? `${strikeText} One more strike will end this interview, with no credit refund.`
+            : strikeText;
+
+        const okBtn = document.createElement("button");
+        okBtn.type = "button";
+        okBtn.className = "idle-banner-ok";
+        okBtn.textContent = "OK";
+        okBtn.addEventListener("click", hideCheatingBanner);
+
+        cheatingBannerEl.appendChild(title);
+        cheatingBannerEl.appendChild(body);
+        cheatingBannerEl.appendChild(okBtn);
+        cheatingBannerBackdropEl?.classList.remove("d-none");
+        okBtn.focus();
     }
 
     async function captureAndVerifyInSession() {
@@ -1016,20 +1152,34 @@
             const data = await response.json().catch(() => null);
             if (!response.ok || !data) return;
 
-            if (data.noFaceDetected) {
-                setCheatingWarning("Please make sure your face is visible to the camera.");
-                return;
-            }
-
             if (data.passed) {
                 setCheatingWarning(null);
                 return;
             }
 
-            setCheatingWarning(`Cheating warning: ${data.strikeCount}/${data.maxStrikes} — ${data.message}`);
+            if (data.warningType === "NoFace" && !data.noFaceJustBecameStrike) {
+                // Gentle heads-up only — not a strike yet, so no strike count attached.
+                setCheatingWarning(data.message, "notice");
+                return;
+            }
+
+            // A real strike happened this check: IdentityMismatch, MultiFace, or NoFace just
+            // converted (data.noFaceJustBecameStrike). Attach the strike count exactly once here
+            // — the server's Message for these three cases is deliberately count-free.
+            const strikeText = `${data.message} (${data.strikeCount}/${data.maxStrikes} warnings)`;
+            setCheatingWarning(strikeText, toneForWarning(data));
+
+            // The popup is for a real strike only, and is skipped when the session is about to
+            // end this same check — appendBubble + the redirect below already make that outcome
+            // impossible to miss, so a dismiss-by-OK popup racing a 3s auto-redirect would just
+            // be confusing on top of it.
+            if (!data.shouldEndSession) {
+                showCheatingBanner(strikeText, data.strikeCount === data.maxStrikes - 1);
+            }
 
             if (data.shouldEndSession) {
                 ended = true;
+                clearDraft();
                 if (inputEl) inputEl.disabled = true;
                 if (sendBtn) sendBtn.disabled = true;
                 if (endBtn) endBtn.disabled = true;
@@ -1112,6 +1262,7 @@
     // Applies the initial Paused state (e.g. a page refresh while paused) and initializes the
     // pause-quota display either way.
     setPausedUI(paused);
+    restoreDraft();
 
     // First-ever visit to a Room for this user: the tour runs BEFORE greeting/TTS/idle-tracking so
     // a first-timer isn't hearing a question narrated while also reading tour popovers. Every later
