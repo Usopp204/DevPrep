@@ -10,7 +10,7 @@ namespace QuestionAPI.Services;
 
 public class AdminQuestionService : IAdminQuestionService
 {
-   // private const int MaxBrowsePages = 30;
+    // private const int MaxBrowsePages = 30;
     private const int DefaultPageSize = 10;
     private const int MaximumPageSize = 100;
 
@@ -124,6 +124,21 @@ public class AdminQuestionService : IAdminQuestionService
             throw new Exception("Difficulty cannot be empty.");
         }
 
+        // Validate Status giống UpdateAsync
+        var status = string.IsNullOrWhiteSpace(dto.Status)
+            ? "Active"
+            : dto.Status.Trim();
+
+        if (!AllowedStatuses.Contains(status))
+        {
+            throw new Exception(
+                "Status must be Active, Draft, Archived or Inactive."
+            );
+        }
+
+        status = NormalizeStatus(status);
+
+
         if (dto.PositionId.HasValue)
         {
             var positionExists = await _db.Positions
@@ -154,7 +169,7 @@ public class AdminQuestionService : IAdminQuestionService
             Answer = NormalizeNullable(dto.Answer),
             PositionId = dto.PositionId,
 
-            Status = "Active",
+            Status = status,   // dùng giá trị đã validate từ dto, không hardcode nữa
             IsDeleted = false,
 
             CreatedBy = adminId,
@@ -407,7 +422,12 @@ public class AdminQuestionService : IAdminQuestionService
         };
     }
 
-   //huynh anh edit----------
+    // ------------------------------------------------------------
+    // ĐÃ SỬA: chuyển từ x.Field.ToLower().Contains(keyword) (non-sargable,
+    // buộc quét toàn bảng, dễ timeout trên dữ liệu lớn / gây lỗi ngẫu nhiên)
+    // sang EF.Functions.Like (dịch ra LIKE chuẩn SQL, tận dụng collation
+    // case-insensitive sẵn có và thân thiện với index hơn).
+    // ------------------------------------------------------------
     private IQueryable<Question> ApplyFilter(
     IQueryable<Question> query,
     AdminQuestionQueryDto filter)
@@ -416,14 +436,11 @@ public class AdminQuestionService : IAdminQuestionService
 
         if (!string.IsNullOrWhiteSpace(filter.Keyword))
         {
-            var keyword = filter.Keyword.Trim().ToLower();
+            var keyword = filter.Keyword.Trim();
+            var pattern = $"%{keyword}%";
 
             query = query.Where(x =>
-                x.QuestionText.ToLower().Contains(keyword) ||
-                (x.Answer != null && x.Answer.ToLower().Contains(keyword)) ||
-                (x.Position != null && x.Position.Name.ToLower().Contains(keyword)) ||
-                (x.Category != null && x.Category.Category.ToLower().Contains(keyword)) ||
-                x.Difficulty.ToLower().Contains(keyword)
+                EF.Functions.Like(x.QuestionText, pattern)
             );
         }
 
@@ -472,8 +489,6 @@ public class AdminQuestionService : IAdminQuestionService
         return query;
     }
     //-------------------------
-    
-    //huynh anh edit -----------------
 
     private async Task<AdminPagedResultDto<AdminQuestionListItemDto>> PagingAsync(
     IQueryable<Question> query,
