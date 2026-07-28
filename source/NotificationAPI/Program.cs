@@ -31,6 +31,7 @@ builder.Services.AddDbContext<NotificationDbContext>(options =>
 // Repositories
 builder.Services.AddScoped<IEmailTemplateRepository, EmailTemplateRepository>();
 builder.Services.AddScoped<IEmailLogRepository, EmailLogRepository>();
+builder.Services.AddScoped<IAnnouncementRepository, AnnouncementRepository>();
 
 // Services
 builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
@@ -58,6 +59,98 @@ app.MapGet("/health", () => Results.Ok(new
 .WithName("GetHealth")
 .WithOpenApi();
 
+// ── Announcements (thông báo hệ thống hiển thị popup trên homepage) ──────────
+// PUBLIC: guest + user đều đọc được (WebClient gọi server-side qua gateway
+// /api/notifications/announcements — route strip prefix nên tới đây là /announcements).
+app.MapGet("/announcements", async (IAnnouncementRepository repo) =>
+{
+    var items = await repo.GetActiveAsync(5);
+    return Results.Ok(items.Select(a => new
+    {
+        a.AnnouncementId,
+        a.Title,
+        a.Content,
+        a.CreatedAt
+    }));
+});
+
+// ADMIN CRUD (guard quyền ở WebClient AdminController — giống pattern /admin/* của PaymentAPI).
+app.MapGet("/admin/announcements", async (IAnnouncementRepository repo, bool onlyDeleted = false) =>
+{
+    var items = await repo.GetAdminListAsync(onlyDeleted, 100);
+    return Results.Ok(items.Select(a => new
+    {
+        a.AnnouncementId, a.Title, a.Content, a.IsActive, a.IsDeleted, a.DeletedAt, a.CreatedAt, a.UpdatedAt
+    }));
+});
+
+app.MapPost("/admin/announcements", async (AnnouncementRequest req, IAnnouncementRepository repo) =>
+{
+    var error = ValidateAnnouncement(req);
+    if (error is not null) return Results.BadRequest(new { Message = error });
+
+    var now = NotificationAPI.Helpers.VietnamTime.Now;
+    var announcement = new Announcement
+    {
+        AnnouncementId = Guid.NewGuid(),
+        Title = req.Title.Trim(),
+        Content = req.Content.Trim(),
+        IsActive = req.IsActive,
+        IsDeleted = false,
+        CreatedAt = now,
+        UpdatedAt = now
+    };
+    await repo.AddAsync(announcement);
+    await repo.SaveChangesAsync();
+    return Results.Ok(new { announcement.AnnouncementId });
+});
+
+app.MapPut("/admin/announcements/{id:guid}", async (Guid id, AnnouncementRequest req, IAnnouncementRepository repo) =>
+{
+    var error = ValidateAnnouncement(req);
+    if (error is not null) return Results.BadRequest(new { Message = error });
+
+    var announcement = await repo.GetTrackedByIdAsync(id);
+    if (announcement is null || announcement.IsDeleted)
+        return Results.NotFound(new { Message = "Announcement not found." });
+
+    announcement.Title = req.Title.Trim();
+    announcement.Content = req.Content.Trim();
+    announcement.IsActive = req.IsActive;
+    announcement.UpdatedAt = NotificationAPI.Helpers.VietnamTime.Now;
+    await repo.SaveChangesAsync();
+    return Results.Ok(new { announcement.AnnouncementId });
+});
+
+app.MapDelete("/admin/announcements/{id:guid}", async (Guid id, IAnnouncementRepository repo) =>
+{
+    var announcement = await repo.GetTrackedByIdAsync(id);
+    if (announcement is null) return Results.NotFound(new { Message = "Announcement not found." });
+    if (!announcement.IsDeleted)
+    {
+        var now = NotificationAPI.Helpers.VietnamTime.Now;
+        announcement.IsDeleted = true;
+        announcement.DeletedAt = now;
+        announcement.UpdatedAt = now;
+        await repo.SaveChangesAsync();
+    }
+    return Results.NoContent();
+});
+
+app.MapPost("/admin/announcements/{id:guid}/restore", async (Guid id, IAnnouncementRepository repo) =>
+{
+    var announcement = await repo.GetTrackedByIdAsync(id);
+    if (announcement is null) return Results.NotFound(new { Message = "Announcement not found." });
+    if (announcement.IsDeleted)
+    {
+        announcement.IsDeleted = false;
+        announcement.DeletedAt = null;
+        announcement.UpdatedAt = NotificationAPI.Helpers.VietnamTime.Now;
+        await repo.SaveChangesAsync();
+    }
+    return Results.Ok(new { announcement.AnnouncementId });
+});
+
 // ── Internal endpoints (thay cho consumer RabbitMQ) — AuthAPI gọi qua HTTP ──
 app.MapPost("/internal/notifications/email-verification",
     async (EmailVerificationRequested message, HttpRequest request, INotificationService service, CancellationToken ct) =>
@@ -78,6 +171,16 @@ app.MapPost("/internal/notifications/password-reset",
     .ExcludeFromDescription();
 
 app.Run();
+
+// Validate chung cho create/update announcement. Trả message lỗi hoặc null nếu hợp lệ.
+static string? ValidateAnnouncement(AnnouncementRequest req)
+{
+    if (string.IsNullOrWhiteSpace(req.Title)) return "Title is required.";
+    if (req.Title.Trim().Length > 200) return "Title must not exceed 200 characters.";
+    if (string.IsNullOrWhiteSpace(req.Content)) return "Content is required.";
+    if (req.Content.Trim().Length > 2000) return "Content must not exceed 2000 characters.";
+    return null;
+}
 
 // So khớp header X-Internal-Api-Key với khoá cấu hình. Chưa cấu hình khoá -> cho qua (tiện chạy dev).
 static bool IsInternalCallAuthorized(HttpRequest request, string? configuredKey)
@@ -155,3 +258,6 @@ static async Task SeedEmailTemplatesAsync(WebApplication app)
         await templates.SaveChangesAsync();
     }
 }
+
+/// <summary>Body tạo/sửa announcement từ trang admin.</summary>
+record AnnouncementRequest(string Title, string Content, bool IsActive = true);
