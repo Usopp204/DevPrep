@@ -151,7 +151,14 @@ input[type="date"], input[type="datetime-local"] {
 .ad-nav-item:hover { background: var(--ad-surface-container-high); color: var(--ad-on-surface-variant) !important; }
 .ad-nav-item.active { background: var(--ad-secondary-container); color: var(--ad-on-secondary-container); }
 .ad-nav-item .label { font-family: 'JetBrains Mono', monospace; font-size: 13px; letter-spacing: .05em; text-transform: uppercase; }
-.manager-sidebar .ad-nav-item:hover { background: transparent; color: var(--ad-on-surface-variant) !important; }
+.manager-sidebar .ad-sidebar-head { margin-bottom: 8px; }
+.manager-sidebar .ad-nav { flex: 0 0 auto; gap: 0; }
+.manager-sidebar .ad-nav-item { padding-top: 7px; padding-bottom: 7px; transition: none; }
+.manager-sidebar .ad-nav-item .label,
+.manager-sidebar .ad-nav-item .material-symbols-outlined { color: inherit !important; }
+.manager-sidebar .ad-nav-item:not(.active):hover { background: transparent; color: var(--ad-on-surface-variant) !important; }
+.manager-sidebar .ad-nav-item.active,
+.manager-sidebar .ad-nav-item.active:hover { background: var(--ad-secondary-container); color: var(--ad-on-secondary-container) !important; }
 
 .ad-sidebar-bottom { padding: 24px 16px 0; margin-top: auto; border-top: 1px solid var(--ad-border); }
 .ad-update-btn { width: 100%; background: var(--ad-surface-container-highest); color: var(--ad-primary); font-family: 'JetBrains Mono', monospace; font-size: 12px; padding: 12px; border-radius: .5rem; border: none; margin-bottom: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; }

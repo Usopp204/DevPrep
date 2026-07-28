@@ -11,12 +11,6 @@
     var isBlocked = string.Equals(status, "Blocked", StringComparison.OrdinalIgnoreCase);
     var isActive = string.Equals(status, "Active", StringComparison.OrdinalIgnoreCase);
     var initial = string.IsNullOrEmpty(Model.FullName) ? "?" : Model.FullName[0].ToString().ToUpper();
-    var roleClass = role.ToLowerInvariant() switch
-    {
-        "admin" => "badge-active",
-        "manager" => "badge-pending",
-        _ => "badge-blocked"
-    };
 }
 
 <!DOCTYPE html>
@@ -143,6 +137,11 @@
             color: #fbbf24;
         }
 
+        .badge-role {
+            background: rgba(99,102,241,.16);
+            color: #c4b5fd;
+        }
+
         .stat-card {
             background: #151f36;
             border: 1px solid #27324d;
@@ -241,7 +240,7 @@
                                 <h3 class="mb-1 fw-bold">@displayName</h3>
                                 <div class="muted-text">@email</div>
                                 <div class="mt-2 d-flex gap-2">
-                                    <span class="badge-soft @roleClass">@role</span>
+                                    <span class="badge-soft badge-role">@role</span>
                                     @if (isBlocked)
                                     {
                                         <span class="badge-soft badge-blocked">Blocked</span>
@@ -270,49 +269,33 @@
                             </div>
 
                             <div class="col-6">
-                                <div class="label">Credit Balance</div>
-                                <div class="value">@Model.CreditBalance.ToString("N0")</div>
+                                <div class="label">Email Verified</div>
+                                <div class="value">@(Model.IsEmailVerified ? "Yes" : "No")</div>
                             </div>
 
                             <div class="col-6">
-                                <div class="label">Total Sessions</div>
-                                <div class="value">@Model.CompletedSessions.Count</div>
+                                <div class="label">Face Verified</div>
+                                <div class="value">@(Model.IsFaceVerified ? "Yes" : "No")</div>
+                            </div>
+
+                            <div class="col-6">
+                                <div class="label">Voice Verified</div>
+                                <div class="value">@(Model.IsVoiceVerified ? "Yes" : "No")</div>
                             </div>
 
                             <div class="col-12">
-                                <div class="label">Registered At</div>
+                                <div class="label">Created At</div>
                                 <div class="value">@Model.RegistrationTimestamp.ToString("dd/MM/yyyy HH:mm")</div>
                             </div>
 
-                            @if (Model.LastLoginAt.HasValue)
-                            {
-                                <div class="col-12">
-                                    <div class="label">Last Login</div>
-                                    <div class="value">@Model.LastLoginAt.Value.ToString("dd/MM/yyyy HH:mm")</div>
-                                </div>
-                            }
-
-                            @if (Model.UpdatedAt.HasValue)
-                            {
-                                <div class="col-12">
-                                    <div class="label">Updated At</div>
-                                    <div class="value">@Model.UpdatedAt.Value.ToString("dd/MM/yyyy HH:mm")</div>
-                                </div>
-                            }
+                            <div class="col-12">
+                                <div class="label">Updated At</div>
+                                <div class="value">@(Model.UpdatedAt?.ToString("dd/MM/yyyy HH:mm") ?? "N/A")</div>
+                            </div>
 
                             <div class="col-12">
-                                <div class="label">Verification</div>
-                                <div class="d-flex gap-3 flex-wrap">
-                                    <span class="badge-soft @(Model.IsEmailVerified ? "badge-active" : "badge-blocked")">
-                                        @(Model.IsEmailVerified ? "Email Verified" : "Email Not Verified")
-                                    </span>
-                                    <span class="badge-soft @(Model.IsFaceVerified ? "badge-active" : "badge-blocked")">
-                                        @(Model.IsFaceVerified ? "Face Verified" : "Face Not Verified")
-                                    </span>
-                                    <span class="badge-soft @(Model.IsVoiceVerified ? "badge-active" : "badge-blocked")">
-                                        @(Model.IsVoiceVerified ? "Voice Verified" : "Voice Not Verified")
-                                    </span>
-                                </div>
+                                <div class="label">Last Login</div>
+                                <div class="value">@(Model.LastLoginAt?.ToString("dd/MM/yyyy HH:mm") ?? "Never")</div>
                             </div>
 
                             @if (isBlocked && !string.IsNullOrWhiteSpace(Model.BlockedReason))
@@ -320,6 +303,11 @@
                                 <div class="col-12">
                                     <div class="label">Blocked Reason</div>
                                     <div class="value text-danger">@Model.BlockedReason</div>
+                                </div>
+
+                                <div class="col-12">
+                                    <div class="label">Blocked At</div>
+                                    <div class="value">@(Model.BlockedAt?.ToString("dd/MM/yyyy HH:mm") ?? "N/A")</div>
                                 </div>
                             }
                         </div>
