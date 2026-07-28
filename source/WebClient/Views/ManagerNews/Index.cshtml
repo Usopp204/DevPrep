@@ -6,11 +6,7 @@
 
     var pageIndex = Model.PageIndex > 0 ? Model.PageIndex : 1;
     var pageSize = Model.PageSize > 0 ? Model.PageSize : 10;
-    var totalCount = Model.TotalCount;
     var totalPages = Model.TotalPages > 0 ? Model.TotalPages : 1;
-
-    var startItem = totalCount == 0 ? 0 : ((pageIndex - 1) * pageSize) + 1;
-    var endItem = Math.Min(pageIndex * pageSize, totalCount);
 
     string BuildPageUrl(int page)
     {
@@ -42,7 +38,7 @@
     <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
     <style>
         :root {
-            --bg-main: #0f1424;
+            --bg-main: #0b0c10;
             --bg-panel: #111827;
             --bg-panel-2: #151f36;
             --bg-head: #171a24;
@@ -65,17 +61,17 @@
 
         .admin-main-wrapper {
             margin-left: 260px;
-            padding-top: 78px;
+            padding-top: 70px;
             min-height: 100vh;
             background: var(--bg-main);
         }
 
         .admin-content {
-            padding: 28px 28px 60px;
+            padding: 24px 28px 48px;
         }
 
         .page-title {
-            font-size: 30px;
+            font-size: 2rem;
             font-weight: 800;
             letter-spacing: -0.04em;
             margin-bottom: 4px;
@@ -88,16 +84,12 @@
         }
 
         .filter-card {
-            border: 1px solid var(--border-main);
-            background: rgba(17, 24, 39, 0.95);
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 18px;
+            margin-bottom: 24px;
         }
 
         .filter-label {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 11px;
+            font-family: 'Inter', sans-serif;
+            font-size: 12px;
             font-weight: 800;
             color: var(--text-blue);
             text-transform: uppercase;
@@ -107,10 +99,10 @@
 
         .admin-input, .admin-select {
             height: 42px;
-            border-radius: 7px;
-            border: 1px solid #30384e;
-            background: #0f1322;
-            color: #ffffff;
+            border-radius: 8px;
+            border: 1px solid #292c3d !important;
+            background: #11121a !important;
+            color: #ffffff !important;
             font-size: 14px;
             box-shadow: none !important;
         }
@@ -129,95 +121,72 @@
         .admin-input::placeholder { color: #64748b; }
 
         .btn-filter {
-            height: 42px; width: 100%; border: none; border-radius: 7px;
-            background: #35304f; color: #ffffff; font-weight: 800;
+            height: 42px; width: 100%; border: none; border-radius: 8px;
+            background: #2e2a47; color: #ffffff; font-weight: 800;
         }
-        .btn-filter:hover { background: #4f46e5; color: #ffffff; }
-
-        .btn-clear {
-            height: 42px; width: 100%; border-radius: 7px;
-            border: 1px solid #30384e; background: transparent;
-            color: #cbd5e1; font-weight: 700; text-decoration: none;
-            display: flex; align-items: center; justify-content: center;
-        }
-        .btn-clear:hover { background: rgba(255,255,255,.06); color: #ffffff; }
+        .btn-filter:hover { background: #3b3659; color: #ffffff; }
 
         .table-shell {
-            border: 1px solid var(--border-main);
-            background: var(--bg-panel);
+            border: 1px solid #242636;
+            background: #11121a;
             border-radius: 12px;
             overflow: hidden;
+            padding: 8px;
         }
 
         .admin-table {
-            width: 100%; margin: 0; color: #dbeafe;
-            --bs-table-bg: #111827; --bs-table-color: #dbeafe;
-            --bs-table-border-color: #242b3e; --bs-table-hover-bg: #151f36;
+            width: 100%; margin: 0; color: #cbd5e1;
+            --bs-table-bg: transparent; --bs-table-color: #cbd5e1;
+            --bs-table-border-color: #1e202e; --bs-table-hover-bg: #171926;
             --bs-table-hover-color: #ffffff;
         }
 
         .admin-table thead th {
-            background: #171a24 !important; color: #a9c7f5 !important;
-            font-family: 'JetBrains Mono', monospace; font-size: 11px;
-            text-transform: uppercase; letter-spacing: 0.08em;
-            border-bottom: 1px solid var(--border-main);
-            padding: 15px 14px; white-space: nowrap;
+            background: #161722 !important; color: #94a3b8 !important;
+            font-family: 'Inter', sans-serif; font-size: 12px;
+            text-transform: uppercase; letter-spacing: 0.07em;
+            border-bottom: 1px solid #242636;
+            padding: 16px 14px; white-space: nowrap;
         }
 
-        .admin-table tbody tr { background: #111827 !important; }
+        .admin-table tbody tr { background: transparent !important; }
         .admin-table tbody td {
-            background: #111827 !important; color: #dbeafe !important;
-            border-bottom: 1px solid #242b3e; padding: 16px 14px;
+            background: transparent !important; color: #cbd5e1 !important;
+            border-bottom: 1px solid #1e202e; padding: 18px 14px;
             vertical-align: middle; font-size: 14px;
         }
-        .admin-table tbody tr:hover td { background: #151f36 !important; }
+        .admin-table tbody tr:hover td { background: #171926 !important; }
 
-        .news-title { color: #ffffff; font-weight: 800; max-width: 360px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .news-summary { color: var(--text-muted); font-size: 12px; margin-top: 4px; max-width: 480px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .news-title { color: #ffffff !important; font-weight: 700; max-width: 360px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         .status-badge {
             display: inline-flex; align-items: center; gap: 6px;
-            padding: 6px 10px; border-radius: 7px;
-            font-family: 'JetBrains Mono', monospace; font-size: 11px;
-            font-weight: 800; text-transform: uppercase;
+            padding: 6px 10px; border-radius: 6px;
+            font-family: 'Inter', sans-serif; font-size: 11px;
+            font-weight: 800;
         }
-        .status-published { background: rgba(16,185,129,.14); color: #34d399; }
-        .status-draft { background: rgba(245,158,11,.16); color: #fbbf24; }
+        .status-published { background: rgba(16,185,129,.14); color: #10b981; }
+        .status-draft { background: rgba(245,158,11,.14); color: #f59e0b; }
         .status-archived { background: rgba(239,68,68,.15); color: #f87171; }
         .status-deleted { background: rgba(239,68,68,.15); color: #f87171; }
+        .status-dot { width: 6px; height: 6px; border-radius: 999px; display: inline-block; background-color: currentColor; }
 
         .deleted-row { opacity: 0.72; }
         .deleted-row .news-title { color: #94a3b8 !important; text-decoration: line-through; }
 
-        .slug-text { color: var(--text-muted); font-size: 12px; }
-        .summary-text { color: var(--text-muted); font-size: 12px; max-width: 380px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .date-text { color: var(--text-muted); font-size: 12px; }
+        .slug-text, .summary-text, .date-text { color: #94a3b8 !important; }
+        .summary-text { max-width: 380px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-        .action-btn {
-            width: 34px; height: 34px; border: none; background: transparent;
-            display: inline-flex; align-items: center; justify-content: center;
-            border-radius: 8px; transition: 0.15s ease; text-decoration: none;
-        }
-        .action-btn:hover { background: rgba(255,255,255,.08); }
-        .action-view { color: #94a3b8; }
-        .action-view:hover { color: #ffffff; }
+        .action-btn { color: #94a3b8 !important; background: none; border: none; padding: 0; line-height: 1; text-decoration: none; display: inline-flex; align-items: center; }
+        .action-btn:hover { color: #ffffff !important; }
 
-        .empty-row { height: 140px; color: #cbd5e1; text-align: center; font-weight: 600; }
+        .empty-row { color: #94a3b8 !important; padding: 44px 0 !important; text-align: center; }
 
-        .table-footer {
-            padding: 14px 16px; color: #cbd5e1; font-size: 13px;
-            display: flex; align-items: center; justify-content: space-between;
-            gap: 12px; border-top: 1px solid #242b3e; background: #111827;
-        }
-
-        .pager { display: flex; gap: 8px; align-items: center; }
-        .pager a, .pager span {
-            min-width: 34px; height: 34px; border-radius: 7px;
-            border: 1px solid #30384e; color: #cbd5e1; text-decoration: none;
-            display: inline-flex; align-items: center; justify-content: center;
-            font-size: 13px; font-weight: 700;
-        }
-        .pager .active-page { background: var(--primary); border-color: var(--primary); color: #ffffff; }
+        .page-footer { background: #11121a; border-top: 1px solid #242636; padding: 18px; }
+        .page-link-custom { background: #11121a !important; border: 1px solid #242636 !important; color: #94a3b8 !important; padding: 8px 13px; border-radius: 6px; text-decoration: none; min-width: 38px; text-align: center; display: inline-flex; align-items: center; justify-content: center; gap: 4px; font-size: 14px; }
+        .page-link-custom:hover { background: #1c1d29 !important; color: #ffffff !important; }
+        .page-link-custom.active { background: #6366f1 !important; border-color: #6366f1 !important; color: #ffffff !important; }
+        .page-link-custom.disabled { background: #0b0c10 !important; border-color: #161722 !important; color: #475569 !important; pointer-events: none; }
 
         @@media (max-width: 991.98px) {
             .admin-main-wrapper { margin-left: 0; padding-top: 70px; }
@@ -232,21 +201,31 @@
 
     <main class="admin-main-wrapper">
         <div class="admin-content">
-            <div class="d-flex align-items-start justify-content-between gap-3 mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
-                    <h1 class="page-title">News Articles</h1>
-                    <p class="page-subtitle">View published articles, drafts and archived news content.</p>
+                    <h1 class="page-title m-0">Content Inventory</h1>
+                    <div class="page-subtitle mt-2">Manage news articles, status, categories and content visibility.</div>
                 </div>
             </div>
 
             <form method="get" action="/Manager/News" id="managerFilterForm" class="filter-card" onsubmit="document.getElementById('pageIdxInput').value = 1;">
                 <input type="hidden" name="page" id="pageIdxInput" value="@pageIndex" />
                 <div class="row g-3 align-items-end">
-                    <div class="col-12 col-lg-5">
+                    <div class="col-md-4">
                         <div class="filter-label">Search</div>
-                        <input name="keyword" value="@ViewBag.Keyword" type="text" class="form-control admin-input" placeholder="Search title, slug, or summary..." />
+                        <input name="keyword" value="@ViewBag.Keyword" type="text" class="form-control admin-input" placeholder="Search news articles, slugs..." />
                     </div>
-                    <div class="col-6 col-lg-2">
+                    <div class="col-md-3">
+                        <div class="filter-label">Status</div>
+                        <select name="status" class="form-select admin-select">
+                            <option value="">All Statuses</option>
+                            <option value="Published" selected="@(ViewBag.Status == "Published")">Published</option>
+                            <option value="Draft" selected="@(ViewBag.Status == "Draft")">Draft</option>
+                            <option value="Archived" selected="@(ViewBag.Status == "Archived")">Archived</option>
+                            <option value="Deleted" selected="@(ViewBag.Status == "Deleted")">Deleted</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
                         <div class="filter-label">Category</div>
                         <select name="categoryId" class="form-select admin-select">
                             <option value="">All Categories</option>
@@ -259,21 +238,8 @@
                             }
                         </select>
                     </div>
-                    <div class="col-6 col-lg-2">
-                        <div class="filter-label">Status</div>
-                        <select name="status" class="form-select admin-select">
-                            <option value="">All Status</option>
-                            <option value="Published" selected="@(ViewBag.Status == "Published")">Published</option>
-                            <option value="Draft" selected="@(ViewBag.Status == "Draft")">Draft</option>
-                            <option value="Archived" selected="@(ViewBag.Status == "Archived")">Archived</option>
-                            <option value="Deleted" selected="@(ViewBag.Status == "Deleted")">Deleted</option>
-                        </select>
-                    </div>
-                    <div class="col-6 col-lg-2">
+                    <div class="col-md-2">
                         <button class="btn-filter" type="submit">Apply Filter</button>
-                    </div>
-                    <div class="col-6 col-lg-2">
-                        <a class="btn-clear" href="/Manager/News">Clear</a>
                     </div>
                 </div>
             </form>
@@ -317,7 +283,7 @@
                                         </td>
                                         <td>
                                             <span class="status-badge @statusClass">
-                                                <span style="font-size: 8px;">&bull;</span>
+                                                <span class="status-dot"></span>
                                                 @statusText
                                             </span>
                                         </td>
@@ -332,7 +298,7 @@
                                             }
                                         </td>
                                         <td class="date-text">@item.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
-                                        <td class="text-end">
+                                        <td class="text-end pe-4">
                                             <a class="action-btn action-view" href="/Manager/News/@item.NewsId" title="View details">
                                                 <span class="material-symbols-outlined fs-5">visibility</span>
                                             </a>
@@ -353,42 +319,25 @@
                     </table>
                 </div>
 
-                <div class="table-footer">
-                    <div>
-                        Showing <strong>@startItem</strong>-<strong>@endItem</strong> of <strong>@totalCount</strong> articles
-                    </div>
-                    @if (totalPages > 1)
-                    {
-                        var prevPage = pageIndex <= 1 ? 1 : pageIndex - 1;
-                        var nextPage = pageIndex >= totalPages ? totalPages : pageIndex + 1;
-
-                        <div class="pager">
-                            <a href="@BuildPageUrl(prevPage)"><i class="fa-solid fa-chevron-left"></i></a>
-                            @{
-                                var maxVisiblePages = 30;
-                                var startPage = Math.Max(1, pageIndex - (maxVisiblePages / 2));
-                                var endPage = Math.Min(totalPages, startPage + maxVisiblePages - 1);
-                                if (endPage - startPage + 1 < maxVisiblePages)
-                                {
-                                    startPage = Math.Max(1, endPage - maxVisiblePages + 1);
-                                }
-                            }
-
-                            @for (var i = startPage; i <= endPage; i++)
+                @if (totalPages > 1)
+                {
+                    <div class="page-footer d-flex justify-content-between align-items-center">
+                        <a href="@BuildPageUrl(pageIndex - 1)" class="page-link-custom @(pageIndex == 1 ? "disabled" : "")">
+                            <span class="material-symbols-outlined fs-5">chevron_left</span>
+                            Previous
+                        </a>
+                        <div class="d-flex gap-2 flex-wrap justify-content-center">
+                            @for (var i = 1; i <= totalPages; i++)
                             {
-                                if (i == pageIndex)
-                                {
-                                    <span class="active-page">@i</span>
-                                }
-                                else
-                                {
-                                    <a href="@BuildPageUrl(i)">@i</a>
-                                }
+                                <a href="@BuildPageUrl(i)" class="page-link-custom @(pageIndex == i ? "active" : "")">@i</a>
                             }
-                            <a href="@BuildPageUrl(nextPage)"><i class="fa-solid fa-chevron-right"></i></a>
                         </div>
-                    }
-                </div>
+                        <a href="@BuildPageUrl(pageIndex + 1)" class="page-link-custom @(pageIndex == totalPages ? "disabled" : "")">
+                            Next
+                            <span class="material-symbols-outlined fs-5">chevron_right</span>
+                        </a>
+                    </div>
+                }
             </div>
         </div>
     </main>
