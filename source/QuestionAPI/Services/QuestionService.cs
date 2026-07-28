@@ -33,7 +33,8 @@ public class QuestionService : IQuestionService
                 q.QuestionText.ToLower().Contains(kw) ||
                 (q.Answer != null && q.Answer.ToLower().Contains(kw)) ||
                 (q.Position != null && q.Position.Name.ToLower().Contains(kw)) ||
-                (q.Category != null && q.Category.Category.ToLower().Contains(kw)));
+                (q.Category != null && q.Category.Category.ToLower().Contains(kw)) ||
+                q.Difficulty.ToLower().Contains(kw));
         }
 
         if (!string.IsNullOrWhiteSpace(difficulty))

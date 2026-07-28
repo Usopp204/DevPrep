@@ -19,12 +19,16 @@ public class ManagerNewsController : Controller
     public async Task<IActionResult> Index(
         [FromQuery] int page = 1,
         [FromQuery] string? keyword = null,
-        [FromQuery] string? status = null)
+        [FromQuery] string? status = null,
+        [FromQuery] Guid? categoryId = null)
     {
-        var result = await _service.GetListAsync(page, 10, keyword, status);
+        var result = await _service.GetListAsync(page, 10, keyword, status, categoryId);
+        var categories = await _service.GetCategoriesAsync();
 
         ViewBag.Keyword = keyword;
         ViewBag.Status = status;
+        ViewBag.CategoryId = categoryId;
+        ViewBag.Categories = categories;
 
         return View("~/Views/ManagerNews/Index.cshtml", result);
     }

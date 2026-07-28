@@ -414,13 +414,16 @@ public class AdminQuestionService : IAdminQuestionService
     {
         query = query.AsNoTracking();
 
-        // Chỉ tìm nội dung câu hỏi, không JOIN bảng Position
         if (!string.IsNullOrWhiteSpace(filter.Keyword))
         {
-            var keyword = filter.Keyword.Trim();
+            var keyword = filter.Keyword.Trim().ToLower();
 
             query = query.Where(x =>
-                x.QuestionText.StartsWith(keyword)
+                x.QuestionText.ToLower().Contains(keyword) ||
+                (x.Answer != null && x.Answer.ToLower().Contains(keyword)) ||
+                (x.Position != null && x.Position.Name.ToLower().Contains(keyword)) ||
+                (x.Category != null && x.Category.Category.ToLower().Contains(keyword)) ||
+                x.Difficulty.ToLower().Contains(keyword)
             );
         }
 
