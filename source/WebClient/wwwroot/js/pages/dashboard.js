@@ -15,6 +15,48 @@
     let techByRole = {};
     let jdSkills = []; // required_skills + nice_to_have from the parsed JD, lowercased — drives Focus Areas pre-select.
 
+    // Same technology, different names/abbreviations — used to pre-select catalog chips even
+    // when the JD spells it differently. Deliberately does NOT include "is a kind of" pairs
+    // (e.g. "SQL" vs "SQL Server" are related but different products, not synonyms) — that
+    // would cause false positives, so those still require an exact match.
+    const TECH_ALIAS_GROUPS = [
+        ["javascript", "js"],
+        ["typescript", "ts"],
+        ["node.js", "node", "nodejs"],
+        ["postgresql", "postgres"],
+        ["mongodb", "mongo"],
+        ["c#", "csharp", "c-sharp"],
+        ["go", "golang"],
+        ["python", "py"],
+        ["kubernetes", "k8s"],
+        ["vue.js", "vue", "vuejs"],
+        ["react.js", "react", "reactjs"],
+        ["next.js", "next", "nextjs"],
+        [".net", "dotnet", "net"],
+        ["sql server", "mssql", "ms sql", "microsoft sql server"],
+    ];
+    const TECH_ALIAS_LOOKUP = {};
+    TECH_ALIAS_GROUPS.forEach((group) => group.forEach((name) => { TECH_ALIAS_LOOKUP[name] = group; }));
+
+    // Whole-token containment check: does `name` appear as its own token inside `haystack`?
+    // A JD skill entry is often a whole descriptive sentence, e.g. "JavaScript frameworks like
+    // VueJS or ReactJS" — that never equals the catalog entry "JavaScript" exactly, but it does
+    // mention it. Splits on anything that isn't a letter/digit/. /#/+ (so "c#", "c++", ".net",
+    // "node.js" survive as single tokens) instead of using regex \b, which mishandles those
+    // trailing symbol characters.
+    function containsWholeToken(haystackLower, name) {
+        const padded = " " + haystackLower.replace(/[^a-z0-9.#+]+/gi, " ") + " ";
+        return padded.includes(" " + name.toLowerCase() + " ");
+    }
+
+    function techMatchesJd(catalogTech, jdSkillSet, jdSkillsJoined) {
+        const t = catalogTech.toLowerCase();
+        if (jdSkillSet.has(t)) return true;
+        const group = TECH_ALIAS_LOOKUP[t] || [t];
+        if (group.some((alias) => jdSkillSet.has(alias))) return true;
+        return group.some((alias) => containsWholeToken(jdSkillsJoined, alias));
+    }
+
     function syncHiddenInputs() {
         selectedBox.innerHTML = "";
         selected.forEach((tech) => {
@@ -62,7 +104,9 @@
         // Otherwise fall back to the generic popular-technologies shortlist (unselected, as before).
         let compact;
         if (jdSkills.length) {
-            compact = techs.filter((t) => jdSkills.includes(t.toLowerCase()));
+            const jdSkillSet = new Set(jdSkills);
+            const jdSkillsJoined = jdSkills.join(" | "); // already lowercased when jdSkills was built
+            compact = techs.filter((t) => techMatchesJd(t, jdSkillSet, jdSkillsJoined));
             compact.forEach((t) => selected.add(t));
         } else {
             compact = POPULAR.filter((t) => techs.includes(t)).slice(0, 12);
@@ -102,24 +146,46 @@
             panel.style.display = panel.style.display === "none" ? "" : "none");
     }
 
+    // The Job Role picked on Profile/CvJd for the shared JD — applied as a one-time default here
+    // (not a hard lock) once both the catalog and the JD have loaded, whichever finishes last.
+    let jdPreferredPosition = null;
+    let userChangedRole = false;
+    let catalogRoles = [];
+
+    function applyJdPreferredRole() {
+        if (userChangedRole || !jdPreferredPosition || !catalogRoles.length) return;
+        const p = jdPreferredPosition.toLowerCase();
+        const match = catalogRoles.find((r) => r.toLowerCase() === p) ||
+            catalogRoles.find((r) => p.includes(r.toLowerCase()));
+        if (match && roleSelect.value !== match) {
+            roleSelect.value = match;
+            renderFocus();
+        }
+    }
+
     fetch(catalogUrl)
         .then((response) => response.json())
         .then((catalog) => {
             techByRole = catalog.technologies || {};
             if (Array.isArray(catalog.roles) && catalog.roles.length) {
+                catalogRoles = catalog.roles;
                 const current = roleSelect.value;
                 roleSelect.innerHTML = catalog.roles
                     .map((role) => `<option value="${role}">${role}</option>`).join("");
                 if (catalog.roles.includes(current)) roleSelect.value = current;
             }
             renderFocus();
+            applyJdPreferredRole();
         })
         .catch(() => {
             focusBox.innerHTML =
                 '<span class="dash-hint">Could not load technologies. You can still start; the whole role will be covered.</span>';
         });
 
-    roleSelect.addEventListener("change", renderFocus);
+    roleSelect.addEventListener("change", () => {
+        userChangedRole = true;
+        renderFocus();
+    });
 
     // ── Job Description widget — shared with Profile/CvJd (same CvJdAPI JobDescription record) ──
     const ijdStatus = document.getElementById("ijd-status");
@@ -134,6 +200,33 @@
     const ijdFileInput = document.getElementById("ijd-file");
     const ijdBtnAi = document.getElementById("ijd-btn-ai");
     const ijdBtnNormal = document.getElementById("ijd-btn-normal");
+    const ijdBtnCancel = document.getElementById("ijd-btn-cancel");
+    const ijdLoadingBox = document.getElementById("ijd-loading");
+    const ijdElapsedEl = document.getElementById("ijd-elapsed");
+    const ijdLoadingMsgEl = document.getElementById("ijd-loading-msg");
+    let ijdTimer = null;
+    let hasExistingJd = false; // true once a parsed JD has been shown — lets "Đổi JD" offer Hủy
+
+    function setIjdLoading(on) {
+        ijdLoadingBox.classList.toggle("active", on);
+        if (on) {
+            ijdInputBox.style.display = "none";
+            let sec = 0;
+            ijdElapsedEl.textContent = "0s";
+            ijdLoadingMsgEl.textContent = "AI is reading the JD content...";
+            ijdTimer = setInterval(() => {
+                sec++;
+                ijdElapsedEl.textContent = sec + "s";
+                if (sec === 8) ijdLoadingMsgEl.textContent = "AI is extracting required skills...";
+                if (sec === 30) ijdLoadingMsgEl.textContent = "Model is doing a deeper analysis, please wait a bit longer...";
+                if (sec === 90) ijdLoadingMsgEl.textContent = "Almost done, just a bit more...";
+            }, 1000);
+        } else {
+            clearInterval(ijdTimer);
+            ijdTimer = null;
+            if (ijdParsedBox.style.display !== "block") ijdInputBox.style.display = "block";
+        }
+    }
 
     function escHtml(s) {
         return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -150,6 +243,7 @@
     }
 
     function showParsedJd(clarified, fallbackPosition) {
+        hasExistingJd = true;
         document.getElementById("ijd-parsed-position").textContent = clarified.position || fallbackPosition || "—";
         const company = clarified.company || "";
         const companyEl = document.getElementById("ijd-parsed-company");
@@ -176,6 +270,16 @@
     function showJdInputForm() {
         ijdParsedBox.style.display = "none";
         ijdInputBox.style.display = "block";
+        // Pre-fill with the JD currently on file so switching to "Đổi JD" doesn't look like the
+        // existing content vanished — it's still the same record until AI Parse/Normal is pressed.
+        document.getElementById("ijd-text").value = ijdHiddenText.value || "";
+        ijdBtnCancel.style.display = hasExistingJd ? "" : "none";
+    }
+
+    function cancelJdEdit() {
+        ijdInputBox.style.display = "none";
+        ijdParsedBox.style.display = "block";
+        setIjdStatus("", null);
     }
 
     async function loadCurrentJd() {
@@ -186,11 +290,15 @@
             if (!jd || jd.error) return;
             ijdHiddenText.value = jd.rawText || "";
             ijdHiddenId.value = jd.jdId || "";
+            if (jd.position) {
+                jdPreferredPosition = jd.position;
+                applyJdPreferredRole();
+            }
             if (jd.clarifiedJson) {
                 try {
                     const clarified = JSON.parse(jd.clarifiedJson);
                     showParsedJd(clarified, jd.position || "");
-                    setIjdStatus("Đã tải JD hiện tại từ hồ sơ của bạn.", true);
+                    setIjdStatus("Loaded your current JD from your profile.", true);
                 } catch { /* malformed clarifiedJson — leave the input form for the user to re-parse */ }
             }
         } catch { /* network error — leave the input form so the user can still type/paste a JD */ }
@@ -218,17 +326,18 @@
         const isFile = ijdFileTab.classList.contains("selected");
         const text = document.getElementById("ijd-text").value.trim();
         if (isFile && !(ijdFileInput.files && ijdFileInput.files.length)) {
-            setIjdStatus("Chọn file JD trước.", false);
+            setIjdStatus("Please choose a JD file first.", false);
             return;
         }
         if (!isFile && !text) {
-            setIjdStatus("Nhập nội dung JD trước.", false);
+            setIjdStatus("Please enter the JD content first.", false);
             return;
         }
 
         ijdBtnAi.disabled = true;
         ijdBtnNormal.disabled = true;
-        setIjdStatus(mode === "ai" ? "AI đang phân tích JD..." : "Đang lưu JD...", null);
+        setIjdStatus("", null);
+        setIjdLoading(true);
 
         try {
             let resp;
@@ -246,21 +355,23 @@
             }
             const data = await resp.json().catch(() => ({}));
             if (data.error) {
-                setIjdStatus("Lỗi: " + data.error, false);
+                setIjdStatus("Error: " + data.error, false);
                 return;
             }
             await loadCurrentJd(); // re-fetch the canonical record (with JdId) and render it
-            setIjdStatus(mode === "ai" ? "JD đã được AI phân tích thành công!" : "JD đã lưu (Normal mode).", true);
+            setIjdStatus(mode === "ai" ? "JD parsed successfully by AI!" : "JD saved (Normal mode).", true);
         } catch (e) {
-            setIjdStatus("Lỗi: " + e.message, false);
+            setIjdStatus("Error: " + e.message, false);
         } finally {
             ijdBtnAi.disabled = false;
             ijdBtnNormal.disabled = false;
+            setIjdLoading(false);
         }
     }
 
     ijdBtnAi.addEventListener("click", () => parseJd("ai"));
     ijdBtnNormal.addEventListener("click", () => parseJd("normal"));
+    ijdBtnCancel.addEventListener("click", cancelJdEdit);
 
     loadCurrentJd();
 })();

@@ -28,7 +28,7 @@
         <div class="pf-glow"></div>
         <div class="pf-content">
             <h1 class="pf-page-title">CV &amp; JD Analyzer</h1>
-            <p style="color:var(--pf-muted);font-size:.85rem;margin-bottom:20px;">Upload CV và Job Description để AI chấm điểm mức độ phù hợp.</p>
+            <p style="color:var(--pf-muted);font-size:.85rem;margin-bottom:20px;">Upload your CV and Job Description for AI to score how well they match.</p>
 
             <div class="cvjd-grid">
 
@@ -43,7 +43,7 @@
                             <label class="drop-zone" id="cvDrop">
                                 <input type="file" id="cvFile" accept=".pdf,.doc,.docx" />
                                 <svg width="32" height="32" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/></svg>
-                                <div style="font-size:.85rem;color:var(--pf-text);margin-top:4px;"><strong>Click hoặc kéo thả</strong> file CV</div>
+                                <div style="font-size:.85rem;color:var(--pf-text);margin-top:4px;"><strong>Click or drag &amp; drop</strong> your CV file</div>
                                 <div style="font-size:.72rem;color:var(--pf-muted);">PDF, DOC, DOCX</div>
                                 <div id="cvFileName" class="fname"></div>
                             </label>
@@ -59,9 +59,9 @@
                             <div class="spinner-xl"></div>
                             <div class="elapsed-num" id="elapsedTime">0s</div>
                             <div class="progress-bar-wrap"><div class="progress-bar-fill"></div></div>
-                            <div class="elapsed-sub" id="cvLoadingMsg">Đang kết nối AI service...</div>
+                            <div class="elapsed-sub" id="cvLoadingMsg">Connecting to AI service...</div>
                             <button class="pf-btn pf-btn-ghost cvjd-btn-sm" style="width:auto;padding:5px 16px;margin-top:4px;" onclick="cancelCvUpload()">
-                                ✕ Hủy
+                                ✕ Cancel
                             </button>
                         </div>
 
@@ -69,47 +69,47 @@
                         <div id="cvParsed" style="display:none;">
                             <!-- Personal Info -->
                             <div class="cv-section">
-                                <div class="cv-section-head">Thông tin cá nhân</div>
+                                <div class="cv-section-head">Personal Information</div>
                                 <div class="row g-2">
-                                    <div class="col-6"><label class="cvjd-label">Họ tên</label><input id="cvName" class="cvjd-input" /></div>
+                                    <div class="col-6"><label class="cvjd-label">Full Name</label><input id="cvName" class="cvjd-input" /></div>
                                     <div class="col-6"><label class="cvjd-label">Email</label><input id="cvEmail" class="cvjd-input" /></div>
-                                    <div class="col-6"><label class="cvjd-label">Điện thoại</label><input id="cvPhone" class="cvjd-input" /></div>
-                                    <div class="col-6"><label class="cvjd-label">Địa điểm</label><input id="cvLocation" class="cvjd-input" /></div>
+                                    <div class="col-6"><label class="cvjd-label">Phone</label><input id="cvPhone" class="cvjd-input" /></div>
+                                    <div class="col-6"><label class="cvjd-label">Location</label><input id="cvLocation" class="cvjd-input" /></div>
                                 </div>
                             </div>
 
                             <!-- Skills -->
                             <div class="cv-section">
-                                <div class="cv-section-head">Kỹ năng <span id="cvSkillMatchSummary" style="color:var(--pf-muted);font-weight:400;font-size:.75rem;"></span></div>
+                                <div class="cv-section-head">Skills <span id="cvSkillMatchSummary" style="color:var(--pf-muted);font-weight:400;font-size:.75rem;"></span></div>
                                 <div class="tag-list" id="cvSkillTags"></div>
                                 <div class="add-skill-row">
-                                    <input class="cvjd-input" id="newSkill" placeholder="Thêm kỹ năng..." />
+                                    <input class="cvjd-input" id="newSkill" placeholder="Add a skill..." />
                                     <button class="pf-btn pf-btn-primary" onclick="addSkill()">+</button>
                                 </div>
                             </div>
 
                             <!-- Strengths -->
                             <div class="cv-section">
-                                <div class="cv-section-head">Điểm mạnh</div>
+                                <div class="cv-section-head">Strengths</div>
                                 <div id="cvStrengths"></div>
                             </div>
 
                             <!-- Careers -->
                             <div class="cv-section" id="cvCareersWrap" style="display:none;">
-                                <div class="cv-section-head">Kinh nghiệm làm việc</div>
+                                <div class="cv-section-head">Work Experience</div>
                                 <div id="cvCareers"></div>
                             </div>
 
                             <!-- Education -->
                             <div class="cv-section" id="cvEduWrap" style="display:none;">
-                                <div class="cv-section-head">Học vấn</div>
+                                <div class="cv-section-head">Education</div>
                                 <div id="cvEducation"></div>
                             </div>
 
                             <!-- Save button -->
                             <div style="margin-top:14px;display:flex;gap:8px;align-items:center;">
                                 <button class="pf-btn pf-btn-primary cvjd-btn-sm" id="btnSaveCv" style="width:auto;padding:7px 18px;">
-                                    Lưu thay đổi
+                                    Save changes
                                 </button>
                                 <span id="saveStatus" class="sb" style="margin:0;padding:5px 10px;"></span>
                             </div>
@@ -126,26 +126,26 @@
                             <!-- Position + Company -->
                             <div class="row g-2 mb-3">
                                 <div class="col-12">
-                                    <label class="cvjd-label">Vị trí tuyển dụng *</label>
+                                    <label class="cvjd-label">Job Position *</label>
                                     <select id="jdPosition" class="cvjd-input">
-                                        <option value="">Đang tải danh sách vị trí...</option>
+                                        <option value="">Loading position list...</option>
                                     </select>
                                 </div>
                                 <div class="col-12">
-                                    <label class="cvjd-label">Công ty (không bắt buộc)</label>
-                                    <input id="jdCompany" class="cvjd-input" placeholder="Tên công ty..." />
+                                    <label class="cvjd-label">Company (optional)</label>
+                                    <input id="jdCompany" class="cvjd-input" placeholder="Company name..." />
                                 </div>
                             </div>
 
                             <!-- Input method tabs -->
                             <div class="jd-tabs">
-                                <button class="jd-tab active" id="tabPaste" onclick="switchTab('paste')">📋 Dán văn bản</button>
+                                <button class="jd-tab active" id="tabPaste" onclick="switchTab('paste')">📋 Paste text</button>
                                 <button class="jd-tab" id="tabFile" onclick="switchTab('file')">📄 Upload file</button>
                             </div>
 
                             <!-- Paste mode -->
                             <div id="jdPasteMode">
-                                <textarea id="jdText" class="cvjd-textarea" placeholder="Dán nội dung Job Description vào đây..."></textarea>
+                                <textarea id="jdText" class="cvjd-textarea" placeholder="Paste the Job Description content here..."></textarea>
                             </div>
 
                             <!-- File mode -->
@@ -153,7 +153,7 @@
                                 <label class="drop-zone" id="jdDrop">
                                     <input type="file" id="jdFile" accept=".pdf,.doc,.docx" />
                                     <svg width="28" height="28" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/></svg>
-                                    <div style="font-size:.82rem;color:var(--pf-text);margin-top:4px;"><strong>Click hoặc kéo thả</strong> file JD</div>
+                                    <div style="font-size:.82rem;color:var(--pf-text);margin-top:4px;"><strong>Click or drag &amp; drop</strong> the JD file</div>
                                     <div style="font-size:.7rem;color:var(--pf-muted);">PDF, DOC, DOCX</div>
                                     <div id="jdFileName" class="fname"></div>
                                 </label>
@@ -163,13 +163,16 @@
                             <div class="parse-btn-wrap">
                                 <div class="parse-btn-group">
                                     <button class="pf-btn pf-btn-primary cvjd-btn-sm" id="btnAiParse">🤖 AI Parse</button>
-                                    <div class="parse-btn-desc">AI phân tích JD, trích xuất kỹ năng yêu cầu, làm rõ mô tả công việc</div>
+                                    <div class="parse-btn-desc">AI analyzes the JD, extracts required skills, and clarifies the job description</div>
                                 </div>
                                 <div class="parse-btn-group">
                                     <button class="pf-btn cvjd-btn-secondary cvjd-btn-sm" id="btnNormal">📋 Normal</button>
-                                    <div class="parse-btn-desc">Lưu nguyên JD không qua AI, phù hợp khi nội dung đã đầy đủ</div>
+                                    <div class="parse-btn-desc">Save the JD as-is without AI — best when the content is already complete</div>
                                 </div>
                             </div>
+                            <button class="pf-btn pf-btn-ghost cvjd-btn-sm" id="btnCancelJdEdit" style="display:none;margin-top:8px;width:auto;padding:6px 16px;">
+                                ✕ Cancel
+                            </button>
                         </div>
 
                         <!-- JD loading overlay (spinner + timer) -->
@@ -177,9 +180,9 @@
                             <div class="spinner-xl"></div>
                             <div class="elapsed-num" id="jdElapsedTime">0s</div>
                             <div class="progress-bar-wrap"><div class="progress-bar-fill"></div></div>
-                            <div class="elapsed-sub" id="jdLoadingMsg">AI đang phân tích JD...</div>
+                            <div class="elapsed-sub" id="jdLoadingMsg">AI is analyzing the JD...</div>
                             <button class="pf-btn pf-btn-ghost cvjd-btn-sm" style="width:auto;padding:5px 16px;margin-top:4px;" onclick="cancelJdParse()">
-                                ✕ Hủy
+                                ✕ Cancel
                             </button>
                         </div>
 
@@ -191,15 +194,15 @@
                                         <div class="jd-pos-name" id="jdParsedPosition">—</div>
                                         <div class="jd-co-name" id="jdParsedCompany"></div>
                                     </div>
-                                    <button class="change-jd-btn" onclick="changeJd()">✎ Đổi JD</button>
+                                    <button class="change-jd-btn" onclick="changeJd()">✎ Change JD</button>
                                 </div>
                                 <div class="jd-result-body">
                                     <div id="jdReqWrap" style="display:none;">
-                                        <div class="jd-skill-group-label req">Kỹ năng yêu cầu</div>
+                                        <div class="jd-skill-group-label req">Required Skills</div>
                                         <div class="tag-list" id="jdReqTags"></div>
                                     </div>
                                     <div id="jdNiceWrap" style="display:none;">
-                                        <div class="jd-skill-group-label nice">Kỹ năng ưu tiên</div>
+                                        <div class="jd-skill-group-label nice">Nice-to-have Skills</div>
                                         <div class="tag-list" id="jdNiceTags"></div>
                                     </div>
                                 </div>
@@ -222,11 +225,11 @@
                                 </svg>
                                 <div class="score-num">
                                     <span id="scoreNum">—</span>
-                                    <small id="scoreLbl">chưa phân tích</small>
+                                    <small id="scoreLbl">not analyzed yet</small>
                                 </div>
                             </div>
                             <button class="pf-btn pf-btn-primary cvjd-btn-sm" id="btnAnalyze" style="width:auto;margin-top:14px;padding:7px 20px;">
-                                Phân tích Match
+                                Analyze Match
                             </button>
                             <div id="analyzeStatus" class="sb" style="margin-top:8px;text-align:center;width:100%;"></div>
                         </div>
@@ -234,42 +237,42 @@
                         <!-- Breakdown -->
                         <div id="breakdownWrap" style="display:none;padding-top:8px;border-top:1px solid var(--pf-border);">
                             <div style="font-size:.73rem;color:var(--pf-muted);">
-                                <div class="d-flex justify-content-between mb-1"><span>Kỹ năng yêu cầu (60%)</span><span id="brkReq">—</span></div>
-                                <div class="d-flex justify-content-between mb-1"><span>Điểm mạnh phù hợp (25%)</span><span id="brkStr">—</span></div>
-                                <div class="d-flex justify-content-between mb-2"><span>Kỹ năng ưu tiên (15%)</span><span id="brkNice">—</span></div>
+                                <div class="d-flex justify-content-between mb-1"><span>Required Skills (60%)</span><span id="brkReq">—</span></div>
+                                <div class="d-flex justify-content-between mb-1"><span>Matching Strengths (25%)</span><span id="brkStr">—</span></div>
+                                <div class="d-flex justify-content-between mb-2"><span>Nice-to-have Skills (15%)</span><span id="brkNice">—</span></div>
                             </div>
                         </div>
 
                         <!-- Tiêu chí 1: kỹ năng yêu cầu (60%) -->
                         <div id="reqMatchWrap" style="display:none;padding-top:10px;border-top:1px solid var(--pf-border);">
-                            <div class="cvjd-label" style="margin-bottom:2px;">1. Kỹ năng yêu cầu <span id="reqMatchCount" style="color:var(--pf-muted);font-weight:400;"></span></div>
+                            <div class="cvjd-label" style="margin-bottom:2px;">1. Required Skills <span id="reqMatchCount" style="color:var(--pf-muted);font-weight:400;"></span></div>
                             <div style="font-size:.7rem;color:var(--pf-muted);margin-bottom:6px;">
-                                Kỹ năng JD bắt buộc (60%). ✓ xanh = CV đã có, ✗ đỏ = CV còn thiếu.
+                                JD's required skills (60%). ✓ green = CV has it, ✗ red = CV is missing it.
                             </div>
                             <div class="tag-list" id="reqMatchTags"></div>
                         </div>
 
                         <!-- Tiêu chí 2: điểm mạnh phù hợp (25%) -->
                         <div id="strMatchWrap" style="display:none;padding-top:10px;border-top:1px solid var(--pf-border);">
-                            <div class="cvjd-label" style="margin-bottom:2px;">2. Điểm mạnh phù hợp <span id="strMatchCount" style="color:var(--pf-muted);font-weight:400;"></span></div>
+                            <div class="cvjd-label" style="margin-bottom:2px;">2. Matching Strengths <span id="strMatchCount" style="color:var(--pf-muted);font-weight:400;"></span></div>
                             <div style="font-size:.7rem;color:var(--pf-muted);margin-bottom:6px;">
-                                Điểm mạnh trong CV có liên quan tới yêu cầu của JD (25%). ✓ xanh = liên quan.
+                                CV strengths relevant to the JD's requirements (25%). ✓ green = relevant.
                             </div>
                             <div class="tag-list" id="strMatchTags"></div>
                         </div>
 
                         <!-- Tiêu chí 3: kỹ năng ưu tiên (15%) -->
                         <div id="niceMatchWrap" style="display:none;padding-top:10px;border-top:1px solid var(--pf-border);">
-                            <div class="cvjd-label" style="margin-bottom:2px;">3. Kỹ năng ưu tiên <span id="niceMatchCount" style="color:var(--pf-muted);font-weight:400;"></span></div>
+                            <div class="cvjd-label" style="margin-bottom:2px;">3. Nice-to-have Skills <span id="niceMatchCount" style="color:var(--pf-muted);font-weight:400;"></span></div>
                             <div style="font-size:.7rem;color:var(--pf-muted);margin-bottom:6px;">
-                                Kỹ năng JD không bắt buộc nhưng CV có sẽ được cộng điểm (15%). ✓ xanh = CV đã có, ✗ đỏ = CV chưa có.
+                                JD's optional skills that still earn points if the CV has them (15%). ✓ green = CV has it, ✗ red = CV doesn't have it.
                             </div>
                             <div class="tag-list" id="niceMatchTags"></div>
                         </div>
 
                         <!-- Suggestions -->
                         <div id="suggestWrap" style="display:none;margin-top:12px;padding-top:10px;border-top:1px solid var(--pf-border);">
-                            <div class="section-label">Gợi ý AI</div>
+                            <div class="section-label">AI Suggestions</div>
                             <div id="suggestions"></div>
                         </div>
                     </div>
@@ -328,13 +331,13 @@ function setCvLoading(on) {
     if(on){
         let sec = 0;
         $('elapsedTime').textContent = '0s';
-        $('cvLoadingMsg').textContent = 'Đang upload file...';
+        $('cvLoadingMsg').textContent = 'Uploading file...';
         _timerInterval = setInterval(() => {
             sec++;
             $('elapsedTime').textContent = sec + 's';
-            if(sec === 5)  $('cvLoadingMsg').textContent = 'AI đang đọc nội dung CV...';
-            if(sec === 20) $('cvLoadingMsg').textContent = 'AI đang trích xuất thông tin (có thể mất 1-2 phút lần đầu)...';
-            if(sec === 60) $('cvLoadingMsg').textContent = 'Model đang khởi động lần đầu, vui lòng chờ thêm...';
+            if(sec === 5)  $('cvLoadingMsg').textContent = 'AI is reading the CV content...';
+            if(sec === 20) $('cvLoadingMsg').textContent = 'AI is extracting information (may take 1-2 minutes the first time)...';
+            if(sec === 60) $('cvLoadingMsg').textContent = 'The model is starting up for the first time, please wait a bit longer...';
         }, 1000);
     } else {
         clearInterval(_timerInterval); _timerInterval = null;
@@ -348,7 +351,7 @@ window.cancelCvUpload = function() {
 let _cvSeq = 0;
 
 $('btnUpload').addEventListener('click', async () => {
-    if(!cvFile.files.length){ setStatus('cvStatus','Chọn file CV trước.','err'); return; }
+    if(!cvFile.files.length){ setStatus('cvStatus','Please choose a CV file first.','err'); return; }
     if(_cvController) _cvController.abort();
     const seq = ++_cvSeq;
     setCvLoading(true);
@@ -360,14 +363,14 @@ $('btnUpload').addEventListener('click', async () => {
         if(seq !== _cvSeq) return;
         const data = await safeJson(resp);
         if(seq !== _cvSeq) return;
-        if(data.error){ setStatus('cvStatus','Lỗi: ' + data.error,'err'); return; }
+        if(data.error){ setStatus('cvStatus','Error: ' + data.error,'err'); return; }
         const parsed = data.parsedJson ? JSON.parse(data.parsedJson) : null;
-        if(parsed){ cvParsedData = parsed; renderCvParsed(parsed); setStatus('cvStatus','CV đã được phân tích thành công!','ok'); }
-        else { setStatus('cvStatus','CV đã lưu nhưng chưa parse được.','info'); }
+        if(parsed){ cvParsedData = parsed; renderCvParsed(parsed); setStatus('cvStatus','CV parsed successfully!','ok'); }
+        else { setStatus('cvStatus','CV saved but could not be parsed yet.','info'); }
     } catch(e){
         if(seq !== _cvSeq) return;
-        if(e.name === 'AbortError') setStatus('cvStatus','Đã hủy upload.','info');
-        else setStatus('cvStatus','Lỗi: '+e.message,'err');
+        if(e.name === 'AbortError') setStatus('cvStatus','Upload cancelled.','info');
+        else setStatus('cvStatus','Error: '+e.message,'err');
     } finally {
         if(seq === _cvSeq){ setCvLoading(false); _cvController = null; }
     }
@@ -441,7 +444,7 @@ function syncSkillsToData() {
 
 // ── Save CV changes ──
 $('btnSaveCv').addEventListener('click', async () => {
-    if(!cvParsedData){ setStatus('saveStatus','Chưa có dữ liệu CV.','err'); return; }
+    if(!cvParsedData){ setStatus('saveStatus','No CV data yet.','err'); return; }
     // Sync editable fields back to data
     const info = cvParsedData.personal_info || {};
     info.name = $('cvName').value; info.email = $('cvEmail').value;
@@ -449,7 +452,7 @@ $('btnSaveCv').addEventListener('click', async () => {
     cvParsedData.personal_info = info;
     syncSkillsToData();
 
-    setStatus('saveStatus','Đang lưu…','info');
+    setStatus('saveStatus','Saving…','info');
     $('btnSaveCv').disabled = true;
     try {
         const resp = await fetch('/CvJd/UpdateCvJson', {
@@ -458,15 +461,16 @@ $('btnSaveCv').addEventListener('click', async () => {
             body: JSON.stringify({ parsedJson: JSON.stringify(cvParsedData) })
         });
         const data = await safeJson(resp);
-        if(data.error) setStatus('saveStatus','Lỗi: '+data.error,'err');
-        else setStatus('saveStatus','Đã lưu!','ok');
-    } catch(e){ setStatus('saveStatus','Lỗi: '+e.message,'err'); }
+        if(data.error) setStatus('saveStatus','Error: '+data.error,'err');
+        else setStatus('saveStatus','Saved!','ok');
+    } catch(e){ setStatus('saveStatus','Error: '+e.message,'err'); }
     finally { $('btnSaveCv').disabled = false; }
 });
 
 // ── JD loading state ──
 let _jdController = null;
 let _jdTimer = null;
+let hasExistingJd = false; // true once a parsed JD has been rendered — lets "Đổi JD" offer Hủy
 
 function setJdLoading(on) {
     $('jdLoadingArea').style.display = on ? 'flex' : 'none';
@@ -475,13 +479,13 @@ function setJdLoading(on) {
         $('jdParsed').style.display    = 'none';
         let sec = 0;
         $('jdElapsedTime').textContent = '0s';
-        $('jdLoadingMsg').textContent  = 'AI đang đọc nội dung JD...';
+        $('jdLoadingMsg').textContent  = 'AI is reading the JD content...';
         _jdTimer = setInterval(() => {
             sec++;
             $('jdElapsedTime').textContent = sec + 's';
-            if(sec === 8)  $('jdLoadingMsg').textContent = 'AI đang trích xuất kỹ năng yêu cầu...';
-            if(sec === 30) $('jdLoadingMsg').textContent = 'Model đang phân tích sâu, vui lòng chờ thêm...';
-            if(sec === 90) $('jdLoadingMsg').textContent = 'Sắp xong rồi, còn một chút nữa...';
+            if(sec === 8)  $('jdLoadingMsg').textContent = 'AI is extracting required skills...';
+            if(sec === 30) $('jdLoadingMsg').textContent = 'Model is doing a deeper analysis, please wait a bit longer...';
+            if(sec === 90) $('jdLoadingMsg').textContent = 'Almost done, just a bit more...';
         }, 1000);
     } else {
         clearInterval(_jdTimer); _jdTimer = null;
@@ -494,7 +498,7 @@ function setJdLoading(on) {
 window.cancelJdParse = function() {
     if(_jdController){ _jdController.abort(); _jdController = null; }
     setJdLoading(false);
-    setStatus('jdStatus','Đã hủy phân tích JD.','info');
+    setStatus('jdStatus','JD parsing cancelled.','info');
 };
 
 // Vị trí tuyển dụng dropdown — cùng nguồn role voi trang Interview setup (/Interview/Catalog),
@@ -508,28 +512,46 @@ async function loadJdPositionOptions(preselect) {
         if (catalog && Array.isArray(catalog.roles)) roles = catalog.roles;
     } catch {}
     sel.innerHTML = roles.length
-        ? '<option value="">-- Chọn vị trí --</option>' + roles.map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join('')
-        : '<option value="">Không tải được danh sách vị trí</option>';
-    if (preselect && roles.includes(preselect)) sel.value = preselect;
+        ? '<option value="">-- Select a position --</option>' + roles.map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join('')
+        : '<option value="">Could not load the position list</option>';
+    if (preselect) {
+        // Exact match first; fall back to a loose match for JD records saved before this
+        // dropdown existed (their Position was free text, e.g. "Backend Developer" instead
+        // of the catalog's plain "Backend").
+        const p = preselect.toLowerCase();
+        const match = roles.find(r => r.toLowerCase() === p) || roles.find(r => p.includes(r.toLowerCase()));
+        if (match) sel.value = match;
+    }
+    return roles;
 }
 
 window.changeJd = function() {
     $('jdParsed').style.display = 'none';
     $('jdInputArea').style.display = 'block';
     setStatus('jdStatus','','');
+    // Only offer Hủy if there is an existing parsed JD to go back to — a first-time
+    // upload (no JD yet) has nothing to cancel into.
+    $('btnCancelJdEdit').style.display = hasExistingJd ? 'inline-flex' : 'none';
+};
+
+window.cancelJdEdit = function() {
+    $('jdInputArea').style.display = 'none';
+    $('jdParsed').style.display = 'block';
+    setStatus('jdStatus','','');
 };
 
 // ── JD: AI Parse ──
 $('btnAiParse').addEventListener('click', () => saveJd('ai'));
 $('btnNormal').addEventListener('click', () => saveJd('normal'));
+$('btnCancelJdEdit').addEventListener('click', cancelJdEdit);
 
 let _jdSeq = 0;
 
 async function saveJd(mode) {
     const position = $('jdPosition').value.trim();
     const isFile = $('tabFile').classList.contains('active');
-    if(isFile && !jdFile.files.length){ setStatus('jdStatus','Chọn file JD trước.','err'); return; }
-    if(!isFile && !$('jdText').value.trim()){ setStatus('jdStatus','Nhập nội dung JD trước.','err'); return; }
+    if(isFile && !jdFile.files.length){ setStatus('jdStatus','Please choose a JD file first.','err'); return; }
+    if(!isFile && !$('jdText').value.trim()){ setStatus('jdStatus','Please enter the JD content first.','err'); return; }
 
     if(_jdController) _jdController.abort();
     const seq = ++_jdSeq;
@@ -554,14 +576,14 @@ async function saveJd(mode) {
         }
         if(seq !== _jdSeq) return;
 
-        if(data.error){ setStatus('jdStatus','Lỗi: '+data.error,'err'); return; }
+        if(data.error){ setStatus('jdStatus','Error: '+data.error,'err'); return; }
         const clarified = data.clarifiedJson ? JSON.parse(data.clarifiedJson) : null;
         if(clarified) renderJdParsed(clarified, position, $('jdCompany').value.trim());
-        setStatus('jdStatus', mode==='ai' ? 'JD đã được AI phân tích thành công!' : 'JD đã lưu (Normal mode).' , 'ok');
+        setStatus('jdStatus', mode==='ai' ? 'JD parsed successfully by AI!' : 'JD saved (Normal mode).' , 'ok');
     } catch(e){
         if(seq !== _jdSeq) return;
         if(e.name==='AbortError') return;
-        setStatus('jdStatus','Lỗi: '+e.message,'err');
+        setStatus('jdStatus','Error: '+e.message,'err');
     } finally {
         if(seq === _jdSeq){ setJdLoading(false); _jdController = null; }
     }
@@ -573,6 +595,7 @@ function skillLabel(s) {
 }
 
 function renderJdParsed(c, fallbackPosition, company) {
+    hasExistingJd = true;
     $('jdParsedPosition').textContent = c.position || fallbackPosition || '—';
     const co = c.company || company || '';
     $('jdParsedCompany').textContent = co;
@@ -593,23 +616,23 @@ function renderJdParsed(c, fallbackPosition, company) {
 
 // ── Analyze Match ──
 $('btnAnalyze').addEventListener('click', async () => {
-    setStatus('analyzeStatus','Đang tính điểm…','info');
+    setStatus('analyzeStatus','Calculating score…','info');
     $('btnAnalyze').disabled = true;
     try {
         const resp = await fetch('/CvJd/Analyze', { method:'POST' });
         const data = await safeJson(resp);
-        if(resp.status === 400){ setStatus('analyzeStatus', data.error || 'Parse CV và JD trước.','err'); return; }
-        if(data.error){ setStatus('analyzeStatus','Lỗi: '+data.error,'err'); return; }
+        if(resp.status === 400){ setStatus('analyzeStatus', data.error || 'Please parse the CV and JD first.','err'); return; }
+        if(data.error){ setStatus('analyzeStatus','Error: '+data.error,'err'); return; }
         renderScore(data);
-        setStatus('analyzeStatus','Phân tích xong!','ok');
-    } catch(e){ setStatus('analyzeStatus','Lỗi: '+e.message,'err'); }
+        setStatus('analyzeStatus','Analysis complete!','ok');
+    } catch(e){ setStatus('analyzeStatus','Error: '+e.message,'err'); }
     finally { $('btnAnalyze').disabled = false; }
 });
 
 function renderScore(d) {
     const score = d.score ?? 0;
     $('scoreNum').textContent = score;
-    $('scoreLbl').textContent = score>=80?'Rất phù hợp':score>=60?'Khá phù hợp':'Cần cải thiện';
+    $('scoreLbl').textContent = score>=80?'Great match':score>=60?'Good match':'Needs improvement';
     const fg = $('scoreFg');
     fg.style.strokeDashoffset = 345 - (345*score/100);
     fg.style.stroke = score>=80?'var(--pf-success)':score>=60?'var(--pf-teal)':'var(--pf-indigo)';
@@ -627,13 +650,13 @@ function renderScore(d) {
         if(matched.some(m=>m.toLowerCase()===skill)){ el.classList.add('matched'); cvSkillMatchedCount++; }
     });
     $('cvSkillMatchSummary').textContent = cvSkillEls.length
-        ? `(✓ ${cvSkillMatchedCount} phù hợp JD · ${cvSkillEls.length-cvSkillMatchedCount} JD không yêu cầu)`
+        ? `(✓ ${cvSkillMatchedCount} match the JD · ${cvSkillEls.length-cvSkillMatchedCount} not required by JD)`
         : '';
 
     const rMatched = (d.matched_required || d.matched_skills || []).map(skillLabel);
     const rMissing = miss.map(skillLabel);
     if(rMatched.length || rMissing.length){
-        $('reqMatchCount').textContent = `(CV có ${rMatched.length}/${rMatched.length + rMissing.length})`;
+        $('reqMatchCount').textContent = `(CV has ${rMatched.length}/${rMatched.length + rMissing.length})`;
         $('reqMatchTags').innerHTML =
             rMatched.map(s=>`<span class="tag matched">✓ ${esc(s)}</span>`).join('') +
             rMissing.map(s=>`<span class="tag missing">✗ ${esc(s)}</span>`).join('');
@@ -645,7 +668,7 @@ function renderScore(d) {
     const strMatched = (d.matched_strengths||[]).map(s=>String(s));
     const allStrengths = ((cvParsedData && cvParsedData.strengths) || []).map(s=>s.strength||'').filter(Boolean);
     if(allStrengths.length && d.matched_strengths !== undefined){
-        $('strMatchCount').textContent = `(${strMatched.length}/${allStrengths.length} liên quan JD)`;
+        $('strMatchCount').textContent = `(${strMatched.length}/${allStrengths.length} relevant to JD)`;
         $('strMatchTags').innerHTML = allStrengths.map(s=>{
             const hit = strMatched.some(m=>m.toLowerCase()===s.toLowerCase());
             return `<span class="tag ${hit?'matched':''}">${hit?'✓ ':''}${esc(s)}</span>`;
@@ -664,8 +687,8 @@ function renderScore(d) {
         const card = s => `<div class="exp-card matched"><span class="exp-title">✓ ${esc(s.strength||'')}</span><div class="exp-sub" style="margin-top:3px;">${esc(s.reasoning||'')}</div></div>`;
         const cardPlain = s => `<div class="exp-card"><span class="exp-title">${esc(s.strength||'')}</span><div class="exp-sub" style="margin-top:3px;">${esc(s.reasoning||'')}</div></div>`;
         $('cvStrengths').innerHTML =
-            (relevant.length ? `<div class="jd-skill-group-label req" style="margin-top:0;">Liên quan tới JD (${relevant.length})</div>` + relevant.map(card).join('') : '') +
-            (notRelevant.length ? `<div class="jd-skill-group-label nice" style="margin-top:8px;">Chưa thấy liên quan JD (${notRelevant.length})</div>` + notRelevant.map(cardPlain).join('') : '');
+            (relevant.length ? `<div class="jd-skill-group-label req" style="margin-top:0;">Relevant to JD (${relevant.length})</div>` + relevant.map(card).join('') : '') +
+            (notRelevant.length ? `<div class="jd-skill-group-label nice" style="margin-top:8px;">Not relevant to JD yet (${notRelevant.length})</div>` + notRelevant.map(cardPlain).join('') : '');
     } else {
         document.querySelectorAll('#cvStrengths .exp-card').forEach(card=>{
             const title = (card.querySelector('.exp-title')?.textContent || '').trim().toLowerCase();
@@ -676,7 +699,7 @@ function renderScore(d) {
     const nMatched = (d.matched_nice_to_have||[]).map(skillLabel);
     const nMissing = (d.missing_nice_to_have||[]).map(skillLabel);
     if(nMatched.length || nMissing.length){
-        $('niceMatchCount').textContent = `(CV có ${nMatched.length}/${nMatched.length + nMissing.length})`;
+        $('niceMatchCount').textContent = `(CV has ${nMatched.length}/${nMatched.length + nMissing.length})`;
         $('niceMatchTags').innerHTML =
             nMatched.map(s=>`<span class="tag matched">✓ ${esc(s)}</span>`).join('') +
             nMissing.map(s=>`<span class="tag missing">✗ ${esc(s)}</span>`).join('');
@@ -692,9 +715,9 @@ function renderScore(d) {
         const el = $(wrapId);
         el.style.display = 'block'; // override the default flex tag-list layout — children here are group blocks, not bare tags
         el.innerHTML =
-            (matchedArr.length ? `<div class="jd-skill-group-label req" style="margin-top:0;">CV đã có (${matchedArr.length})</div>
+            (matchedArr.length ? `<div class="jd-skill-group-label req" style="margin-top:0;">CV has (${matchedArr.length})</div>
                 <div class="tag-list">${matchedArr.map(s=>`<span class="tag ${cls} matched">✓ ${esc(s)}</span>`).join('')}</div>` : '') +
-            (missingArr.length ? `<div class="jd-skill-group-label nice" style="margin-top:8px;">CV còn thiếu (${missingArr.length})</div>
+            (missingArr.length ? `<div class="jd-skill-group-label nice" style="margin-top:8px;">CV is missing (${missingArr.length})</div>
                 <div class="tag-list">${missingArr.map(s=>`<span class="tag ${cls} missing">✗ ${esc(s)}</span>`).join('')}</div>` : '');
     }
     renderJdGroup('jdReqTags', rMatched, rMissing, 'req-skill');
@@ -716,7 +739,7 @@ function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')
             if(cv && !cv.error){
                 if(cv.fileName) cvFName.textContent = cv.fileName;
                 if(cv.parsedJson){
-                    try { cvParsedData = JSON.parse(cv.parsedJson); renderCvParsed(cvParsedData); setStatus('cvStatus','CV hiện tại: '+cv.fileName,'ok'); }
+                    try { cvParsedData = JSON.parse(cv.parsedJson); renderCvParsed(cvParsedData); setStatus('cvStatus','Current CV: '+cv.fileName,'ok'); }
                     catch{}
                 }
             }
@@ -731,7 +754,7 @@ function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')
                 if(jd.rawText) $('jdText').value = jd.rawText;
                 existingJdPosition = jd.position||'';
                 if(jd.clarifiedJson){
-                    try { renderJdParsed(JSON.parse(jd.clarifiedJson), jd.position||''); setStatus('jdStatus','JD hiện tại đã tải.','ok'); }
+                    try { renderJdParsed(JSON.parse(jd.clarifiedJson), jd.position||''); setStatus('jdStatus','Current JD loaded.','ok'); }
                     catch{}
                 }
             }

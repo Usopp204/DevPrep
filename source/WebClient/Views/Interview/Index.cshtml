@@ -67,7 +67,7 @@
 
                 <div class="dash-field">
                     <label class="dash-label">Job Description (JD)</label>
-                    <p class="dash-hint">Dùng chung 1 JD với trang Hồ sơ &gt; CV &amp; JD — parse ở đâu cũng thấy ở đó.</p>
+                    <p class="dash-hint">Shares one JD with the Profile &gt; CV &amp; JD page — parse it in either place and it shows up in both.</p>
                     <div id="ijd-status" class="dash-hint" style="min-height:18px;"></div>
 
                     <!-- Existing/just-parsed JD — read-only summary + Đổi JD -->
@@ -77,37 +77,46 @@
                                 <div class="ijd-pos" id="ijd-parsed-position">—</div>
                                 <div class="ijd-co" id="ijd-parsed-company"></div>
                             </div>
-                            <button type="button" class="dash-chip dash-chip-outline" id="ijd-change-btn">✎ Đổi JD</button>
+                            <button type="button" class="dash-chip dash-chip-outline selectable" id="ijd-change-btn">✎ Change JD</button>
                         </div>
                         <div id="ijd-req-wrap" style="display:none;">
-                            <div class="ijd-group-label ijd-req">Kỹ năng yêu cầu</div>
+                            <div class="ijd-group-label ijd-req">Required Skills</div>
                             <div class="ijd-tags" id="ijd-req-tags"></div>
                         </div>
                         <div id="ijd-nice-wrap" style="display:none;">
-                            <div class="ijd-group-label ijd-nice">Kỹ năng ưu tiên</div>
+                            <div class="ijd-group-label ijd-nice">Nice-to-have Skills</div>
                             <div class="ijd-tags" id="ijd-nice-tags"></div>
                         </div>
+                    </div>
+
+                    <!-- Loading overlay (spinner + elapsed time) shown while a parse is in flight -->
+                    <div class="ijd-loading" id="ijd-loading">
+                        <div class="ijd-spinner"></div>
+                        <div class="ijd-elapsed" id="ijd-elapsed">0s</div>
+                        <div class="ijd-progress-wrap"><div class="ijd-progress-fill"></div></div>
+                        <div class="ijd-loading-msg" id="ijd-loading-msg">AI is reading the JD content...</div>
                     </div>
 
                     <!-- No JD yet (or user chose Đổi JD) — same parse flow as Profile/CV & JD -->
                     <div id="ijd-input">
                         <div class="ijd-tabs">
-                            <button type="button" class="dash-chip selectable selected" id="ijd-tab-paste">📋 Dán văn bản</button>
+                            <button type="button" class="dash-chip selectable selected" id="ijd-tab-paste">📋 Paste text</button>
                             <button type="button" class="dash-chip selectable" id="ijd-tab-file">📄 Upload file</button>
                         </div>
                         <div id="ijd-paste-mode">
-                            <textarea id="ijd-text" class="dash-input" placeholder="Dán nội dung Job Description vào đây..."></textarea>
+                            <textarea id="ijd-text" class="dash-input" placeholder="Paste the Job Description content here..."></textarea>
                         </div>
                         <div id="ijd-file-mode" style="display:none;">
                             <label class="ijd-drop" id="ijd-drop">
                                 <input type="file" id="ijd-file" accept=".pdf,.doc,.docx" style="display:none;" />
-                                <span>Click hoặc kéo thả file JD (PDF, DOC, DOCX)</span>
+                                <span>Click or drag &amp; drop the JD file (PDF, DOC, DOCX)</span>
                                 <div id="ijd-file-name" class="dash-hint"></div>
                             </label>
                         </div>
                         <div class="ijd-parse-actions">
-                            <button type="button" class="btn-gradient dash-chip" id="ijd-btn-ai">🤖 AI Parse</button>
-                            <button type="button" class="dash-chip dash-chip-outline" id="ijd-btn-normal">📋 Normal (không qua AI)</button>
+                            <button type="button" class="btn-gradient ijd-parse-btn" id="ijd-btn-ai">🤖 AI Parse</button>
+                            <button type="button" class="dash-chip dash-chip-outline selectable" id="ijd-btn-normal">📋 Normal (skip AI)</button>
+                            <button type="button" class="dash-chip dash-chip-outline selectable" id="ijd-btn-cancel" style="display:none;">✕ Cancel</button>
                         </div>
                     </div>
 
