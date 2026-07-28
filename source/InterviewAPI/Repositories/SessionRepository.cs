@@ -242,6 +242,21 @@ public class SessionRepository : ISessionRepository
                                       .SetProperty(x => x.UpdatedAt, VietnamTime.Now), ct);
     }
 
+    public async Task<bool> TryAutoResumeExpiredPauseAsync(
+        Guid sessionId, DateTime expectedPausedAt, int newTotalPausedSeconds, CancellationToken ct)
+    {
+        var rowsAffected = await _db.InterviewSessions
+            .Where(s => s.SessionId == sessionId && s.Status == "Paused" && s.PausedAt == expectedPausedAt && !s.IsDeleted)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.Status, "InProgress")
+                                      .SetProperty(x => x.PausedAt, (DateTime?)null)
+                                      .SetProperty(x => x.TotalPausedSeconds, newTotalPausedSeconds)
+                                      .SetProperty(x => x.UpdatedAt, VietnamTime.Now), ct);
+        _logger.LogInformation(
+            "TryAutoResumeExpiredPauseAsync: rowsAffected={RowsAffected}, sessionId={SessionId}, expectedPausedAt={ExpectedPausedAt}",
+            rowsAffected, sessionId, expectedPausedAt);
+        return rowsAffected > 0;
+    }
+
     // Flag-only audit counter (mandatory-camera policy) — plain increment, no expected-value
     // claim needed like IncrementAnsweredIfAsync: this is just a tally, not a per-turn guard.
     public async Task<int> IncrementCameraViolationAsync(Guid sessionId, CancellationToken ct)

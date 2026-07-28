@@ -128,7 +128,7 @@
     </div>
 
     <script>
-        const API_BASE = 'http://localhost:7004/api/admin/positions';
+        const API_BASE = 'http://localhost:7000/api/admin/positions';
         const token = '@token';
         let currentPage = 1, pageSize = 10, totalPages = 1, searchTimer = null, confirmCb = null;
         let showDeleted = false;   // true = CHỈ hiện position đã xoá mềm (kèm nút Restore)
@@ -170,7 +170,7 @@
                 const json = await res.json();
                 if (json.success) { renderTable(json.data.items || []); renderPagination(json.data); }
                 else tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-error">Failed: ${escapeHtml(json.message)}</td></tr>`;
-            } catch (e) { tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-error">Failed to load data. Please sign in again or check QuestionAPI (:7004).</td></tr>`; }
+            } catch (e) { tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-error">Failed to load data. Please sign in again or check ApiGateway (:7000).</td></tr>`; }
         }
 
         function renderTable(items) {
@@ -229,7 +229,7 @@
                 if (res.ok && json && json.success) { closeModal(); fetchList(); return; }
                 if (res.status === 403) { showModalError('Only Admin can manage positions.'); return; }
                 showModalError((json && json.message) || `Request failed (HTTP ${res.status}).`);
-            } catch (e) { showModalError('Cannot reach QuestionAPI (:7004).'); }
+            } catch (e) { showModalError('Cannot reach ApiGateway (:7000).'); }
         }
 
         // ----- Soft delete / Restore -----
@@ -243,7 +243,7 @@
                     if (res.status === 204) { fetchList(); return; }
                     if (res.status === 403) { alert('Only Admin can delete positions.'); return; }
                     alert('Delete failed.');
-                } catch (e) { alert('Operation failed. Check QuestionAPI (:7004).'); }
+                } catch (e) { alert('Operation failed. Check ApiGateway (:7000).'); }
             });
         }
 
@@ -255,7 +255,7 @@
                     if (res.ok && json && json.success) { fetchList(); return; }
                     if (res.status === 403) { alert('Only Admin can restore positions.'); return; }
                     alert((json && json.message) || 'Restore failed.');
-                } catch (e) { alert('Operation failed. Check QuestionAPI (:7004).'); }
+                } catch (e) { alert('Operation failed. Check ApiGateway (:7000).'); }
             });
         }
     </script>

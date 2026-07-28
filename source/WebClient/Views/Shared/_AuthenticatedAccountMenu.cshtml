@@ -59,7 +59,7 @@
             fetch('/Profile/CreditBalance', { headers: { 'Accept': 'application/json' } })
                 .then(response => response.ok ? response.json() : Promise.reject())
                 .then(data => { creditValue.textContent = Number(data.balance).toLocaleString('en-US'); })
-                .catch(() => { creditValue.textContent = '—'; });
+                .catch(() => { creditValue.textContent = '-'; });
         };
 
         const closeMenu = function (restoreFocus) {

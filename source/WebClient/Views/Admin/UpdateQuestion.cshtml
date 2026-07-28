@@ -390,15 +390,29 @@
                                     Difficulty
                                 </label>
 
-                                <!-- Difficulty cho admin tự nhập -->
-                                <input id="difficultyInput"
-                                       type="text"
-                                       class="form-control custom-input"
-                                       required
-                                       maxlength="20"
-                                       name="Difficulty"
-                                       value="@qDetail.Difficulty"
-                                       placeholder="e.g. Intern, Fresher, Junior, Middle, Senior..." />
+                                <select id="difficultyInput"
+                                        class="form-select custom-input"
+                                        required
+                                        name="Difficulty">
+
+                                    <option value=""
+                                            disabled>
+                                        Select Difficulty
+                                    </option>
+
+                                    @foreach (var d in new[] { "Intern", "Fresher", "Junior", "Middle", "Senior" })
+                                    {
+                                        <option value="@d"
+                                                selected="@(string.Equals(
+                                                    d,
+                                                    qDetail.Difficulty,
+                                                    StringComparison.OrdinalIgnoreCase)
+                                                    ? "selected"
+                                                    : null)">
+                                            @d
+                                        </option>
+                                    }
+                                </select>
                             </div>
                         </div>
                     </section>
@@ -409,20 +423,31 @@
                             <i class="fa-solid fa-layer-group"></i>
                             Position & Status
                         </div>
-
                         <div class="mb-4">
                             <label class="field-label"
                                    for="positionInput">
                                 Position
                             </label>
 
-                            <input id="positionInput"
-                                   type="text"
-                                   class="form-control custom-input"
-                                   maxlength="50"
-                                   name="Position"
-                                   value="@qDetail.Position"
-                                   placeholder="e.g. Backend Developer, QA Engineer..." />
+                            <select id="positionInput"
+                                    class="form-select custom-input"
+                                    name="PositionId">
+
+                                <option value="">-- No position --</option>
+
+                                @if (Model.Positions != null)
+                                {
+                                    foreach (var position in Model.Positions)
+                                    {
+                                        <option value="@position.PositionId"
+                                                selected="@(position.PositionId == qDetail.PositionId
+                                                    ? "selected"
+                                                    : null)">
+                                            @position.Name
+                                        </option>
+                                    }
+                                }
+                            </select>
                         </div>
 
                         <div>

@@ -126,12 +126,26 @@
 
                 <div class="dash-field">
                     <label class="dash-label" asp-for="DurationMinutes">Duration</label>
+                    <p class="dash-hint">Your credit balance: <strong>@Model.CreditBalance</strong></p>
                     <select asp-for="DurationMinutes" class="dash-input">
-                        <option value="15">15 Minutes</option>
-                        <option value="30">30 Minutes</option>
-                        <option value="45">45 Minutes</option>
-                        <option value="60">60 Minutes</option>
+                        @foreach (var (minutes, cost) in WebClient.Helpers.CreditPricing.DurationToCreditCost)
+                        {
+                            var affordable = Model.CreditBalance >= cost;
+                            <option value="@minutes" disabled="@(!affordable)">
+                                @minutes Minutes — @cost credits@(affordable ? "" : " (insufficient balance)")
+                            </option>
+                        }
                     </select>
+                    @{
+                        var cheapestCost = WebClient.Helpers.CreditPricing.DurationToCreditCost.Values.Min();
+                    }
+                    @if (Model.CreditBalance < cheapestCost)
+                    {
+                        <div class="dash-alert">
+                            Not enough credit for any interview duration.
+                            <a asp-controller="Payment" asp-action="Index">Top up credits</a>.
+                        </div>
+                    }
                 </div>
 
                 <div class="dash-field">

@@ -10,6 +10,7 @@ public class ManagerNewsListItemDto
     public string? CategoryName { get; set; }
     public string Status { get; set; } = null!;
     public int ViewCount { get; set; }
+    public bool IsDeleted { get; set; }
     public DateTime? PublishedAt { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }

@@ -188,7 +188,6 @@
 
     <script>
         const API_BASE = 'http://localhost:7000/api/admin/feedbacks/system';
-        const MODERATION_BASE = 'http://localhost:7000/api/admin/feedback/system';
         const token = '@token';
         let currentPage = 1, pageSize = 10, totalPages = 1, searchTimer = null;
         let rating = '', status = '', lastItems = [], currentId = null, confirmCb = null;
@@ -285,8 +284,8 @@
                             <button class="text-on-surface-variant hover:text-primary transition-colors" onclick="event.stopPropagation(); openDetail('${it.id}')" title="View"><span class="material-symbols-outlined text-[20px]">visibility</span></button>
                             ${it.isDeleted
                                 ? `<button class="text-on-surface-variant hover:text-success transition-colors" onclick="event.stopPropagation(); restoreFeedback('${it.id}')" title="Restore"><span class="material-symbols-outlined text-[20px]">restore_from_trash</span></button>`
-                                : `<button class="text-on-surface-variant hover:text-primary transition-colors" onclick="event.stopPropagation(); moderateSystemFeedback('${it.id}', 'Approved', false)" title="Hide from Public"><span class="material-symbols-outlined text-[20px]">visibility_off</span></button>
-                                   <button class="text-on-surface-variant hover:text-error transition-colors" onclick="event.stopPropagation(); deleteFeedback('${it.id}')" title="Delete"><span class="material-symbols-outlined text-[20px]">delete</span></button>`}                        </div>
+                                : `<button class="text-on-surface-variant hover:text-error transition-colors" onclick="event.stopPropagation(); deleteFeedback('${it.id}')" title="Delete"><span class="material-symbols-outlined text-[20px]">delete</span></button>`}
+                        </div>
                     </td>
                 </tr>`).join('');
         }
@@ -401,21 +400,6 @@
                     currentId = null; toggleDrawer(false); fetchList();
                 } catch (e) { alert('Delete failed.'); }
             });
-        }
-
-        async function moderateSystemFeedback(id, moderationStatus, isVisible) {
-            try {
-                const res = await fetch(`${MODERATION_BASE}/${id}/moderation`, {
-                    method: 'PATCH',
-                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ moderationStatus, isVisible })
-                });
-                if (res.status === 403) { alert('Only Admin can update feedback visibility.'); return; }
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                await fetchList();
-            } catch (e) {
-                alert('Visibility update failed. Check permission and ApiGateway connection.');
-            }
         }
 
         function restoreFeedback(id) {

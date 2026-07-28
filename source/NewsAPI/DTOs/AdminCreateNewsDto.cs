@@ -15,6 +15,7 @@ namespace NewsAPI.DTOs
         public string Slug { get; set; } = null!;
 
         [StringLength(500)]
+        [Required(ErrorMessage = "Summary is required.")]
         public string? Summary { get; set; }
 
         [Required(ErrorMessage = "Content is required.")]

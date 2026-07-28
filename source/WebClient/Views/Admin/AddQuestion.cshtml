@@ -379,6 +379,7 @@
                     </div>
 
                     <!-- Difficulty -->
+                   <!-- Difficulty -->
                     <div class="col-md-6">
                         <label class="field-label"
                                for="difficultyInput">
@@ -386,13 +387,23 @@
                             <span class="required-mark">*</span>
                         </label>
 
-                        <input id="difficultyInput"
-                               type="text"
-                               class="form-control custom-input"
-                               required
-                               maxlength="50"
-                               name="Difficulty"
-                               placeholder="e.g. Intern, Fresher, Junior, Middle, Senior..." />
+                        <select id="difficultyInput"
+                                class="form-select custom-input"
+                                required
+                                name="Difficulty">
+
+                            <option value=""
+                                    selected
+                                    disabled>
+                                Select Difficulty
+                            </option>
+
+                            <option value="Intern">Intern</option>
+                            <option value="Fresher">Fresher</option>
+                            <option value="Junior">Junior</option>
+                            <option value="Middle">Middle</option>
+                            <option value="Senior">Senior</option>
+                        </select>
                     </div>
 
                 </div>
@@ -414,13 +425,35 @@
                         <span class="required-mark">*</span>
                     </label>
 
-                    <input id="positionInput"
-                           type="text"
-                           class="form-control custom-input"
-                           required
-                           name="Position"
-                           maxlength="50"
-                           placeholder="e.g. Backend Developer, QA Engineer..." />
+                    <select id="positionInput"
+                            class="form-select custom-input"
+                            required
+                            name="PositionId">
+
+                        <option value=""
+                                selected
+                                disabled>
+                            Select Position
+                        </option>
+
+                        @if (Model.Positions != null &&
+                        Model.Positions.Any())
+                        {
+                            foreach (var position in Model.Positions)
+                            {
+                                <option value="@position.PositionId">
+                                    @position.Name
+                                </option>
+                            }
+                        }
+                        else
+                        {
+                            <option value=""
+                                    disabled>
+                                No positions available
+                            </option>
+                        }
+                    </select>
                 </div>
 
                 <!-- Status -->
@@ -550,7 +583,7 @@
                         form.querySelector('[name="Difficulty"]');
 
                     const positionInput =
-                        form.querySelector('[name="Position"]');
+                        form.querySelector('[name="PositionId"]');
 
                     // const techStackInput =
                     //     form.querySelector('[name="TechStack"]');
@@ -597,7 +630,7 @@
                         return;
                     }
 
-                    if (!positionInput.value.trim()) {
+                    if (!positionInput.value) {
                         await showValidationError(
                             'Vui lòng nhập Position.',
                             positionInput

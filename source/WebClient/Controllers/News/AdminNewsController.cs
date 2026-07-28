@@ -141,9 +141,10 @@ public class AdminNewsController : Controller
     {
         // BỎ điều kiện bắt buộc Slug — chỉ còn Title và Content
         if (string.IsNullOrWhiteSpace(model.Title) ||
-            string.IsNullOrWhiteSpace(model.Content))
+            string.IsNullOrWhiteSpace(model.Content)||
+                 string.IsNullOrWhiteSpace(model.Summary))
         {
-            ViewBag.ErrorMessage = "Please fill in Title and Content.";
+            ViewBag.ErrorMessage = "Please fill in Title Content and Summary";
             await LoadCategoriesAsync(model);
 
             return View("~/Views/News/AdminNewsCreate.cshtml", model);

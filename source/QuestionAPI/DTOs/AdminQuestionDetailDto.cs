@@ -24,6 +24,7 @@ public class AdminQuestionDetailDto
 
     //public string? Tags { get; set; }
     // Bổ sung
+    public Guid? PositionId { get; set; }
     public string? Position { get; set; }
 
 

@@ -112,6 +112,21 @@ public class AdminQuestionController : Controller
         return View("~/Views/Admin/ViewQuestionDetail.cshtml", question);
     }
 
+    //[HttpGet("create")]
+    //public async Task<IActionResult> Create()
+    //{
+    //    var viewModel = new AdminQuestionViewModel();
+
+    //    var categoryResponse = await _questionService.GetCategoriesAsync();
+
+    //    if (categoryResponse.Success && categoryResponse.Data != null)
+    //    {
+    //        viewModel.Categories = categoryResponse.Data;
+    //    }
+
+    //    return View("~/Views/Admin/AddQuestion.cshtml", viewModel);
+    //}
+
     [HttpGet("create")]
     public async Task<IActionResult> Create()
     {
@@ -122,6 +137,13 @@ public class AdminQuestionController : Controller
         if (categoryResponse.Success && categoryResponse.Data != null)
         {
             viewModel.Categories = categoryResponse.Data;
+        }
+
+        var positionResponse = await _questionService.GetPositionsAsync();
+
+        if (positionResponse.Success && positionResponse.Data != null)
+        {
+            viewModel.Positions = positionResponse.Data;
         }
 
         return View("~/Views/Admin/AddQuestion.cshtml", viewModel);
@@ -173,7 +195,6 @@ public class AdminQuestionController : Controller
             TempData["ErrorMessage"] = "Câu hỏi này đã bị xóa mềm. Vui lòng khôi phục trước khi chỉnh sửa.";
             return Redirect("/admin/questions");
         }
-
         var viewModel = new AdminQuestionViewModel();
 
         var categoryResponse = await _questionService.GetCategoriesAsync();
@@ -185,6 +206,13 @@ public class AdminQuestionController : Controller
         else
         {
             ViewBag.CategoryError = categoryResponse.Message ?? "Lỗi không xác định khi lấy danh mục.";
+        }
+
+        var positionResponse = await _questionService.GetPositionsAsync();
+
+        if (positionResponse.Success && positionResponse.Data != null)
+        {
+            viewModel.Positions = positionResponse.Data;
         }
 
         ViewBag.QuestionDetail = question;

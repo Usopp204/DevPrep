@@ -124,10 +124,24 @@ public class AdminQuestionService : IAdminQuestionService
             throw new Exception("Difficulty cannot be empty.");
         }
 
-        var now = VietnamTime.Now;
+        if (dto.PositionId.HasValue)
+        {
+            var positionExists = await _db.Positions
+                .AsNoTracking()
+                .AnyAsync(p =>
+                    p.PositionId == dto.PositionId.Value &&
+                    !p.IsDeleted
+                );
 
-        // Đổi tên position (text từ form) thành entity danh mục Positions (map name -> FK).
-        var position = await ResolvePositionAsync(dto.Position);
+            if (!positionExists)
+            {
+                throw new Exception(
+                    "Position does not exist or has been deleted."
+                );
+            }
+        }
+
+        var now = VietnamTime.Now;
 
         var question = new Question
         {
@@ -138,7 +152,7 @@ public class AdminQuestionService : IAdminQuestionService
             Difficulty = dto.Difficulty.Trim(),
 
             Answer = NormalizeNullable(dto.Answer),
-            Position = position,
+            PositionId = dto.PositionId,
 
             Status = "Active",
             IsDeleted = false,
@@ -231,10 +245,23 @@ public class AdminQuestionService : IAdminQuestionService
             question.Answer = NormalizeNullable(dto.Answer);
         }
 
-        if (dto.Position != null)
+        if (dto.PositionId.HasValue)
         {
-            question.Position = await ResolvePositionAsync(dto.Position);
-            question.PositionId = question.Position?.PositionId;
+            var positionExists = await _db.Positions
+                .AsNoTracking()
+                .AnyAsync(p =>
+                    p.PositionId == dto.PositionId.Value &&
+                    !p.IsDeleted
+                );
+
+            if (!positionExists)
+            {
+                throw new Exception(
+                    "Position does not exist or has been deleted."
+                );
+            }
+
+            question.PositionId = dto.PositionId.Value;
         }
 
         if (dto.Status != null)
@@ -380,22 +407,23 @@ public class AdminQuestionService : IAdminQuestionService
         };
     }
 
+   //huynh anh edit----------
     private IQueryable<Question> ApplyFilter(
-        IQueryable<Question> query,
-        AdminQuestionQueryDto filter)
+    IQueryable<Question> query,
+    AdminQuestionQueryDto filter)
     {
         query = query.AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(filter.Keyword))
         {
-            var keyword = filter.Keyword.Trim();
+            var keyword = filter.Keyword.Trim().ToLower();
 
             query = query.Where(x =>
-                x.QuestionText.Contains(keyword) ||
-                (
-                    x.Position != null &&
-                    x.Position.Name.Contains(keyword)
-                )
+                x.QuestionText.ToLower().Contains(keyword) ||
+                (x.Answer != null && x.Answer.ToLower().Contains(keyword)) ||
+                (x.Position != null && x.Position.Name.ToLower().Contains(keyword)) ||
+                (x.Category != null && x.Category.Category.ToLower().Contains(keyword)) ||
+                x.Difficulty.ToLower().Contains(keyword)
             );
         }
 
@@ -410,8 +438,10 @@ public class AdminQuestionService : IAdminQuestionService
 
         if (filter.CategoryId.HasValue)
         {
+            var categoryId = filter.CategoryId.Value;
+
             query = query.Where(x =>
-                x.CategoryId == filter.CategoryId.Value
+                x.CategoryId == categoryId
             );
         }
 
@@ -423,9 +453,7 @@ public class AdminQuestionService : IAdminQuestionService
                 "Deleted",
                 StringComparison.OrdinalIgnoreCase))
             {
-                query = query.Where(x =>
-                    x.IsDeleted
-                );
+                query = query.Where(x => x.IsDeleted);
             }
             else
             {
@@ -435,19 +463,29 @@ public class AdminQuestionService : IAdminQuestionService
                 );
             }
         }
+        else
+        {
+            // All Statuses nhưng không lấy dữ liệu đã soft-delete
+            query = query.Where(x => !x.IsDeleted);
+        }
 
         return query;
     }
+    //-------------------------
+    
+    //huynh anh edit -----------------
 
     private async Task<AdminPagedResultDto<AdminQuestionListItemDto>> PagingAsync(
     IQueryable<Question> query,
     AdminQuestionQueryDto filter)
     {
+        // Chuẩn hóa PageIndex
         if (filter.PageIndex <= 0)
         {
             filter.PageIndex = 1;
         }
 
+        // Chuẩn hóa PageSize
         if (filter.PageSize <= 0)
         {
             filter.PageSize = DefaultPageSize;
@@ -458,43 +496,111 @@ public class AdminQuestionService : IAdminQuestionService
             filter.PageSize = MaximumPageSize;
         }
 
-        var totalRecords = await query.CountAsync();
+        var hasKeyword = !string.IsNullOrWhiteSpace(filter.Keyword);
 
-        var totalPages = totalRecords == 0
-            ? 0
-            : (int)Math.Ceiling((double)totalRecords / filter.PageSize);
+        int totalRecords;
+        int totalPages;
+        bool hasNextPage = false;
 
-        if (totalPages > 0 && filter.PageIndex > totalPages)
+        List<AdminQuestionListItemDto> questionItems;
+
+        if (hasKeyword)
         {
-            filter.PageIndex = totalPages;
-        }
+            /*
+             * Khi tìm kiếm:
+             * Không CountAsync toàn bộ dữ liệu.
+             * Lấy dư 1 dòng để kiểm tra có trang tiếp theo hay không.
+             */
+            questionItems = await query
+                .OrderByDescending(x => x.CreatedAt)
+                .ThenByDescending(x => x.QuestionId)
+                .Skip((filter.PageIndex - 1) * filter.PageSize)
+                .Take(filter.PageSize + 1)
+                .Select(x => new AdminQuestionListItemDto
+                {
+                    QuestionId = x.QuestionId,
+                    CategoryId = x.CategoryId,
+                    Category = null,
+                    Question = x.QuestionText,
+                    Difficulty = x.Difficulty,
+                    Position = x.Position != null
+                        ? x.Position.Name
+                        : null,
+                    Status = x.Status,
+                    IsDeleted = x.IsDeleted,
+                    DeletedAt = x.DeletedAt,
+                    DeletedBy = x.DeletedBy,
+                    CreatedAt = x.CreatedAt
+                })
+                .ToListAsync();
 
-        if (filter.PageIndex <= 0)
-        {
-            filter.PageIndex = 1;
-        }
+            hasNextPage = questionItems.Count > filter.PageSize;
 
-        var questionItems = await query
-            .OrderByDescending(x => x.CreatedAt)
-            .ThenByDescending(x => x.QuestionId)
-            .Skip((filter.PageIndex - 1) * filter.PageSize)
-            .Take(filter.PageSize)
-            .Select(x => new AdminQuestionListItemDto
+            if (hasNextPage)
             {
-                QuestionId = x.QuestionId,
-                CategoryId = x.CategoryId,
-                Category = null,
-                Question = x.QuestionText,
-                Difficulty = x.Difficulty,
-                Position = x.Position != null ? x.Position.Name : null,
-                Status = x.Status,
-                IsDeleted = x.IsDeleted,
-                DeletedAt = x.DeletedAt,
-                DeletedBy = x.DeletedBy,
-                CreatedAt = x.CreatedAt
-            })
-            .ToListAsync();
+                // Xóa dòng lấy dư
+                questionItems.RemoveAt(questionItems.Count - 1);
+            }
 
+            /*
+             * Vì không CountAsync nên không biết tổng chính xác.
+             * Giá trị này chỉ đại diện cho số kết quả đã đi qua.
+             */
+            totalRecords =
+                ((filter.PageIndex - 1) * filter.PageSize)
+                + questionItems.Count
+                + (hasNextPage ? 1 : 0);
+
+            totalPages = hasNextPage
+                ? filter.PageIndex + 1
+                : filter.PageIndex;
+        }
+        else
+        {
+            /*
+             * Không có keyword:
+             * Category, Status, Difficulty thường nhẹ hơn,
+             * vẫn giữ CountAsync để phân trang chính xác.
+             */
+            totalRecords = await query.CountAsync();
+
+            totalPages = totalRecords == 0
+                ? 0
+                : (int)Math.Ceiling(
+                    (double)totalRecords / filter.PageSize
+                );
+
+            if (totalPages > 0 &&
+                filter.PageIndex > totalPages)
+            {
+                filter.PageIndex = totalPages;
+            }
+
+            questionItems = await query
+                .OrderByDescending(x => x.CreatedAt)
+                .ThenByDescending(x => x.QuestionId)
+                .Skip((filter.PageIndex - 1) * filter.PageSize)
+                .Take(filter.PageSize)
+                .Select(x => new AdminQuestionListItemDto
+                {
+                    QuestionId = x.QuestionId,
+                    CategoryId = x.CategoryId,
+                    Category = null,
+                    Question = x.QuestionText,
+                    Difficulty = x.Difficulty,
+                    Position = x.Position != null
+                        ? x.Position.Name
+                        : null,
+                    Status = x.Status,
+                    IsDeleted = x.IsDeleted,
+                    DeletedAt = x.DeletedAt,
+                    DeletedBy = x.DeletedBy,
+                    CreatedAt = x.CreatedAt
+                })
+                .ToListAsync();
+        }
+
+        // Lấy danh sách CategoryId xuất hiện trong trang hiện tại
         var categoryIds = questionItems
             .Where(x => x.CategoryId.HasValue)
             .Select(x => x.CategoryId!.Value)
@@ -505,14 +611,20 @@ public class AdminQuestionService : IAdminQuestionService
 
         if (categoryIds.Count == 0)
         {
-            categoryDictionary = new Dictionary<Guid, string>();
+            categoryDictionary =
+                new Dictionary<Guid, string>();
         }
         else
         {
             categoryDictionary = await _db.QuestionCategories
                 .AsNoTracking()
-                .Where(x => categoryIds.Contains(x.CategoryId))
-                .ToDictionaryAsync(x => x.CategoryId, x => x.Category);
+                .Where(x =>
+                    categoryIds.Contains(x.CategoryId)
+                )
+                .ToDictionaryAsync(
+                    x => x.CategoryId,
+                    x => x.Category
+                );
         }
 
         foreach (var item in questionItems)
@@ -522,7 +634,9 @@ public class AdminQuestionService : IAdminQuestionService
                 continue;
             }
 
-            if (categoryDictionary.TryGetValue(item.CategoryId.Value, out var categoryName))
+            if (categoryDictionary.TryGetValue(
+                item.CategoryId.Value,
+                out var categoryName))
             {
                 item.Category = categoryName;
             }
@@ -537,7 +651,7 @@ public class AdminQuestionService : IAdminQuestionService
             Items = questionItems
         };
     }
-
+    //---------------------------------
     private async Task<string?> GetCategoryAsync(Guid? categoryId)
     {
         if (!categoryId.HasValue)
@@ -553,8 +667,8 @@ public class AdminQuestionService : IAdminQuestionService
     }
 
     private static AdminQuestionDetailDto MapDetail(
-        Question question,
-        string? category = null)
+         Question question,
+         string? category = null)
     {
         return new AdminQuestionDetailDto
         {
@@ -564,6 +678,7 @@ public class AdminQuestionService : IAdminQuestionService
             Question = question.QuestionText,
             Difficulty = question.Difficulty,
             Answer = question.Answer,
+            PositionId = question.PositionId,
             Position = question.Position?.Name,
             Status = question.Status,
             IsDeleted = question.IsDeleted,
@@ -586,42 +701,42 @@ public class AdminQuestionService : IAdminQuestionService
     /// chưa có -> tạo mới (danh mục tự mở rộng — form câu hỏi không phải đổi).
     /// Tên rỗng/trắng -> null (câu hỏi không gắn position).
     /// </summary>
-    private async Task<Position?> ResolvePositionAsync(string? name)
-    {
-        var normalized = NormalizeNullable(name);
-        if (normalized is null)
-        {
-            return null;
-        }
+    //private async Task<Position?> ResolvePositionAsync(string? name)
+    //{
+    //    var normalized = NormalizeNullable(name);
+    //    if (normalized is null)
+    //    {
+    //        return null;
+    //    }
 
-        var active = await _db.Positions
-            .FirstOrDefaultAsync(p => p.Name == normalized && !p.IsDeleted);
-        if (active is not null)
-        {
-            return active;
-        }
+    //    var active = await _db.Positions
+    //        .FirstOrDefaultAsync(p => p.Name == normalized && !p.IsDeleted);
+    //    if (active is not null)
+    //    {
+    //        return active;
+    //    }
 
-        var deleted = await _db.Positions
-            .FirstOrDefaultAsync(p => p.Name == normalized && p.IsDeleted);
-        if (deleted is not null)
-        {
-            deleted.IsDeleted = false;
-            deleted.DeletedAt = null;
-            deleted.UpdatedAt = VietnamTime.Now;
-            return deleted;
-        }
+    //    var deleted = await _db.Positions
+    //        .FirstOrDefaultAsync(p => p.Name == normalized && p.IsDeleted);
+    //    if (deleted is not null)
+    //    {
+    //        deleted.IsDeleted = false;
+    //        deleted.DeletedAt = null;
+    //        deleted.UpdatedAt = VietnamTime.Now;
+    //        return deleted;
+    //    }
 
-        var now = VietnamTime.Now;
-        var position = new Position
-        {
-            PositionId = Guid.NewGuid(),
-            Name = normalized,
-            CreatedAt = now,
-            UpdatedAt = now
-        };
-        await _db.Positions.AddAsync(position);
-        return position;
-    }
+    //    var now = VietnamTime.Now;
+    //    var position = new Position
+    //    {
+    //        PositionId = Guid.NewGuid(),
+    //        Name = normalized,
+    //        CreatedAt = now,
+    //        UpdatedAt = now
+    //    };
+    //    await _db.Positions.AddAsync(position);
+    //    return position;
+    //}
 
     private static string NormalizeStatus(string status)
     {
@@ -651,5 +766,21 @@ public class AdminQuestionService : IAdminQuestionService
         return shouldIndex
             ? _indexClient.UpsertAsync(question, category)
             : _indexClient.DeleteAsync(question.QuestionId);
+    }
+
+    ///thêm 
+    ///
+    public async Task<List<AdminPositionDto>> GetAllPositionsAsync()
+    {
+        return await _db.Positions
+            .AsNoTracking()
+            .Where(p => !p.IsDeleted)
+            .OrderBy(p => p.Name)
+            .Select(p => new AdminPositionDto
+            {
+                PositionId = p.PositionId,
+                Name = p.Name
+            })
+            .ToListAsync();
     }
 }
