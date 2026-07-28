@@ -3,7 +3,7 @@
     bool IsActive(string href) => path.Equals(href, StringComparison.OrdinalIgnoreCase)
         || (href != "/Manager/Index" && path.StartsWith(href + "/", StringComparison.OrdinalIgnoreCase));
 }
-<aside class="ad-sidebar">
+<aside class="ad-sidebar" style="overflow-y: auto; overscroll-behavior: contain;">
     <div class="ad-sidebar-head">
         <div class="ad-console">
             <div>
