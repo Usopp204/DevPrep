@@ -66,6 +66,18 @@ builder.Services.AddScoped<ICreditPackageService, CreditPackageService>();
 builder.Services.AddScoped<IVnPayService, VnPayService>();
 builder.Services.AddScoped<InternalCreditService>();
 
+// ── AuthAPI internal client (resolve email -> AccountId cho admin adjust credit) ──
+var internalApiKey = builder.Configuration.GetValue<string>("INTERNAL_API_KEY", string.Empty);
+var authBaseUrl = builder.Configuration.GetValue<string>("AUTH_API_BASEURL", "http://localhost:7001");
+builder.Services.AddHttpClient<IAuthAccountClient, AuthAccountClient>(client =>
+{
+    client.BaseAddress = new Uri(authBaseUrl!);
+    client.Timeout = TimeSpan.FromSeconds(15);
+    if (!string.IsNullOrEmpty(internalApiKey))
+        client.DefaultRequestHeaders.Add("X-Internal-Api-Key", internalApiKey);
+})
+.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { UseProxy = false });
+
 // ── Controllers & Swagger ─────────────────────────────────────────────────────
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -496,6 +508,116 @@ app.MapGet("/admin/payments/{id:guid}", async (Guid id, IOrderRepository orderRe
     return Results.Ok(new { Order = order, Transaction = tx });
 });
 
+// --- Admin: POST /admin/credits/add ---
+// Cộng credit cho account theo EMAIL (admin nhập tay). Ghi ledger EntryType='Refund'
+// (yêu cầu nghiệp vụ: cộng tay hiển thị trong Credit History của user như một dòng Refund).
+// Wallet chưa có thì tự tạo (giống luồng mua VNPay).
+app.MapPost("/admin/credits/add", async (AdminCreditAdjustRequest req, IAuthAccountClient authClient, PaymentDbContext db, CancellationToken ct) =>
+{
+    if (string.IsNullOrWhiteSpace(req.Email))
+        return Results.BadRequest(new { Success = false, Message = "Email is required." });
+    if (req.Amount < 1 || req.Amount > 1_000_000)
+        return Results.BadRequest(new { Success = false, Message = "Amount must be between 1 and 1,000,000." });
+
+    ResolvedAccount? account;
+    try { account = await authClient.FindByExactEmailAsync(req.Email, ct); }
+    catch { return Results.Json(new { Success = false, Message = "Cannot reach AuthAPI to resolve the email." }, statusCode: 502); }
+    if (account is null)
+        return Results.NotFound(new { Success = false, Message = "No account found with this email." });
+
+    using var transaction = await db.Database.BeginTransactionAsync(ct);
+    try
+    {
+        var now = DateTime.UtcNow.AddHours(7);
+        var wallet = await db.CreditWallets.FirstOrDefaultAsync(w => w.UserId == account.AccountId, ct);
+        int newBalance;
+        if (wallet is null)
+        {
+            newBalance = req.Amount;
+            wallet = new CreditWallet { WalletId = Guid.NewGuid(), UserId = account.AccountId, Balance = newBalance, CreatedAt = now, UpdatedAt = now };
+            db.CreditWallets.Add(wallet);
+        }
+        else
+        {
+            newBalance = wallet.Balance + req.Amount;
+            wallet.Balance = newBalance;
+            wallet.UpdatedAt = now;
+        }
+
+        db.CreditLedgerEntries.Add(new CreditLedgerEntry
+        {
+            LedgerId = Guid.NewGuid(),
+            UserId = account.AccountId,
+            EntryType = "Refund",
+            CreditChange = req.Amount,
+            BalanceAfter = newBalance,
+            ReferenceId = null,
+            Description = string.IsNullOrWhiteSpace(req.Description) ? "Admin credit adjustment" : req.Description.Trim(),
+            CreatedAt = now
+        });
+
+        await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
+        return Results.Ok(new { Success = true, account.Email, AccountId = account.AccountId, BalanceAfter = newBalance });
+    }
+    catch (Exception ex)
+    {
+        await transaction.RollbackAsync(ct);
+        return Results.Json(new { Success = false, Message = $"Error: {ex.Message}" }, statusCode: 500);
+    }
+});
+
+// --- Admin: POST /admin/credits/deduct ---
+// Trừ credit theo EMAIL. Ghi ledger EntryType='Usage' (CreditChange âm). Chặn trừ quá số dư.
+app.MapPost("/admin/credits/deduct", async (AdminCreditAdjustRequest req, IAuthAccountClient authClient, PaymentDbContext db, CancellationToken ct) =>
+{
+    if (string.IsNullOrWhiteSpace(req.Email))
+        return Results.BadRequest(new { Success = false, Message = "Email is required." });
+    if (req.Amount < 1 || req.Amount > 1_000_000)
+        return Results.BadRequest(new { Success = false, Message = "Amount must be between 1 and 1,000,000." });
+
+    ResolvedAccount? account;
+    try { account = await authClient.FindByExactEmailAsync(req.Email, ct); }
+    catch { return Results.Json(new { Success = false, Message = "Cannot reach AuthAPI to resolve the email." }, statusCode: 502); }
+    if (account is null)
+        return Results.NotFound(new { Success = false, Message = "No account found with this email." });
+
+    using var transaction = await db.Database.BeginTransactionAsync(ct);
+    try
+    {
+        var now = DateTime.UtcNow.AddHours(7);
+        var wallet = await db.CreditWallets.FirstOrDefaultAsync(w => w.UserId == account.AccountId, ct);
+        if (wallet is null)
+            return Results.BadRequest(new { Success = false, Message = "This account has no credit wallet yet." });
+        if (wallet.Balance < req.Amount)
+            return Results.BadRequest(new { Success = false, Message = $"Insufficient credits. Available: {wallet.Balance}, requested: {req.Amount}." });
+
+        wallet.Balance -= req.Amount;
+        wallet.UpdatedAt = now;
+
+        db.CreditLedgerEntries.Add(new CreditLedgerEntry
+        {
+            LedgerId = Guid.NewGuid(),
+            UserId = account.AccountId,
+            EntryType = "Usage",
+            CreditChange = -req.Amount,
+            BalanceAfter = wallet.Balance,
+            ReferenceId = null,
+            Description = string.IsNullOrWhiteSpace(req.Description) ? "Admin credit deduction" : req.Description.Trim(),
+            CreatedAt = now
+        });
+
+        await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
+        return Results.Ok(new { Success = true, account.Email, AccountId = account.AccountId, BalanceAfter = wallet.Balance });
+    }
+    catch (Exception ex)
+    {
+        await transaction.RollbackAsync(ct);
+        return Results.Json(new { Success = false, Message = $"Error: {ex.Message}" }, statusCode: 500);
+    }
+});
+
 // --- GET /transactions ---
 app.MapGet("/transactions", async (HttpContext ctx, IOrderRepository orderRepo, int page = 1, int pageSize = 10) =>
 {
@@ -520,6 +642,8 @@ app.MapControllers();
 app.Run();
 
 record VnpayOrderRequest(Guid PackageId);
+
+record AdminCreditAdjustRequest(string Email, int Amount, string? Description);
 
 record AdminPackageRequest(
     string Name,

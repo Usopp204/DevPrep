@@ -4,11 +4,15 @@ using WebClient.Models.Feedback;
 using WebClient.Models.Home;
 using WebClient.Models.Shared;
 using WebClient.Services.Feedback;
+using WebClient.Services.Home;
 using WebClient.Services.Interview;
 
 namespace WebClient.Controllers.Home;
 
-public class HomeController(IInterviewService interviewService, IFeedbackService feedbackService) : Controller
+public class HomeController(
+    IInterviewService interviewService,
+    IFeedbackService feedbackService,
+    IAnnouncementService announcementService) : Controller
 {
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
@@ -40,6 +44,19 @@ public class HomeController(IInterviewService interviewService, IFeedbackService
         }
 
         return View(model);
+    }
+
+    // JSON thông báo hệ thống đang bật — partial _AnnouncementPopup fetch same-origin (mọi trang).
+    [HttpGet]
+    public async Task<IActionResult> Announcements(CancellationToken cancellationToken)
+    {
+        var items = await announcementService.GetActiveAsync(cancellationToken);
+        return Json(items.Select(a => new
+        {
+            title = a.Title,
+            content = a.Content,
+            createdAt = a.CreatedAt.ToString("dd/MM/yyyy")
+        }));
     }
 
     public IActionResult Error()

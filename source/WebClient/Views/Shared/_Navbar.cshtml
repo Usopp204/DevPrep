@@ -19,7 +19,9 @@
         <div class="hm-nav-links">
             @if (!navLoggedIn)
             {
-                <a class="@NavClass("Home")" aria-current="@AriaCurrent("Home")" asp-controller="Home" asp-action="Index">Features</a>
+                <a class="@NavClass("Home")" aria-current="@AriaCurrent("Home")" asp-controller="Home" asp-action="Index">Home</a>
+                @* Guest chưa đăng nhập: bấm Interview -> chuyển sang trang Login. *@
+                <a asp-controller="Auth" asp-action="Login">Interview</a>
                 <a class="@NavClass("Payment")" aria-current="@AriaCurrent("Payment")" asp-controller="Payment" asp-action="Index">Payment</a>
                 <a class="@NavClass("News")" aria-current="@AriaCurrent("News")" asp-controller="News" asp-action="Index">News</a>
                 <a class="@NavClass("Feedback")" aria-current="@AriaCurrent("Feedback")" asp-controller="Feedback" asp-action="System">Feedback</a>
@@ -50,6 +52,8 @@
         </div>
     </div>
 </nav>
+
+<partial name="_AnnouncementPopup" />
 
 <script>
     (function () {

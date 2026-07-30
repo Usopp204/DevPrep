@@ -61,32 +61,14 @@
         </div>
     </main>
 
-    <!-- Confirm modal -->
-    <div id="confirm-modal" class="fixed inset-0 z-[80] hidden items-center justify-center bg-black/50 backdrop-blur-sm">
-        <div class="glass-card rounded-2xl p-lg w-[360px]">
-            <h3 class="font-headline-md text-primary mb-2">Confirm</h3>
-            <p id="confirm-msg" class="text-on-surface-variant font-body-sm mb-lg">Are you sure?</p>
-            <div class="flex justify-end gap-sm">
-                <button id="confirm-cancel" class="px-lg py-sm rounded-xl border border-border-subtle text-on-surface hover:bg-surface-container-high">Cancel</button>
-                <button id="confirm-ok" class="px-lg py-sm rounded-xl bg-error/90 text-white font-bold hover:bg-error">OK</button>
-            </div>
-        </div>
-    </div>
-
     <script>
         const API_BASE = 'http://localhost:7000/api/admin/interviews';
         const token = '@token';
         const SESSION_ID = '@sessionId';
-        let confirmCb = null;
 
         document.addEventListener("DOMContentLoaded", () => {
-            document.getElementById('confirm-ok').addEventListener('click', () => { const cb = confirmCb; hideConfirm(); if (cb) cb(); });
-            document.getElementById('confirm-cancel').addEventListener('click', hideConfirm);
             loadDetail();
         });
-
-        function showConfirm(msg, cb) { document.getElementById('confirm-msg').innerText = msg; confirmCb = cb; const m = document.getElementById('confirm-modal'); m.classList.remove('hidden'); m.classList.add('flex'); }
-        function hideConfirm() { const m = document.getElementById('confirm-modal'); m.classList.add('hidden'); m.classList.remove('flex'); confirmCb = null; }
 
         async function loadDetail() {
             const body = document.getElementById('iv-detail-body');
@@ -124,23 +106,14 @@
                 </div>`).join('') : '<p class="text-on-surface-variant text-[13px] italic">No questions / transcript yet.</p>';
 
             document.getElementById('iv-detail-body').innerHTML = `
-                <div class="glass-card rounded-2xl p-lg flex items-start justify-between gap-md flex-wrap">
+                <div class="glass-card rounded-2xl p-lg flex items-start gap-md flex-wrap">
                     <div class="flex items-start gap-md">
                         <div class="w-14 h-14 rounded-2xl bg-primary/20 text-primary flex items-center justify-center font-bold text-xl">${initial(d.userFullName)}</div>
                         <div>
                             <h3 class="text-headline-md font-bold">${escapeHtml(userLabel(d))}</h3>
                             <p class="text-on-surface-variant font-code-label text-[12px]">${escapeHtml(d.userEmail || '—')}</p>
-                            <p class="font-body-sm text-on-surface mt-1">${statusBadge(d.status)}${d.isDeleted ? deletedBadge() : ''}</p>
+                            <p class="font-body-sm text-on-surface mt-1">${statusBadge(d.status)}</p>
                         </div>
-                    </div>
-                    <div class="flex items-center gap-sm">
-                        ${d.isDeleted
-                            ? `<button class="px-lg py-sm rounded-xl border border-success text-success font-bold hover:bg-success/10 flex items-center gap-xs" onclick="restoreSession('${d.sessionId}')">
-                                   <span class="material-symbols-outlined text-[20px]">restore_from_trash</span> Restore
-                               </button>`
-                            : `<button class="px-lg py-sm rounded-xl border border-error text-error font-bold hover:bg-error/10 flex items-center gap-xs" onclick="deleteSession('${d.sessionId}')">
-                                   <span class="material-symbols-outlined text-[20px]">delete</span> Delete
-                               </button>`}
                     </div>
                 </div>
                 <div class="glass-card rounded-xl p-md grid grid-cols-1 md:grid-cols-2 gap-x-xl">${metaHtml}</div>
@@ -164,29 +137,6 @@
             </div>`;
         }
 
-        function deleteSession(id) {
-            showConfirm('Delete this interview session? (soft delete)', async () => {
-                try {
-                    const res = await fetch(`${API_BASE}/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
-                    if (res.status === 403) { alert('Only Admin can delete.'); return; }
-                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                    loadDetail();
-                } catch (e) { alert('Delete failed.'); }
-            });
-        }
-
-        function restoreSession(id) {
-            showConfirm('Restore this deleted interview session?', async () => {
-                try {
-                    const res = await fetch(`${API_BASE}/${id}/restore`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
-                    if (res.status === 403) { alert('Only Admin can restore.'); return; }
-                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                    loadDetail();
-                } catch (e) { alert('Restore failed.'); }
-            });
-        }
-
-        function deletedBadge() { return ` <span class="px-xs py-1 rounded-full border text-[10px] font-bold uppercase bg-error/15 border-error/40 text-error">Deleted</span>`; }
         function userLabel(it) { return cleanText(it.userFullName) || (it.userId ? 'User ' + String(it.userId).substring(0, 5) : 'Unknown'); }
         function initial(n) { const clean = cleanText(n); return clean && clean.trim() ? clean.trim()[0].toUpperCase() : 'U'; }
         function badge(t) { return t ? `<span class="px-xs py-0.5 rounded bg-surface-container-highest text-on-surface-variant text-[10px] uppercase font-code-label">${escapeHtml(t)}</span>` : '—'; }
