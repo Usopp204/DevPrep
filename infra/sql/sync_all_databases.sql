@@ -155,6 +155,98 @@ BEGIN
 END;
 GO
 
+-- 1h. InterviewSessions.IntegrityPolicyAccepted(At) — candidate must accept the interview
+-- integrity policy (in-session biometric checks + camera monitoring) before entering the room.
+IF NOT EXISTS (
+    SELECT 1 FROM sys.columns
+    WHERE object_id = OBJECT_ID(N'dbo.InterviewSessions')
+      AND name = N'IntegrityPolicyAccepted')
+BEGIN
+    ALTER TABLE dbo.InterviewSessions ADD IntegrityPolicyAccepted BIT NOT NULL
+        CONSTRAINT DF_InterviewSessions_IntegrityPolicyAccepted DEFAULT (0);
+END;
+GO
+IF NOT EXISTS (
+    SELECT 1 FROM sys.columns
+    WHERE object_id = OBJECT_ID(N'dbo.InterviewSessions')
+      AND name = N'IntegrityPolicyAcceptedAt')
+BEGIN
+    ALTER TABLE dbo.InterviewSessions ADD IntegrityPolicyAcceptedAt DATETIME2 NULL;
+END;
+GO
+
+-- 1i. SessionVerificationEvents — in-session identity enforcement (scheduled face re-check +
+-- voice-answer verification) needs to correlate events to a specific challenge/question and
+-- detect duplicates/replays.
+IF NOT EXISTS (
+    SELECT 1 FROM sys.columns
+    WHERE object_id = OBJECT_ID(N'dbo.SessionVerificationEvents')
+      AND name = N'IncidentId')
+BEGIN
+    ALTER TABLE dbo.SessionVerificationEvents ADD IncidentId UNIQUEIDENTIFIER NULL;
+END;
+GO
+IF NOT EXISTS (
+    SELECT 1 FROM sys.columns
+    WHERE object_id = OBJECT_ID(N'dbo.SessionVerificationEvents')
+      AND name = N'SessionQuestionId')
+BEGIN
+    ALTER TABLE dbo.SessionVerificationEvents ADD SessionQuestionId UNIQUEIDENTIFIER NULL;
+END;
+GO
+IF NOT EXISTS (
+    SELECT 1 FROM sys.columns
+    WHERE object_id = OBJECT_ID(N'dbo.SessionVerificationEvents')
+      AND name = N'CheckSequence')
+BEGIN
+    ALTER TABLE dbo.SessionVerificationEvents ADD CheckSequence INT NULL;
+END;
+GO
+IF NOT EXISTS (
+    SELECT 1 FROM sys.columns
+    WHERE object_id = OBJECT_ID(N'dbo.SessionVerificationEvents')
+      AND name = N'ExpiresAt')
+BEGIN
+    ALTER TABLE dbo.SessionVerificationEvents ADD ExpiresAt DATETIME2 NULL;
+END;
+GO
+IF NOT EXISTS (
+    SELECT 1 FROM sys.columns
+    WHERE object_id = OBJECT_ID(N'dbo.SessionVerificationEvents')
+      AND name = N'ConsumedAt')
+BEGIN
+    ALTER TABLE dbo.SessionVerificationEvents ADD ConsumedAt DATETIME2 NULL;
+END;
+GO
+IF NOT EXISTS (
+    SELECT 1 FROM sys.columns
+    WHERE object_id = OBJECT_ID(N'dbo.SessionVerificationEvents')
+      AND name = N'ChallengeJson')
+BEGIN
+    ALTER TABLE dbo.SessionVerificationEvents ADD ChallengeJson NVARCHAR(400) NULL;
+END;
+GO
+IF NOT EXISTS (
+    SELECT 1 FROM sys.indexes
+    WHERE name = N'UX_SVE_IncidentId'
+      AND object_id = OBJECT_ID(N'dbo.SessionVerificationEvents'))
+BEGIN
+    CREATE UNIQUE INDEX UX_SVE_IncidentId
+        ON dbo.SessionVerificationEvents (IncidentId)
+        WHERE IncidentId IS NOT NULL;
+END;
+GO
+IF NOT EXISTS (
+    SELECT 1 FROM sys.indexes
+    WHERE name = N'UX_SVE_Session_Check_Sequence'
+      AND object_id = OBJECT_ID(N'dbo.SessionVerificationEvents'))
+BEGIN
+    CREATE UNIQUE INDEX UX_SVE_Session_Check_Sequence
+        ON dbo.SessionVerificationEvents (SessionId, CheckSequence)
+        WHERE CheckSequence IS NOT NULL;
+END;
+GO
+
 
 -- ============================================================================
 -- 2) DevPrep_Evaluation
