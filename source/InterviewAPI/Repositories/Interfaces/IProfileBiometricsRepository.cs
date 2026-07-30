@@ -10,6 +10,10 @@ public interface IProfileBiometricsRepository
     // Read-only list of everything the user has enrolled (status display).
     Task<List<ProfileBiometric>> ListByUserAsync(Guid userId, CancellationToken ct);
 
+    // Read-only templates for one modality across all accounts. Used only to decide whether
+    // a real person has already received the one-time biometric enrollment bonus.
+    Task<List<ProfileBiometric>> ListByModalityAsync(string modality, CancellationToken ct);
+
     Task AddAsync(ProfileBiometric entity, CancellationToken ct);
 
     // Persists changes to an entity previously returned tracked by GetAsync.

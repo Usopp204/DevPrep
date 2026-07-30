@@ -35,5 +35,18 @@ public partial class SessionVerificationEvent
 
     public string? Detail { get; set; }
 
+    public Guid? IncidentId { get; set; }
+
+    public Guid? SessionQuestionId { get; set; }
+
+    public int? CheckSequence { get; set; }
+
+    public DateTime? ExpiresAt { get; set; }
+
+    public DateTime? ConsumedAt { get; set; }
+
+    [StringLength(400)]
+    public string? ChallengeJson { get; set; }
+
     public DateTime CreatedAt { get; set; }
 }

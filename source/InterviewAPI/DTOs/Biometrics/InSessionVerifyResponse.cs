@@ -17,8 +17,9 @@ public class InSessionVerifyResponse
     // the threshold (see BiometricVerificationService.VerifyInSessionAsync).
     public bool NoFaceDetected { get; set; }
 
-    // "None" | "NoFace" | "IdentityMismatch" | "MultiFace" — lets the client render each
-    // category with its own tone/urgency instead of one generic "cheating warning" bucket.
+    // "None" | "NoFace" | "IdentityMismatch" | "MultiFace" | "ImageTooBlurry" |
+    // "FaceTooSmall" | "LowDetectionConfidence" | "CannotDecode" — lets the client render
+    // cheating strikes separately from non-strike camera-quality guidance.
     public string WarningType { get; set; } = "None";
 
     // Always clamped to [0, MaxStrikes] for display — the real accumulated count (Flag events

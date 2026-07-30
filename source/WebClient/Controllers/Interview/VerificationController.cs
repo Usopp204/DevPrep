@@ -9,6 +9,20 @@ namespace WebClient.Controllers.Interview;
 public class VerificationController(IVerificationService verificationService) : Controller
 {
     [HttpGet]
+    public async Task<IActionResult> InSessionCheck(
+        Guid sessionId, Guid sessionQuestionId, CancellationToken cancellationToken)
+    {
+        if (sessionId == Guid.Empty || sessionQuestionId == Guid.Empty)
+            return BadRequest(new { error = "Session and question are required." });
+
+        var (success, check, error) = await verificationService.GetInSessionCheckAsync(
+            sessionId, sessionQuestionId, cancellationToken);
+        if (!success || check is null)
+            return BadRequest(new { error = error ?? "Could not poll the verification schedule." });
+        return Json(check);
+    }
+
+    [HttpGet]
     public async Task<IActionResult> Challenge(Guid sessionId, string modality, CancellationToken cancellationToken)
     {
         if (sessionId == Guid.Empty || string.IsNullOrWhiteSpace(modality))
@@ -76,20 +90,24 @@ public class VerificationController(IVerificationService verificationService) : 
     // One in-session cheating check (single frame, no challenge/liveness) — the Room posts here
     // once per new question; InterviewAPI rate-limits how often a check actually runs.
     [HttpPost]
-    public async Task<IActionResult> VerifyInSession(Guid sessionId, IFormFile frame, CancellationToken cancellationToken)
+    public async Task<IActionResult> VerifyInSession(
+        Guid sessionId,
+        [FromForm] Guid checkId,
+        [FromForm] IFormFile frame,
+        CancellationToken cancellationToken)
     {
-        if (sessionId == Guid.Empty || frame is null || frame.Length == 0)
+        if (sessionId == Guid.Empty || checkId == Guid.Empty || frame is null || frame.Length == 0)
         {
             return BadRequest(new { error = "A frame is required." });
         }
 
         using var stream = new MemoryStream();
         await frame.CopyToAsync(stream, cancellationToken);
-        var contentType = string.IsNullOrEmpty(frame.ContentType) ? "image/jpeg" : frame.ContentType;
         var fileName = string.IsNullOrEmpty(frame.FileName) ? "frame.jpg" : frame.FileName;
+        var contentType = string.IsNullOrEmpty(frame.ContentType) ? "image/jpeg" : frame.ContentType;
 
         var (success, result, error) = await verificationService.VerifyInSessionAsync(
-            sessionId, stream.ToArray(), fileName, contentType, cancellationToken);
+            sessionId, checkId, stream.ToArray(), fileName, contentType, cancellationToken);
         if (!success || result is null)
         {
             return BadRequest(new { error = error ?? "In-session check failed." });

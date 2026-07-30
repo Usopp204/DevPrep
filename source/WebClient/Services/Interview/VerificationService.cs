@@ -26,8 +26,11 @@ public interface IVerificationService
         Guid sessionId, CancellationToken cancellationToken);
 
     Task<(bool Success, InSessionVerifyResultModel? Result, string? Error)> VerifyInSessionAsync(
-        Guid sessionId, byte[] frame, string fileName, string contentType,
+        Guid sessionId, Guid checkId, byte[] frame, string fileName, string contentType,
         CancellationToken cancellationToken);
+
+    Task<(bool Success, InSessionCheckDueModel? Check, string? Error)> GetInSessionCheckAsync(
+        Guid sessionId, Guid sessionQuestionId, CancellationToken cancellationToken);
 }
 
 public sealed class VerificationService(IApiClient apiClient) : IVerificationService
@@ -94,14 +97,29 @@ public sealed class VerificationService(IApiClient apiClient) : IVerificationSer
         return (true, envelope.Data, null);
     }
 
+    public async Task<(bool Success, InSessionCheckDueModel? Check, string? Error)> GetInSessionCheckAsync(
+        Guid sessionId, Guid sessionQuestionId, CancellationToken cancellationToken)
+    {
+        using var response = await apiClient.HttpClient.GetAsync(
+            $"api/interview/sessions/{sessionId}/verify/in-session-check" +
+            $"?sessionQuestionId={sessionQuestionId}",
+            cancellationToken);
+        var envelope = await ReadEnvelopeAsync<InSessionCheckDueModel>(
+            response, cancellationToken);
+        if (!response.IsSuccessStatusCode || envelope is null || !envelope.Success || envelope.Data is null)
+            return (false, null, envelope?.Message ?? "Could not poll the verification schedule.");
+        return (true, envelope.Data, null);
+    }
+
     public async Task<(bool Success, InSessionVerifyResultModel? Result, string? Error)> VerifyInSessionAsync(
-        Guid sessionId, byte[] frame, string fileName, string contentType,
+        Guid sessionId, Guid checkId, byte[] frame, string fileName, string contentType,
         CancellationToken cancellationToken)
     {
         using var content = new MultipartFormDataContent();
         var fileContent = new ByteArrayContent(frame);
         fileContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
         content.Add(fileContent, "frame", fileName);
+        content.Add(new StringContent(checkId.ToString()), "checkId");
 
         using var response = await apiClient.HttpClient.PostAsync(
             $"api/interview/sessions/{sessionId}/verify/in-session", content, cancellationToken);

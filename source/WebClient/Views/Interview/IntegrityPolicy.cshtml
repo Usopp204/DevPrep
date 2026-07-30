@@ -1,0 +1,131 @@
+@model dynamic
+@{
+    Layout = null;
+    var sessionId = ViewData["SessionId"]?.ToString();
+}
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>DevPrep - Interview Integrity Policy</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@@100..700,0..1&amp;display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@@400;500;600;700&amp;family=Inter:wght@@400;500&amp;family=JetBrains+Mono:wght@@500&amp;display=swap" rel="stylesheet" />
+    
+    <link rel="stylesheet" href="~/css/pages/integrity-policy.css" asp-append-version="true" />
+</head>
+<body class="policy-page">
+    <div class="bg-orbs">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+    </div>
+    
+    <main class="policy-glass-card">
+        <!-- Header -->
+        <header class="policy-header">
+            <h1>Interview Integrity Policy</h1>
+            <p>To ensure a fair and secure assessment environment, please review the following rules before beginning your session.</p>
+        </header>
+
+        <!-- Rules Grid -->
+        <div class="rules-grid">
+            <div class="rule-card">
+                <div class="rule-icon">
+                    <span class="material-symbols-outlined" data-weight="fill" style="font-variation-settings: 'FILL' 1;">videocam</span>
+                </div>
+                <h3>Video Visibility</h3>
+                <p>Your camera must be turned on and your face clearly visible throughout the entire session.</p>
+            </div>
+            
+            <div class="rule-card">
+                <div class="rule-icon">
+                    <span class="material-symbols-outlined" data-weight="fill" style="font-variation-settings: 'FILL' 1;">person</span>
+                </div>
+                <h3>Single Participant</h3>
+                <p>You must be the only person in the room. No other individuals may be present or assist you.</p>
+            </div>
+            
+            <div class="rule-card">
+                <div class="rule-icon">
+                    <span class="material-symbols-outlined" data-weight="fill" style="font-variation-settings: 'FILL' 1;">block</span>
+                </div>
+                <h3>No Assistance</h3>
+                <p>Use of external resources, AI tools, or secondary devices is strictly prohibited.</p>
+            </div>
+            
+            <div class="rule-card">
+                <div class="rule-icon">
+                    <span class="material-symbols-outlined" data-weight="fill" style="font-variation-settings: 'FILL' 1;">record_voice_over</span>
+                </div>
+                <h3>Voice Verification</h3>
+                <p>Your microphone will be active. Using AI-generated voices or external audio sources is strictly prohibited.</p>
+            </div>
+            
+            <div class="rule-card rule-card-wide">
+                <div class="rule-icon">
+                    <span class="material-symbols-outlined" data-weight="fill" style="font-variation-settings: 'FILL' 1;">tab</span>
+                </div>
+                <h3>Tab Monitoring</h3>
+                <p>Navigation away from the assessment window will be recorded. Please keep focus on the active interview tab.</p>
+            </div>
+        </div>
+
+        <!-- Panels -->
+        <div class="panels-container">
+            <!-- Warning Panel -->
+            <div class="info-panel warning">
+                <span class="material-symbols-outlined info-panel-icon warning">warning</span>
+                <div class="info-panel-content">
+                    <h4>Violation Policy</h4>
+                    <p>The assessment will automatically terminate upon reaching a maximum of 3 recorded violations.</p>
+                </div>
+            </div>
+            
+            <!-- Info Panel -->
+            <div class="info-panel">
+                <span class="material-symbols-outlined info-panel-icon primary">visibility</span>
+                <div class="info-panel-content">
+                    <h4>AI Monitoring Active</h4>
+                    <p>This session utilizes advanced AI monitoring to ensure compliance with the integrity policy. Data is securely processed and reviewed.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer / Actions -->
+        <footer class="policy-footer">
+            <label class="custom-checkbox-wrapper">
+                <input class="custom-checkbox" id="agree-checkbox" type="checkbox" />
+                <span class="checkbox-label">I have read and understand the interview rules</span>
+            </label>
+            
+            <div class="policy-actions">
+                <a href="@Url.Action("Index", "Interview")" class="btn-secondary">Back</a>
+                <form asp-action="AcceptIntegrityPolicy" asp-controller="Interview" asp-route-id="@sessionId" method="post" id="policy-form" class="policy-actions-form">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn-primary" disabled="" id="enter-btn">Enter Interview</button>
+                </form>
+            </div>
+        </footer>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const checkbox = document.getElementById('agree-checkbox');
+            const enterBtn = document.getElementById('enter-btn');
+            const policyForm = document.getElementById('policy-form');
+
+            checkbox.addEventListener('change', (e) => {
+                enterBtn.disabled = !e.target.checked;
+            });
+
+            policyForm.addEventListener("submit", function () {
+                enterBtn.disabled = true;
+                enterBtn.textContent = "Entering interview…";
+            });
+        });
+    </script>
+</body>
+</html>

@@ -40,6 +40,7 @@ public interface ISessionRepository
     // (double-fire click, retry) reads a stale expected value and loses — same conditional-
     // UPDATE pattern as UpdateStatusIfAsync above.
     Task<bool> IncrementAnsweredIfAsync(Guid sessionId, int expectedCurrentCount, CancellationToken ct);
+    Task<bool> AcceptIntegrityPolicyIfAsync(Guid sessionId, CancellationToken ct);
 
     // Rollback for IncrementAnsweredIfAsync when a step AFTER the successful claim fails
     // (e.g. the ChatMessage insert throws) — safe as an unconditional decrement because only

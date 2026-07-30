@@ -15,10 +15,31 @@ namespace InterviewAPI.Controllers;
 public class SessionVerificationController : ControllerBase
 {
     private readonly IBiometricVerificationService _service;
+    private readonly ISessionService _sessionService;
 
-    public SessionVerificationController(IBiometricVerificationService service)
+    public SessionVerificationController(
+        IBiometricVerificationService service,
+        ISessionService sessionService)
     {
         _service = service;
+        _sessionService = sessionService;
+    }
+
+    [HttpGet("in-session-check")]
+    public async Task<IActionResult> GetInSessionCheck(
+        Guid sessionId, [FromQuery] Guid sessionQuestionId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var result = await _sessionService.GetInSessionCheckAsync(
+                userId, sessionId, sessionQuestionId, cancellationToken);
+            return Ok(ApiResponse<InSessionCheckDueResponse>.Ok(result));
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+        }
     }
 
     // GET api/interview/sessions/{sessionId}/verify/challenge?modality=face|voice
@@ -133,13 +154,43 @@ public class SessionVerificationController : ControllerBase
     // strike cap is reached.
     [HttpPost("in-session")]
     public async Task<IActionResult> VerifyInSession(
-        Guid sessionId, IFormFile frame, CancellationToken cancellationToken)
+        Guid sessionId,
+        [FromForm] Guid checkId,
+        [FromForm] IFormFile frame,
+        CancellationToken cancellationToken)
     {
         try
         {
             var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-            var result = await _service.VerifyInSessionAsync(userId, sessionId, frame, cancellationToken);
+            var result = await _service.VerifyInSessionAsync(userId, sessionId, checkId, frame, cancellationToken);
             return Ok(ApiResponse<InSessionVerifyResponse>.Ok(result));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<object>.Fail(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+        }
+    }
+
+    // POST api/interview/sessions/{sessionId}/verify/voice-answer — transcribes one microphone
+    // answer and performs a speaker-only identity check. A confirmed mismatch is one direct
+    // cheating strike; quality failures are not strikes.
+    [HttpPost("voice-answer")]
+    public async Task<IActionResult> VerifyVoiceAnswer(
+        Guid sessionId,
+        [FromForm] Guid checkId,
+        [FromForm] IFormFile audio,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var result = await _service.VerifyVoiceAnswerAsync(
+                userId, sessionId, checkId, audio, cancellationToken);
+            return Ok(ApiResponse<VoiceAnswerVerifyResponse>.Ok(result));
         }
         catch (KeyNotFoundException ex)
         {

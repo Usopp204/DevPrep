@@ -27,5 +27,10 @@ public interface IBiometricVerificationService
     // the Room once per new question (rate-limited server-side). See the implementation for the
     // strike/Strictness rules.
     Task<InSessionVerifyResponse> VerifyInSessionAsync(
-        Guid userId, Guid sessionId, IFormFile frame, CancellationToken ct);
+        Guid userId, Guid sessionId, Guid checkId, IFormFile frame, CancellationToken ct);
+
+    // Transcribes one microphone answer and performs speaker-only verification against the
+    // enrolled voice template. No challenge phrase or voice-liveness rule is applied.
+    Task<VoiceAnswerVerifyResponse> VerifyVoiceAnswerAsync(
+        Guid userId, Guid sessionId, Guid checkId, IFormFile audio, CancellationToken ct);
 }
