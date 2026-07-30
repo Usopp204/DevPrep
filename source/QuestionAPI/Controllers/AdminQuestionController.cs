@@ -58,7 +58,7 @@ public class AdminQuestionController : ControllerBase
 
             return Ok(ApiResponse<AdminQuestionDetailDto>.Ok(
                 result,
-                "Created question successfully và synced sang AI."
+                "Created question and synchronized the AI index successfully."
             ));
         }
         catch (Exception ex)
@@ -84,7 +84,7 @@ public class AdminQuestionController : ControllerBase
 
             return Ok(ApiResponse<AdminQuestionDetailDto>.Ok(
                 result,
-                "Updated question successfully và synced sang AI."
+                "Updated question and synchronized the AI index successfully."
             ));
         }
         catch (Exception ex)
@@ -112,7 +112,7 @@ public class AdminQuestionController : ControllerBase
 
             return Ok(ApiResponse<object>.Ok(
                 true,
-                "Soft-deleted question successfully và removed khỏi AI."
+                "Soft-deleted question and synchronized the AI index successfully."
             ));
         }
         catch (Exception ex)
@@ -139,7 +139,7 @@ public class AdminQuestionController : ControllerBase
 
             return Ok(ApiResponse<object>.Ok(
                 true,
-                "Restored question successfully và synced sang AI."
+                "Restored question and synchronized the AI index successfully."
             ));
         }
         catch (Exception ex)

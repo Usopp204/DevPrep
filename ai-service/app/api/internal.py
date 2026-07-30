@@ -218,3 +218,10 @@ def delete_question_index(question_id: str, x_internal_api_key: str | None = Hea
     _check_key(x_internal_api_key)
     chroma_store.delete_question(question_id.strip())
     return {"ok": True}
+
+
+@router.delete("/questions/index")
+def reset_question_index(x_internal_api_key: str | None = Header(default=None)):
+    _check_key(x_internal_api_key)
+    chroma_store.reset_index()
+    return {"ok": True}
