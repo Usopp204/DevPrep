@@ -16,7 +16,10 @@ public class QuestionIndexClient : IQuestionIndexClient
         _logger = logger;
     }
 
-    public async Task<bool> UpsertAsync(Question question, string? categoryName)
+    public async Task<bool> UpsertAsync(
+        Question question,
+        string? categoryName,
+        string? positionName)
     {
         try
         {
@@ -27,7 +30,7 @@ public class QuestionIndexClient : IQuestionIndexClient
                 answer = question.Answer,
                 category = categoryName,
                 difficulty = question.Difficulty,
-                position = question.Position?.Name
+                position = positionName
             };
 
             var response = await _http.PostAsJsonAsync("internal/questions/index/upsert", payload);
@@ -89,4 +92,32 @@ public class QuestionIndexClient : IQuestionIndexClient
             return false;
         }
     }
+
+    public async Task<bool> ResetAsync()
+    {
+        try
+        {
+            var response = await _http.DeleteAsync("internal/questions/index");
+
+            if (response.IsSuccessStatusCode)
+            {
+                _logger.LogInformation("Cleared the ChromaDB question index.");
+                return true;
+            }
+
+            var body = await response.Content.ReadAsStringAsync();
+            _logger.LogWarning(
+                "AI index reset failed. Status={Status}, Body={Body}",
+                response.StatusCode,
+                body
+            );
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not connect to AI Service when resetting the question index.");
+            return false;
+        }
+    }
+
 }

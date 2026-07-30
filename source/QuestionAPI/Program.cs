@@ -58,6 +58,7 @@ builder.Services.AddScoped<IAdminQuestionService, AdminQuestionService>();
 builder.Services.AddScoped<InternalQuestionService>();
 builder.Services.AddScoped<ITechStackRepository, TechStackRepository>();
 builder.Services.AddScoped<ITechStackService, TechStackService>();
+builder.Services.AddScoped<IQuestionIndexEligibilityService, QuestionIndexEligibilityService>();
 builder.Services.AddScoped<IPositionRepository, PositionRepository>();
 builder.Services.AddScoped<IPositionService, PositionService>();
 
