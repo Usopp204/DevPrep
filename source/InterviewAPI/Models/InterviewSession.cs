@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -62,6 +62,10 @@ public partial class InterviewSession
     public int? AvgResponseTimeMs { get; set; }
 
     public int CreditCost { get; set; }
+
+    public bool IntegrityPolicyAccepted { get; set; }
+
+    public DateTime? IntegrityPolicyAcceptedAt { get; set; }
 
     public bool IsDeleted { get; set; }
 

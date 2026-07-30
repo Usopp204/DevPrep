@@ -42,6 +42,11 @@ public interface IAiServiceClient
     Task<AiFaceVerifyResponse> VerifyFaceAsync(
         IFormFile frame, float[] storedEmbedding, CancellationToken ct = default);
 
+    // Speaker-only match via the generic biometric verify endpoint. Used only for microphone
+    // answers in the interview room; it does not validate a challenge phrase.
+    Task<AiFaceVerifyResponse> VerifyVoiceAsync(
+        IFormFile audio, float[] storedEmbedding, CancellationToken ct = default);
+
     // Voice speaker + challenge-phrase check via POST /internal/biometrics/voice/verify-challenge.
     Task<AiVoiceVerifyChallengeResponse> VerifyVoiceChallengeAsync(
         IFormFile file, float[] storedEmbedding, string expectedPhrase,

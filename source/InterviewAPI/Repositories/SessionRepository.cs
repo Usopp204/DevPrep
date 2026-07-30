@@ -222,6 +222,17 @@ public class SessionRepository : ISessionRepository
         return rowsAffected > 0;
     }
 
+    public async Task<bool> AcceptIntegrityPolicyIfAsync(Guid sessionId, CancellationToken ct)
+    {
+        var rowsAffected = await _db.InterviewSessions
+            .Where(s => s.SessionId == sessionId && !s.IntegrityPolicyAccepted && !s.IsDeleted)
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.IntegrityPolicyAccepted, true)
+                                      .SetProperty(x => x.IntegrityPolicyAcceptedAt, VietnamTime.Now)
+                                      .SetProperty(x => x.UpdatedAt, VietnamTime.Now), ct);
+        _logger.LogInformation("AcceptIntegrityPolicyIfAsync: rowsAffected={RowsAffected}, sessionId={SessionId}", rowsAffected, sessionId);
+        return rowsAffected > 0;
+    }
+
     public async Task<bool> IncrementAnsweredIfAsync(Guid sessionId, int expectedCurrentCount, CancellationToken ct)
     {
         var rowsAffected = await _db.InterviewSessions

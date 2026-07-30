@@ -176,6 +176,40 @@ public class InterviewSessionController : ControllerBase
         return Ok(ApiResponse<object>.Ok(new { }));
     }
 
+    [HttpGet("{id:guid}/integrity-policy")]
+    public async Task<IActionResult> GetIntegrityPolicyStatus(Guid id, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var result = await _service.GetIntegrityPolicyStatusAsync(userId, id, cancellationToken);
+            return Ok(ApiResponse<IntegrityPolicyStatusResponse>.Ok(result));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<object>.Fail(ex.Message));
+        }
+    }
+
+    [HttpPost("{id:guid}/integrity-policy/accept")]
+    public async Task<IActionResult> AcceptIntegrityPolicy(Guid id, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var result = await _service.AcceptIntegrityPolicyAsync(userId, id, cancellationToken);
+            return Ok(ApiResponse<IntegrityPolicyStatusResponse>.Ok(result));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<object>.Fail(ex.Message));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+        }
+    }
+
     /// <summary>Lấy thời gian còn lại và trạng thái hiện tại của phiên phỏng vấn.</summary>
     [HttpGet("{id:guid}/timer")]
     public async Task<IActionResult> GetTimer(Guid id, CancellationToken cancellationToken)

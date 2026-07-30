@@ -132,6 +132,43 @@ public class InterviewController(
         return Json(catalog);
     }
 
+    [HttpGet]
+    public async Task<IActionResult> IntegrityPolicy(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await interviewService.GetIntegrityPolicyStatusAsync(id, cancellationToken);
+        if (!result.Success)
+        {
+            TempData["ErrorMessage"] = result.Error ?? "Could not load session policy status.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        if (result.Data?.Accepted == true)
+        {
+            return RedirectToAction(nameof(Room), new { id });
+        }
+
+        Response.Headers.Append("Cache-Control", "no-cache, no-store, must-revalidate");
+        Response.Headers.Append("Pragma", "no-cache");
+        Response.Headers.Append("Expires", "0");
+        
+        ViewData["SessionId"] = id;
+        return View();
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AcceptIntegrityPolicy(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await interviewService.AcceptIntegrityPolicyAsync(id, cancellationToken);
+        if (!result.Success)
+        {
+            TempData["ErrorMessage"] = result.Error ?? "Could not accept integrity policy.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        return RedirectToAction(nameof(Room), new { id });
+    }
+
     // Statuses that may still render as an interactive Room. Anything else (Completed,
     // Cancelled, Expired, ...) is a session that has already ended.
     private static readonly string[] ActiveRoomStatuses = { "Initialized", "InProgress", "Paused" };
@@ -184,6 +221,19 @@ public class InterviewController(
 
             TempData["ErrorMessage"] = gate.Reason;
             return RedirectToAction(nameof(Index));
+        }
+
+        // Integrity Policy guard: must accept rules after biometric check, before entering the Room.
+        var policyStatus = await interviewService.GetIntegrityPolicyStatusAsync(id, cancellationToken);
+        if (!policyStatus.Success)
+        {
+            TempData["ErrorMessage"] = policyStatus.Error ?? "Could not verify integrity policy.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        if (policyStatus.Data?.Accepted != true)
+        {
+            return RedirectToAction(nameof(IntegrityPolicy), new { id });
         }
 
         // Materialize the current/first question now that the entry gate has passed (this is
@@ -391,8 +441,16 @@ public class InterviewController(
     }
 
     [HttpPost]
-    public async Task<IActionResult> Stt(IFormFile audio, CancellationToken cancellationToken)
+    public async Task<IActionResult> Stt(
+        Guid sessionId,
+        Guid voiceCheckId,
+        IFormFile audio,
+        CancellationToken cancellationToken)
     {
+        if (sessionId == Guid.Empty || voiceCheckId == Guid.Empty)
+        {
+            return BadRequest(new { error = "Session id and voice check id are required." });
+        }
         if (audio is null || audio.Length == 0)
         {
             return BadRequest(new { error = "Audio is required." });
@@ -403,15 +461,15 @@ public class InterviewController(
         var contentType = string.IsNullOrEmpty(audio.ContentType) ? "audio/webm" : audio.ContentType;
         var fileName = string.IsNullOrEmpty(audio.FileName) ? "answer.webm" : audio.FileName;
 
-        var (success, text, error) = await interviewService.TranscribeAudioAsync(
-            stream.ToArray(), fileName, contentType, cancellationToken);
+        var (success, result, error) = await interviewService.TranscribeAudioAsync(
+            sessionId, voiceCheckId, stream.ToArray(), fileName, contentType, cancellationToken);
 
-        if (!success)
+        if (!success || result is null)
         {
             return BadRequest(new { error = error ?? "Could not transcribe audio." });
         }
 
-        return Json(new { text });
+        return Json(result);
     }
 
     [HttpPost]
@@ -471,20 +529,20 @@ public class InterviewController(
         return Json(pause);
     }
 
-    // Same-origin proxy for flagging a mandatory-camera policy violation (permission denied /
-    // disconnected mid-session). Flag-only — never blocks the Room or answering.
+    // Same-origin proxy for one idempotent camera incident after the reconnect grace period.
     [HttpPost]
     public async Task<IActionResult> CameraViolation(
         Guid id, [FromBody] CameraViolationProxyRequest request, CancellationToken cancellationToken)
     {
-        var (success, error) = await interviewService.ReportCameraViolationAsync(id, request.Reason, cancellationToken);
+        var (success, result, error) = await interviewService.ReportCameraViolationAsync(
+            id, request.IncidentId, request.Reason, cancellationToken);
 
-        if (!success)
+        if (!success || result is null)
         {
             return BadRequest(new { error = error ?? "Could not report the camera violation." });
         }
 
-        return Json(new { ok = true });
+        return Json(result);
     }
 
     // Same-origin proxy for un-pausing the interview (Room UX Phase 2).

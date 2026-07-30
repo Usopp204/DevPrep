@@ -1,5 +1,6 @@
 using System.Text.Json;
 using InterviewAPI.Clients;
+using InterviewAPI.DTOs.AiService;
 using InterviewAPI.DTOs.Biometrics;
 using InterviewAPI.Helpers;
 using InterviewAPI.Models;
@@ -262,7 +263,7 @@ public class BiometricVerificationService : IBiometricVerificationService
     // TODO: ai-service runs --workers 1 with synchronous handlers; consider a thread pool or
     // more workers before raising the check frequency any further.
     public async Task<InSessionVerifyResponse> VerifyInSessionAsync(
-        Guid userId, Guid sessionId, IFormFile frame, CancellationToken ct)
+        Guid userId, Guid sessionId, Guid checkId, IFormFile frame, CancellationToken ct)
     {
         EnsureEnabled();
         if (frame is null || frame.Length == 0)
@@ -273,40 +274,25 @@ public class BiometricVerificationService : IBiometricVerificationService
             throw new KeyNotFoundException("Session not found.");
         if (session.Status != "InProgress")
             throw new InvalidOperationException("Session is not in progress.");
+        if (checkId == Guid.Empty)
+            throw new InvalidOperationException("A verification check token is required.");
+        if (!await _eventRepository.TryConsumeQuestionCheckAsync(
+                checkId, sessionId, userId, VietnamTime.Now, ct))
+            throw new InvalidOperationException("The verification check token is invalid, expired, or already used.");
 
         var maxStrikes = _configuration.GetValue("Biometrics:InSessionMaxStrikes", 3);
         var strictness = _configuration.GetValue("Biometrics:InSessionStrictness", "Flag");
-        var minIntervalSeconds = _configuration.GetValue("Biometrics:InSessionMinIntervalSeconds", 25);
         var noFaceStrikeThreshold = _configuration.GetValue("Biometrics:NoFaceStrikeThreshold", 3);
 
         // Rate limit (server-side on purpose — the client mirrors nothing here, this IS the
         // guard): too soon after the previous check, no-op. Returns a neutral "passed" result
         // rather than an error so a rapid-skip burst is silently absorbed instead of surfacing
         // scary warnings; nothing is recorded and no strike is counted for a skipped check.
-        var priorEvents = await _eventRepository.ListBySessionAsync(sessionId, "InSession", ct);
-        var lastCheckAt = priorEvents.FirstOrDefault()?.CreatedAt;
-        if (lastCheckAt is not null
-            && (VietnamTime.Now - lastCheckAt.Value).TotalSeconds < minIntervalSeconds)
-        {
-            var priorEffectiveStrikes = ComputeEffectiveStrikeCount(priorEvents, noFaceStrikeThreshold);
-            return new InSessionVerifyResponse
-            {
-                Passed = true,
-                NoFaceDetected = false,
-                WarningType = "None",
-                StrikeCount = Math.Min(priorEffectiveStrikes, maxStrikes),
-                MaxStrikes = maxStrikes,
-                NoFaceCount = 0,
-                NoFaceStrikeThreshold = noFaceStrikeThreshold,
-                ShouldEndSession = false,
-                Message = "Check skipped (too soon after the previous one).",
-            };
-        }
-
         var embedding = await GetStoredEmbeddingAsync(userId, ProfileBiometricsService.ModalityFace, ct);
 
         bool isStrike;
         bool noFaceDetected = false;
+        bool qualityWarningDetected = false;
         string decision;
         string warningType;
         object detail;
@@ -318,12 +304,18 @@ public class BiometricVerificationService : IBiometricVerificationService
             isStrike = !result.Match;
             decision = result.Match ? "Pass" : "Flag";
             warningType = result.Match ? "None" : "IdentityMismatch";
-            detail = new { result.Score, result.Threshold, Reason = result.Match ? null : "Identity mismatch" };
+            detail = new
+            {
+                result.Score,
+                result.Threshold,
+                Reason = result.Match ? null : "Identity mismatch"
+            };
             message = result.Match
                 ? "Identity confirmed."
                 : "The face in frame does not match your enrolled profile.";
         }
-        catch (BiometricQualityException ex) when (ex.FaceCount is int faceCount)
+        catch (BiometricQualityException ex)
+            when (ex.QualityCode == "multiple_faces" && ex.FaceCount is int faceCount)
         {
             isStrike = true;
             decision = "Flag";
@@ -332,25 +324,40 @@ public class BiometricVerificationService : IBiometricVerificationService
             message = $"Another person appears to be in frame with you ({faceCount} faces detected). " +
                       "If this continues, it will be treated as a possible attempt to get help during the interview.";
         }
-        catch (BiometricQualityException)
+        catch (BiometricQualityException ex)
         {
-            // No face / blurry / too small / ... — not a strike by itself, see the method
-            // comment above; NoFaceCount below tracks accumulation toward a converted strike.
             isStrike = false;
-            noFaceDetected = true;
-            decision = "NoFace";
-            warningType = "NoFace";
-            detail = new { Reason = "No face detected" };
-            message = "We couldn't see your face — please make sure you're in frame.";
+            noFaceDetected = ex.QualityCode is null or "no_face";
+            qualityWarningDetected = !noFaceDetected;
+            decision = noFaceDetected ? "NoFace" : "Quality";
+            warningType = ex.QualityCode switch
+            {
+                "image_too_blurry" => "ImageTooBlurry",
+                "face_too_small" => "FaceTooSmall",
+                "low_detection_confidence" => "LowDetectionConfidence",
+                "cannot_decode_image" => "CannotDecode",
+                _ => "NoFace",
+            };
+            detail = new { Reason = ex.Message, ex.QualityCode };
+            message = warningType switch
+            {
+                "ImageTooBlurry" => "The camera image is too blurry — please hold still and improve the lighting.",
+                "FaceTooSmall" => "Your face is too far from the camera — please move closer.",
+                "LowDetectionConfidence" => "Your face is not clear enough — please face the camera directly.",
+                "CannotDecode" => "The camera frame could not be processed. The check will be retried later.",
+                _ => "We couldn't see your face — please make sure you're in frame.",
+            };
         }
 
         await RecordEventAsync(sessionId, userId, "InSession", ProfileBiometricsService.ModalityFace,
-            score: null, livenessPassed: null, matched: !isStrike && !noFaceDetected,
+            score: null, livenessPassed: null,
+            matched: !isStrike && !noFaceDetected && !qualityWarningDetected,
             decision: decision, detail: detail, ct);
 
         var events = await _eventRepository.ListBySessionAsync(sessionId, "InSession", ct);
         var noFaceCount = events.Count(e => e.Modality == ProfileBiometricsService.ModalityFace && e.Decision == "NoFace");
-        var effectiveStrikeCount = ComputeEffectiveStrikeCount(events, noFaceStrikeThreshold);
+        var effectiveStrikeCount = CheatingStrikeHelper.ComputeEffectiveStrikeCount(
+            events, noFaceStrikeThreshold);
 
         // This NoFace event just completed a fresh group of noFaceStrikeThreshold — it converts
         // into a strike right now, with the same weight as a Flag.
@@ -389,7 +396,7 @@ public class BiometricVerificationService : IBiometricVerificationService
 
         return new InSessionVerifyResponse
         {
-            Passed = !isStrike && !noFaceDetected,
+            Passed = !isStrike && !noFaceDetected && !qualityWarningDetected,
             NoFaceDetected = noFaceDetected,
             WarningType = warningType,
             StrikeCount = displayStrikeCount,
@@ -402,13 +409,174 @@ public class BiometricVerificationService : IBiometricVerificationService
         };
     }
 
-    // Shared by the main check and the rate-limit-skip branch so both report the same number.
-    // Real (unclamped) count — callers clamp to maxStrikes only for display.
-    private static int ComputeEffectiveStrikeCount(IEnumerable<SessionVerificationEvent> events, int noFaceStrikeThreshold)
+    // Deliberately opt-in, unlike VerifyInSessionAsync (Face): there is no server-issued
+    // mandatory token for voice, so this only runs when the candidate chooses to dictate an
+    // answer via the mic (see Room's STT flow). Typing an answer skips this check entirely,
+    // in every InteractionMode — that is accepted as-is; Face already provides the mandatory,
+    // per-question identity check, and forcing spoken answers or adding a periodic mandatory
+    // voice check would add UX friction and extra blocking ai-service calls (single worker)
+    // for a narrow additional threat (remote voice coaching) not currently worth that cost.
+    public async Task<VoiceAnswerVerifyResponse> VerifyVoiceAnswerAsync(
+        Guid userId, Guid sessionId, Guid checkId, IFormFile audio, CancellationToken ct)
     {
-        var flagCount = events.Count(e => e.Modality == ProfileBiometricsService.ModalityFace && e.Decision == "Flag");
-        var noFaceCount = events.Count(e => e.Modality == ProfileBiometricsService.ModalityFace && e.Decision == "NoFace");
-        return flagCount + noFaceCount / noFaceStrikeThreshold;
+        if (checkId == Guid.Empty)
+            throw new ArgumentException("Voice check id is required.");
+        if (audio is null || audio.Length == 0)
+            throw new ArgumentException("An audio sample is required.");
+
+        var session = await _sessionRepository.GetByIdAsync(sessionId, ct);
+        if (session is null || session.UserId != userId)
+            throw new KeyNotFoundException("Session not found.");
+        if (session.Status != "InProgress")
+            throw new InvalidOperationException("Session is not in progress.");
+
+        await using var audioStream = new MemoryStream();
+        await audio.CopyToAsync(audioStream, ct);
+        var audioBytes = audioStream.ToArray();
+        var contentType = string.IsNullOrEmpty(audio.ContentType) ? "audio/webm" : audio.ContentType;
+        var fileName = string.IsNullOrEmpty(audio.FileName) ? "answer.webm" : audio.FileName;
+
+        var transcriptionTask = _aiServiceClient.TranscribeAsync(audioBytes, fileName, contentType, ct);
+        var maxStrikes = _configuration.GetValue("Biometrics:InSessionMaxStrikes", 3);
+
+        if (!_configuration.GetValue("Biometrics:Enabled", false))
+        {
+            return new VoiceAnswerVerifyResponse
+            {
+                Text = await transcriptionTask,
+                VoiceChecked = false,
+                MaxStrikes = maxStrikes,
+            };
+        }
+
+        var voiceRow = await _biometricsRepository.GetAsync(
+            userId, ProfileBiometricsService.ModalityVoice, ct);
+        if (voiceRow is null)
+        {
+            return new VoiceAnswerVerifyResponse
+            {
+                Text = await transcriptionTask,
+                VoiceChecked = false,
+                MaxStrikes = maxStrikes,
+                Message = "Voice verification is unavailable because no voice enrollment was found.",
+            };
+        }
+
+        var existingEvent = await _eventRepository.GetIncidentAsync(checkId, ct);
+        if (existingEvent is not null)
+        {
+            if (existingEvent.SessionId != sessionId || existingEvent.UserId != userId
+                || existingEvent.Modality != ProfileBiometricsService.ModalityVoice)
+            {
+                throw new InvalidOperationException("Voice check id is already in use.");
+            }
+
+            return await BuildVoiceAnswerResponseAsync(
+                sessionId, await transcriptionTask, existingEvent, true, maxStrikes, ct);
+        }
+
+        AiFaceVerifyResponse verification;
+        try
+        {
+            using var probeStream = new MemoryStream(audioBytes, writable: false);
+            var probe = new FormFile(probeStream, 0, audioBytes.Length, "file", fileName)
+            {
+                Headers = new HeaderDictionary(),
+                ContentType = contentType,
+            };
+            verification = await _aiServiceClient.VerifyVoiceAsync(
+                probe, EmbeddingCodec.ToFloats(voiceRow.Embedding), ct);
+        }
+        catch (BiometricQualityException)
+        {
+            return new VoiceAnswerVerifyResponse
+            {
+                Text = await transcriptionTask,
+                VoiceChecked = false,
+                MaxStrikes = maxStrikes,
+                Message = "Voice verification could not assess this recording.",
+            };
+        }
+        catch (Exception)
+        {
+            return new VoiceAnswerVerifyResponse
+            {
+                Text = await transcriptionTask,
+                VoiceChecked = false,
+                MaxStrikes = maxStrikes,
+                Message = "Voice verification is temporarily unavailable.",
+            };
+        }
+
+        var verificationEvent = new SessionVerificationEvent
+        {
+            SessionId = sessionId,
+            UserId = userId,
+            Phase = "InSession",
+            Modality = ProfileBiometricsService.ModalityVoice,
+            Score = verification.Score,
+            Matched = verification.Match,
+            Decision = verification.Match ? "Pass" : "Flag",
+            IncidentId = checkId,
+            Detail = JsonSerializer.Serialize(new
+            {
+                Reason = verification.Match ? null : "VoiceMismatch",
+                verification.Threshold,
+            }),
+            CreatedAt = VietnamTime.Now,
+        };
+
+        var inserted = await _eventRepository.TryAddIncidentAsync(verificationEvent, ct);
+        if (!inserted)
+        {
+            verificationEvent = await _eventRepository.GetIncidentAsync(checkId, ct)
+                ?? throw new InvalidOperationException("Could not load the existing voice check.");
+        }
+
+        return await BuildVoiceAnswerResponseAsync(
+            sessionId, await transcriptionTask, verificationEvent, !inserted, maxStrikes, ct);
+    }
+
+    private async Task<VoiceAnswerVerifyResponse> BuildVoiceAnswerResponseAsync(
+        Guid sessionId,
+        string text,
+        SessionVerificationEvent verificationEvent,
+        bool duplicate,
+        int maxStrikes,
+        CancellationToken ct)
+    {
+        var noFaceStrikeThreshold = _configuration.GetValue("Biometrics:NoFaceStrikeThreshold", 3);
+        var strictness = _configuration.GetValue("Biometrics:InSessionStrictness", "Flag");
+        var events = await _eventRepository.ListBySessionAsync(sessionId, "InSession", ct);
+        var effectiveStrikeCount = CheatingStrikeHelper.ComputeEffectiveStrikeCount(
+            events, noFaceStrikeThreshold);
+        var displayStrikeCount = Math.Min(effectiveStrikeCount, maxStrikes);
+        var mismatch = verificationEvent.Decision == "Flag";
+        var shouldEndSession = mismatch
+            && string.Equals(strictness, "Strict", StringComparison.OrdinalIgnoreCase)
+            && effectiveStrikeCount >= maxStrikes;
+
+        var message = mismatch
+            ? "The recorded answer does not match your enrolled voice."
+            : null;
+        if (shouldEndSession)
+        {
+            await EndSessionForCheatingAsync(sessionId, ct);
+            message = $"Maximum cheating warnings reached ({displayStrikeCount}/{maxStrikes}). This interview has been ended.";
+        }
+
+        return new VoiceAnswerVerifyResponse
+        {
+            Text = text,
+            VoiceChecked = true,
+            VoiceMatched = !mismatch,
+            Score = verificationEvent.Score,
+            StrikeCount = displayStrikeCount,
+            MaxStrikes = maxStrikes,
+            ShouldEndSession = shouldEndSession,
+            Duplicate = duplicate,
+            Message = message,
+        };
     }
 
     // Ends the session for exceeding the in-session cheating strike cap (Strictness="Strict").

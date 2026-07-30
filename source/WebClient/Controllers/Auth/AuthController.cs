@@ -21,6 +21,7 @@ public class AuthController(IAuthService authService) : Controller
         return View(new LoginViewModel());
     }
 
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Login(LoginViewModel model)

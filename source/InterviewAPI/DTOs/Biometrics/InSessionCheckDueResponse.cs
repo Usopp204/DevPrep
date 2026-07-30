@@ -8,4 +8,8 @@ public class InSessionCheckDueResponse
     public bool Due { get; set; }
     public double ElapsedMinutes { get; set; }
     public double TargetMinutes { get; set; }
+    public Guid? CheckId { get; set; }
+    public DateTime? ExpiresAt { get; set; }
+    public bool ShouldEndSession { get; set; }
+    public string? Message { get; set; }
 }
