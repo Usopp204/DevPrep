@@ -81,3 +81,12 @@ infra/*.json
 infra/scores.csv
 infra/batch_genuine*.ps1
 infra/collect_sample.py
+
+# Local tooling / scratch
+/.agents/
+/.tmp/
+/IntegrationTest/
+/AGENTS.md
+
+# Secrets - never commit
+/.env.example
