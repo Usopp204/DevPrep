@@ -16,10 +16,7 @@ public class PaymentController(IPaymentService paymentService) : Controller
 
     public async Task<IActionResult> Index(CancellationToken ct)
     {
-        if (string.IsNullOrEmpty(Request.Cookies["access_token"]))
-            return RedirectToAction("Login", "Auth");
-
-        if (IsAdminOrManager())
+        if (!string.IsNullOrEmpty(Request.Cookies["access_token"]) && IsAdminOrManager())
             return RedirectToAction("Index", "Admin");
 
         var model = await paymentService.GetBuyCreditsAsync(ct);
