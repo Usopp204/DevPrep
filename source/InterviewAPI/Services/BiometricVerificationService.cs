@@ -247,12 +247,13 @@ public class BiometricVerificationService : IBiometricVerificationService
 
     // In-session cheating check: single-frame face match against the enrolled template, no
     // challenge/liveness (see AiServiceClient.VerifyFaceAsync — POST /internal/biometrics/verify).
-    // Two strike-worthy outcomes ONLY: identity mismatch, and multiple faces in frame. "No face
-    // detected" is deliberately NOT a strike (looking down at notes, sitting off-frame, ... are
-    // too easy to mistake for cheating) — it's recorded separately and only shown as a gentle
-    // reminder. Biometrics:InSessionStrictness controls what happens once the strike cap is
-    // hit: "Flag" (default) only ever records/reports, "Strict" ends the session on the strike
-    // that reaches the cap.
+    // Three strike-worthy outcomes: identity mismatch, multiple faces in frame, and repeated "no
+    // face detected" (looking away/off-frame too often). A single no-face check is NOT a strike
+    // on its own — too easy to mistake for innocently looking down at notes — but every
+    // NoFaceStrikeThreshold of them accumulated (not necessarily consecutive) converts into one
+    // strike, same weight as a Flag. Biometrics:InSessionStrictness controls what happens once
+    // the strike cap is hit: "Flag" only ever records/reports, "Strict" ends the session on the
+    // strike that reaches the cap.
     //
     // The Room calls this once per NEW QUESTION, so the rate-limit below is what actually
     // protects ai-service: skipping questions rapidly would otherwise fire a burst of calls,
@@ -276,6 +277,7 @@ public class BiometricVerificationService : IBiometricVerificationService
         var maxStrikes = _configuration.GetValue("Biometrics:InSessionMaxStrikes", 3);
         var strictness = _configuration.GetValue("Biometrics:InSessionStrictness", "Flag");
         var minIntervalSeconds = _configuration.GetValue("Biometrics:InSessionMinIntervalSeconds", 25);
+        var noFaceStrikeThreshold = _configuration.GetValue("Biometrics:NoFaceStrikeThreshold", 3);
 
         // Rate limit (server-side on purpose — the client mirrors nothing here, this IS the
         // guard): too soon after the previous check, no-op. Returns a neutral "passed" result
@@ -286,14 +288,16 @@ public class BiometricVerificationService : IBiometricVerificationService
         if (lastCheckAt is not null
             && (VietnamTime.Now - lastCheckAt.Value).TotalSeconds < minIntervalSeconds)
         {
-            var priorStrikes = priorEvents.Count(
-                e => e.Modality == ProfileBiometricsService.ModalityFace && e.Decision == "Flag");
+            var priorEffectiveStrikes = ComputeEffectiveStrikeCount(priorEvents, noFaceStrikeThreshold);
             return new InSessionVerifyResponse
             {
                 Passed = true,
                 NoFaceDetected = false,
-                StrikeCount = priorStrikes,
+                WarningType = "None",
+                StrikeCount = Math.Min(priorEffectiveStrikes, maxStrikes),
                 MaxStrikes = maxStrikes,
+                NoFaceCount = 0,
+                NoFaceStrikeThreshold = noFaceStrikeThreshold,
                 ShouldEndSession = false,
                 Message = "Check skipped (too soon after the previous one).",
             };
@@ -304,6 +308,7 @@ public class BiometricVerificationService : IBiometricVerificationService
         bool isStrike;
         bool noFaceDetected = false;
         string decision;
+        string warningType;
         object detail;
         string message;
 
@@ -312,6 +317,7 @@ public class BiometricVerificationService : IBiometricVerificationService
             var result = await _aiServiceClient.VerifyFaceAsync(frame, embedding, ct);
             isStrike = !result.Match;
             decision = result.Match ? "Pass" : "Flag";
+            warningType = result.Match ? "None" : "IdentityMismatch";
             detail = new { result.Score, result.Threshold, Reason = result.Match ? null : "Identity mismatch" };
             message = result.Match
                 ? "Identity confirmed."
@@ -321,15 +327,19 @@ public class BiometricVerificationService : IBiometricVerificationService
         {
             isStrike = true;
             decision = "Flag";
+            warningType = "MultiFace";
             detail = new { Reason = "Multiple faces detected", FaceCount = faceCount };
-            message = $"Multiple faces detected in frame ({faceCount}).";
+            message = $"Another person appears to be in frame with you ({faceCount} faces detected). " +
+                      "If this continues, it will be treated as a possible attempt to get help during the interview.";
         }
         catch (BiometricQualityException)
         {
-            // No face / blurry / too small / ... — not a strike, see the method comment above.
+            // No face / blurry / too small / ... — not a strike by itself, see the method
+            // comment above; NoFaceCount below tracks accumulation toward a converted strike.
             isStrike = false;
             noFaceDetected = true;
             decision = "NoFace";
+            warningType = "NoFace";
             detail = new { Reason = "No face detected" };
             message = "We couldn't see your face — please make sure you're in frame.";
         }
@@ -339,31 +349,66 @@ public class BiometricVerificationService : IBiometricVerificationService
             decision: decision, detail: detail, ct);
 
         var events = await _eventRepository.ListBySessionAsync(sessionId, "InSession", ct);
-        var strikeCount = events.Count(e => e.Modality == ProfileBiometricsService.ModalityFace && e.Decision == "Flag");
+        var noFaceCount = events.Count(e => e.Modality == ProfileBiometricsService.ModalityFace && e.Decision == "NoFace");
+        var effectiveStrikeCount = ComputeEffectiveStrikeCount(events, noFaceStrikeThreshold);
 
-        var shouldEndSession = isStrike
+        // This NoFace event just completed a fresh group of noFaceStrikeThreshold — it converts
+        // into a strike right now, with the same weight as a Flag.
+        var noFaceJustBecameStrike = noFaceDetected && noFaceCount % noFaceStrikeThreshold == 0;
+        var strikeJustHappened = isStrike || noFaceJustBecameStrike;
+
+        var shouldEndSession = strikeJustHappened
             && string.Equals(strictness, "Strict", StringComparison.OrdinalIgnoreCase)
-            && strikeCount >= maxStrikes;
+            && effectiveStrikeCount >= maxStrikes;
+
+        // Always clamp what's shown — the real effectiveStrikeCount keeps growing past maxStrikes
+        // under Strictness="Flag" (nothing ever ends the session to stop it), but the UI must
+        // never display more than the cap (see InSessionVerifyResponse.StrikeCount).
+        var displayStrikeCount = Math.Min(effectiveStrikeCount, maxStrikes);
+        var noFaceGroupProgress = noFaceCount % noFaceStrikeThreshold;
 
         if (shouldEndSession)
         {
             await EndSessionForCheatingAsync(sessionId, ct);
-            message = $"Maximum cheating warnings reached ({strikeCount}/{maxStrikes}). This interview has been ended.";
+            // Baked-in count on purpose: this exact message is also shown standalone as the
+            // final chat bubble (see interview-room.js), which does not go through the client's
+            // generic "(X/Y)" strike-count suffix the way the other strike messages below do.
+            message = $"Maximum cheating warnings reached ({displayStrikeCount}/{maxStrikes}). This interview has been ended.";
         }
-        else if (isStrike)
+        else if (noFaceJustBecameStrike)
         {
-            message += $" Warning {strikeCount}/{maxStrikes}.";
+            message = "Repeated no-face detections counted as a cheating warning.";
         }
+        else if (noFaceDetected)
+        {
+            message = $"{message} You've stepped out of frame {noFaceGroupProgress}/{noFaceStrikeThreshold} times.";
+        }
+        // IdentityMismatch/MultiFace/the noFaceJustBecameStrike message above stay strike-count
+        // free — no more generic " Warning X/Y" suffix baked in here; the client attaches
+        // "(StrikeCount/MaxStrikes)" once, consistently, for every one of these three cases.
 
         return new InSessionVerifyResponse
         {
             Passed = !isStrike && !noFaceDetected,
             NoFaceDetected = noFaceDetected,
-            StrikeCount = strikeCount,
+            WarningType = warningType,
+            StrikeCount = displayStrikeCount,
             MaxStrikes = maxStrikes,
+            NoFaceCount = noFaceGroupProgress,
+            NoFaceStrikeThreshold = noFaceStrikeThreshold,
+            NoFaceJustBecameStrike = noFaceJustBecameStrike,
             ShouldEndSession = shouldEndSession,
             Message = message,
         };
+    }
+
+    // Shared by the main check and the rate-limit-skip branch so both report the same number.
+    // Real (unclamped) count — callers clamp to maxStrikes only for display.
+    private static int ComputeEffectiveStrikeCount(IEnumerable<SessionVerificationEvent> events, int noFaceStrikeThreshold)
+    {
+        var flagCount = events.Count(e => e.Modality == ProfileBiometricsService.ModalityFace && e.Decision == "Flag");
+        var noFaceCount = events.Count(e => e.Modality == ProfileBiometricsService.ModalityFace && e.Decision == "NoFace");
+        return flagCount + noFaceCount / noFaceStrikeThreshold;
     }
 
     // Ends the session for exceeding the in-session cheating strike cap (Strictness="Strict").

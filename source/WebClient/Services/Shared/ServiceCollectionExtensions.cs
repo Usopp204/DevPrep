@@ -4,6 +4,7 @@ using WebClient.Services.Auth;
 using WebClient.Services.CvJd;
 using WebClient.Services.Evaluation;
 using WebClient.Services.Feedback;
+using WebClient.Services.Home;
 using WebClient.Services.Interview;
 using WebClient.Services.Manager;
 using WebClient.Services.News;
@@ -51,6 +52,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IVerificationService, VerificationService>();
         services.AddScoped<IEvaluationService, EvaluationService>();
         services.AddScoped<IFeedbackService, FeedbackService>();
+        services.AddScoped<IAnnouncementService, AnnouncementService>();
         services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<IAdminService, AdminService>();
         services.AddScoped<IAdminDashboardService, AdminDashboardService>();

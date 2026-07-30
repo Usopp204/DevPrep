@@ -459,6 +459,7 @@
                                 <th style="width: 30%;">User Information</th>
                                 <th style="width: 12%;">Role</th>
                                 <th style="width: 15%;">Registered</th>
+                                <th style="width: 10%;" class="text-center">Interviews</th>
                                 <th style="width: 13%;">Status</th>
                                 <th style="width: 10%;" class="text-end">Actions</th>
                             </tr>
@@ -468,7 +469,7 @@
                             @if (Model.Items == null || !Model.Items.Any())
                             {
                                 <tr>
-                                    <td colspan="5" class="empty-row">
+                                    <td colspan="6" class="empty-row">
                                         <i class="fa-regular fa-folder-open d-block mb-2" style="font-size: 28px;"></i>
                                         No users found.
                                     </td>
@@ -505,7 +506,7 @@
 
                                         <td>
                                             <span class="role-badge @roleClass">
-                                                <span style="font-size: 8px;">●</span>
+                                                <span style="font-size: 8px;">&bull;</span>
                                                 @role
                                             </span>
                                         </td>
@@ -515,9 +516,13 @@
                                             <div class="muted-small">@user.RegistrationTimestamp.ToString("HH:mm")</div>
                                         </td>
 
+                                        <td class="text-center">
+                                            <span class="metric-strong">@user.TotalInterviewCount</span>
+                                        </td>
+
                                         <td>
                                             <span class="status-badge @statusClass">
-                                                <span style="font-size: 8px;">●</span>
+                                                <span style="font-size: 8px;">&bull;</span>
                                                 @(user.Status ?? "Unknown")
                                             </span>
                                         </td>

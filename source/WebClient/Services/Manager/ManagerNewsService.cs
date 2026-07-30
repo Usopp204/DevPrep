@@ -19,7 +19,8 @@ public class ManagerNewsService : IManagerNewsService
         int page = 1,
         int pageSize = 10,
         string? keyword = null,
-        string? status = null)
+        string? status = null,
+        Guid? categoryId = null)
     {
         var query = new Dictionary<string, string?>
         {
@@ -29,15 +30,43 @@ public class ManagerNewsService : IManagerNewsService
 
         if (!string.IsNullOrWhiteSpace(keyword)) query["keyword"] = keyword;
         if (!string.IsNullOrWhiteSpace(status)) query["status"] = status;
+        if (categoryId.HasValue) query["categoryId"] = categoryId.Value.ToString();
 
-        var url = QueryHelpers.AddQueryString("/api/admin/manager/news", query);
-        var response = await _apiClient.HttpClient.GetFromJsonAsync<ApiResponse<ManagerNewsPagedResult<ManagerNewsListItemViewModel>>>(url);
-        return response?.Data ?? new ManagerNewsPagedResult<ManagerNewsListItemViewModel>();
+        try
+        {
+            var url = QueryHelpers.AddQueryString("/api/admin/manager/news", query);
+            var response = await _apiClient.HttpClient.GetFromJsonAsync<ApiResponse<ManagerNewsPagedResult<ManagerNewsListItemViewModel>>>(url);
+            return response?.Data ?? new ManagerNewsPagedResult<ManagerNewsListItemViewModel>();
+        }
+        catch (HttpRequestException)
+        {
+            return new ManagerNewsPagedResult<ManagerNewsListItemViewModel>();
+        }
+    }
+
+    public async Task<List<ManagerNewsCategoryViewModel>> GetCategoriesAsync()
+    {
+        try
+        {
+            var response = await _apiClient.HttpClient.GetFromJsonAsync<ApiResponse<List<ManagerNewsCategoryViewModel>>>("/api/admin/manager/news/categories");
+            return response?.Data ?? new List<ManagerNewsCategoryViewModel>();
+        }
+        catch (HttpRequestException)
+        {
+            return new List<ManagerNewsCategoryViewModel>();
+        }
     }
 
     public async Task<ManagerNewsDetailViewModel?> GetByIdAsync(Guid id)
     {
-        var response = await _apiClient.HttpClient.GetFromJsonAsync<ApiResponse<ManagerNewsDetailViewModel>>($"/api/admin/manager/news/{id}");
-        return response?.Data;
+        try
+        {
+            var response = await _apiClient.HttpClient.GetFromJsonAsync<ApiResponse<ManagerNewsDetailViewModel>>($"/api/admin/manager/news/{id}");
+            return response?.Data;
+        }
+        catch (HttpRequestException)
+        {
+            return null;
+        }
     }
 }

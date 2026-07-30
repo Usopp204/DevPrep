@@ -250,7 +250,7 @@ public class ManagerUsersController : ControllerBase
 
             // 4. Get Completed sessions (from InterviewSessions)
             var sessionsQuery = @"
-                SELECT SessionId, Title, Level, InteractionMode, Status, StartedAt, DurationMinutes, TotalQuestions, AnsweredQuestions, CreditCost
+                SELECT SessionId, Level, InteractionMode, Status, StartedAt, DurationMinutes, TotalQuestions, AnsweredQuestions, CreditCost
                 FROM DevPrep_Interview.dbo.InterviewSessions
                 WHERE UserId = @UserId AND Status = 'Completed' AND IsDeleted = 0
                 ORDER BY CreatedAt DESC";
@@ -262,18 +262,20 @@ public class ManagerUsersController : ControllerBase
                 {
                     while (await reader.ReadAsync())
                     {
+                        var level = reader.IsDBNull(1) ? null : reader.GetString(1);
+
                         details.CompletedSessions.Add(new CompletedSessionDto
                         {
                             SessionId = reader.GetGuid(0),
-                            Title = reader.IsDBNull(1) ? null : reader.GetString(1),
-                            Level = reader.IsDBNull(2) ? null : reader.GetString(2),
-                            InteractionMode = reader.IsDBNull(3) ? null : reader.GetString(3),
-                            Status = reader.IsDBNull(4) ? null : reader.GetString(4),
-                            StartedAt = reader.IsDBNull(5) ? null : reader.GetDateTime(5),
-                            DurationMinutes = reader.IsDBNull(6) ? null : reader.GetInt32(6),
-                            TotalQuestions = reader.GetInt32(7),
-                            AnsweredQuestions = reader.GetInt32(8),
-                            CreditCost = reader.GetInt32(9)
+                            Title = string.IsNullOrWhiteSpace(level) ? "Interview Session" : $"{level} Interview",
+                            Level = level,
+                            InteractionMode = reader.IsDBNull(2) ? null : reader.GetString(2),
+                            Status = reader.IsDBNull(3) ? null : reader.GetString(3),
+                            StartedAt = reader.IsDBNull(4) ? null : reader.GetDateTime(4),
+                            DurationMinutes = reader.IsDBNull(5) ? null : reader.GetInt32(5),
+                            TotalQuestions = reader.GetInt32(6),
+                            AnsweredQuestions = reader.GetInt32(7),
+                            CreditCost = reader.GetInt32(8)
                         });
                     }
                 }

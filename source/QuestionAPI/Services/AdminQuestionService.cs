@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using QuestionAPI.Data;
 using QuestionAPI.DTOs;
 using QuestionAPI.Helpers;
@@ -10,7 +10,7 @@ namespace QuestionAPI.Services;
 
 public class AdminQuestionService : IAdminQuestionService
 {
-   // private const int MaxBrowsePages = 30;
+    // private const int MaxBrowsePages = 30;
     private const int DefaultPageSize = 10;
     private const int MaximumPageSize = 100;
 
@@ -135,6 +135,7 @@ public class AdminQuestionService : IAdminQuestionService
 
         var difficulty = NormalizeDifficulty(dto.Difficulty);
         var status = ValidateAndNormalizeStatus(dto.Status);
+
 
         if (dto.PositionId.HasValue)
         {
@@ -436,20 +437,25 @@ public class AdminQuestionService : IAdminQuestionService
         };
     }
 
-   //huynh anh edit----------
+    // ------------------------------------------------------------
+    // ĐÃ SỬA: chuyển từ x.Field.ToLower().Contains(keyword) (non-sargable,
+    // buộc quét toàn bảng, dễ timeout trên dữ liệu lớn / gây lỗi ngẫu nhiên)
+    // sang EF.Functions.Like (dịch ra LIKE chuẩn SQL, tận dụng collation
+    // case-insensitive sẵn có và thân thiện với index hơn).
+    // ------------------------------------------------------------
     private IQueryable<Question> ApplyFilter(
     IQueryable<Question> query,
     AdminQuestionQueryDto filter)
     {
         query = query.AsNoTracking();
 
-        // Chỉ tìm nội dung câu hỏi, không JOIN bảng Position
         if (!string.IsNullOrWhiteSpace(filter.Keyword))
         {
             var keyword = filter.Keyword.Trim();
+            var pattern = $"%{keyword}%";
 
             query = query.Where(x =>
-                x.QuestionText.StartsWith(keyword)
+                EF.Functions.Like(x.QuestionText, pattern)
             );
         }
 
@@ -498,8 +504,6 @@ public class AdminQuestionService : IAdminQuestionService
         return query;
     }
     //-------------------------
-    
-    //huynh anh edit -----------------
 
     private async Task<AdminPagedResultDto<AdminQuestionListItemDto>> PagingAsync(
     IQueryable<Question> query,

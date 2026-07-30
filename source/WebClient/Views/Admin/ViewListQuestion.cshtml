@@ -427,6 +427,11 @@
                 background: rgba(255, 255,255, 0.08);
             }
 
+            .action-btn i,
+            .action-btn .material-symbols-outlined {
+                font-size: 16px;
+                line-height: 1;
+            }
         .action-view,
         .action-edit {
             color: #94a3b8;
@@ -710,15 +715,7 @@
                                 Draft
                             </option>
 
-                            <option value="Archived"
-                                    selected="@(string.Equals(
-                                        query.Status,
-                                        "Archived",
-                                        StringComparison.OrdinalIgnoreCase)
-                                        ? "selected"
-                                        : null)">
-                                Archived
-                            </option>
+                           
 
                             <option value="Deleted"
                                     selected="@(string.Equals(
@@ -729,6 +726,8 @@
                                         : null)">
                                 Deleted
                             </option>
+
+                           
                         </select>
                     </div>
 
@@ -806,8 +805,7 @@
                                         "active" => "status-active",
                                         "draft" => "status-draft",
                                         "deleted" => "status-deleted",
-                                        "archived" => "status-archived",
-                                        "inactive" => "status-archived",
+                                        
                                         _ => "status-draft"
                                     };
 
@@ -880,7 +878,7 @@
                                                 <a href="/admin/questions/edit/@item.QuestionId"
                                                    class="action-btn action-edit"
                                                    title="Edit question">
-                                                    <span class="material-symbols-outlined fs-5">edit</span>
+                                                    <span class="material-symbols-outlined ">edit</span>
                                                 </a>
                                             }
 
@@ -896,7 +894,7 @@
                                                         onclick="restoreQuestion('@item.QuestionId')"
                                                         class="action-btn action-restore"
                                                         title="Restore question">
-                                                    <span class="material-symbols-outlined fs-5">settings_backup_restore</span>
+                                                    <span class="material-symbols-outlined ">settings_backup_restore</span>
                                                 </button>
                                             }
                                             else

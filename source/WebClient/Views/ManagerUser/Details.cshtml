@@ -11,12 +11,6 @@
     var isBlocked = string.Equals(status, "Blocked", StringComparison.OrdinalIgnoreCase);
     var isActive = string.Equals(status, "Active", StringComparison.OrdinalIgnoreCase);
     var initial = string.IsNullOrEmpty(Model.FullName) ? "?" : Model.FullName[0].ToString().ToUpper();
-    var roleClass = role.ToLowerInvariant() switch
-    {
-        "admin" => "badge-active",
-        "manager" => "badge-pending",
-        _ => "badge-blocked"
-    };
 }
 
 <!DOCTYPE html>
@@ -99,7 +93,7 @@
             object-fit: cover;
         }
 
-        .label {
+        .admin-main-wrapper .label {
             font-family: 'JetBrains Mono', monospace;
             font-size: 11px;
             color: #93c5fd;
@@ -141,6 +135,11 @@
         .badge-pending {
             background: rgba(245,158,11,.16);
             color: #fbbf24;
+        }
+
+        .badge-role {
+            background: rgba(99,102,241,.16);
+            color: #c4b5fd;
         }
 
         .stat-card {
@@ -241,7 +240,7 @@
                                 <h3 class="mb-1 fw-bold">@displayName</h3>
                                 <div class="muted-text">@email</div>
                                 <div class="mt-2 d-flex gap-2">
-                                    <span class="badge-soft @roleClass">@role</span>
+                                    <span class="badge-soft badge-role">@role</span>
                                     @if (isBlocked)
                                     {
                                         <span class="badge-soft badge-blocked">Blocked</span>
@@ -270,49 +269,33 @@
                             </div>
 
                             <div class="col-6">
-                                <div class="label">Credit Balance</div>
-                                <div class="value">@Model.CreditBalance.ToString("N0")</div>
+                                <div class="label">Email Verified</div>
+                                <div class="value">@(Model.IsEmailVerified ? "Yes" : "No")</div>
                             </div>
 
                             <div class="col-6">
-                                <div class="label">Total Sessions</div>
-                                <div class="value">@Model.CompletedSessions.Count</div>
+                                <div class="label">Face Verified</div>
+                                <div class="value">@(Model.IsFaceVerified ? "Yes" : "No")</div>
+                            </div>
+
+                            <div class="col-6">
+                                <div class="label">Voice Verified</div>
+                                <div class="value">@(Model.IsVoiceVerified ? "Yes" : "No")</div>
                             </div>
 
                             <div class="col-12">
-                                <div class="label">Registered At</div>
+                                <div class="label">Created At</div>
                                 <div class="value">@Model.RegistrationTimestamp.ToString("dd/MM/yyyy HH:mm")</div>
                             </div>
 
-                            @if (Model.LastLoginAt.HasValue)
-                            {
-                                <div class="col-12">
-                                    <div class="label">Last Login</div>
-                                    <div class="value">@Model.LastLoginAt.Value.ToString("dd/MM/yyyy HH:mm")</div>
-                                </div>
-                            }
-
-                            @if (Model.UpdatedAt.HasValue)
-                            {
-                                <div class="col-12">
-                                    <div class="label">Updated At</div>
-                                    <div class="value">@Model.UpdatedAt.Value.ToString("dd/MM/yyyy HH:mm")</div>
-                                </div>
-                            }
+                            <div class="col-12">
+                                <div class="label">Updated At</div>
+                                <div class="value">@(Model.UpdatedAt?.ToString("dd/MM/yyyy HH:mm") ?? "N/A")</div>
+                            </div>
 
                             <div class="col-12">
-                                <div class="label">Verification</div>
-                                <div class="d-flex gap-3 flex-wrap">
-                                    <span class="badge-soft @(Model.IsEmailVerified ? "badge-active" : "badge-blocked")">
-                                        @(Model.IsEmailVerified ? "Email ✓" : "Email ✗")
-                                    </span>
-                                    <span class="badge-soft @(Model.IsFaceVerified ? "badge-active" : "badge-blocked")">
-                                        @(Model.IsFaceVerified ? "Face ✓" : "Face ✗")
-                                    </span>
-                                    <span class="badge-soft @(Model.IsVoiceVerified ? "badge-active" : "badge-blocked")">
-                                        @(Model.IsVoiceVerified ? "Voice ✓" : "Voice ✗")
-                                    </span>
-                                </div>
+                                <div class="label">Last Login</div>
+                                <div class="value">@(Model.LastLoginAt?.ToString("dd/MM/yyyy HH:mm") ?? "Never")</div>
                             </div>
 
                             @if (isBlocked && !string.IsNullOrWhiteSpace(Model.BlockedReason))
@@ -320,6 +303,11 @@
                                 <div class="col-12">
                                     <div class="label">Blocked Reason</div>
                                     <div class="value text-danger">@Model.BlockedReason</div>
+                                </div>
+
+                                <div class="col-12">
+                                    <div class="label">Blocked At</div>
+                                    <div class="value">@(Model.BlockedAt?.ToString("dd/MM/yyyy HH:mm") ?? "N/A")</div>
                                 </div>
                             }
                         </div>
@@ -330,20 +318,13 @@
                     <div class="row g-3 mb-4">
                         <div class="col-12 col-md-6">
                             <div class="stat-card">
-                                <div class="label">Current Credit Balance</div>
-                                <div class="stat-value">@Model.CreditBalance.ToString("N0")</div>
-                            </div>
-                        </div>
-
-                        <div class="col-12 col-md-6">
-                            <div class="stat-card">
                                 <div class="label">Total Sessions</div>
                                 <div class="stat-value">@Model.CompletedSessions.Count</div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="card-dark mb-4">
+                    <div class="card-dark">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h5 class="fw-bold mb-0">Session History</h5>
                             <span class="muted-text">@Model.CompletedSessions.Count sessions</span>
@@ -353,12 +334,12 @@
                             <table class="table table-dark-custom align-middle">
                                 <thead>
                                     <tr>
-                                        <th>Title</th>
+                                        <th>Position</th>
                                         <th>Level</th>
                                         <th>Mode</th>
+                                        <th>Type</th>
                                         <th>Status</th>
                                         <th>Started</th>
-                                        <th>Duration</th>
                                         <th>Questions</th>
                                         <th>Credit</th>
                                     </tr>
@@ -379,58 +360,17 @@
                                             <tr>
                                                 <td>
                                                     <div class="fw-bold text-white">@(s.Title ?? "Untitled Session")</div>
+                                                    <div class="muted-text small">
+                                                        Duration: @(s.DurationMinutes?.ToString() ?? "N/A") min
+                                                    </div>
                                                 </td>
                                                 <td>@(s.Level ?? "N/A")</td>
                                                 <td>@(s.InteractionMode ?? "N/A")</td>
+                                                <td>@(s.QuestionType ?? "N/A")</td>
                                                 <td>@(s.Status ?? "N/A")</td>
                                                 <td>@(s.StartedAt.HasValue ? s.StartedAt.Value.ToString("dd/MM/yyyy HH:mm") : "N/A")</td>
-                                                <td>@(s.DurationMinutes.HasValue ? s.DurationMinutes + " min" : "N/A")</td>
                                                 <td>@s.AnsweredQuestions / @s.TotalQuestions</td>
                                                 <td>@s.CreditCost</td>
-                                            </tr>
-                                        }
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <div class="card-dark">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h5 class="fw-bold mb-0">Credit Transactions</h5>
-                            <span class="muted-text">@Model.CreditTransactions.Count transactions</span>
-                        </div>
-
-                        <div class="table-responsive">
-                            <table class="table table-dark-custom align-middle">
-                                <thead>
-                                    <tr>
-                                        <th>Type</th>
-                                        <th>Description</th>
-                                        <th>Change</th>
-                                        <th>Balance After</th>
-                                        <th>Date</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @if (Model.CreditTransactions.Count == 0)
-                                    {
-                                        <tr>
-                                            <td colspan="5" class="text-center py-5 text-secondary">
-                                                No credit transactions found.
-                                            </td>
-                                        </tr>
-                                    }
-                                    else
-                                    {
-                                        foreach (var tx in Model.CreditTransactions)
-                                        {
-                                            <tr>
-                                                <td>@(tx.EntryType ?? "N/A")</td>
-                                                <td>@(tx.Description ?? "N/A")</td>
-                                                <td style="color: @(tx.CreditChange >= 0 ? "#34d399" : "#f87171"); font-weight: 700;">@(tx.CreditChange >= 0 ? "+" : "")@tx.CreditChange</td>
-                                                <td>@tx.BalanceAfter.ToString("N0")</td>
-                                                <td>@tx.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
                                             </tr>
                                         }
                                     }

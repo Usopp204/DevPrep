@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using WebClient.Models.Feedback;
@@ -125,6 +125,14 @@ public class ManagerController(
         return View();
     }
 
+    [HttpGet("Manager/InterviewSessionDetail/{id:guid}")]
+    public IActionResult InterviewSessionDetail(Guid id)
+    {
+        ViewData["ApiBaseUrl"] = ApiBaseUrl;
+        ViewBag.SessionId = id;
+        return View();
+    }
+
     public IActionResult Payments()
     {
         ViewData["ApiBaseUrl"] = ApiBaseUrl;
@@ -132,6 +140,12 @@ public class ManagerController(
     }
 
     public IActionResult CreditPackages()
+    {
+        ViewData["ApiBaseUrl"] = ApiBaseUrl;
+        return View();
+    }
+
+    public IActionResult Positions()
     {
         ViewData["ApiBaseUrl"] = ApiBaseUrl;
         return View();

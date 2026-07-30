@@ -27,15 +27,17 @@ public class ManagerNewsController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,
         [FromQuery] string? keyword = null,
-        [FromQuery] string? status = null)
+        [FromQuery] string? status = null,
+        [FromQuery] Guid? categoryId = null)
     {
         if (page < 1) page = 1;
         pageSize = Math.Clamp(pageSize, 1, MaxPageSize);
 
-        var query = _db.NewsArticles
+        var articles = _db.NewsArticles
             .AsNoTracking()
-            .Include(n => n.Category)
-            .Where(n => !n.IsDeleted);
+            .Include(n => n.Category);
+
+        IQueryable<NewsArticle> query = articles;
 
         if (!string.IsNullOrWhiteSpace(keyword))
         {
@@ -46,10 +48,23 @@ public class ManagerNewsController : ControllerBase
                 (n.Summary != null && n.Summary.Contains(term)));
         }
 
-        if (!string.IsNullOrWhiteSpace(status))
+        if (string.Equals(status?.Trim(), "Deleted", StringComparison.OrdinalIgnoreCase))
         {
-            var requestedStatus = status.Trim();
-            query = query.Where(n => n.Status == requestedStatus);
+            query = query.Where(n => n.IsDeleted);
+        }
+        else
+        {
+            query = query.Where(n => !n.IsDeleted);
+
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                query = query.Where(n => n.Status == status.Trim());
+            }
+        }
+
+        if (categoryId.HasValue)
+        {
+            query = query.Where(n => n.CategoryId == categoryId.Value);
         }
 
         var total = await query.CountAsync();
@@ -68,6 +83,7 @@ public class ManagerNewsController : ControllerBase
                 CategoryName = n.Category != null ? n.Category.Name : null,
                 Status = n.Status,
                 ViewCount = n.ViewCount,
+                IsDeleted = n.IsDeleted,
                 PublishedAt = n.PublishedAt,
                 CreatedAt = n.CreatedAt,
                 UpdatedAt = n.UpdatedAt
@@ -96,7 +112,7 @@ public class ManagerNewsController : ControllerBase
         var item = await _db.NewsArticles
             .AsNoTracking()
             .Include(n => n.Category)
-            .Where(n => n.NewsId == id && !n.IsDeleted)
+            .Where(n => n.NewsId == id)
             .Select(n => new ManagerNewsDetailDto
             {
                 NewsId = n.NewsId,
@@ -109,6 +125,7 @@ public class ManagerNewsController : ControllerBase
                 AuthorId = n.AuthorId,
                 Status = n.Status,
                 ViewCount = n.ViewCount,
+                IsDeleted = n.IsDeleted,
                 PublishedAt = n.PublishedAt,
                 CreatedAt = n.CreatedAt,
                 UpdatedAt = n.UpdatedAt
@@ -121,5 +138,16 @@ public class ManagerNewsController : ControllerBase
         }
 
         return Ok(ApiResponse<ManagerNewsDetailDto>.Ok(item));
+    }
+
+    [HttpGet("categories")]
+    [ProducesResponseType(typeof(ApiResponse<List<NewsCategory>>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetCategories()
+    {
+        var categories = await _db.NewsCategories
+            .AsNoTracking()
+            .OrderBy(c => c.Name)
+            .ToListAsync();
+        return Ok(ApiResponse<List<NewsCategory>>.Ok(categories));
     }
 }
