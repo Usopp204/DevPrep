@@ -108,6 +108,32 @@ public static class CvEndpoints
             await db.SaveChangesAsync();
             return Results.Ok(new { success = true });
         }).WithName("UpdateCvJson").WithOpenApi();
+
+        // DELETE current CV — removes the DB record and the uploaded file.
+        app.MapDelete("/cv/me", async (string userId, DocumentDbContext db, IConfiguration config) =>
+        {
+            if (!Guid.TryParse(userId, out var uid)) return Results.BadRequest(new { error = "Invalid userId" });
+
+            var cv = await db.Cvs.Where(c => c.UserId == uid && c.IsCurrent)
+                .OrderByDescending(c => c.UploadedAt).FirstOrDefaultAsync();
+            if (cv is null) return Results.NotFound(new { error = "No CV found" });
+
+            db.Cvs.Remove(cv);
+            await db.SaveChangesAsync();
+
+            try
+            {
+                var uploadPath = config.GetValue<string>("CV_UPLOADS_PATH");
+                if (string.IsNullOrEmpty(uploadPath))
+                    uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "uploads", "cvs");
+                var fileName = Path.GetFileName(cv.FileUrl);
+                var fullPath = Path.Combine(uploadPath, fileName);
+                if (File.Exists(fullPath)) File.Delete(fullPath);
+            }
+            catch { /* file cleanup best-effort — the DB delete already succeeded */ }
+
+            return Results.Ok(new { success = true });
+        }).WithName("DeleteMyCv").WithOpenApi();
     }
 
     private record CvJsonUpdateRequest(string UserId, string ParsedJson);

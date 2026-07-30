@@ -295,8 +295,34 @@ GO
 
 
 -- ============================================================================
--- Xong. Khong co gi de sua o 7 database con lai (Auth, CvJd, User,
--- News, Feedback, Statistics, Notification) tai thoi diem viet script nay —
+-- 5) DevPrep_Notification
+-- ============================================================================
+USE [DevPrep_Notification];
+GO
+
+-- 5a. Bang Announcements (tinh nang admin tao thong bao, hien popup tren homepage
+-- cho guest + user). Nguon: source/NotificationAPI/Models/Announcement.cs +
+-- NotificationDbContext.cs (OnModelCreating cho Announcement).
+IF OBJECT_ID(N'dbo.Announcements', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.Announcements (
+        AnnouncementId  UNIQUEIDENTIFIER NOT NULL CONSTRAINT DF_Announcements_Id DEFAULT (newsequentialid()),
+        Title           NVARCHAR(200)    NOT NULL,
+        Content         NVARCHAR(2000)   NOT NULL,
+        IsActive        BIT              NOT NULL CONSTRAINT DF_Announcements_IsActive DEFAULT (1),
+        IsDeleted       BIT              NOT NULL CONSTRAINT DF_Announcements_IsDeleted DEFAULT (0),
+        DeletedAt       DATETIME2        NULL,
+        CreatedAt       DATETIME2        NOT NULL CONSTRAINT DF_Announcements_CreatedAt DEFAULT (dateadd(hour, 7, sysutcdatetime())),
+        UpdatedAt       DATETIME2        NOT NULL CONSTRAINT DF_Announcements_UpdatedAt DEFAULT (dateadd(hour, 7, sysutcdatetime())),
+        CONSTRAINT PK_Announcements PRIMARY KEY (AnnouncementId)
+    );
+END;
+GO
+
+
+-- ============================================================================
+-- Xong. Khong co gi de sua o 6 database con lai (Auth, CvJd, User,
+-- News, Feedback, Statistics) tai thoi diem viet script nay —
 -- da doi chieu tung cot voi model C# tuong ung, khop 100%.
 -- ============================================================================
 PRINT 'Dong bo schema hoan tat.';

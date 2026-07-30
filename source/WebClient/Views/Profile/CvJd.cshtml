@@ -18,6 +18,8 @@
         .tag.req-skill.matched, .tag.nice-skill.matched { background: rgba(16,185,129,.10); color: #34d399; border-color: rgba(16,185,129,.3); }
         .tag.req-skill.missing, .tag.nice-skill.missing { background: rgba(239,68,68,.10);  color: #f87171; border-color: rgba(239,68,68,.3); }
         #cvStrengths .exp-card.matched { border: 1px solid rgba(16,185,129,.35); }
+        .pf-btn-danger { background: rgba(239,68,68,.10); border-color: rgba(239,68,68,.3); color: #f87171; }
+        .pf-btn-danger:hover { background: rgba(239,68,68,.18); color: #fca5a5; }
     </style>
 </head>
 <body class="pf-page">
@@ -111,6 +113,9 @@
                                 <button class="pf-btn pf-btn-primary cvjd-btn-sm" id="btnSaveCv" style="width:auto;padding:7px 18px;">
                                     Save changes
                                 </button>
+                                <button class="pf-btn pf-btn-danger cvjd-btn-sm" id="btnDeleteCv" style="width:auto;padding:7px 18px;">
+                                    🗑 Delete CV
+                                </button>
                                 <span id="saveStatus" class="sb" style="margin:0;padding:5px 10px;"></span>
                             </div>
                         </div>
@@ -194,7 +199,10 @@
                                         <div class="jd-pos-name" id="jdParsedPosition">—</div>
                                         <div class="jd-co-name" id="jdParsedCompany"></div>
                                     </div>
-                                    <button class="change-jd-btn" onclick="changeJd()">✎ Change JD</button>
+                                    <div style="display:flex;gap:6px;">
+                                        <button class="change-jd-btn" onclick="changeJd()">✎ Change JD</button>
+                                        <button class="change-jd-btn" style="color:#f87171;border-color:rgba(239,68,68,.3);" id="btnDeleteJd">🗑 Delete</button>
+                                    </div>
                                 </div>
                                 <div class="jd-result-body">
                                     <div id="jdReqWrap" style="display:none;">
@@ -467,6 +475,24 @@ $('btnSaveCv').addEventListener('click', async () => {
     finally { $('btnSaveCv').disabled = false; }
 });
 
+// ── Delete CV ──
+$('btnDeleteCv').addEventListener('click', async () => {
+    if(!confirm('Delete your current CV? You will need to upload a new one to use CV & JD matching again.')) return;
+    $('btnDeleteCv').disabled = true;
+    try {
+        const resp = await fetch('/CvJd/DeleteCv', { method:'DELETE' });
+        const data = await safeJson(resp);
+        if(data.error){ setStatus('saveStatus','Error: '+data.error,'err'); return; }
+        cvParsedData = null;
+        $('cvParsed').style.display = 'none';
+        $('cvUploadArea').style.display = 'block';
+        cvFile.value = '';
+        cvFName.textContent = '';
+        setStatus('cvStatus','CV deleted.','info');
+    } catch(e){ setStatus('saveStatus','Error: '+e.message,'err'); }
+    finally { $('btnDeleteCv').disabled = false; }
+});
+
 // ── JD loading state ──
 let _jdController = null;
 let _jdTimer = null;
@@ -539,6 +565,28 @@ window.cancelJdEdit = function() {
     $('jdParsed').style.display = 'block';
     setStatus('jdStatus','','');
 };
+
+// ── Delete JD ──
+$('btnDeleteJd').addEventListener('click', async () => {
+    if(!confirm('Delete your current Job Description? This also clears it from the Interview setup page.')) return;
+    $('btnDeleteJd').disabled = true;
+    try {
+        const resp = await fetch('/CvJd/DeleteJd', { method:'DELETE' });
+        const data = await safeJson(resp);
+        if(data.error){ setStatus('jdStatus','Error: '+data.error,'err'); return; }
+        hasExistingJd = false;
+        $('jdParsed').style.display = 'none';
+        $('jdInputArea').style.display = 'block';
+        $('jdText').value = '';
+        $('jdCompany').value = '';
+        $('jdPosition').value = '';
+        jdFile.value = '';
+        jdFName.textContent = '';
+        $('btnCancelJdEdit').style.display = 'none';
+        setStatus('jdStatus','JD deleted.','info');
+    } catch(e){ setStatus('jdStatus','Error: '+e.message,'err'); }
+    finally { $('btnDeleteJd').disabled = false; }
+});
 
 // ── JD: AI Parse ──
 $('btnAiParse').addEventListener('click', () => saveJd('ai'));

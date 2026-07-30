@@ -12,9 +12,11 @@ public interface ICvJdService
     Task<string?> GetCvInfoAsync(string userId, string accessToken);
     Task<string?> UploadCvAsync(string userId, IFormFile file, string accessToken);
     Task<string?> UpdateCvJsonAsync(string userId, string parsedJson, string accessToken);
+    Task<string?> DeleteCvAsync(string userId, string accessToken);
     Task<string?> GetJdInfoAsync(string userId, string accessToken);
     Task<string?> SaveJdAsync(string userId, string jdText, string? position, string parseMode, string accessToken);
     Task<string?> UploadJdFileAsync(string userId, IFormFile file, string? position, string accessToken);
+    Task<string?> DeleteJdAsync(string userId, string accessToken);
     Task<string?> AnalyzeAsync(string userId, string accessToken);
 }
 
@@ -75,6 +77,18 @@ public sealed class CvJdService(IApiClient apiClient) : ICvJdService
         catch (Exception ex) { return JsonSerializer.Serialize(new { error = ex.Message }); }
     }
 
+    public async Task<string?> DeleteCvAsync(string userId, string accessToken)
+    {
+        try
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Delete, $"api/document/cv/me?userId={Uri.EscapeDataString(userId)}");
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+            using var resp = await apiClient.HttpClient.SendAsync(req);
+            return await resp.Content.ReadAsStringAsync();
+        }
+        catch (Exception ex) { return JsonSerializer.Serialize(new { error = ex.Message }); }
+    }
+
     public async Task<string?> GetJdInfoAsync(string userId, string accessToken)
     {
         try
@@ -117,6 +131,18 @@ public sealed class CvJdService(IApiClient apiClient) : ICvJdService
             form.Add(sc, "file", file.FileName ?? "jd");
 
             using var req = new HttpRequestMessage(HttpMethod.Post, "api/document/jd/file") { Content = form };
+            req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+            using var resp = await apiClient.HttpClient.SendAsync(req);
+            return await resp.Content.ReadAsStringAsync();
+        }
+        catch (Exception ex) { return JsonSerializer.Serialize(new { error = ex.Message }); }
+    }
+
+    public async Task<string?> DeleteJdAsync(string userId, string accessToken)
+    {
+        try
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Delete, $"api/document/jd/me?userId={Uri.EscapeDataString(userId)}");
             req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
             using var resp = await apiClient.HttpClient.SendAsync(req);
             return await resp.Content.ReadAsStringAsync();

@@ -126,6 +126,20 @@ public static class JdEndpoints
             await db.SaveChangesAsync();
             return Results.Ok(new { clarifiedJson });
         }).WithName("UploadJdFile").WithOpenApi().DisableAntiforgery();
+
+        // DELETE current JD
+        app.MapDelete("/jd/me", async (string userId, DocumentDbContext db) =>
+        {
+            if (!Guid.TryParse(userId, out var uid)) return Results.BadRequest(new { error = "Invalid userId" });
+
+            var jd = await db.JobDescriptions.Where(j => j.UserId == uid)
+                .OrderByDescending(j => j.CreatedAt).FirstOrDefaultAsync();
+            if (jd is null) return Results.NotFound(new { error = "No JD found" });
+
+            db.JobDescriptions.Remove(jd);
+            await db.SaveChangesAsync();
+            return Results.Ok(new { success = true });
+        }).WithName("DeleteMyJd").WithOpenApi();
     }
 
     private record JdSaveRequest(string UserId, string Text, string? Position, string? ParseMode);

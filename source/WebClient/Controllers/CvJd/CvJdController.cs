@@ -36,6 +36,15 @@ public class CvJdController(ICvJdService cvJdService) : Controller
         return Content(r ?? "{}", "application/json");
     }
 
+    [HttpDelete]
+    public async Task<IActionResult> DeleteCv()
+    {
+        var (userId, token) = GetCtx();
+        if (userId is null || token is null) return Unauthorized();
+        var r = await cvJdService.DeleteCvAsync(userId, token);
+        return Content(r ?? "{}", "application/json");
+    }
+
     [HttpGet]
     public async Task<IActionResult> GetJdInfo()
     {
@@ -62,6 +71,15 @@ public class CvJdController(ICvJdService cvJdService) : Controller
         if (userId is null || token is null) return Unauthorized();
         if (file is null || file.Length == 0) return BadRequest(new { error = "No file" });
         var r = await cvJdService.UploadJdFileAsync(userId, file, position, token);
+        return Content(r ?? "{}", "application/json");
+    }
+
+    [HttpDelete]
+    public async Task<IActionResult> DeleteJd()
+    {
+        var (userId, token) = GetCtx();
+        if (userId is null || token is null) return Unauthorized();
+        var r = await cvJdService.DeleteJdAsync(userId, token);
         return Content(r ?? "{}", "application/json");
     }
 
