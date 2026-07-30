@@ -13,6 +13,8 @@
 
     const selected = new Set();
     let techByRole = {};
+    let catalogLoaded = false; // catalog fetch (ai-service) can resolve AFTER the JD fetch — until
+    // it does, techByRole is still empty and must not be mistaken for "this role has no technologies".
     let jdSkills = []; // required_skills + nice_to_have from the parsed JD, lowercased — drives Focus Areas pre-select.
 
     // Same technology, different names/abbreviations — used to pre-select catalog chips even
@@ -95,7 +97,9 @@
         const techs = techByRole[roleSelect.value] || [];
         if (!techs.length) {
             syncHiddenInputs();
-            focusBox.innerHTML = '<span class="dash-hint">No technologies found for this role.</span>';
+            focusBox.innerHTML = catalogLoaded
+                ? '<span class="dash-hint">No technologies found for this role.</span>'
+                : '<span class="dash-hint">Loading technologies...</span>';
             return;
         }
 
@@ -174,10 +178,12 @@
                     .map((role) => `<option value="${role}">${role}</option>`).join("");
                 if (catalog.roles.includes(current)) roleSelect.value = current;
             }
+            catalogLoaded = true;
             renderFocus();
             applyJdPreferredRole();
         })
         .catch(() => {
+            catalogLoaded = true;
             focusBox.innerHTML =
                 '<span class="dash-hint">Could not load technologies. You can still start; the whole role will be covered.</span>';
         });
