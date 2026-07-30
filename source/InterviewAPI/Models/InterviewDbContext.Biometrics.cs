@@ -28,6 +28,12 @@ public partial class InterviewDbContext
         modelBuilder.Entity<SessionVerificationEvent>(entity =>
         {
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(dateadd(hour,(7),sysutcdatetime()))");
+            entity.HasIndex(e => e.IncidentId, "UX_SVE_IncidentId")
+                .IsUnique()
+                .HasFilter("[IncidentId] IS NOT NULL");
+            entity.HasIndex(e => new { e.SessionId, e.CheckSequence }, "UX_SVE_Session_Check_Sequence")
+                .IsUnique()
+                .HasFilter("[CheckSequence] IS NOT NULL");
         });
     }
 }

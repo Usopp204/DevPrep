@@ -94,14 +94,19 @@ async def verify(
         else:
             probe = extract_voice_embedding(data)["embedding"]
     except MultipleFacesError as exc:
-        # Structured detail (not just a string) — the in-session cheating check is the only
-        # caller of this endpoint today and needs the actual face_count, not a message to parse.
         raise HTTPException(status_code=422, detail={
-            "code": "multiple_faces",
+            "code": exc.code,
             "face_count": exc.face_count,
             "message": str(exc),
         })
-    except (FaceQualityError, VoiceQualityError) as exc:
+    except FaceQualityError as exc:
+        # Structured quality codes let the in-session policy distinguish an absent face from
+        # a blurry, distant, low-confidence, or invalid frame without parsing human text.
+        raise HTTPException(status_code=422, detail={
+            "code": exc.code,
+            "message": str(exc),
+        })
+    except VoiceQualityError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 
     score = cosine_similarity(probe, stored)

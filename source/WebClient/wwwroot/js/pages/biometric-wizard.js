@@ -51,6 +51,8 @@
     const faceGuidance = document.getElementById("face-guidance");
     const faceError = document.getElementById("face-error");
     const faceActionBtn = document.getElementById("face-action-btn");
+    const faceCtaRow = document.getElementById("face-cta-row");
+    const faceTransition = document.getElementById("face-transition");
     const faceExitBtn = document.getElementById("face-exit-btn");
 
     // Voice elements
@@ -267,6 +269,8 @@
         hide(faceProcessing);
         hide(faceScanline);
         hide(faceCountdown);
+        show(faceCtaRow);
+        hide(faceTransition);
         faceActionBtn.disabled = true;
         faceActionBtn.textContent = "I'm ready";
         setFaceGuidance("Preparing camera…");
@@ -380,6 +384,10 @@
         facePassed = true;
         setOvalState("success");
         setFaceGuidance(mode === "verify" ? "Face verified ✓" : "Face captured ✓");
+        // Auto-advances below — swap the now-irrelevant action button for a clear
+        // "in progress" indicator instead of leaving it sitting there disabled/greyed.
+        hide(faceCtaRow);
+        show(faceTransition);
         await delay(1100);
         showScreen("voice");
         enterVoiceStep();

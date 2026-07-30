@@ -40,17 +40,17 @@ public interface IInterviewService
     Task<(bool Success, UnpauseResponse? Unpause, string? Error)> UnpauseSessionAsync(
         Guid sessionId, CancellationToken cancellationToken);
 
-    // Mandatory-camera policy audit flag (permission denied / disconnected mid-session).
-    // Flag-only — never blocks the Room or answering, see InterviewAPI's ReportCameraViolationAsync.
-    Task<(bool Success, string? Error)> ReportCameraViolationAsync(
-        Guid sessionId, string reason, CancellationToken cancellationToken);
+    // Reports one idempotent camera incident after the reconnect grace period.
+    Task<(bool Success, CameraViolationResultModel? Result, string? Error)> ReportCameraViolationAsync(
+        Guid sessionId, Guid incidentId, string reason, CancellationToken cancellationToken);
 
     Task<(bool Success, string? Error)> MarkRoomTourSeenAsync(CancellationToken cancellationToken);
 
     Task<(bool Success, byte[]? Audio, string? Error)> GetTtsAudioAsync(string text, CancellationToken cancellationToken);
 
-    Task<(bool Success, string? Text, string? Error)> TranscribeAudioAsync(
-        byte[] audio, string fileName, string contentType, CancellationToken cancellationToken);
+    Task<(bool Success, SttResponse? Result, string? Error)> TranscribeAudioAsync(
+        Guid sessionId, Guid checkId, byte[] audio, string fileName, string contentType,
+        CancellationToken cancellationToken);
 
     Task<(bool Success, string? Hint, string? Error)> GetHintAsync(string question, CancellationToken cancellationToken);
 
@@ -67,6 +67,12 @@ public interface IInterviewService
     Task<ApiCallResult<FeedbackEligibilityResponse>> GetFeedbackEligibilityAsync(CancellationToken cancellationToken);
 
     Task<ApiCallResult<SessionFeedbackEligibilityResponse>> GetSessionFeedbackEligibilityAsync(
+        Guid sessionId, CancellationToken cancellationToken);
+
+    Task<ApiCallResult<IntegrityPolicyStatusResponse>> GetIntegrityPolicyStatusAsync(
+        Guid sessionId, CancellationToken cancellationToken);
+
+    Task<ApiCallResult<IntegrityPolicyStatusResponse>> AcceptIntegrityPolicyAsync(
         Guid sessionId, CancellationToken cancellationToken);
 }
 
@@ -172,6 +178,8 @@ public sealed class InterviewService(IApiClient apiClient) : IInterviewService
             TotalQuestions = resume.Data.TotalQuestions,
             AnsweredQuestions = resume.Data.AnsweredQuestions,
             CurrentQuestionId = resume.Data.CurrentQuestion?.SessionQuestionId,
+            VerificationCheckId = resume.Data.CurrentQuestion?.VerificationCheckId,
+            VerificationCheckExpiresAt = resume.Data.CurrentQuestion?.VerificationCheckExpiresAt,
             IdleReminderSeconds = resume.Data.CurrentQuestion?.IdleReminderSeconds ?? 0,
             IdleHardSeconds = resume.Data.CurrentQuestion?.IdleHardSeconds ?? 0,
             IdleElapsedSeconds = resume.Data.CurrentQuestion?.IdleElapsedSeconds ?? 0,
@@ -234,14 +242,14 @@ public sealed class InterviewService(IApiClient apiClient) : IInterviewService
         return (result.Success, result.Data, result.Error);
     }
 
-    public async Task<(bool Success, string? Error)> ReportCameraViolationAsync(
-        Guid sessionId, string reason, CancellationToken cancellationToken)
+    public async Task<(bool Success, CameraViolationResultModel? Result, string? Error)> ReportCameraViolationAsync(
+        Guid sessionId, Guid incidentId, string reason, CancellationToken cancellationToken)
     {
-        var result = await SendAsync<object>(HttpMethod.Post,
+        var result = await SendAsync<CameraViolationResultModel>(HttpMethod.Post,
             $"api/interview/sessions/{sessionId}/camera-violation",
-            new { reason },
+            new { incidentId, reason },
             cancellationToken);
-        return (result.Success, result.Error);
+        return (result.Success, result.Data, result.Error);
     }
 
     public async Task<(bool Success, string? Error)> MarkRoomTourSeenAsync(CancellationToken cancellationToken)
@@ -269,16 +277,18 @@ public sealed class InterviewService(IApiClient apiClient) : IInterviewService
         return (true, audio, null);
     }
 
-    public async Task<(bool Success, string? Text, string? Error)> TranscribeAudioAsync(
-        byte[] audio, string fileName, string contentType, CancellationToken cancellationToken)
+    public async Task<(bool Success, SttResponse? Result, string? Error)> TranscribeAudioAsync(
+        Guid sessionId, Guid checkId, byte[] audio, string fileName, string contentType,
+        CancellationToken cancellationToken)
     {
         using var content = new MultipartFormDataContent();
         var fileContent = new ByteArrayContent(audio);
         fileContent.Headers.ContentType = new MediaTypeHeaderValue(contentType);
         content.Add(fileContent, "audio", fileName);
+        content.Add(new StringContent(checkId.ToString()), "checkId");
 
         using var response = await apiClient.HttpClient.PostAsync(
-            "api/interview/sessions/stt", content, cancellationToken);
+            $"api/interview/sessions/{sessionId}/verify/voice-answer", content, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
             return (false, null, $"Transcription failed ({(int)response.StatusCode}).");
@@ -290,7 +300,7 @@ public sealed class InterviewService(IApiClient apiClient) : IInterviewService
             return (false, null, envelope?.Message ?? "Transcription failed.");
         }
 
-        return (true, envelope.Data.Text, null);
+        return (true, envelope.Data, null);
     }
 
     public async Task<(bool Success, string? Hint, string? Error)> GetHintAsync(
@@ -420,6 +430,17 @@ public sealed class InterviewService(IApiClient apiClient) : IInterviewService
         Guid sessionId, CancellationToken cancellationToken) =>
         SendAsync<SessionFeedbackEligibilityResponse>(HttpMethod.Get,
             $"api/interview/sessions/{sessionId}/feedback-eligibility", body: null, cancellationToken);
+
+    public Task<ApiCallResult<IntegrityPolicyStatusResponse>> GetIntegrityPolicyStatusAsync(
+        Guid sessionId, CancellationToken cancellationToken) =>
+        SendAsync<IntegrityPolicyStatusResponse>(HttpMethod.Get,
+            $"api/interview/sessions/{sessionId}/integrity-policy", body: null, cancellationToken);
+
+    public Task<ApiCallResult<IntegrityPolicyStatusResponse>> AcceptIntegrityPolicyAsync(
+        Guid sessionId, CancellationToken cancellationToken) =>
+        SendAsync<IntegrityPolicyStatusResponse>(HttpMethod.Post,
+            $"api/interview/sessions/{sessionId}/integrity-policy/accept", body: null, cancellationToken);
+
 
     private async Task<ApiCallResult<SessionHistoryResult>> GetSessionHistoryPageAsync(
         int page, int pageSize, string? status, string? position, string? keyword, CancellationToken cancellationToken)

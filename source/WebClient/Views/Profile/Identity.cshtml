@@ -129,50 +129,66 @@
                                 <p>Analyzing…</p>
                             </div>
                             <div class="guide-pill" id="face-guidance" role="status" aria-live="polite">Preparing camera…</div>
+                            <!-- Face enroll success pill — ported from enrollfacesussecfull.html (UI only, hidden by default) -->
+                            <div class="face-success-pill" id="face-success-pill" hidden>
+                                Face captured <span class="material-symbols-outlined">check</span>
+                            </div>
                         </div>
 
                         <p class="err" id="face-error" role="alert" hidden></p>
-                        <div class="cta-row">
+                        <div class="cta-row" id="face-cta-row">
                             <button type="button" class="btn" id="face-action-btn">I'm ready</button>
                         </div>
+                        <p class="face-transition" id="face-transition" role="status" aria-live="polite" hidden>
+                            <span class="pulse-dot" aria-hidden="true"></span>Moving to voice step…
+                        </p>
                         <p class="hint-dark">Keep your face inside the oval and hold steady</p>
                     </div>
                 </section>
-
-                <!-- ════════════ SCREEN 2 · VOICE (audio world) ════════════ -->
+                <!-- ════════════ SCREEN 2 · VOICE — redesigned per enrollvoice.html ════════════ -->
                 <section class="screen" id="screen-voice" hidden>
-                    <div class="voice" id="voice-card">
-                        <div class="topbar">
-                            <div class="stepper on-dark">
-                                <div class="dot"><span class="bead done">✓</span><span class="lbl">Face</span></div>
-                                <span class="seg done"></span>
-                                <div class="dot"><span class="bead now">2</span><span class="lbl">Voice</span></div>
+                    <div class="voice ev-voice" id="voice-card">
+                        <div class="topbar ev-topbar">
+                            <div class="ev-steps">
+                                <div class="ev-step ev-step-completed">
+                                    <div class="ev-step-icon">
+                                        <span class="material-symbols-outlined">check</span>
+                                    </div>
+                                    <span>Face</span>
+                                </div>
+                                <div class="ev-step ev-step-active">
+                                    <div class="ev-step-icon">2</div>
+                                    <span>Voice</span>
+                                </div>
                             </div>
-                            <button type="button" class="x" id="voice-exit-btn" aria-label="Exit to guide">✕</button>
+                            <button type="button" class="ev-close-btn" id="voice-exit-btn" aria-label="Exit to guide">
+                                <span class="material-symbols-outlined">close</span>
+                            </button>
                         </div>
                         <h1 class="sr-only" id="voice-title" tabindex="-1">Voice check</h1>
 
-                        <div class="phrase">
-                            <div class="lab" id="voice-phrase-label">Read this aloud</div>
-                            <div class="txt" id="voice-phrase">…</div>
+                        <div class="ev-prompt-card">
+                            <div class="ev-prompt-label" id="voice-phrase-label">Your Prompt</div>
+                            <h2 class="ev-prompt-text" id="voice-phrase">…</h2>
                         </div>
 
-                        <div class="orb-wrap">
+                        <div class="orb-wrap ev-visualizer">
                             <span class="ring r1"></span><span class="ring r2"></span><span class="ring r3"></span>
-                            <div class="orb">
-                                <div class="bars" id="voice-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+                            <div class="orb ev-orb">
+                                <div class="bars ev-eq" id="voice-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
                             </div>
                         </div>
 
-                        <div class="timer">
-                            <span id="voice-timer-value">0:00</span>
-                            <small id="voice-timer-note">/ ready</small>
+                        <div class="ev-footer">
+                            <div class="timer ev-timer">
+                                <span class="ev-timer-time" id="voice-timer-value">0:00</span>
+                                <span class="ev-timer-status" id="voice-timer-note">/ ready</span>
+                            </div>
+                            <p class="ev-instructions" id="voice-guidance" role="status" aria-live="polite"></p>
+                            <p class="err" id="voice-error" role="alert" hidden></p>
+                            <button type="button" class="btn ev-btn-primary" id="voice-record-btn">Start recording</button>
+                            <button type="button" class="btn dark" id="voice-stop-btn" hidden>Stop &amp; submit</button>
                         </div>
-                        <p class="voice-note" id="voice-guidance" role="status" aria-live="polite"></p>
-                        <p class="err" id="voice-error" role="alert" hidden></p>
-
-                        <button type="button" class="btn" id="voice-record-btn">Start recording</button>
-                        <button type="button" class="btn dark" id="voice-stop-btn" hidden>Stop &amp; submit</button>
 
                         <div class="cam-overlay card-overlay" id="voice-processing" hidden>
                             <div class="spinner" aria-hidden="true"></div>

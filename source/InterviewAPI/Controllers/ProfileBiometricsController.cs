@@ -60,6 +60,10 @@ public class ProfileBiometricsController : ControllerBase
             // Quality rejection from ai-service — the message is user-facing.
             return UnprocessableEntity(ApiResponse<object>.Fail(ex.Message));
         }
+        catch (BiometricIdentityMismatchException ex)
+        {
+            return Conflict(ApiResponse<object>.Fail(ex.Message));
+        }
         catch (Exception ex)
         {
             return BadRequest(ApiResponse<object>.Fail(ex.Message));

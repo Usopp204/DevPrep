@@ -1,6 +1,7 @@
 using InterviewAPI.DTOs;
 using InterviewAPI.Clients;
 using InterviewAPI.DTOs.AiService;
+using InterviewAPI.DTOs.Biometrics;
 using InterviewAPI.DTOs.Evaluation;
 using InterviewAPI.DTOs.Session;
 using InterviewAPI.Helpers;
@@ -8,6 +9,7 @@ using InterviewAPI.Models;
 using InterviewAPI.Repositories.Interfaces;
 using InterviewAPI.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace InterviewAPI.Services;
 
@@ -124,6 +126,128 @@ public class SessionService : ISessionService
     // Biometric entry gate is active only when the feature flag is on — with the flag off,
     // sessions init and run exactly as before (guards below become no-ops).
     private bool BiometricsEnabled => _configuration.GetValue("Biometrics:Enabled", false);
+
+    private async Task AttachVerificationCheckAsync(
+        NextQuestionDto question, Guid sessionId, Guid userId, CancellationToken ct)
+    {
+        var check = await GetInSessionCheckAsync(
+            userId, sessionId, question.SessionQuestionId, ct);
+        question.VerificationCheckId = check.CheckId;
+        question.VerificationCheckExpiresAt = check.ExpiresAt;
+    }
+
+    public async Task<InSessionCheckDueResponse> GetInSessionCheckAsync(
+        Guid userId, Guid sessionId, Guid sessionQuestionId, CancellationToken ct)
+    {
+        var session = await _repo.GetByIdAsync(sessionId, ct);
+        if (session is null || session.UserId != userId)
+            throw new InvalidOperationException("Session not found.");
+        if (!BiometricsEnabled || session.Status != "InProgress")
+            return new InSessionCheckDueResponse();
+        var sessionQuestion = await _db.SessionQuestions.AsNoTracking().FirstOrDefaultAsync(
+            q => q.SessionQuestionId == sessionQuestionId && q.SessionId == sessionId, ct);
+        if (sessionQuestion is null)
+            throw new InvalidOperationException("Question not found in this session.");
+        if (sessionQuestion.OrderIndex <= 1)
+            return new InSessionCheckDueResponse();
+
+        await SettleExpiredVerificationChecksAsync(session, ct);
+        if (session.Status != "InProgress")
+        {
+            return new InSessionCheckDueResponse
+            {
+                ShouldEndSession = session.Status == "Cancelled",
+                Message = session.Status == "Cancelled"
+                    ? "Maximum cheating warnings reached. This interview has been ended."
+                    : null
+            };
+        }
+
+        var now = VietnamTime.Now;
+        var existing = await _verificationEventRepository.GetQuestionCheckAsync(
+            sessionId, sessionQuestionId, ct);
+        if (existing is not null)
+            return existing.Decision == "Pending"
+                ? ToCheckDueResponse(existing, now, 0)
+                : new InSessionCheckDueResponse();
+
+        var ttlSeconds = _configuration.GetValue(
+            "Biometrics:InSessionCheckTtlSeconds", 20);
+        var check = new SessionVerificationEvent
+        {
+            SessionId = sessionId,
+            UserId = userId,
+            Phase = "InSession",
+            Modality = "Check",
+            Matched = false,
+            Decision = "Pending",
+            Detail = "{\"Reason\":\"QuestionCheckIssued\"}",
+            IncidentId = Guid.NewGuid(),
+            SessionQuestionId = sessionQuestionId,
+            CheckSequence = 100000 + sessionQuestion.OrderIndex,
+            ExpiresAt = now.AddSeconds(ttlSeconds),
+            ChallengeJson = null,
+            CreatedAt = now
+        };
+        if (await _verificationEventRepository.TryAddIncidentAsync(check, ct))
+            return ToCheckDueResponse(check, now, 0);
+
+        existing = await _verificationEventRepository.GetQuestionCheckAsync(
+            sessionId, sessionQuestionId, ct);
+        return existing?.Decision != "Pending"
+            ? new InSessionCheckDueResponse()
+            : ToCheckDueResponse(existing, now, 0);
+    }
+
+    private static InSessionCheckDueResponse ToCheckDueResponse(
+        SessionVerificationEvent check, DateTime now, double targetMinutes) => new()
+    {
+        Due = true,
+        ElapsedMinutes = Math.Max(0, (now - check.CreatedAt).TotalMinutes),
+        TargetMinutes = targetMinutes,
+        CheckId = check.IncidentId,
+        ExpiresAt = check.ExpiresAt
+    };
+
+    private async Task SettleExpiredVerificationChecksAsync(
+        InterviewSession session, CancellationToken ct)
+    {
+        if (!BiometricsEnabled || session.Status is not ("InProgress" or "Paused"))
+            return;
+
+        var expired = await _verificationEventRepository.ListExpiredPendingChecksAsync(
+            session.SessionId, VietnamTime.Now, ct);
+        var recorded = false;
+        foreach (var check in expired)
+            recorded |= await _verificationEventRepository.TryMarkCheckMissedAsync(check.Id, ct);
+        if (!recorded)
+            return;
+
+        var events = await _verificationEventRepository.ListBySessionAsync(
+            session.SessionId, "InSession", ct);
+        var threshold = _configuration.GetValue("Biometrics:NoFaceStrikeThreshold", 3);
+        var maxStrikes = _configuration.GetValue("Biometrics:InSessionMaxStrikes", 3);
+        var strictness = _configuration.GetValue("Biometrics:InSessionStrictness", "Flag");
+        var strikes = CheatingStrikeHelper.ComputeEffectiveStrikeCount(events, threshold);
+        if (!string.Equals(strictness, "Strict", StringComparison.OrdinalIgnoreCase)
+            || strikes < maxStrikes)
+            return;
+
+        session.Status = "Cancelled";
+        session.EndedAt = VietnamTime.Now;
+        session.UpdatedAt = VietnamTime.Now;
+        var room = await _repo.GetRoomBySessionAsync(session.SessionId, ct);
+        if (room is not null)
+        {
+            room.Status = "Closed";
+            room.ClosedAt = VietnamTime.Now;
+            await _repo.UpdateRoomAsync(room, ct);
+        }
+        else
+        {
+            await _repo.SaveChangesAsync(ct);
+        }
+    }
 
     public async Task<ConfigResponse> ConfigDurationAsync(Guid userId, ConfigDurationRequest req, CancellationToken ct)
     {
@@ -490,6 +614,7 @@ public class SessionService : ISessionService
         var session = await _repo.GetByIdAsync(sessionId, ct);
         if (session is null || session.UserId != userId)
             throw new InvalidOperationException("Session not found.");
+        await SettleExpiredVerificationChecksAsync(session, ct);
         if (session.Status != "InProgress")
             throw new InvalidOperationException("Session is not in progress.");
 
@@ -604,7 +729,7 @@ public class SessionService : ISessionService
                 await _repo.SaveChangesAsync(ct);
 
                 var (reminderSeconds, hardSeconds) = GetIdleThresholds(null);
-                return new MessageResponse
+                var response = new MessageResponse
                 {
                     Ended = false,
                     // session.AnsweredQuestions is the PRE-claim value read at Step A; the claim
@@ -624,6 +749,8 @@ public class SessionService : ISessionService
                         IdleElapsedSeconds = 0
                     }
                 };
+                await AttachVerificationCheckAsync(response.NextQuestion, sessionId, userId, ct);
+                return response;
             }
 
             // Step H: Đã trả lời hết — đóng phiên và phòng phỏng vấn.
@@ -718,6 +845,7 @@ public class SessionService : ISessionService
             throw new InvalidOperationException("Session not found.");
 
         await AutoResumeIfPauseExpiredAsync(session, ct);
+        await SettleExpiredVerificationChecksAsync(session, ct);
 
         int remaining;
         if (session.StartedAt is null)
@@ -901,12 +1029,86 @@ public class SessionService : ISessionService
         var session = await _repo.GetByIdAsync(sessionId, ct);
         if (session is null || session.UserId != userId)
             throw new InvalidOperationException("Session not found.");
+        if (session.Status is not ("InProgress" or "Paused"))
+            throw new InvalidOperationException("Session is not active.");
+        if (req.IncidentId == Guid.Empty)
+            throw new InvalidOperationException("IncidentId is required.");
+        if (req.Reason is not ("PermissionDenied" or "Disconnected"))
+            throw new InvalidOperationException("Reason must be PermissionDenied or Disconnected.");
+
+        var maxStrikes = _configuration.GetValue("Biometrics:InSessionMaxStrikes", 3);
+        var strictness = _configuration.GetValue("Biometrics:InSessionStrictness", "Flag");
+        var noFaceStrikeThreshold = _configuration.GetValue("Biometrics:NoFaceStrikeThreshold", 3);
 
         _logger.LogInformation(
-            "ReportCameraViolation: session {SessionId}, reason={Reason}", sessionId, req.Reason);
+            "ReportCameraViolation: session {SessionId}, incidentId={IncidentId}, reason={Reason}",
+            sessionId, req.IncidentId, req.Reason);
 
-        var count = await _repo.IncrementCameraViolationAsync(sessionId, ct);
-        return new ReportCameraViolationResponse { CameraViolationCount = count };
+        var inserted = await _verificationEventRepository.TryAddIncidentAsync(
+            new SessionVerificationEvent
+            {
+                SessionId = sessionId,
+                UserId = userId,
+                Phase = "InSession",
+                Modality = "Camera",
+                Matched = false,
+                Decision = "Flag",
+                IncidentId = req.IncidentId,
+                Detail = JsonSerializer.Serialize(new { req.Reason }),
+                CreatedAt = VietnamTime.Now,
+            },
+            ct);
+
+        var count = inserted
+            ? await _repo.IncrementCameraViolationAsync(sessionId, ct)
+            : await _db.InterviewSessions.AsNoTracking()
+                .Where(s => s.SessionId == sessionId && !s.IsDeleted)
+                .Select(s => s.CameraViolationCount)
+                .FirstOrDefaultAsync(ct);
+
+        var events = await _verificationEventRepository.ListBySessionAsync(sessionId, "InSession", ct);
+        var effectiveStrikeCount = CheatingStrikeHelper.ComputeEffectiveStrikeCount(
+            events, noFaceStrikeThreshold);
+        var displayStrikeCount = Math.Min(effectiveStrikeCount, maxStrikes);
+        var shouldEndSession = inserted
+            && string.Equals(strictness, "Strict", StringComparison.OrdinalIgnoreCase)
+            && effectiveStrikeCount >= maxStrikes;
+
+        var message = req.Reason == "PermissionDenied"
+            ? "Camera access was not restored within the allowed time."
+            : "The camera was not reconnected within the allowed time.";
+
+        if (shouldEndSession)
+        {
+            session.Status = "Cancelled";
+            session.EndedAt = VietnamTime.Now;
+            session.UpdatedAt = VietnamTime.Now;
+
+            var room = await _repo.GetRoomBySessionAsync(sessionId, ct);
+            if (room is not null)
+            {
+                room.Status = "Closed";
+                room.ClosedAt = VietnamTime.Now;
+                await _repo.UpdateRoomAsync(room, ct);
+            }
+            else
+            {
+                await _repo.SaveChangesAsync(ct);
+            }
+
+            message = $"Maximum cheating warnings reached ({displayStrikeCount}/{maxStrikes}). " +
+                      "This interview has been ended.";
+        }
+
+        return new ReportCameraViolationResponse
+        {
+            CameraViolationCount = count,
+            StrikeCount = displayStrikeCount,
+            MaxStrikes = maxStrikes,
+            Duplicate = !inserted,
+            ShouldEndSession = shouldEndSession,
+            Message = message,
+        };
     }
 
     public async Task<ResumeResponse> ResumeSessionAsync(Guid userId, Guid sessionId, CancellationToken ct)
@@ -916,6 +1118,7 @@ public class SessionService : ISessionService
             throw new InvalidOperationException("Session not found.");
 
         await AutoResumeIfPauseExpiredAsync(session, ct);
+        await SettleExpiredVerificationChecksAsync(session, ct);
 
         // Tính thời gian còn lại.
         int remaining;
@@ -965,6 +1168,9 @@ public class SessionService : ISessionService
         // block entering the room — if the lookup fails for any reason (e.g. table not migrated
         // yet on this environment), fall back to "not seen" so the tour just shows once more
         // instead of taking down Resume, which is on the critical path to the interview itself.
+        if (currentQuestion is not null)
+            await AttachVerificationCheckAsync(currentQuestion, sessionId, userId, ct);
+
         UserRoomTourStatus? tourStatus = null;
         try
         {
@@ -1242,6 +1448,42 @@ public class SessionService : ISessionService
     {
         var session = await _repo.GetByIdAsync(sessionId, ct);
         return session is not null && session.UserId == userId;
+    }
+
+    public async Task<IntegrityPolicyStatusResponse> GetIntegrityPolicyStatusAsync(Guid userId, Guid sessionId, CancellationToken ct)
+    {
+        var session = await _repo.GetByIdAsync(sessionId, ct);
+        if (session is null || session.UserId != userId)
+            throw new KeyNotFoundException("Session not found.");
+        
+        return new IntegrityPolicyStatusResponse
+        {
+            Accepted = session.IntegrityPolicyAccepted,
+            AcceptedAt = session.IntegrityPolicyAcceptedAt
+        };
+    }
+
+    public async Task<IntegrityPolicyStatusResponse> AcceptIntegrityPolicyAsync(Guid userId, Guid sessionId, CancellationToken ct)
+    {
+        var session = await _repo.GetByIdAsync(sessionId, ct);
+        if (session is null || session.UserId != userId)
+            throw new KeyNotFoundException("Session not found.");
+
+        if (session.Status != "Initialized")
+            throw new InvalidOperationException("Session cannot accept policy at this status.");
+
+        bool updated = await _repo.AcceptIntegrityPolicyIfAsync(sessionId, ct);
+        if (updated)
+        {
+            session.IntegrityPolicyAccepted = true;
+            session.IntegrityPolicyAcceptedAt = VietnamTime.Now;
+        }
+
+        return new IntegrityPolicyStatusResponse
+        {
+            Accepted = session.IntegrityPolicyAccepted,
+            AcceptedAt = session.IntegrityPolicyAcceptedAt
+        };
     }
 
 

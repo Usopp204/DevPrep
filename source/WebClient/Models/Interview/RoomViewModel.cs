@@ -15,6 +15,8 @@ public class RoomViewModel
     public int TotalQuestions { get; set; }
     public int AnsweredQuestions { get; set; }
     public Guid? CurrentQuestionId { get; set; }
+    public Guid? VerificationCheckId { get; set; }
+    public DateTime? VerificationCheckExpiresAt { get; set; }
     // Idle-reminder / auto-advance thresholds for the current question, from InterviewAPI.
     public int IdleReminderSeconds { get; set; }
     public int IdleHardSeconds { get; set; }
