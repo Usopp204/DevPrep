@@ -247,6 +247,29 @@ BEGIN
 END;
 GO
 
+-- 1j. InterviewSessions.LastSkipAtUtc — enforces Interview:SkipCooldownSeconds
+-- (SessionRepository.TryConsumeSkipCooldownAsync). Despite the name, stores VietnamTime.Now
+-- like every other timestamp column here, not actual UTC.
+IF NOT EXISTS (
+    SELECT 1 FROM sys.columns
+    WHERE object_id = OBJECT_ID(N'dbo.InterviewSessions')
+      AND name = N'LastSkipAtUtc')
+BEGIN
+    ALTER TABLE dbo.InterviewSessions ADD LastSkipAtUtc DATETIME2 NULL;
+END;
+GO
+
+-- 1k. SessionQuestions.HintUsedAt — set once, atomically, the first time a hint is claimed
+-- for a question (SessionRepository.TryConsumeHintAsync). NULL = hint not used yet.
+IF NOT EXISTS (
+    SELECT 1 FROM sys.columns
+    WHERE object_id = OBJECT_ID(N'dbo.SessionQuestions')
+      AND name = N'HintUsedAt')
+BEGIN
+    ALTER TABLE dbo.SessionQuestions ADD HintUsedAt DATETIME2 NULL;
+END;
+GO
+
 
 -- ============================================================================
 -- 2) DevPrep_Evaluation
