@@ -32,6 +32,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     libgl1 \
     libglib2.0-0 \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Map the system 'python' command to python3.10 for consistency
@@ -48,6 +49,18 @@ COPY requirements.txt .
 RUN --mount=type=cache,target=/root/.cache/pip \
     python -m pip install --upgrade pip && \
     python -m pip install -r requirements.txt
+
+# 5b. PIPER TTS VOICE MODEL
+# Baked into the image at build time (~79MB) so no network call / volume mount is
+# needed at runtime. Voice: en_US-libritts_r-medium (multi-speaker, dataset license
+# CC BY 4.0 — see https://huggingface.co/rhasspy/piper-voices). Kept as its own layer,
+# before COPY . ., so app code changes don't invalidate this download.
+ENV PIPER_MODEL_DIR=/app/models/piper
+RUN mkdir -p ${PIPER_MODEL_DIR} && \
+    curl -fSL -o ${PIPER_MODEL_DIR}/en_US-libritts_r-medium.onnx \
+        https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/libritts_r/medium/en_US-libritts_r-medium.onnx && \
+    curl -fSL -o ${PIPER_MODEL_DIR}/en_US-libritts_r-medium.onnx.json \
+        https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/libritts_r/medium/en_US-libritts_r-medium.onnx.json
 
 # 6. SOURCE CODE INTEGRATION
 # Copy the entire ai-service directory content into the container workspace

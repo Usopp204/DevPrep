@@ -34,6 +34,11 @@ google-genai>=1.0
 # --- Voice (voice.py) ---
 deepgram-sdk>=6.0
 elevenlabs>=1.0
+# Piper TTS (local, offline). NOTE: as of 1.6.0 the maintained fork (OHF-Voice/piper1-gpl)
+# ships under GPL-3.0-or-later, not the old MIT license of the archived rhasspy/piper repo.
+# Pulls in onnxruntime>=1,<2 as a dependency — compatible with the onnxruntime==1.19.2
+# already pinned below for insightface (no conflict).
+piper-tts==1.6.0
 
 # --- Biometrics (biometrics/) ---
 # Torch is already installed above; insightface runs on onnxruntime (CPU provider).

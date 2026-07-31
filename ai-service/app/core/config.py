@@ -37,6 +37,23 @@ GEMINI_JUDGE_MODEL = os.getenv("GEMINI_JUDGE_MODEL", "gemini-3.1-pro")
 DEEPGRAM_API_KEY = os.getenv("DEEPGRAM_API_KEY", "")
 DEEPGRAM_STT_MODEL = os.getenv("DEEPGRAM_STT_MODEL") or "nova-3"
 
+# --- Voice: TTS provider select ---
+# "piper" (default): local, offline, no API key. "elevenlabs": cloud, needs ELEVENLABS_API_KEY.
+TTS_PROVIDER = os.getenv("TTS_PROVIDER") or "piper"
+
+# --- Voice: TTS (Piper, local) ---
+# Voice model baked into the image at build time (see Dockerfile). PIPER_VOICE is the
+# basename (no extension) of the .onnx/.onnx.json pair under PIPER_MODEL_DIR.
+# en_US-libritts_r-medium is a multi-speaker model (904 speakers, CC BY 4.0 dataset
+# license) — PIPER_SPEAKER_ID picks which speaker to synthesize with.
+PIPER_VOICE = os.getenv("PIPER_VOICE") or "en_US-libritts_r-medium"
+PIPER_MODEL_DIR = os.getenv("PIPER_MODEL_DIR") or "/app/models/piper"
+PIPER_SPEAKER_ID = int(os.getenv("PIPER_SPEAKER_ID") or "0")
+
+# --- Voice: TTS disk cache (tts_cache.py) ---
+TTS_CACHE_DIR = os.getenv("TTS_CACHE_DIR") or "tts_cache"
+TTS_CACHE_ENABLED = (os.getenv("TTS_CACHE_ENABLED", "true").strip().lower() != "false")
+
 # --- Voice: TTS (ElevenLabs) ---
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
 ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID") or "JBFqnCBsd6RMkjVDRZzb"  # default interviewer voice
