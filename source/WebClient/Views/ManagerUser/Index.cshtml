@@ -306,6 +306,12 @@
             color: #ffffff;
         }
 
+        .action-btn i,
+        .action-btn .material-symbols-outlined {
+            font-size: 16px;
+            line-height: 1;
+        }
+
         .empty-row {
             height: 140px;
             color: #cbd5e1;
@@ -406,7 +412,7 @@
                                value="@ViewBag.Keyword"
                                type="text"
                                class="form-control admin-input"
-                               placeholder="Search by name or email..." />
+                               placeholder="Search by full name or email..." />
                     </div>
 
                     <div class="col-12 col-sm-6 col-xl-2">
@@ -531,7 +537,7 @@
                                             <a class="action-btn action-view"
                                                href="/Manager/Users/@user.UserId"
                                                title="View details">
-                                                <span class="material-symbols-outlined fs-5">visibility</span>
+                                                <span class="material-symbols-outlined">visibility</span>
                                             </a>
                                         </td>
                                     </tr>

@@ -192,34 +192,45 @@ public class ManagerPaymentsController : ControllerBase
         if (items.Count == 0) return;
         try
         {
-            // Order.UserId chứa AccountId (lấy từ header X-User-Id do ApiGateway forward từ JWT sub = AccountId)
-            var accountIds = items.Select(i => i.UserId).Distinct().ToList();
+            // New orders store AccountId. The second profile join keeps old seed/backup rows
+            // that stored UserProfile.UserId readable without changing the API contract.
+            var storedUserIds = items.Select(i => i.UserId).Distinct().ToList();
             var connString = _connString;
             var nameMap = new Dictionary<Guid, (string? FullName, string? Email)>();
 
             using var conn = new SqlConnection(connString);
             await conn.OpenAsync(ct);
-            var idList = string.Join(",", accountIds.Select(id => $"'{id}'"));
-            // Order.UserId = UserProfile.UserId (bảng DevPrep_User), KHÔNG phải AccountId
+            var valueRows = string.Join(",", storedUserIds.Select((_, index) => $"(@UserId{index})"));
             var sql = $@"
                 SELECT 
-                    p.UserId, 
-                    p.FullName, 
-                    a.Email 
-                FROM DevPrep_User.dbo.UserProfiles p
-                LEFT JOIN DevPrep_Auth.dbo.Accounts a ON a.AccountId = p.AccountId
-                WHERE p.UserId IN ({idList})";
+                    ids.StoredUserId,
+                    COALESCE(profileByAccount.FullName, profileByUserId.FullName),
+                    account.Email
+                FROM (VALUES {valueRows}) ids(StoredUserId)
+                LEFT JOIN DevPrep_User.dbo.UserProfiles profileByAccount
+                    ON profileByAccount.AccountId = ids.StoredUserId
+                LEFT JOIN DevPrep_User.dbo.UserProfiles profileByUserId
+                    ON profileByUserId.UserId = ids.StoredUserId
+                LEFT JOIN DevPrep_Auth.dbo.Accounts account
+                    ON account.AccountId = COALESCE(
+                        profileByAccount.AccountId,
+                        profileByUserId.AccountId,
+                        ids.StoredUserId
+                    )";
 
-            _logger.LogInformation("EnrichWithUserNames: querying {Count} user profiles.", accountIds.Count);
+            _logger.LogInformation("EnrichWithUserNames: querying {Count} stored user ids.", storedUserIds.Count);
 
             using var cmd = new SqlCommand(sql, conn);
+            for (var index = 0; index < storedUserIds.Count; index++)
+                cmd.Parameters.AddWithValue($"@UserId{index}", storedUserIds[index]);
+
             using var reader = await cmd.ExecuteReaderAsync(ct);
             while (await reader.ReadAsync(ct))
             {
-                var accId = reader.GetGuid(0);
+                var storedUserId = reader.GetGuid(0);
                 var name = reader.IsDBNull(1) ? null : reader.GetString(1);
                 var email = reader.IsDBNull(2) ? null : reader.GetString(2);
-                nameMap[accId] = (name, email);
+                nameMap[storedUserId] = (name, email);
             }
 
             _logger.LogInformation("EnrichWithUserNames: found {Count} user records", nameMap.Count);
@@ -233,7 +244,7 @@ public class ManagerPaymentsController : ControllerBase
                 }
                 else
                 {
-                    _logger.LogWarning("EnrichWithUserNames: no user found for UserId (AccountId) = {UserId}", item.UserId);
+                    _logger.LogWarning("EnrichWithUserNames: no user found for stored UserId = {UserId}", item.UserId);
                 }
             }
         }
