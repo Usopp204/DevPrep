@@ -305,6 +305,11 @@
 
         .action-view { color: #94a3b8; }
         .action-view:hover { color: #ffffff; }
+        .action-btn i,
+        .action-btn .material-symbols-outlined {
+            font-size: 16px;
+            line-height: 1;
+        }
 
         .empty-row {
             height: 140px;
@@ -428,7 +433,7 @@
                         <div class="filter-label">Status</div>
                         <select name="status" class="form-select admin-select">
                             <option value="">All Statuses</option>
-                            @foreach (var st in new[] { "Active", "Draft", "Archived", "Deleted" })
+                            @foreach (var st in new[] { "Active", "Draft", "Deleted" })
                             {
                                 <option value="@st" selected="@(string.Equals(statusFilter, st, StringComparison.OrdinalIgnoreCase) ? "selected" : null)">@st</option>
                             }
@@ -473,8 +478,6 @@
                                     {
                                         "active" => "status-active",
                                         "draft" => "status-draft",
-                                        "archived" => "status-archived",
-                                        "inactive" => "status-archived",
                                         "deleted" => "status-deleted",
                                         _ => "status-draft"
                                     };
@@ -504,7 +507,7 @@
                                             <a class="action-btn action-view"
                                                href="/Manager/QuestionBank/@item.QuestionId"
                                                title="View details">
-                                                <span class="material-symbols-outlined fs-5">visibility</span>
+                                                <span class="material-symbols-outlined">visibility</span>
                                             </a>
                                         </td>
                                     </tr>

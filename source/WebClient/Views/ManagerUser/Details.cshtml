@@ -298,11 +298,11 @@
                                 <div class="value">@(Model.LastLoginAt?.ToString("dd/MM/yyyy HH:mm") ?? "Never")</div>
                             </div>
 
-                            @if (isBlocked && !string.IsNullOrWhiteSpace(Model.BlockedReason))
+                            @if (isBlocked)
                             {
                                 <div class="col-12">
                                     <div class="label">Blocked Reason</div>
-                                    <div class="value text-danger">@Model.BlockedReason</div>
+                                    <div class="value text-danger">@(Model.BlockedReason ?? "N/A")</div>
                                 </div>
 
                                 <div class="col-12">
@@ -319,7 +319,7 @@
                         <div class="col-12 col-md-6">
                             <div class="stat-card">
                                 <div class="label">Total Sessions</div>
-                                <div class="stat-value">@Model.CompletedSessions.Count</div>
+                                <div class="stat-value">@Model.Sessions.Count</div>
                             </div>
                         </div>
                     </div>
@@ -327,7 +327,7 @@
                     <div class="card-dark">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h5 class="fw-bold mb-0">Session History</h5>
-                            <span class="muted-text">@Model.CompletedSessions.Count sessions</span>
+                            <span class="muted-text">@Model.Sessions.Count sessions</span>
                         </div>
 
                         <div class="table-responsive">
@@ -345,7 +345,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @if (Model.CompletedSessions.Count == 0)
+                                    @if (Model.Sessions.Count == 0)
                                     {
                                         <tr>
                                             <td colspan="8" class="text-center py-5 text-secondary">
@@ -355,7 +355,7 @@
                                     }
                                     else
                                     {
-                                        foreach (var s in Model.CompletedSessions)
+                                        foreach (var s in Model.Sessions)
                                         {
                                             <tr>
                                                 <td>
