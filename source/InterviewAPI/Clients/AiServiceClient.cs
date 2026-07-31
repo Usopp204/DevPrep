@@ -75,11 +75,22 @@ public class AiServiceClient : IAiServiceClient
             // The TTS route lives under the /interview router prefix (stateless, body = { text }).
             var response = await _httpClient.PostAsJsonAsync("/interview/tts", new { text }, ct);
             response.EnsureSuccessStatusCode();
-            return await response.Content.ReadAsByteArrayAsync(ct);
+            var audio = await response.Content.ReadAsByteArrayAsync(ct);
+            if (audio.Length == 0)
+            {
+                // ai-service is expected to fail with a non-2xx status (caught below) rather than
+                // 200 + empty body, but this is a last-resort guard in case that ever regresses.
+                _logger.LogWarning("TTS returned empty audio, text length {TextLength}", text.Length);
+                return null!;
+            }
+            return audio;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Call to ai-service POST /tts failed.");
+            var statusCode = (ex as HttpRequestException)?.StatusCode;
+            _logger.LogWarning(ex,
+                "Call to ai-service POST /tts failed. StatusCode={StatusCode}, TextLength={TextLength}",
+                statusCode, text.Length);
             throw;
         }
     }

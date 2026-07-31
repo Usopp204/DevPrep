@@ -50,6 +50,11 @@
             <a class="btn-primary-solid" asp-controller="Interview" asp-action="Index">＋ New Interview</a>
         </div>
 
+        @if (TempData["ReportInfoMessage"] is string reportInfoMessage)
+        {
+            <div class="report-feedback-alert" role="status">@reportInfoMessage</div>
+        }
+
         @if (report is not null)
         {
             var overall = report.OverallScore;

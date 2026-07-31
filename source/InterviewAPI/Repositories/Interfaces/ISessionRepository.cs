@@ -6,6 +6,11 @@ namespace InterviewAPI.Repositories.Interfaces;
 public interface ISessionRepository
 {
     Task<InterviewSession?> GetByIdAsync(Guid id, CancellationToken ct);
+
+    // Newest InProgress/Paused session for a user (Dashboard "resume your interview" banner).
+    // Tracking (not AsNoTracking) — the caller may finalize an expired session in place via
+    // FinalizeIfTimeExpiredAsync, same reasoning as GetByIdAsync.
+    Task<InterviewSession?> GetActiveSessionAsync(Guid userId, CancellationToken ct);
     Task<InterviewSession?> GetWithQuestionsAsync(Guid sessionId, CancellationToken ct);
     Task<InterviewSession?> GetWithFullHistoryAsync(Guid sessionId, CancellationToken ct);
     Task<InterviewSession> CreateAsync(InterviewSession session, CancellationToken ct);
@@ -41,6 +46,21 @@ public interface ISessionRepository
     // UPDATE pattern as UpdateStatusIfAsync above.
     Task<bool> IncrementAnsweredIfAsync(Guid sessionId, int expectedCurrentCount, CancellationToken ct);
     Task<bool> AcceptIntegrityPolicyIfAsync(Guid sessionId, CancellationToken ct);
+
+    // Atomic one-time claim for a question's hint quota — same conditional-UPDATE pattern as
+    // AcceptIntegrityPolicyIfAsync. Returns false if a hint was already used for this question.
+    Task<bool> TryConsumeHintAsync(Guid sessionQuestionId, Guid sessionId, CancellationToken ct);
+
+    // Refunds the hint quota (HintUsedAt back to null) when the ai-service call after a
+    // successful claim fails — called by SessionService.HintAsync, never on its own.
+    Task ReleaseHintAsync(Guid sessionQuestionId, CancellationToken ct);
+
+    // Atomic per-session Skip cooldown claim — same conditional-UPDATE pattern as
+    // AcceptIntegrityPolicyIfAsync. Allowed (and LastSkipAtUtc stamped) only if no prior skip is
+    // recorded or cooldownSeconds has fully elapsed since the last one. When blocked, returns how
+    // many seconds remain so the caller can report Retry-After.
+    Task<(bool Allowed, int RetryAfterSeconds)> TryConsumeSkipCooldownAsync(
+        Guid sessionId, int cooldownSeconds, CancellationToken ct);
 
     // Rollback for IncrementAnsweredIfAsync when a step AFTER the successful claim fails
     // (e.g. the ChatMessage insert throws) — safe as an unconditional decrement because only
