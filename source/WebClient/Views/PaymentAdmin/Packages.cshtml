@@ -74,6 +74,12 @@
         .icon-btn .material-symbols-outlined { font-size: 17px; }
         .icon-btn:hover { background: var(--border); color: var(--text); }
         .icon-btn-danger:hover { background: var(--error-dim); color: var(--error); border-color: rgba(248,113,113,.3); }
+        .icon-btn-success:hover { background: var(--success-dim); color: var(--success); border-color: rgba(16,185,129,.3); }
+
+        /* Hidden by default; revealed by the "Show Deleted" toggle */
+        .pkg-table tbody tr[data-active="false"] { display: none; }
+        .pkg-table.show-deleted tbody tr[data-active="false"] { display: table-row; }
+        #btnShowDeleted.active-toggle { background: var(--error-dim); border-color: rgba(248,113,113,.3); color: var(--error); }
 
         /* Table */
         .pkg-table { width: 100%; border-collapse: collapse; }
@@ -213,7 +219,13 @@
     <div class="data-card">
         <div class="data-card-head">
             <span class="data-card-title">All Packages</span>
-            <span style="font-size:13px;color:var(--text-muted);">Sorted by display order · Includes deactivated</span>
+            <div style="display:flex;align-items:center;gap:12px;">
+                <span style="font-size:13px;color:var(--text-muted);">Sorted by display order</span>
+                <button type="button" id="btnShowDeleted" class="btn btn-ghost btn-sm" onclick="toggleShowDeleted()" title="Show deactivated packages (to restore)">
+                    <span class="material-symbols-outlined">history</span>
+                    Show deleted
+                </button>
+            </div>
         </div>
 
         @if (allPkg.Count == 0)
@@ -226,7 +238,7 @@
         else
         {
             <div style="overflow-x:auto;">
-                <table class="pkg-table">
+                <table class="pkg-table" id="pkgTable">
                     <thead>
                         <tr>
                             <th>Package</th>
@@ -240,7 +252,7 @@
                     <tbody>
                         @foreach (var pkg in allPkg)
                         {
-                            <tr>
+                            <tr data-active="@(pkg.IsActive ? "true" : "false")">
                                 <td>
                                     <div class="pkg-name">@pkg.Name</div>
                                     @if (!string.IsNullOrEmpty(pkg.Description))
@@ -289,6 +301,13 @@
                                             <button class="icon-btn icon-btn-danger" title="Deactivate"
                                                     onclick='openDeleteModal("@pkg.PackageId","@pkg.Name")'>
                                                 <span class="material-symbols-outlined">delete</span>
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button class="icon-btn icon-btn-success" title="Restore"
+                                                    onclick='restorePackage("@pkg.PackageId","@pkg.Name")'>
+                                                <span class="material-symbols-outlined">restore_from_trash</span>
                                             </button>
                                         }
                                     </div>
@@ -369,6 +388,12 @@
     </div>
 </div>
 
+<!-- ── Restore form (hidden, submitted via restorePackage()) ────── -->
+<form method="post" id="restoreForm" style="display:none;">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="name" id="restorePkgNameHidden" />
+</form>
+
 <script>
     function openCreateModal() {
         document.getElementById('modalTitle').textContent = 'New Package';
@@ -403,6 +428,21 @@
 
     function closeModal(id) {
         document.getElementById(id).classList.remove('open');
+    }
+
+    let showDeleted = false;
+    function toggleShowDeleted() {
+        showDeleted = !showDeleted;
+        document.getElementById('pkgTable').classList.toggle('show-deleted', showDeleted);
+        document.getElementById('btnShowDeleted').classList.toggle('active-toggle', showDeleted);
+    }
+
+    function restorePackage(id, name) {
+        if (!confirm(`Restore package "${name}"? It will become active and visible to users again.`)) return;
+        const form = document.getElementById('restoreForm');
+        form.action = '/Admin/Payment/Packages/Restore/' + id;
+        document.getElementById('restorePkgNameHidden').value = name;
+        form.submit();
     }
 
     document.querySelectorAll('.modal-overlay').forEach(el => {

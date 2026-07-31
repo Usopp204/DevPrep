@@ -76,6 +76,17 @@ public class PaymentAdminController(IPaymentAdminService adminService) : Control
             : RedirectToAction(nameof(Packages), new { error = err ?? "Failed to delete package." });
     }
 
+    [HttpPost("Packages/Restore/{id:guid}")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RestorePackage(Guid id, string? name, CancellationToken ct = default)
+    {
+        if (GuardAdmin() is { } r6) return r6;
+        var (ok, err) = await adminService.RestorePackageAsync(id, ct);
+        return ok
+            ? RedirectToAction(nameof(Packages), new { success = $"Package '{name}' restored." })
+            : RedirectToAction(nameof(Packages), new { error = err ?? "Failed to restore package." });
+    }
+
     [HttpGet("Payments")]
     public async Task<IActionResult> Payments(
         int page = 1, string? keyword = null, string? status = null, string? paymentMethod = null,

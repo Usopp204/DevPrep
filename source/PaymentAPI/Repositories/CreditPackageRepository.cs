@@ -10,7 +10,7 @@ public class CreditPackageRepository : Repository<CreditPackage>, ICreditPackage
     public CreditPackageRepository(PaymentDbContext db) : base(db) { }
 
     public async Task<IEnumerable<CreditPackage>> GetActiveAsync()
-        => await _set.Where(p => p.IsActive).OrderBy(p => p.SortOrder).ToListAsync();
+        => await _set.Where(p => p.IsActive).OrderBy(p => p.SortOrder).ThenBy(p => p.CreatedAt).ToListAsync();
 
     public async Task<PagedResult<CreditPackage>> GetPagedAsync(
         string? keyword, bool? isActive, int page, int pageSize)

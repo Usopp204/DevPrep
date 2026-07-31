@@ -251,7 +251,7 @@ app.MapGet("/credits/ledger", async (
 app.MapGet("/admin/credit-packages", async (ICreditPackageRepository repo) =>
 {
     var packages = await repo.GetAllAsync();
-    return Results.Ok(packages.Cast<CreditPackage>().OrderBy(p => p.SortOrder));
+    return Results.Ok(packages.Cast<CreditPackage>().OrderBy(p => p.SortOrder).ThenBy(p => p.CreatedAt));
 });
 
 // --- Admin: GET /admin/credit-packages/{id} ---
@@ -328,6 +328,19 @@ app.MapDelete("/admin/credit-packages/{id:guid}", async (Guid id, ICreditPackage
     pkg.UpdatedAt = DateTime.UtcNow.AddHours(7);
     await repo.SaveChangesAsync();
     return Results.NoContent();
+});
+
+// --- Admin: POST /admin/credit-packages/{id}/restore ---
+app.MapPost("/admin/credit-packages/{id:guid}/restore", async (Guid id, ICreditPackageRepository repo) =>
+{
+    var pkg = await repo.GetByIdAsync(id);
+    if (pkg is null) return Results.NotFound();
+    if (pkg.IsActive) return Results.Ok(pkg);
+
+    pkg.IsActive  = true;
+    pkg.UpdatedAt = DateTime.UtcNow.AddHours(7);
+    await repo.SaveChangesAsync();
+    return Results.Ok(pkg);
 });
 
 // --- Admin: GET /admin/payments (filter + search + aggregates) ---

@@ -11,6 +11,7 @@ public interface IPaymentAdminService
     Task<(bool Ok, string? Error)> CreatePackageAsync(CreditPackageAdminDto dto, CancellationToken ct = default);
     Task<(bool Ok, string? Error)> UpdatePackageAsync(Guid id, CreditPackageAdminDto dto, CancellationToken ct = default);
     Task<(bool Ok, string? Error)> DeletePackageAsync(Guid id, CancellationToken ct = default);
+    Task<(bool Ok, string? Error)> RestorePackageAsync(Guid id, CancellationToken ct = default);
     Task<AdminPaymentsViewModel> GetPaymentsAsync(
         int page = 1, int pageSize = 20,
         string? keyword = null, string? status = null, string? paymentMethod = null,
@@ -77,6 +78,18 @@ public sealed class PaymentAdminService(IApiClient apiClient) : IPaymentAdminSer
         try
         {
             var res = await apiClient.HttpClient.DeleteAsync($"api/payment/admin/credit-packages/{id}", ct);
+            if (res.IsSuccessStatusCode) return (true, null);
+            var body = await res.Content.ReadAsStringAsync(ct);
+            return (false, body);
+        }
+        catch (Exception ex) { return (false, ex.Message); }
+    }
+
+    public async Task<(bool Ok, string? Error)> RestorePackageAsync(Guid id, CancellationToken ct = default)
+    {
+        try
+        {
+            var res = await apiClient.HttpClient.PostAsync($"api/payment/admin/credit-packages/{id}/restore", null, ct);
             if (res.IsSuccessStatusCode) return (true, null);
             var body = await res.Content.ReadAsStringAsync(ct);
             return (false, body);
