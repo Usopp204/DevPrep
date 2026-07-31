@@ -8,23 +8,28 @@ when the UI "AI Voice" toggle is on — text and voice are interchangeable per t
 """
 from __future__ import annotations
 
+import logging
 import time
 import uuid
 
 from fastapi import APIRouter, BackgroundTasks, File, HTTPException, UploadFile
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, Response
 
+from app.core import config
 from app.schemas.interview import (
     AnswerIn, ReportIn, SessionConfigIn, StartResponse, TTSIn, TurnResponse, VoiceAnswerResponse,
 )
+from app.services import tts_cache
 from app.services.interviewer import SessionConfig, create_session
-from app.services.voice import DeepgramSTT, ElevenLabsTTS
+from app.services.voice import DeepgramSTT, get_tts_provider
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/interview", tags=["interview"])
 
 _sessions: dict[str, dict] = {}   # session_id -> {"session": InterviewSession, "created_at": float}
 _stt = DeepgramSTT()
-_tts = ElevenLabsTTS()
+_tts = get_tts_provider()  # config.TTS_PROVIDER: "piper" (default, local) or "elevenlabs"
 _judge = None   # shared lazy Gemini judge for background grading
 
 
@@ -143,7 +148,60 @@ def transcript(session_id: str):
     return entry["session"].transcript(elapsed)
 
 
+def _tts_identity() -> tuple[str, str]:
+    """(voice, speaker_id) the active _tts provider synthesizes with — duck-typed so this
+    works for both PiperTTS (.voice/.speaker_id) and ElevenLabsTTS (.voice_id, no speaker)
+    without importing either class. Part of the cache key: MUST reflect the real provider
+    config or a voice change would keep serving audio cached under the old voice."""
+    voice = getattr(_tts, "voice", None) or getattr(_tts, "voice_id", "") or ""
+    speaker_id = getattr(_tts, "speaker_id", "")
+    return voice, str(speaker_id)
+
+
 @router.post("/tts")
 def tts(body: TTSIn):
-    """Stream the interviewer's speech (used when the 'AI Voice' toggle is on)."""
-    return StreamingResponse(_tts.stream(body.text), media_type="audio/mpeg")
+    """Synthesize the interviewer's speech (used when the 'AI Voice' toggle is on).
+
+    Always returns a full audio/mpeg body or a JSON error — never a 200 with an empty
+    body (the previous StreamingResponse silently swallowed provider errors that way).
+    """
+    start = time.monotonic()
+    voice, speaker_id = _tts_identity()
+    key = tts_cache.cache_key(body.text, config.TTS_PROVIDER, voice, speaker_id)
+
+    cached = tts_cache.get(key)
+    if cached is not None:
+        return Response(
+            content=cached,
+            media_type="audio/mpeg",
+            headers={
+                "X-TTS-Cache": "HIT",
+                "X-TTS-Provider": config.TTS_PROVIDER,
+                "X-TTS-Latency-Ms": str(int((time.monotonic() - start) * 1000)),
+            },
+        )
+
+    try:
+        audio = _tts.synthesize(body.text)
+    except Exception:
+        logger.exception("TTS synthesis failed (provider=%s)", config.TTS_PROVIDER)
+        return JSONResponse(
+            status_code=502,
+            content={"error": "tts_unavailable"},
+            headers={
+                "X-TTS-Cache": "MISS",
+                "X-TTS-Provider": config.TTS_PROVIDER,
+                "X-TTS-Latency-Ms": str(int((time.monotonic() - start) * 1000)),
+            },
+        )
+
+    tts_cache.put(key, audio)
+    return Response(
+        content=audio,
+        media_type="audio/mpeg",
+        headers={
+            "X-TTS-Cache": "MISS",
+            "X-TTS-Provider": config.TTS_PROVIDER,
+            "X-TTS-Latency-Ms": str(int((time.monotonic() - start) * 1000)),
+        },
+    )

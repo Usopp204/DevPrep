@@ -42,6 +42,12 @@ public class InterviewController(
             var balance = await paymentService.GetCreditBalanceAsync(userId.Value, cancellationToken);
             dashboard.CreditBalance = balance.Balance;
         }
+
+        // Best-effort: a failed lookup just means no banner, never breaks the dashboard.
+        var activeSession = await interviewService.GetActiveSessionAsync(cancellationToken);
+        if (activeSession.Success)
+            dashboard.ActiveSession = activeSession.Data;
+
         return dashboard;
     }
 
@@ -63,6 +69,17 @@ public class InterviewController(
         var result = await interviewService.StartInterviewAsync(
             model.DurationMinutes, model.Level, model.Position, model.Jd, model.JdId,
             model.FocusAreas ?? new List<string>(), cancellationToken);
+
+        if (!result.Success && result.ActiveSessionId is Guid activeSessionId)
+        {
+            // Not an error — send the user to where they actually need to be instead of making
+            // them figure it out from an error message. RoomInfoMessage (not the shared
+            // InfoMessage key) — InfoMessage is read by other views too (e.g. Profile/Identity),
+            // and TempData persists across one full redirect chain, so a message meant for one
+            // page could otherwise surface on a completely unrelated page reached right after.
+            TempData["RoomInfoMessage"] = "Resuming your session in progress.";
+            return RedirectToAction(nameof(Room), new { id = activeSessionId });
+        }
 
         if (!result.Success)
         {
@@ -200,7 +217,10 @@ public class InterviewController(
 
         if (!ActiveRoomStatuses.Contains(room.Status))
         {
-            TempData["InfoMessage"] = "This interview has already ended.";
+            // ReportInfoMessage (not the shared InfoMessage key) — nothing at the Evaluation/
+            // Report destination used to read InfoMessage, so it sat unread in TempData and
+            // could surface later on an unrelated page reached right after (see report).
+            TempData["ReportInfoMessage"] = "This interview has already ended.";
             return RedirectToAction("Report", "Evaluation", new { sessionId = id, durationActualSec = 0 });
         }
 
@@ -413,11 +433,18 @@ public class InterviewController(
     [HttpPost]
     public async Task<IActionResult> Message(Guid id, [FromBody] SendMessageRequest request, CancellationToken cancellationToken)
     {
-        var (success, message, error) = await interviewService.SendMessageAsync(id, request, cancellationToken);
+        var (success, message, error, errorCode, retryAfterSeconds, statusCode) =
+            await interviewService.SendMessageAsync(id, request, cancellationToken);
 
         if (!success || message is null)
         {
-            return BadRequest(new { error = error ?? "Could not send the answer." });
+            // Forward the backend's status + machine-readable error code intact (e.g. 429
+            // "skip_cooldown") instead of collapsing everything to 400 — the client reads
+            // retryAfterSeconds to drive the Skip button's cooldown countdown.
+            if (retryAfterSeconds is int retryAfter)
+                Response.Headers.Append("Retry-After", retryAfter.ToString());
+            return StatusCode(statusCode == 0 ? StatusCodes.Status500InternalServerError : statusCode,
+                new { error = errorCode, message = error ?? "Could not send the answer.", retryAfterSeconds });
         }
 
         return Json(message);
@@ -476,16 +503,21 @@ public class InterviewController(
     [HttpPost]
     public async Task<IActionResult> Hint([FromBody] HintProxyRequest request, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request?.Question))
+        if (request is null || request.SessionId == Guid.Empty || request.SessionQuestionId == Guid.Empty)
         {
-            return BadRequest(new { error = "Question is required." });
+            return BadRequest(new { error = "SessionId and SessionQuestionId are required." });
         }
 
-        var (success, hint, error) = await interviewService.GetHintAsync(request.Question, cancellationToken);
+        var (success, hint, error, errorCode, statusCode) = await interviewService.GetHintAsync(
+            request.SessionId, request.SessionQuestionId, cancellationToken);
 
         if (!success)
         {
-            return BadRequest(new { error = error ?? "Could not get a hint." });
+            // Forward the backend's status + machine-readable error code intact (e.g. 409
+            // "hint_already_used") instead of collapsing everything to 400 — the client checks
+            // the status code to decide whether to disable the Hint button.
+            return StatusCode(statusCode == 0 ? StatusCodes.Status500InternalServerError : statusCode,
+                new { error = errorCode, message = error ?? "Could not get a hint." });
         }
 
         return Json(new { hint });

@@ -33,7 +33,7 @@ public class ManagerUserDetailsDto
     public DateTime? BlockedAt { get; set; }
     public int CreditBalance { get; set; }
     public List<CreditTransactionDto> CreditTransactions { get; set; } = new();
-    public List<CompletedSessionDto> CompletedSessions { get; set; } = new();
+    public List<ManagerUserSessionDto> Sessions { get; set; } = new();
 }
 
 public class CreditTransactionDto
@@ -46,7 +46,7 @@ public class CreditTransactionDto
     public DateTime CreatedAt { get; set; }
 }
 
-public class CompletedSessionDto
+public class ManagerUserSessionDto
 {
     public Guid SessionId { get; set; }
     public string? Title { get; set; }

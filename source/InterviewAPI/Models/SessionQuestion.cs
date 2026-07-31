@@ -30,6 +30,10 @@ public partial class SessionQuestion
 
     public DateTime? AskedAt { get; set; }
 
+    // Set once, atomically, the first time a hint is claimed for this question (see
+    // SessionRepository.TryConsumeHintAsync). Null = hint not used yet.
+    public DateTime? HintUsedAt { get; set; }
+
     [InverseProperty("SessionQuestion")]
     public virtual ICollection<ChatMessage> ChatMessages { get; set; } = new List<ChatMessage>();
 

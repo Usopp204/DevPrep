@@ -147,8 +147,11 @@ body.policy-page {
 
 @media (min-width: 1024px) {
     .rules-grid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(6, 1fr);
+        align-items: stretch;
     }
+    .rule-card { grid-column: span 2; }   /* 3 card mỗi hàng */
+    .rule-card-half { grid-column: span 3; }   /* 2 card lấp đầy hàng */
 }
 
 .rule-card {
@@ -168,13 +171,6 @@ body.policy-page {
     background: #2a292f;
     border-color: #464555;
     box-shadow: 0 10px 20px -10px rgba(0,0,0,0.5);
-}
-
-.rule-card-wide {
-    /* Span 2 cols on lg */
-}
-@media (min-width: 1024px) {
-    .rule-card-wide { grid-column: span 2 / span 2; }
 }
 
 .rule-icon {

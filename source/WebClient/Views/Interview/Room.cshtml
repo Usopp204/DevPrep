@@ -31,6 +31,21 @@
 </head>
 <body class="room-page">
 
+    @if (TempData["RoomInfoMessage"] is string infoMessage)
+    {
+        <div class="room-info-banner" id="room-info-banner" role="status">@infoMessage</div>
+        <script>
+            (function () {
+                var banner = document.getElementById("room-info-banner");
+                if (!banner) return;
+                setTimeout(function () {
+                    banner.classList.add("fade-out");
+                    banner.addEventListener("animationend", function () { banner.remove(); }, { once: true });
+                }, 5000);
+            })();
+        </script>
+    }
+
     <div id="room-app"
          class="room-layout"
          data-session-id="@Model.SessionId"

@@ -21,6 +21,7 @@ from app.core.model_manager import get_model_and_tokenizer
 from app.cv.router import router as cv_router
 from app.jd.router import router as jd_router
 from app.match.router import router as match_router
+from app.services.voice import warm_up_tts
 
 _executor = ThreadPoolExecutor(max_workers=1)
 
@@ -33,6 +34,9 @@ async def lifespan(app: FastAPI):
     # Warm up biometric models on the default executor (separate from the LLM one,
     # which is single-worker and would serialize this behind the LLM load).
     loop.run_in_executor(None, biometrics_warm_up)
+    # Same reasoning for TTS: load the Piper voice model off the LLM executor so it
+    # doesn't queue behind the (slower) LLM load.
+    loop.run_in_executor(None, warm_up_tts)
     yield
 
 

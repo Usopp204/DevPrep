@@ -25,7 +25,9 @@ public interface IInterviewService
     // Must only be called after the biometric entry gate has passed.
     Task<(bool Success, string? Error)> GenerateQuestionAsync(Guid sessionId, CancellationToken cancellationToken);
 
-    Task<(bool Success, MessageResponse? Message, string? Error)> SendMessageAsync(
+    // ErrorCode/RetryAfterSeconds carry the machine-readable code (e.g. "skip_cooldown") and the
+    // 429 Retry-After value through intact — same StatusCode-passthrough pattern as GetHintAsync.
+    Task<(bool Success, MessageResponse? Message, string? Error, string? ErrorCode, int? RetryAfterSeconds, int StatusCode)> SendMessageAsync(
         Guid sessionId, SendMessageRequest request, CancellationToken cancellationToken);
 
     Task<(bool Success, EndResponse? Completion, string? Error)> CompleteSessionAsync(
@@ -52,7 +54,11 @@ public interface IInterviewService
         Guid sessionId, Guid checkId, byte[] audio, string fileName, string contentType,
         CancellationToken cancellationToken);
 
-    Task<(bool Success, string? Hint, string? Error)> GetHintAsync(string question, CancellationToken cancellationToken);
+    // ErrorCode carries the machine-readable code (e.g. "hint_already_used") through intact,
+    // separate from the human-readable Error message — see DeleteSessionAsync for the StatusCode
+    // passthrough pattern this mirrors.
+    Task<(bool Success, string? Hint, string? Error, string? ErrorCode, int StatusCode)> GetHintAsync(
+        Guid sessionId, Guid sessionQuestionId, CancellationToken cancellationToken);
 
     Task<HistoryViewModel> GetHistoryAsync(
         int page, int pageSize, string? status, string? position, string? keyword, CancellationToken cancellationToken);
@@ -71,6 +77,10 @@ public interface IInterviewService
 
     Task<ApiCallResult<IntegrityPolicyStatusResponse>> GetIntegrityPolicyStatusAsync(
         Guid sessionId, CancellationToken cancellationToken);
+
+    // Newest InProgress/Paused session for the current user, or Data=null if none — Dashboard
+    // "resume your interview" banner.
+    Task<ApiCallResult<ActiveSessionResponse>> GetActiveSessionAsync(CancellationToken cancellationToken);
 
     Task<ApiCallResult<IntegrityPolicyStatusResponse>> AcceptIntegrityPolicyAsync(
         Guid sessionId, CancellationToken cancellationToken);
@@ -111,14 +121,50 @@ public sealed class InterviewService(IApiClient apiClient) : IInterviewService
         int durationMinutes, string level, string position, string? jd, Guid? jdId, List<string> focusAreas,
         CancellationToken cancellationToken)
     {
-        var duration = await SendAsync<ConfigResponse>(HttpMethod.Put,
-            "api/interview/sessions/config/duration",
-            new ConfigDurationRequest { DurationMinutes = durationMinutes },
-            cancellationToken);
-        if (!duration.Success || duration.Data is null)
-            return StartInterviewResult.Failure(duration.Error ?? "Could not configure duration.");
+        // Bespoke call (not the shared SendAsync<T>/ApiResponse envelope) — this is the ONLY one
+        // of the three config calls that can hit InterviewAPI's "new session" branch, so it's
+        // the only one that can come back with 409 "active_session_exists". Needs the raw
+        // {error, message, activeSessionId} body, which the ApiResponse envelope can't carry.
+        using var durationRequest = new HttpRequestMessage(HttpMethod.Put, "api/interview/sessions/config/duration")
+        {
+            Content = JsonContent.Create(new ConfigDurationRequest { DurationMinutes = durationMinutes }, options: JsonOptions)
+        };
+        using var durationResponse = await apiClient.HttpClient.SendAsync(durationRequest, cancellationToken);
+        var durationRaw = await durationResponse.Content.ReadAsStringAsync(cancellationToken);
 
-        var sessionId = duration.Data.SessionId;
+        if (!durationResponse.IsSuccessStatusCode)
+        {
+            var (errorCode, message) = ParseErrorBody(durationRaw);
+            if (errorCode == "active_session_exists")
+            {
+                try
+                {
+                    using var doc = JsonDocument.Parse(durationRaw);
+                    if (doc.RootElement.TryGetProperty("activeSessionId", out var idEl)
+                        && idEl.ValueKind == JsonValueKind.String
+                        && Guid.TryParse(idEl.GetString(), out var activeSessionId))
+                    {
+                        return StartInterviewResult.ActiveSessionConflict(activeSessionId);
+                    }
+                }
+                catch (JsonException) { /* fall through to a generic failure below */ }
+            }
+            return StartInterviewResult.Failure(message ?? "Could not configure duration.");
+        }
+
+        ConfigResponse? durationData;
+        try
+        {
+            durationData = JsonSerializer.Deserialize<ApiResponse<ConfigResponse>>(durationRaw, JsonOptions)?.Data;
+        }
+        catch (JsonException)
+        {
+            return StartInterviewResult.Failure("Could not configure duration.");
+        }
+        if (durationData is null)
+            return StartInterviewResult.Failure("Could not configure duration.");
+
+        var sessionId = durationData.SessionId;
 
         var levelConfig = await SendAsync<ConfigResponse>(HttpMethod.Put,
             "api/interview/sessions/config/level",
@@ -192,14 +238,37 @@ public sealed class InterviewService(IApiClient apiClient) : IInterviewService
         return (true, room, null);
     }
 
-    public async Task<(bool Success, MessageResponse? Message, string? Error)> SendMessageAsync(
+    public async Task<(bool Success, MessageResponse? Message, string? Error, string? ErrorCode, int? RetryAfterSeconds, int StatusCode)> SendMessageAsync(
         Guid sessionId, SendMessageRequest request, CancellationToken cancellationToken)
     {
-        var result = await SendAsync<MessageResponse>(HttpMethod.Post,
-            $"api/interview/sessions/{sessionId}/message",
-            request,
-            cancellationToken);
-        return (result.Success, result.Data, result.Error);
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, $"api/interview/sessions/{sessionId}/message")
+        {
+            Content = JsonContent.Create(request, options: JsonOptions)
+        };
+        using var response = await apiClient.HttpClient.SendAsync(httpRequest, cancellationToken);
+        var statusCode = (int)response.StatusCode;
+        var raw = await response.Content.ReadAsStringAsync(cancellationToken);
+
+        if (response.IsSuccessStatusCode)
+        {
+            try
+            {
+                var envelope = JsonSerializer.Deserialize<ApiResponse<MessageResponse>>(raw, JsonOptions);
+                if (envelope is null || !envelope.Success)
+                {
+                    return (false, null, envelope?.Message ?? $"Request failed ({statusCode}).", null, null, statusCode);
+                }
+                return (true, envelope.Data, null, null, null, statusCode);
+            }
+            catch (JsonException)
+            {
+                return (false, null, $"Request returned an unreadable response ({statusCode}).", null, null, statusCode);
+            }
+        }
+
+        var (errorCode, message) = ParseErrorBody(raw);
+        int? retryAfterSeconds = response.Headers.RetryAfter?.Delta is TimeSpan delta ? (int)delta.TotalSeconds : null;
+        return (false, null, ToUserFacingError(statusCode, message, "Could not send the answer."), errorCode, retryAfterSeconds, statusCode);
     }
 
     public async Task<(bool Success, EndResponse? Completion, string? Error)> CompleteSessionAsync(
@@ -303,14 +372,67 @@ public sealed class InterviewService(IApiClient apiClient) : IInterviewService
         return (true, envelope.Data, null);
     }
 
-    public async Task<(bool Success, string? Hint, string? Error)> GetHintAsync(
-        string question, CancellationToken cancellationToken)
+    public async Task<(bool Success, string? Hint, string? Error, string? ErrorCode, int StatusCode)> GetHintAsync(
+        Guid sessionId, Guid sessionQuestionId, CancellationToken cancellationToken)
     {
-        var result = await SendAsync<HintResponse>(HttpMethod.Post,
-            "api/interview/sessions/hint",
-            new { question },
-            cancellationToken);
-        return (result.Success, result.Data?.Hint, result.Error);
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"api/interview/sessions/{sessionId}/hint")
+        {
+            Content = JsonContent.Create(new { sessionQuestionId }, options: JsonOptions)
+        };
+        using var response = await apiClient.HttpClient.SendAsync(request, cancellationToken);
+        var statusCode = (int)response.StatusCode;
+        var raw = await response.Content.ReadAsStringAsync(cancellationToken);
+
+        if (response.IsSuccessStatusCode)
+        {
+            try
+            {
+                var envelope = JsonSerializer.Deserialize<ApiResponse<HintResponse>>(raw, JsonOptions);
+                if (envelope is null || !envelope.Success)
+                {
+                    return (false, null, envelope?.Message ?? $"Request failed ({statusCode}).", null, statusCode);
+                }
+                return (true, envelope.Data?.Hint, null, null, statusCode);
+            }
+            catch (JsonException)
+            {
+                return (false, null, $"Request returned an unreadable response ({statusCode}).", null, statusCode);
+            }
+        }
+
+        var (errorCode, message) = ParseErrorBody(raw);
+        return (false, null, ToUserFacingError(statusCode, message, "Could not get a hint."), errorCode, statusCode);
+    }
+
+    // Reads the {error, message} shape SessionGuardException catches return (409 hint_already_used
+    // etc.) — distinct from the {Success, Message, Data} ApiResponse envelope every other endpoint
+    // uses, so this can't go through the shared SendAsync<T>/ReadErrorMessageAsync pipeline without
+    // losing the machine-readable "error" code.
+    private static (string? Code, string? Message) ParseErrorBody(string raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return (null, null);
+        try
+        {
+            using var doc = JsonDocument.Parse(raw);
+            string? code = doc.RootElement.TryGetProperty("error", out var errorEl) && errorEl.ValueKind == JsonValueKind.String
+                ? errorEl.GetString()
+                : null;
+            string? message = doc.RootElement.TryGetProperty("message", out var msgEl) && msgEl.ValueKind == JsonValueKind.String
+                ? msgEl.GetString()
+                : null;
+            // The generic catch (Exception) path returns the {Success, Message, Data} ApiResponse
+            // envelope instead (no "error" code) — fall back to reading "Message" from that shape.
+            if (code is null && message is null)
+            {
+                var envelope = JsonSerializer.Deserialize<ApiResponse<object>>(raw, JsonOptions);
+                message = envelope?.Message;
+            }
+            return (code, message);
+        }
+        catch (JsonException)
+        {
+            return (null, raw.Length > 200 ? raw[..200] : raw);
+        }
     }
 
     public async Task<HistoryViewModel> GetHistoryAsync(
@@ -440,6 +562,10 @@ public sealed class InterviewService(IApiClient apiClient) : IInterviewService
         Guid sessionId, CancellationToken cancellationToken) =>
         SendAsync<IntegrityPolicyStatusResponse>(HttpMethod.Post,
             $"api/interview/sessions/{sessionId}/integrity-policy/accept", body: null, cancellationToken);
+
+    public Task<ApiCallResult<ActiveSessionResponse>> GetActiveSessionAsync(CancellationToken cancellationToken) =>
+        SendAsync<ActiveSessionResponse>(HttpMethod.Get,
+            "api/interview/sessions/active", body: null, cancellationToken);
 
 
     private async Task<ApiCallResult<SessionHistoryResult>> GetSessionHistoryPageAsync(

@@ -13,6 +13,12 @@ public interface ISessionService
     Task<GenerateQuestionResponse> GenerateQuestionAsync(Guid userId, Guid sessionId, CancellationToken ct);
     Task<MessageResponse> SendMessageAsync(Guid userId, Guid sessionId, SendMessageRequest req, CancellationToken ct);
     Task<TimerResponse>   GetTimerAsync(Guid userId, Guid sessionId, CancellationToken ct);
+
+    // Newest InProgress/Paused session for the user, or null if none (Dashboard "resume your
+    // interview" banner). Finalizes it in place first if its time has already run out — a
+    // finalized session is no longer "active" and this returns null for it, same as if there
+    // were no active session at all.
+    Task<ActiveSessionResponse?> GetActiveSessionAsync(Guid userId, CancellationToken ct);
     Task<InSessionCheckDueResponse> GetInSessionCheckAsync(
         Guid userId, Guid sessionId, Guid sessionQuestionId, CancellationToken ct);
     Task                  TrackTimeAsync(Guid userId, Guid sessionId, TrackTimeRequest req, CancellationToken ct);
@@ -48,4 +54,9 @@ public interface ISessionService
 
     Task<IntegrityPolicyStatusResponse> GetIntegrityPolicyStatusAsync(Guid userId, Guid sessionId, CancellationToken ct);
     Task<IntegrityPolicyStatusResponse> AcceptIntegrityPolicyAsync(Guid userId, Guid sessionId, CancellationToken ct);
+
+    // Server looks up the question text itself from SessionQuestionId — never trusts client-
+    // supplied text. Enforces one hint per question (SessionRepository.TryConsumeHintAsync);
+    // already used -> SessionGuardException(409, "hint_already_used", ...).
+    Task<HintResponse> HintAsync(Guid userId, Guid sessionId, Guid sessionQuestionId, CancellationToken ct);
 }

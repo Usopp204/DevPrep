@@ -28,13 +28,8 @@ public class QuestionService : IQuestionService
 
         if (!string.IsNullOrWhiteSpace(keyword))
         {
-            var kw = keyword.Trim().ToLower();
-            query = query.Where(q =>
-                q.QuestionText.ToLower().Contains(kw) ||
-                (q.Answer != null && q.Answer.ToLower().Contains(kw)) ||
-                (q.Position != null && q.Position.Name.ToLower().Contains(kw)) ||
-                (q.Category != null && q.Category.Category.ToLower().Contains(kw)) ||
-                q.Difficulty.ToLower().Contains(kw));
+            var pattern = $"%{keyword.Trim()}%";
+            query = query.Where(q => EF.Functions.Like(q.QuestionText, pattern));
         }
 
         if (!string.IsNullOrWhiteSpace(difficulty))

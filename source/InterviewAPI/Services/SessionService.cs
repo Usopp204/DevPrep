@@ -13,8 +13,47 @@ using System.Text.Json;
 
 namespace InterviewAPI.Services;
 
+// Carries the HTTP status + machine-readable error code a session guard rejection should
+// surface. Inherits InvalidOperationException so it is still caught the same as every other
+// business-rule violation in this service if a controller action's catch (SessionGuardException)
+// is ever missing — InterviewSessionController currently catches it explicitly on GenerateQuestion,
+// SendMessage, ResumeSession, and Hint, reading StatusCode/ErrorCode/RetryAfterSeconds off it.
+public class SessionGuardException : InvalidOperationException
+{
+    public int StatusCode { get; }
+    public string ErrorCode { get; }
+
+    // Only set for 429s (e.g. Skip cooldown) — how many seconds until the caller can retry.
+    // Null for every other guard (403/409), which have no such window.
+    public int? RetryAfterSeconds { get; }
+
+    // Only set for "active_session_exists" (409) — the session the caller should be sent to
+    // instead. Null for every other guard, which have no such session to redirect to.
+    public Guid? ActiveSessionId { get; }
+
+    public SessionGuardException(int statusCode, string errorCode, string message,
+        int? retryAfterSeconds = null, Guid? activeSessionId = null)
+        : base(message)
+    {
+        StatusCode = statusCode;
+        ErrorCode = errorCode;
+        RetryAfterSeconds = retryAfterSeconds;
+        ActiveSessionId = activeSessionId;
+    }
+}
+
 public class SessionService : ISessionService
 {
+
+    // Second layer behind WebClient's own Room-entry integrity-policy check
+    // (InterviewController.cs) — this one can't be bypassed by calling the API directly with a
+    // valid JWT. Shared by every entry point that can hand question content back to the caller.
+    private static void RequireIntegrityPolicyAccepted(InterviewSession session)
+    {
+        if (!session.IntegrityPolicyAccepted)
+            throw new SessionGuardException(403, "integrity_policy_not_accepted",
+                "You must accept the interview integrity policy before continuing.");
+    }
 
     private static readonly int[] ValidDurations = { 15, 30, 45, 60 };
     private static readonly string[] ValidLevels = { "Intern", "Fresher", "Junior", "Middle", "Senior", "Lead" };
@@ -86,6 +125,45 @@ public class SessionService : ISessionService
         session.TotalPausedSeconds = newTotalPausedSeconds;
         session.PausedAt = null;
         session.UpdatedAt = VietnamTime.Now;
+    }
+
+    // Shared by SendMessageAsync (Step A.1, which turns a true return into a 409 the caller was
+    // actively rejected by) and ResumeSessionAsync (a lazy read-path finalize for a session the
+    // user abandoned and is only now coming back to — see report). Deliberately never throws:
+    // the two callers react completely differently to "yes, this just got finalized," so that
+    // decision belongs to them, not this helper. Only ever acts on "InProgress" — a Paused
+    // session's elapsed time is frozen by GetEffectivePausedSeconds regardless of how long the
+    // pause lasts, so there is nothing to expire there; that's SendMessageAsync's original
+    // precondition, kept explicit here now that a caller without it exists.
+    private async Task<bool> FinalizeIfTimeExpiredAsync(InterviewSession session, CancellationToken ct)
+    {
+        if (session.Status != "InProgress" || session.StartedAt is null)
+            return false;
+
+        var elapsed = (int)(VietnamTime.Now - session.StartedAt.Value).TotalSeconds - GetEffectivePausedSeconds(session);
+        var remaining = session.DurationMinutes * 60 - elapsed;
+        const int graceSeconds = 5;
+        if (remaining > -graceSeconds)
+            return false;
+
+        var hasSubstantiveAnswer = await _repo.HasSubstantiveAnswerAsync(session.SessionId, ct);
+        session.Status = hasSubstantiveAnswer ? "Completed" : "Expired";
+        session.EndedAt = VietnamTime.Now;
+        session.UpdatedAt = VietnamTime.Now;
+
+        var room = await _repo.GetRoomBySessionAsync(session.SessionId, ct);
+        if (room is not null)
+        {
+            room.Status = "Closed";
+            room.ClosedAt = VietnamTime.Now;
+            await _repo.UpdateRoomAsync(room, ct);
+        }
+        else
+        {
+            await _repo.SaveChangesAsync(ct);
+        }
+
+        return true;
     }
 
     private readonly ISessionRepository _repo;
@@ -227,7 +305,7 @@ public class SessionService : ISessionService
             session.SessionId, "InSession", ct);
         var threshold = _configuration.GetValue("Biometrics:NoFaceStrikeThreshold", 3);
         var maxStrikes = _configuration.GetValue("Biometrics:InSessionMaxStrikes", 3);
-        var strictness = _configuration.GetValue("Biometrics:InSessionStrictness", "Flag");
+        var strictness = _configuration.GetValue("Biometrics:InSessionStrictness", "Strict");
         var strikes = CheatingStrikeHelper.ComputeEffectiveStrikeCount(events, threshold);
         if (!string.Equals(strictness, "Strict", StringComparison.OrdinalIgnoreCase)
             || strikes < maxStrikes)
@@ -444,9 +522,12 @@ public class SessionService : ISessionService
             throw;
         }
 
-        // Step F: Transition session to Initialized state.
+        // Step F: Transition session to Initialized state. StartedAt is NOT set here — the user
+        // still has to get through Verify (face match, up to 3 attempts) and IntegrityPolicy
+        // (read 5 rules) before ever seeing a question, ~20s measured in practice. It's set in
+        // GenerateQuestionAsync's Step D.1 instead, at the actual Initialized→InProgress
+        // transition, so the clock starts when the interview truly begins.
         session.Status = "Initialized";
-        session.StartedAt = VietnamTime.Now;
         session.UpdatedAt = VietnamTime.Now;
         session.TotalQuestions = questions.Count;
         await _repo.SaveChangesAsync(ct);
@@ -495,6 +576,11 @@ public class SessionService : ISessionService
             if (!facePassed)
                 throw new InvalidOperationException("Identity verification required before starting the interview.");
         }
+
+        // Step A.2: Integrity policy gate — must be accepted before any question content is
+        // served or credit is deducted (Step D.1 below). Second layer behind WebClient's Room
+        // entry check; this one can't be bypassed by calling the API directly.
+        RequireIntegrityPolicyAccepted(session);
 
         // Step B: Tìm câu hỏi đầu tiên chưa có câu trả lời của User.
         SessionQuestion? nextQuestion = null;
@@ -546,12 +632,15 @@ public class SessionService : ISessionService
                 throw new InvalidOperationException($"Credit deduction failed: {deductResult.Message}");
             }
 
-            // Update session with credit cost.
+            // Update session with credit cost and the real interview start time — this IS the
+            // Initialized→InProgress transition, so StartedAt belongs here rather than at Init
+            // (see InitAsync Step F: Verify + IntegrityPolicy can take ~20s before this point).
             var refreshedSession = await _repo.GetByIdAsync(sessionId, ct);
             if (refreshedSession is not null)
             {
                 session = refreshedSession;
                 session.CreditCost = creditCost;
+                session.StartedAt = VietnamTime.Now;
                 await _repo.SaveChangesAsync(ct);
             }
         }
@@ -619,6 +708,35 @@ public class SessionService : ISessionService
         await SettleExpiredVerificationChecksAsync(session, ct);
         if (session.Status != "InProgress")
             throw new InvalidOperationException("Session is not in progress.");
+
+        // Step A.1: Server-side deadline enforcement. The countdown shown to the user runs
+        // entirely client-side (interview-room.js's setInterval) — nothing before this point
+        // ever checked whether the session's time actually ran out, so a direct API call
+        // (Postman, or DevTools with the timer paused) could keep answering indefinitely.
+        // FinalizeIfTimeExpiredAsync both decides AND finalizes (Completed/Expired, room closed)
+        // in one step — this caller is the one that turns "yes, expired" into a hard rejection;
+        // ResumeSessionAsync reuses the same helper but reacts differently (see its own comment).
+        if (await FinalizeIfTimeExpiredAsync(session, ct))
+            throw new SessionGuardException(409, "session_time_expired",
+                "This interview's time has run out.");
+
+        // Step A.2: Integrity policy gate — placed before Step B and before both idempotent
+        // early-return branches below (existence guard, claim guard) so it applies uniformly on
+        // every path that can hand back question content, including duplicate/race retries.
+        RequireIntegrityPolicyAccepted(session);
+
+        // Step A.3: Skip-spam cooldown. Only "Skipped" is a user-clickable action that can be
+        // spammed — real answers and the server-verified "TimedOut" auto-advance are exempt.
+        // Checked before Step B/B.1/B.2 so a cooldown rejection costs nothing (no question
+        // lookup, no AnsweredQuestions claim, no ChatMessage) and needs no rollback.
+        if (req.Reason == "Skipped")
+        {
+            var cooldownSeconds = _configuration.GetValue("Interview:SkipCooldownSeconds", 10);
+            var (allowed, retryAfterSeconds) = await _repo.TryConsumeSkipCooldownAsync(sessionId, cooldownSeconds, ct);
+            if (!allowed)
+                throw new SessionGuardException(429, "skip_cooldown",
+                    $"Please wait {retryAfterSeconds}s before skipping again.", retryAfterSeconds);
+        }
 
         // Step B: Kiểm tra câu hỏi thuộc phiên này.
         var currentQuestion = await _repo.GetQuestionByIdAsync(req.SessionQuestionId, ct);
@@ -863,6 +981,41 @@ public class SessionService : ISessionService
         return new TimerResponse { RemainingSeconds = remaining, Status = session.Status };
     }
 
+    public async Task<ActiveSessionResponse?> GetActiveSessionAsync(Guid userId, CancellationToken ct)
+    {
+        var session = await _repo.GetActiveSessionAsync(userId, ct);
+        if (session is null)
+            return null;
+
+        // Same lazy-finalize sequence as GetTimerAsync/ResumeSessionAsync: pause auto-resume
+        // first (it can change TotalPausedSeconds/PausedAt, which the elapsed-time formula below
+        // depends on), then the time-expired check. A session that just got finalized here is no
+        // longer "active" — report it the same as if there were none.
+        await AutoResumeIfPauseExpiredAsync(session, ct);
+        if (await FinalizeIfTimeExpiredAsync(session, ct))
+            return null;
+
+        int remaining;
+        if (session.StartedAt is null)
+        {
+            remaining = session.DurationMinutes * 60;
+        }
+        else
+        {
+            var elapsed = (int)(VietnamTime.Now - session.StartedAt.Value).TotalSeconds - GetEffectivePausedSeconds(session);
+            remaining = Math.Max(0, session.DurationMinutes * 60 - elapsed);
+        }
+
+        return new ActiveSessionResponse
+        {
+            SessionId = session.SessionId,
+            Status = session.Status,
+            StartedAt = session.StartedAt,
+            DurationMinutes = session.DurationMinutes,
+            RemainingSeconds = remaining
+        };
+    }
+
     public async Task TrackTimeAsync(Guid userId, Guid sessionId, TrackTimeRequest req, CancellationToken ct)
     {
         var session = await _repo.GetByIdAsync(sessionId, ct);
@@ -1039,7 +1192,7 @@ public class SessionService : ISessionService
             throw new InvalidOperationException("Reason must be PermissionDenied or Disconnected.");
 
         var maxStrikes = _configuration.GetValue("Biometrics:InSessionMaxStrikes", 3);
-        var strictness = _configuration.GetValue("Biometrics:InSessionStrictness", "Flag");
+        var strictness = _configuration.GetValue("Biometrics:InSessionStrictness", "Strict");
         var noFaceStrikeThreshold = _configuration.GetValue("Biometrics:NoFaceStrikeThreshold", 3);
 
         _logger.LogInformation(
@@ -1120,6 +1273,14 @@ public class SessionService : ISessionService
             throw new InvalidOperationException("Session not found.");
 
         await AutoResumeIfPauseExpiredAsync(session, ct);
+        // Lazy finalize for a session abandoned mid-interview (tab closed, power loss, network
+        // drop — nothing background ever scans for this, see report) — runs AFTER the pause
+        // auto-resume above because that call can change TotalPausedSeconds/PausedAt, which the
+        // elapsed-time formula inside FinalizeIfTimeExpiredAsync depends on. Unlike
+        // SendMessageAsync, Resume must NEVER throw here — the user coming back just needs to
+        // see "this interview has ended," not an error; the rest of this method already treats
+        // a non-InProgress/Paused Status as "no current question" further down.
+        await FinalizeIfTimeExpiredAsync(session, ct);
         await SettleExpiredVerificationChecksAsync(session, ct);
 
         // Tính thời gian còn lại.
@@ -1142,8 +1303,16 @@ public class SessionService : ISessionService
         // interactive again. This method intentionally does NOT throw for a terminal status (it
         // still needs to succeed and report Status truthfully — see InterviewController.Room's
         // own status check, which is the primary guard and decides where to redirect).
+        //
+        // Also excludes "Initialized" and !IntegrityPolicyAccepted: Resume itself must NEVER
+        // throw on status/policy — InterviewController.Room calls it as its status source BEFORE
+        // the entry gate and the integrity-policy redirect even run, so a throw here would strand
+        // every fresh session (see report). Question content only leaks once the session has
+        // actually started (GenerateQuestionAsync ran — credit charged, entry gate + policy both
+        // already enforced there); everything else about the response (Status, timers, chat
+        // history, ...) still returns normally so the Room controller can keep reading state.
         NextQuestionDto? currentQuestion = null;
-        if (session.Status is "Initialized" or "InProgress" or "Paused")
+        if (session.Status is "InProgress" or "Paused" && session.IntegrityPolicyAccepted)
         {
             foreach (var q in session.SessionQuestions) // đã OrderBy OrderIndex
             {
@@ -1436,7 +1605,20 @@ public class SessionService : ISessionService
         Guid? sessionId, Guid userId, CancellationToken ct, Func<InterviewSession> factory)
     {
         if (!sessionId.HasValue || sessionId == Guid.Empty)
+        {
+            // Only blocks brand-new sessions — a session still being configured (Status=
+            // "Configured", the branch below) is untouched. Calls the SERVICE-level
+            // GetActiveSessionAsync (not _repo.GetActiveSessionAsync directly): it already runs
+            // FinalizeIfTimeExpiredAsync before returning, so a session whose time already ran
+            // out gets closed out and reported as null here instead of wrongly blocking a new one.
+            var activeSession = await GetActiveSessionAsync(userId, ct);
+            if (activeSession is not null)
+                throw new SessionGuardException(409, "active_session_exists",
+                    "You already have an interview in progress.",
+                    activeSessionId: activeSession.SessionId);
+
             return await _repo.CreateAsync(factory(), ct);
+        }
 
         var session = await _repo.GetByIdAsync(sessionId.Value, ct);
         if (session is null || session.UserId != userId)
@@ -1486,6 +1668,42 @@ public class SessionService : ISessionService
             Accepted = session.IntegrityPolicyAccepted,
             AcceptedAt = session.IntegrityPolicyAcceptedAt
         };
+    }
+
+    public async Task<HintResponse> HintAsync(Guid userId, Guid sessionId, Guid sessionQuestionId, CancellationToken ct)
+    {
+        // Step 1: ownership — the question must belong to this session, and the session to this
+        // user. GetQuestionByIdAsync includes .Session so both checks are a single query.
+        var question = await _repo.GetQuestionByIdAsync(sessionQuestionId, ct);
+        if (question is null || question.SessionId != sessionId || question.Session.UserId != userId)
+            throw new KeyNotFoundException("Question not found.");
+
+        // Step 2: text comes from the DB row, never from the client (see HintRequest comment) —
+        // question.Content is already loaded above.
+
+        // Step 3: claim the one-time hint quota BEFORE calling ai-service. Claiming first (not
+        // after a successful Gemini call) closes the spam window a request-in-flight would
+        // otherwise leave open — see Step 5 for the refund-on-failure counterpart.
+        var claimed = await _repo.TryConsumeHintAsync(sessionQuestionId, sessionId, ct);
+        if (!claimed)
+            throw new SessionGuardException(409, "hint_already_used",
+                "A hint has already been used for this question.");
+
+        // Step 4/5: call ai-service; refund the quota if it fails so the user doesn't lose their
+        // one hint to a transient ai-service error.
+        try
+        {
+            var hint = await _aiServiceClient.GetHintAsync(question.Content, ct);
+            return new HintResponse { Hint = hint };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "HintAsync: ai-service call failed after claiming the hint quota — releasing it. " +
+                "sessionQuestionId={SessionQuestionId}", sessionQuestionId);
+            await _repo.ReleaseHintAsync(sessionQuestionId, ct);
+            throw;
+        }
     }
 
 

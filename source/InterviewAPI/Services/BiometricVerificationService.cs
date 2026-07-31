@@ -281,7 +281,7 @@ public class BiometricVerificationService : IBiometricVerificationService
             throw new InvalidOperationException("The verification check token is invalid, expired, or already used.");
 
         var maxStrikes = _configuration.GetValue("Biometrics:InSessionMaxStrikes", 3);
-        var strictness = _configuration.GetValue("Biometrics:InSessionStrictness", "Flag");
+        var strictness = _configuration.GetValue("Biometrics:InSessionStrictness", "Strict");
         var noFaceStrikeThreshold = _configuration.GetValue("Biometrics:NoFaceStrikeThreshold", 3);
 
         // Rate limit (server-side on purpose — the client mirrors nothing here, this IS the
@@ -546,7 +546,7 @@ public class BiometricVerificationService : IBiometricVerificationService
         CancellationToken ct)
     {
         var noFaceStrikeThreshold = _configuration.GetValue("Biometrics:NoFaceStrikeThreshold", 3);
-        var strictness = _configuration.GetValue("Biometrics:InSessionStrictness", "Flag");
+        var strictness = _configuration.GetValue("Biometrics:InSessionStrictness", "Strict");
         var events = await _eventRepository.ListBySessionAsync(sessionId, "InSession", ct);
         var effectiveStrikeCount = CheatingStrikeHelper.ComputeEffectiveStrikeCount(
             events, noFaceStrikeThreshold);

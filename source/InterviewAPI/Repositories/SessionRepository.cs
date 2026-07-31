@@ -23,6 +23,15 @@ public class SessionRepository : ISessionRepository
             .Where(s => s.SessionId == id && !s.IsDeleted)
             .FirstOrDefaultAsync(ct);
 
+    // Newest InProgress/Paused session for a user — tracking (not AsNoTracking) so the caller
+    // can finalize it in place via FinalizeIfTimeExpiredAsync if it turns out to be expired.
+    public Task<InterviewSession?> GetActiveSessionAsync(Guid userId, CancellationToken ct) =>
+        _db.InterviewSessions
+            .Where(s => s.UserId == userId && !s.IsDeleted
+                && (s.Status == "InProgress" || s.Status == "Paused"))
+            .OrderByDescending(s => s.StartedAt)
+            .FirstOrDefaultAsync(ct);
+
     // Lấy phiên kèm danh sách câu hỏi đã sắp xếp theo OrderIndex (tracking, dùng cho generate/answer).
     public Task<InterviewSession?> GetWithQuestionsAsync(Guid sessionId, CancellationToken ct) =>
         _db.InterviewSessions
@@ -231,6 +240,56 @@ public class SessionRepository : ISessionRepository
                                       .SetProperty(x => x.UpdatedAt, VietnamTime.Now), ct);
         _logger.LogInformation("AcceptIntegrityPolicyIfAsync: rowsAffected={RowsAffected}, sessionId={SessionId}", rowsAffected, sessionId);
         return rowsAffected > 0;
+    }
+
+    public async Task<bool> TryConsumeHintAsync(Guid sessionQuestionId, Guid sessionId, CancellationToken ct)
+    {
+        var rowsAffected = await _db.SessionQuestions
+            .Where(q => q.SessionQuestionId == sessionQuestionId && q.SessionId == sessionId && q.HintUsedAt == null)
+            .ExecuteUpdateAsync(q => q.SetProperty(x => x.HintUsedAt, VietnamTime.Now), ct);
+        _logger.LogInformation(
+            "TryConsumeHintAsync: rowsAffected={RowsAffected}, sessionQuestionId={SessionQuestionId}, sessionId={SessionId}",
+            rowsAffected, sessionQuestionId, sessionId);
+        return rowsAffected > 0;
+    }
+
+    public async Task ReleaseHintAsync(Guid sessionQuestionId, CancellationToken ct)
+    {
+        await _db.SessionQuestions
+            .Where(q => q.SessionQuestionId == sessionQuestionId)
+            .ExecuteUpdateAsync(q => q.SetProperty(x => x.HintUsedAt, (DateTime?)null), ct);
+        _logger.LogInformation("ReleaseHintAsync: sessionQuestionId={SessionQuestionId}", sessionQuestionId);
+    }
+
+    public async Task<(bool Allowed, int RetryAfterSeconds)> TryConsumeSkipCooldownAsync(
+        Guid sessionId, int cooldownSeconds, CancellationToken ct)
+    {
+        var now = VietnamTime.Now;
+        var rowsAffected = await _db.InterviewSessions
+            .Where(s => s.SessionId == sessionId && !s.IsDeleted
+                && (s.LastSkipAtUtc == null
+                    || EF.Functions.DateDiffSecond(s.LastSkipAtUtc, now) >= cooldownSeconds))
+            .ExecuteUpdateAsync(s => s.SetProperty(x => x.LastSkipAtUtc, now), ct);
+
+        if (rowsAffected > 0)
+        {
+            _logger.LogInformation("TryConsumeSkipCooldownAsync: allowed, sessionId={SessionId}", sessionId);
+            return (true, 0);
+        }
+
+        // Blocked — re-read the last skip time to compute how many seconds are actually left
+        // (the WHERE clause above already told us it's < cooldownSeconds, but not by how much).
+        var lastSkipAt = await _db.InterviewSessions.AsNoTracking()
+            .Where(s => s.SessionId == sessionId)
+            .Select(s => s.LastSkipAtUtc)
+            .FirstOrDefaultAsync(ct);
+        var elapsedSeconds = lastSkipAt is null ? cooldownSeconds : (int)(now - lastSkipAt.Value).TotalSeconds;
+        var retryAfterSeconds = Math.Max(1, cooldownSeconds - elapsedSeconds);
+
+        _logger.LogInformation(
+            "TryConsumeSkipCooldownAsync: blocked, sessionId={SessionId}, retryAfterSeconds={RetryAfterSeconds}",
+            sessionId, retryAfterSeconds);
+        return (false, retryAfterSeconds);
     }
 
     public async Task<bool> IncrementAnsweredIfAsync(Guid sessionId, int expectedCurrentCount, CancellationToken ct)

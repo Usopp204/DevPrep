@@ -1,7 +1,9 @@
 namespace WebClient.Models.Interview;
 
-// The question the Room asks a hint for (same-origin proxy to the Gateway).
+// Identifies which question the Room asks a hint for (same-origin proxy to the Gateway).
+// No question text here — the server looks it up itself from SessionQuestionId.
 public class HintProxyRequest
 {
-    public string Question { get; set; } = string.Empty;
+    public Guid SessionId { get; set; }
+    public Guid SessionQuestionId { get; set; }
 }

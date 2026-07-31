@@ -21,6 +21,15 @@
                 <p class="dash-subtitle">Set up your session parameters below.</p>
             </header>
 
+            @if (Model.ActiveSession is not null)
+            {
+                var remainingMinutes = Math.Max(1, (int)Math.Ceiling(Model.ActiveSession.RemainingSeconds / 60.0));
+                <div class="dash-alert">
+                    You have an interview in progress — @remainingMinutes minute@(remainingMinutes == 1 ? "" : "s") remaining.
+                    <a asp-controller="Interview" asp-action="Room" asp-route-id="@Model.ActiveSession.SessionId">Resume</a>
+                </div>
+            }
+
             @if (TempData["ErrorMessage"] is string tempError)
             {
                 <div class="dash-alert">@tempError</div>

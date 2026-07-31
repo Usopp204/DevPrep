@@ -23,5 +23,9 @@ public class DashboardViewModel
     // failed or the user could not be resolved from the auth cookie.
     public int CreditBalance { get; set; }
 
+    // Newest InProgress/Paused session, if any — drives the "resume your interview" banner.
+    // Null means no active session (the normal case), not a failed lookup.
+    public ActiveSessionResponse? ActiveSession { get; set; }
+
     public string? ErrorMessage { get; set; }
 }
