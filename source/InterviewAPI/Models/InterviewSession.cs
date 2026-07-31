@@ -51,8 +51,9 @@ public partial class InterviewSession
     public int PauseCount { get; set; }
 
     // Mandatory-camera policy audit counter (Room UX): permission denied or the camera
-    // disconnecting mid-session. Flag-only (Biometrics:InSessionStrictness="Flag") — never
-    // blocks entry or answering, just records how many times it happened for later review.
+    // disconnecting mid-session. Strict by default (Biometrics:InSessionStrictness="Strict") —
+    // ends the session once InSessionMaxStrikes is reached; set Strictness="Flag" to only
+    // record occurrences for later review without blocking entry or answering.
     public int CameraViolationCount { get; set; }
 
     public int TotalQuestions { get; set; }
@@ -66,6 +67,13 @@ public partial class InterviewSession
     public bool IntegrityPolicyAccepted { get; set; }
 
     public DateTime? IntegrityPolicyAcceptedAt { get; set; }
+
+    // Last time "Skip" was used in this session — enforces Interview:SkipCooldownSeconds
+    // (SessionRepository.TryConsumeSkipCooldownAsync). Despite the "Utc" suffix, this column
+    // actually stores VietnamTime.Now like every other timestamp in this schema (AskedAt,
+    // CreatedAt, IntegrityPolicyAcceptedAt, ...) — named per the task spec, not a new UTC
+    // convention. DateDiffSecond only needs both sides on the same clock, which this preserves.
+    public DateTime? LastSkipAtUtc { get; set; }
 
     public bool IsDeleted { get; set; }
 

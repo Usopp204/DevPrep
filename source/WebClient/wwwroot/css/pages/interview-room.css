@@ -697,6 +697,47 @@ body.room-page {
     30% { transform: translateY(-4px); opacity: 1; }
 }
 
+/* Neutral info toast (e.g. TempData["InfoMessage"] shown once on page load, such as
+   "Resuming your session in progress"). position: fixed on purpose — this used to sit directly
+   in <body class="room-page">, which is the flex container for the 3-column layout, so as a
+   flex item it stretched into its own left column and broke the layout. Fixed positioning takes
+   it out of flow entirely; #room-app and the 3-column layout are untouched.
+   Colors reuse the same neutral surface/border/text tokens as .idle-banner.tier1 below, plus a
+   --color-primary accent so it still reads as a notice — on purpose NOT the destructive/warning
+   tones used by .integrity-alert, .camera-status-warning, and .content-warning elsewhere in this
+   file, since this is not an error.
+   z-index: 150 — below .idle-banner.tier1 (200) and its backdrop (199), the highest explicit
+   z-index in this file; native <dialog> elements (.cancel-interview-dialog) render in the
+   browser's top-layer regardless of z-index, so nothing more is needed to stay under those. */
+.room-info-banner {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 150;
+    width: calc(100% - 32px);
+    max-width: 480px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 1px solid var(--color-border);
+    border-left: 3px solid var(--color-primary);
+    background: var(--color-surface-container);
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    box-shadow: 0 20px 50px -20px rgba(0, 0, 0, 0.6);
+}
+
+/* Toggled by the inline script in Room.cshtml after a few seconds, then the element is removed
+   once this finishes (animationend) — see that script for the exact timing. */
+.room-info-banner.fade-out {
+    animation: room-info-banner-fade-out 0.4s ease forwards;
+}
+
+@keyframes room-info-banner-fade-out {
+    from { opacity: 1; transform: translateX(-50%) translateY(0); }
+    to   { opacity: 0; transform: translateX(-50%) translateY(-8px); }
+}
+
 /* Idle reminder / auto-advance banner (Room UX Phase 1) */
 .idle-banner {
     max-width: 896px;

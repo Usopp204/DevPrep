@@ -137,7 +137,17 @@
         });
         const data = await response.json().catch(() => null);
         if (!response.ok) {
-            throw new Error((data && data.error) || `Request failed (${response.status}).`);
+            // message wins when present (e.g. Hint's {error: code, message: text} shape); other
+            // endpoints only ever set "error" to a human-readable string, so this stays compatible.
+            const err = new Error((data && (data.message || data.error)) || `Request failed (${response.status}).`);
+            err.status = response.status;
+            // Machine-readable code (e.g. "session_time_expired", "skip_cooldown") — checked
+            // instead of err.status alone so a new 409/429 reason later can't be misread as this one.
+            err.code = data && data.error ? data.error : null;
+            // Server-computed countdown for 429s (e.g. Skip cooldown) — never derive this from
+            // the client's own clock, which can be wrong or deliberately skewed.
+            err.retryAfterSeconds = data && typeof data.retryAfterSeconds === "number" ? data.retryAfterSeconds : null;
+            throw err;
         }
         return data;
     }
@@ -540,6 +550,7 @@
             speak(nextQuestion.content);
             inputEl.disabled = false;
             sendBtn.disabled = false;
+            if (hintBtn) hintBtn.disabled = false;
             inputEl.focus();
 
             // One cheating check per new question, fired once the question is actually on
@@ -641,6 +652,14 @@
         if (ended) return;
         cleanupTransientUi();
         ended = true;
+        if (cameraRecoveryTimer) {
+            clearTimeout(cameraRecoveryTimer);
+            cameraRecoveryTimer = null;
+        }
+        if (skipCooldownTimer) {
+            clearInterval(skipCooldownTimer);
+            skipCooldownTimer = null;
+        }
         clearDraft();
         hideIdleBanner();
         disableLifecycleControls();
@@ -679,6 +698,14 @@
         if (ended) return;
         cleanupTransientUi();
         ended = true;
+        if (cameraRecoveryTimer) {
+            clearTimeout(cameraRecoveryTimer);
+            cameraRecoveryTimer = null;
+        }
+        if (skipCooldownTimer) {
+            clearInterval(skipCooldownTimer);
+            skipCooldownTimer = null;
+        }
         clearDraft();
         hideIdleBanner();
         if (countdownHandle) clearInterval(countdownHandle);
@@ -768,6 +795,15 @@
 
     inputEl?.addEventListener("input", scheduleDraftSave);
 
+    // Server rejected an answer/skip/auto-advance because the session's time already ran out
+    // (SessionService.SendMessageAsync's deadline check — see report). The session was already
+    // finalized server-side when this was thrown, so completeInterview() just fetches that
+    // already-decided status and moves to the end screen — not a fresh completion decision.
+    async function handleSessionExpired() {
+        appendBubble("AI", "Your interview time has run out.");
+        await completeInterview();
+    }
+
     async function sendAnswer() {
         const content = inputEl.value.trim();
         if (!content || !currentQuestionId || ended) return;
@@ -809,6 +845,10 @@
             applyNextQuestion(data.nextQuestion);
             if (skipBtn) skipBtn.disabled = false;
         } catch (err) {
+            if (err.code === "session_time_expired") {
+                await handleSessionExpired();
+                return;
+            }
             appendBubble("AI", `Error: ${err.message}. Please try again.`);
             inputEl.disabled = false;
             sendBtn.disabled = false;
@@ -820,6 +860,35 @@
     // content still creates a User "Answer" message (so generate advances to the next question), and
     // ai-service grades an empty answer as a clean "No answer provided." (score 0) — never as a real
     // low-quality attempt. The chat flow is otherwise identical to a normal answer.
+    let skipCooldownTimer = null;
+
+    // Countdown display for a 429 "skip_cooldown" response — UX only. The server (SessionService.
+    // SendMessageAsync, Reason=="Skipped") is what actually enforces the cooldown; this just
+    // mirrors it. `seconds` MUST come from the server's retryAfterSeconds — never computed from
+    // the client's own clock, which can be wrong or deliberately skewed.
+    function startSkipCooldown(seconds) {
+        if (!skipBtn) return;
+        if (skipCooldownTimer) clearInterval(skipCooldownTimer);
+        skipBtn.disabled = true;
+        let remaining = Math.max(1, Math.round(seconds));
+        const countdownEl = document.createElement("span");
+        countdownEl.className = "skip-cooldown-countdown";
+        countdownEl.textContent = ` (${remaining}s)`;
+        skipBtn.appendChild(countdownEl);
+
+        skipCooldownTimer = setInterval(() => {
+            remaining -= 1;
+            if (ended || remaining <= 0) {
+                clearInterval(skipCooldownTimer);
+                skipCooldownTimer = null;
+                countdownEl.remove();
+                if (!ended) skipBtn.disabled = false;
+                return;
+            }
+            countdownEl.textContent = ` (${remaining}s)`;
+        }, 1000);
+    }
+
     async function skipQuestion() {
         if (!currentQuestionId || ended) return;
 
@@ -851,10 +920,22 @@
             applyNextQuestion(data.nextQuestion);
             if (skipBtn) skipBtn.disabled = false;
         } catch (err) {
-            appendBubble("AI", `Error: ${err.message}. Please try again.`);
             inputEl.disabled = false;
             sendBtn.disabled = false;
-            if (skipBtn) skipBtn.disabled = false;
+            if (err.code === "session_time_expired") {
+                note.textContent = "Time's up — this skip did not go through.";
+                await handleSessionExpired();
+                return;
+            }
+            if (err.status === 429) {
+                // The "Question skipped" note above already rendered before the server rejected
+                // it — correct it rather than leave a note on screen for a skip that didn't happen.
+                note.textContent = "Skip did not go through — please wait before trying again.";
+                startSkipCooldown(err.retryAfterSeconds || 10);
+            } else {
+                appendBubble("AI", `Error: ${err.message}. Please try again.`);
+                if (skipBtn) skipBtn.disabled = false;
+            }
         }
     }
 
@@ -895,6 +976,10 @@
             applyNextQuestion(data.nextQuestion);
             if (skipBtn) skipBtn.disabled = false;
         } catch (err) {
+            if (err.code === "session_time_expired") {
+                await handleSessionExpired();
+                return;
+            }
             appendBubble("AI", `Error: ${err.message}. Please try again.`);
             inputEl.disabled = false;
             sendBtn.disabled = false;
@@ -916,17 +1001,32 @@
 
     // Hint: ask ai-service (via same-origin proxy) for one light directional hint on the current
     // question, then show it as an AI bubble prefixed with 💡. Does not change the message flow.
+    // Server enforces one hint per question (SessionService.HintAsync) — the button stays
+    // disabled after use, or on a 409 "already used", and only re-enables on the NEXT question
+    // (applyNextQuestion). This client-side disable is UX only, not the security boundary.
     async function askHint() {
-        if (!currentQuestionText || ended || !hintUrl) return;
+        if (!currentQuestionText || !currentQuestionId || ended || !hintUrl) return;
 
         if (hintBtn) hintBtn.disabled = true;
         try {
-            const data = await postProxy(hintUrl, { question: currentQuestionText });
-            appendBubble("AI", "💡 " + (data.hint || ""));
+            const data = await postProxy(hintUrl, { sessionId, sessionQuestionId: currentQuestionId });
+            const hintText = data.hint || "";
+            appendBubble("AI", "💡 " + hintText);
+            // Text first, audio second: the user reads immediately without waiting on TTS. Not
+            // awaited — speak() already no-ops when AI Voice is off and swallows its own TTS
+            // errors, so a failure here can never affect the hint bubble already on screen.
+            // It also interrupts whatever audio is currently playing (e.g. the question being
+            // read aloud) — intended, the hint should be heard right away.
+            speak(hintText);
+            // Leave disabled: this question's one hint is now spent.
         } catch (err) {
-            appendBubble("AI", `Could not get a hint: ${err.message}.`);
-        } finally {
-            if (hintBtn && !ended) hintBtn.disabled = false;
+            if (err.status === 409) {
+                appendBubble("AI", "You've already used your hint for this question.");
+                // Leave disabled: matches the server's one-hint-per-question state.
+            } else {
+                appendBubble("AI", `Could not get a hint: ${err.message}.`);
+                if (hintBtn && !ended) hintBtn.disabled = false;
+            }
         }
     }
 
@@ -1011,14 +1111,19 @@
     });
 
     // Camera is mandatory. The live stream stays local, while individual verification frames
-    // are uploaded for in-session identity checks. A lost camera gets one reconnect attempt
-    // after a 15-second grace period before the incident becomes a direct cheating strike.
+    // are uploaded for in-session identity checks. A lost camera gets a reconnect attempt every
+    // 15-second grace period, repeating indefinitely until it comes back (or the session ends);
+    // only the FIRST failed attempt of each continuous loss reports a cheating strike.
     const cameraVideo = document.getElementById("camera-video");
     const cameraPlaceholder = document.getElementById("camera-placeholder");
     const cameraStatusEl = document.getElementById("camera-status");
     const CAMERA_RECONNECT_GRACE_MS = 15000;
     let cameraStream = null;
     let cameraRecoveryTimer = null;
+    // Guards against reporting more than one strike for the SAME ongoing camera-loss episode —
+    // scheduleCameraRecovery keeps retrying connectCamera() every 15s for as long as the camera
+    // stays down, but only the FIRST failed retry in that streak should count as a violation.
+    let cameraIncidentReported = false;
 
     function setCameraStatus(text, isWarning) {
         if (!cameraStatusEl) return;
@@ -1070,6 +1175,8 @@
     async function connectCamera() {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
         cameraStream = stream;
+        // Camera is back — the next disconnect is a NEW episode and may report again.
+        cameraIncidentReported = false;
         if (cameraVideo) {
             cameraVideo.srcObject = stream;
             cameraVideo.classList.remove("d-none");
@@ -1096,7 +1203,16 @@
             } catch {
                 showCameraUnavailable(reason);
                 setCameraStatus("Camera: Recovery failed", true);
-                await reportCameraViolation(reason);
+                // At most one violation per continuous camera-loss episode — the retry loop below
+                // keeps running regardless, so a camera left off doesn't rack up a strike every 15s.
+                if (!cameraIncidentReported) {
+                    cameraIncidentReported = true;
+                    await reportCameraViolation(reason);
+                }
+                // Keep retrying until connectCamera() succeeds or the session ends — previously
+                // this stopped after one failed attempt, permanently killing detection for the
+                // rest of the session (see bug report).
+                scheduleCameraRecovery(reason);
             }
         }, CAMERA_RECONNECT_GRACE_MS);
     }
@@ -1256,6 +1372,10 @@
         if (cameraRecoveryTimer) {
             clearTimeout(cameraRecoveryTimer);
             cameraRecoveryTimer = null;
+        }
+        if (skipCooldownTimer) {
+            clearInterval(skipCooldownTimer);
+            skipCooldownTimer = null;
         }
         clearDraft();
         disableLifecycleControls();
@@ -1455,14 +1575,29 @@
             });
             if (!response.ok) return; // TTS unavailable — stay silent, never block the interview
             const blob = await response.blob();
+            if (!blob || blob.size === 0) {
+                console.warn("[TTS] empty audio response");
+                return;
+            }
             currentAudio?.pause();
             const audio = new Audio(URL.createObjectURL(blob));
             currentAudio = audio;
+            // Waveform follows the real <audio> element instead of just the AI-Voice toggle.
+            // Additive listeners only — onended/onerror/onpause below still own resolve().
+            const visualizer = document.querySelector(".visualizer");
+            const pauseVisualizer = () => visualizer?.classList.add("paused");
+            audio.addEventListener("play", () => visualizer?.classList.remove("paused"));
+            audio.addEventListener("ended", pauseVisualizer);
+            audio.addEventListener("error", pauseVisualizer);
+            audio.addEventListener("pause", pauseVisualizer);
             await new Promise((resolve) => {
                 audio.onended = resolve;
                 audio.onerror = resolve;
                 audio.onpause = resolve; // paused by toggle-off or a newer clip — stop waiting
-                audio.play().catch(resolve); // autoplay blocked — ignore
+                audio.play().catch((err) => {
+                    console.warn("[TTS] play blocked:", err?.name || err);
+                    resolve();
+                });
             });
         } catch {
             // Network/TTS error — ignore, the interview continues silently.

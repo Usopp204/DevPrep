@@ -90,3 +90,12 @@ infra/collect_sample.py
 
 # Secrets - never commit
 /.env.example
+
+# Piper voice model (baked into image, copied out for bind mount)
+/ai-service/models/piper/
+
+# Piper voice models
+/ai-service/models/piper/
+
+# SQL migrations shared via Zalo, not tracked
+/source/*/Sql/
