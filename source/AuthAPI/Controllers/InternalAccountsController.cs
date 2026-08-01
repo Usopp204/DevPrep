@@ -22,12 +22,14 @@ public class InternalAccountsController : ControllerBase
     // =========================================================
     [HttpGet]
     public async Task<IActionResult> GetAccounts(
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 10,
-        [FromQuery] string? keyword = null,
-        [FromQuery] string? role = null,
-        [FromQuery] string? status = null,
-        [FromQuery] string? accountIds = null)
+    [FromQuery] int page = 1,
+    [FromQuery] int pageSize = 10,
+    [FromQuery] string? keyword = null,
+    [FromQuery] string? role = null,
+    [FromQuery] string? status = null,
+    [FromQuery] string? accountIds = null,
+    [FromQuery] DateTime? createdFrom = null,
+    [FromQuery] DateTime? createdTo = null)
     {
         var query = _context.Accounts.AsQueryable();
 
@@ -39,6 +41,20 @@ public class InternalAccountsController : ControllerBase
         if (!string.IsNullOrWhiteSpace(status))
         {
             query = query.Where(a => a.Status == status);
+        }
+
+        if (createdFrom.HasValue)
+        {
+            var fromDate = createdFrom.Value.Date;
+
+            query = query.Where(a => a.CreatedAt >= fromDate);
+        }
+
+        if (createdTo.HasValue)
+        {
+            var toDateExclusive = createdTo.Value.Date.AddDays(1);
+
+            query = query.Where(a => a.CreatedAt < toDateExclusive);
         }
 
         if (!string.IsNullOrWhiteSpace(keyword))

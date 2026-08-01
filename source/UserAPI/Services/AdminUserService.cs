@@ -53,7 +53,17 @@ public class AdminUserService : IAdminUserService
         var authUrl = $"/api/internal/accounts?page={query.Page}&pageSize={query.PageSize}" +
                       $"&keyword={Uri.EscapeDataString(query.Keyword ?? "")}" +
                       $"&role={query.Role ?? ""}&status={query.Status ?? ""}";
+        if (query.CreatedFrom.HasValue)
+        {
+            authUrl +=
+                $"&createdFrom={Uri.EscapeDataString(query.CreatedFrom.Value.ToString("yyyy-MM-dd"))}";
+        }
 
+        if (query.CreatedTo.HasValue)
+        {
+            authUrl +=
+                $"&createdTo={Uri.EscapeDataString(query.CreatedTo.Value.ToString("yyyy-MM-dd"))}";
+        }
         if (!string.IsNullOrEmpty(matchedAccountIdsParam))
         {
             authUrl += $"&accountIds={matchedAccountIdsParam}";
