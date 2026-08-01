@@ -59,12 +59,17 @@ public class ManagerController(
     public async Task<IActionResult> ReportedFeedback(
         int page = 1,
         string feedbackType = "All",
-        string status = FeedbackReportRules.PendingStatus,
+        string status = "All",
         string reasonCode = "All",
         string keyword = "",
         Guid? reportId = null,
         CancellationToken cancellationToken = default)
     {
+        feedbackType = string.IsNullOrWhiteSpace(feedbackType) ? "All" : feedbackType;
+        status = string.IsNullOrWhiteSpace(status) ? "All" : status;
+        reasonCode = string.IsNullOrWhiteSpace(reasonCode) ? "All" : reasonCode;
+        keyword = keyword?.Trim() ?? string.Empty;
+
         const int pageSize = 20;
         var list = await feedbackService.GetFeedbackReportsAsync(
             manager: true,

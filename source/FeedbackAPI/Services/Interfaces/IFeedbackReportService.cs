@@ -17,11 +17,6 @@ public interface IFeedbackReportService
         bool isCandidate,
         CancellationToken ct = default);
 
-    Task ApplyInterviewViewerStateAsync(
-        IReadOnlyList<PublicAiFeedbackDto> feedback,
-        Guid? viewerUserId,
-        bool isCandidate,
-        CancellationToken ct = default);
 
     Task<PagedResult<FeedbackReportListItemDto>> GetListAsync(
         FeedbackReportQuery query,

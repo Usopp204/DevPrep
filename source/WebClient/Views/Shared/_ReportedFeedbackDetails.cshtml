@@ -63,7 +63,7 @@
                 <dl class="report-detail-metadata">
                     <div><dt>Reporter ID</dt><dd>@report.ReporterUserId</dd></div>
                     <div><dt>Reported at</dt><dd>@report.CreatedAt.ToString("MMM d, yyyy HH:mm")</dd></div>
-                    <div><dt>Publication state</dt><dd>@report.FeedbackModerationStatus</dd></div>
+
                     <div><dt>Reviewed at</dt><dd>@(report.ReviewedAt?.ToString("MMM d, yyyy HH:mm") ?? "Not reviewed")</dd></div>
                     <div><dt>Reviewed by</dt><dd>@(report.ReviewedBy?.ToString() ?? "-")</dd></div>
                     <div><dt>Resolution note</dt><dd class="safe-long-text">@(string.IsNullOrWhiteSpace(report.ResolutionNote) ? "-" : report.ResolutionNote)</dd></div>

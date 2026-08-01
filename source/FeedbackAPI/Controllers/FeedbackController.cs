@@ -44,13 +44,10 @@ public class FeedbackController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> GetAiReviews([FromQuery] PublicFeedbackQuery query, CancellationToken cancellationToken)
     {
-        var result = await _aiService.GetPublicReviewsAsync(query, cancellationToken);
-        await _reportService.ApplyInterviewViewerStateAsync(
-            result.Items,
+        var result = await _aiService.GetPublicReviewsAsync(
+            query,
             GetCandidateViewerId(),
-            User.IsInRole("User"),
             cancellationToken);
-
         return Ok(ApiResponse<PagedResult<PublicAiFeedbackDto>>.Ok(result));
     }
 
@@ -63,6 +60,19 @@ public class FeedbackController : ControllerBase
 
         var result = await _systemService.GetSubmissionStatusAsync(userId, cancellationToken);
         return Ok(ApiResponse<SystemFeedbackSubmissionStatusDto>.Ok(result));
+    }
+
+    [HttpGet("system/{feedbackId:guid}/my-feedback")]
+    [Authorize(Roles = "User")]
+    public async Task<IActionResult> GetMySystemFeedback(Guid feedbackId, CancellationToken cancellationToken)
+    {
+        if (!TryGetUserId(out var userId))
+            return Unauthorized(ApiResponse<object>.Fail("Unauthorized."));
+
+        var result = await _systemService.GetMyFeedbackAsync(feedbackId, userId, cancellationToken);
+        return result is null
+            ? NotFound(ApiResponse<object>.Fail("System feedback not found."))
+            : Ok(ApiResponse<MySystemFeedbackDto>.Ok(result));
     }
 
     [HttpPost("system")]
@@ -171,14 +181,63 @@ public class FeedbackController : ControllerBase
         }
     }
 
-    [HttpPost("ai/reviews/{feedbackId:guid}/reports")]
-    [Consumes("application/json")]
+    [HttpPut("system/{feedbackId:guid}")]
     [Authorize(Roles = "User")]
-    public Task<IActionResult> ReportAiFeedback(
-        Guid feedbackId,
-        [FromBody] CreateFeedbackReportRequest request,
-        CancellationToken cancellationToken) =>
-        CreateReportAsync(FeedbackAPI.Validation.FeedbackReportType.Interview, feedbackId, request, cancellationToken);
+    public async Task<IActionResult> EditSystem(Guid feedbackId, [FromBody] UpdateSystemFeedbackRequest request, CancellationToken cancellationToken)
+    {
+        if (!TryGetUserId(out var userId))
+            return Unauthorized(ApiResponse<object>.Fail("Unauthorized."));
+        try
+        {
+            await _systemService.EditAsync(feedbackId, userId, request, cancellationToken);
+            return Ok(ApiResponse<object?>.Ok(null, "System feedback updated successfully."));
+        }
+        catch (FeedbackValidationException ex) { return BadRequest(ApiResponse<object>.Fail(ex.Message)); }
+        catch (FeedbackNotFoundException) { return NotFound(ApiResponse<object>.Fail("System feedback not found.")); }
+    }
+
+    [HttpDelete("system/{feedbackId:guid}")]
+    [Authorize(Roles = "User")]
+    public async Task<IActionResult> DeleteSystem(Guid feedbackId, CancellationToken cancellationToken)
+    {
+        if (!TryGetUserId(out var userId))
+            return Unauthorized(ApiResponse<object>.Fail("Unauthorized."));
+        try
+        {
+            await _systemService.CandidateDeleteAsync(feedbackId, userId, cancellationToken);
+            return Ok(ApiResponse<object?>.Ok(null, "System feedback deleted successfully."));
+        }
+        catch (FeedbackNotFoundException) { return NotFound(ApiResponse<object>.Fail("System feedback not found.")); }
+    }
+
+    [HttpPut("interview/{feedbackId:guid}")]
+    [Authorize(Roles = "User")]
+    public async Task<IActionResult> EditInterview(Guid feedbackId, [FromBody] UpdateInterviewFeedbackRequest request, CancellationToken cancellationToken)
+    {
+        if (!TryGetUserId(out var userId))
+            return Unauthorized(ApiResponse<object>.Fail("Unauthorized."));
+        try
+        {
+            await _aiService.EditAsync(feedbackId, userId, request, cancellationToken);
+            return Ok(ApiResponse<object?>.Ok(null, "Interview feedback updated successfully."));
+        }
+        catch (FeedbackValidationException ex) { return BadRequest(ApiResponse<object>.Fail(ex.Message)); }
+        catch (FeedbackNotFoundException) { return NotFound(ApiResponse<object>.Fail("Interview feedback not found.")); }
+    }
+
+    [HttpDelete("interview/{feedbackId:guid}")]
+    [Authorize(Roles = "User")]
+    public async Task<IActionResult> DeleteInterview(Guid feedbackId, CancellationToken cancellationToken)
+    {
+        if (!TryGetUserId(out var userId))
+            return Unauthorized(ApiResponse<object>.Fail("Unauthorized."));
+        try
+        {
+            await _aiService.CandidateDeleteAsync(feedbackId, userId, cancellationToken);
+            return Ok(ApiResponse<object?>.Ok(null, "Interview feedback deleted successfully."));
+        }
+        catch (FeedbackNotFoundException) { return NotFound(ApiResponse<object>.Fail("Interview feedback not found.")); }
+    }
 
     [HttpPost("system/reviews/{feedbackId:guid}/reports")]
     [Consumes("application/json")]

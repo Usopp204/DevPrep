@@ -8,7 +8,6 @@ using WebClient.Services.Feedback;
 namespace WebClient.Controllers.Admin;
 
 public class AdminController(
-    IAdminService adminService,
     IAdminDashboardService dashboardService,
     IFeedbackService feedbackService) : Controller
 {
@@ -86,12 +85,17 @@ public class AdminController(
     public async Task<IActionResult> ReportedFeedback(
         int page = 1,
         string feedbackType = "All",
-        string status = FeedbackReportRules.PendingStatus,
+        string status = "All",
         string reasonCode = "All",
         string keyword = "",
         Guid? reportId = null,
         CancellationToken cancellationToken = default)
     {
+        feedbackType = string.IsNullOrWhiteSpace(feedbackType) ? "All" : feedbackType;
+        status = string.IsNullOrWhiteSpace(status) ? "All" : status;
+        reasonCode = string.IsNullOrWhiteSpace(reasonCode) ? "All" : reasonCode;
+        keyword = keyword?.Trim() ?? string.Empty;
+
         if (!IsAdminRole())
         {
             TempData["Error"] = "You must sign in with an Admin account to access the dashboard.";
@@ -117,7 +121,7 @@ public class AdminController(
         ResolveFeedbackReportRequest request,
         int page = 1,
         string feedbackType = "All",
-        string status = FeedbackReportRules.PendingStatus,
+        string status = "All",
         string reasonCode = "All",
         string keyword = "",
         CancellationToken cancellationToken = default) =>
@@ -137,7 +141,7 @@ public class AdminController(
         ResolveFeedbackReportRequest request,
         int page = 1,
         string feedbackType = "All",
-        string status = FeedbackReportRules.PendingStatus,
+        string status = "All",
         string reasonCode = "All",
         string keyword = "",
         CancellationToken cancellationToken = default) =>

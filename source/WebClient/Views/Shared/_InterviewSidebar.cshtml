@@ -21,6 +21,7 @@
     <div class="dash-session-list"
          id="recent-session-list"
          data-url="@Url.Action("RecentSessions", "Interview")"
+         data-current-session-id="@(Model.ActiveSessionId?.ToString() ?? string.Empty)"
          data-next-page="2"
          data-has-more="@(Model.RecentSessions.Count >= 6 ? "true" : "false")">
         @if (Model.RecentSessions.Count == 0)

@@ -55,7 +55,7 @@ public interface IInterviewService
     Task<(bool Success, string? Hint, string? Error)> GetHintAsync(string question, CancellationToken cancellationToken);
 
     Task<HistoryViewModel> GetHistoryAsync(
-        int page, int pageSize, string? status, string? position, string? keyword, CancellationToken cancellationToken);
+        int page, int pageSize, string? status, string? position, string? questionType, string? keyword, CancellationToken cancellationToken);
 
     Task<ApiCallResult<SessionHistoryResult>> GetRecentSessionsAsync(
         int page, int pageSize, CancellationToken cancellationToken);
@@ -304,9 +304,9 @@ public sealed class InterviewService(IApiClient apiClient) : IInterviewService
     }
 
     public async Task<HistoryViewModel> GetHistoryAsync(
-        int page, int pageSize, string? status, string? position, string? keyword, CancellationToken cancellationToken)
+        int page, int pageSize, string? status, string? position, string? questionType, string? keyword, CancellationToken cancellationToken)
     {
-        var result = await GetSessionHistoryPageAsync(page, pageSize, status, position, keyword, cancellationToken);
+        var result = await GetSessionHistoryPageAsync(page, pageSize, status, position, questionType, keyword, cancellationToken);
         var recent = await GetRecentSessionsAsync(1, RecentSessionsPageSize, cancellationToken);
         return new HistoryViewModel
         {
@@ -315,8 +315,14 @@ public sealed class InterviewService(IApiClient apiClient) : IInterviewService
             PageSize = pageSize,
             Status = status,
             Position = position,
+            QuestionType = questionType,
             Keyword = keyword,
-            ErrorMessage = result.Success ? null : result.Error,
+            ErrorMessage = result.Success
+                ? null
+                : ToUserFacingError(result.StatusCode, result.Error, "Could not load interview history."),
+            LoadStatusCode = result.StatusCode == StatusCodes.Status401Unauthorized
+                ? result.StatusCode
+                : recent.StatusCode == StatusCodes.Status401Unauthorized ? recent.StatusCode : result.StatusCode,
             Sidebar = new InterviewSidebarViewModel
             {
                 ActiveItem = "History",
@@ -328,7 +334,7 @@ public sealed class InterviewService(IApiClient apiClient) : IInterviewService
 
     public Task<ApiCallResult<SessionHistoryResult>> GetRecentSessionsAsync(
         int page, int pageSize, CancellationToken cancellationToken) =>
-        GetSessionHistoryPageAsync(page, pageSize, status: null, position: null, keyword: null, cancellationToken);
+        GetSessionHistoryPageAsync(page, pageSize, status: null, position: null, questionType: null, keyword: null, cancellationToken);
 
     public async Task<SessionDetailViewModel> GetSessionDetailAsync(Guid sessionId, CancellationToken cancellationToken)
     {
@@ -339,6 +345,12 @@ public sealed class InterviewService(IApiClient apiClient) : IInterviewService
         };
 
         var recent = await GetRecentSessionsAsync(1, RecentSessionsPageSize, cancellationToken);
+        if (recent.StatusCode == StatusCodes.Status401Unauthorized)
+        {
+            model.LoadStatusCode = recent.StatusCode;
+            return model;
+        }
+
         model.Sidebar = new InterviewSidebarViewModel
         {
             ActiveItem = "Recent",
@@ -355,6 +367,7 @@ public sealed class InterviewService(IApiClient apiClient) : IInterviewService
             cancellationToken);
         if (!chat.Success || chat.Data is null)
         {
+            model.LoadStatusCode = chat.StatusCode;
             model.ErrorMessage = ToUserFacingError(chat.StatusCode, chat.Error, "Could not load the chat log.");
             return model;
         }
@@ -366,34 +379,9 @@ public sealed class InterviewService(IApiClient apiClient) : IInterviewService
         {
             model.FeedbackEligibility = eligibility.Data;
         }
-
-        if (!model.IsCompleted)
+        else if (eligibility.StatusCode == StatusCodes.Status401Unauthorized)
         {
-            model.ReportMessage = model.IsCancelled
-                ? "This interview was cancelled, so no evaluation report was generated."
-                : "This interview expired, so no evaluation report was generated.";
-            return model;
-        }
-
-        var performance = await SendAsync<PerformanceReportResponse>(HttpMethod.Get,
-            $"api/evaluation/sessions/{sessionId}/performance",
-            body: null,
-            cancellationToken);
-        if (performance.Success)
-        {
-            model.PerformanceReport = performance.Data;
-        }
-        else if (performance.StatusCode == StatusCodes.Status404NotFound)
-        {
-            model.ReportMessage = "Report not available.";
-        }
-        else if (performance.StatusCode == StatusCodes.Status409Conflict)
-        {
-            model.ReportMessage = "Report not available for this session.";
-        }
-        else
-        {
-            model.ReportMessage = ToUserFacingError(performance.StatusCode, performance.Error, "Report not available.");
+            model.LoadStatusCode = eligibility.StatusCode;
         }
 
         return model;
@@ -422,7 +410,7 @@ public sealed class InterviewService(IApiClient apiClient) : IInterviewService
             $"api/interview/sessions/{sessionId}/feedback-eligibility", body: null, cancellationToken);
 
     private async Task<ApiCallResult<SessionHistoryResult>> GetSessionHistoryPageAsync(
-        int page, int pageSize, string? status, string? position, string? keyword, CancellationToken cancellationToken)
+        int page, int pageSize, string? status, string? position, string? questionType, string? keyword, CancellationToken cancellationToken)
     {
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 1, 50);
@@ -435,6 +423,7 @@ public sealed class InterviewService(IApiClient apiClient) : IInterviewService
 
         if (!string.IsNullOrWhiteSpace(status)) query.Add($"status={Uri.EscapeDataString(status)}");
         if (!string.IsNullOrWhiteSpace(position)) query.Add($"position={Uri.EscapeDataString(position)}");
+        if (!string.IsNullOrWhiteSpace(questionType)) query.Add($"questionType={Uri.EscapeDataString(questionType)}");
         if (!string.IsNullOrWhiteSpace(keyword)) query.Add($"keyword={Uri.EscapeDataString(keyword)}");
 
         return await SendAsync<SessionHistoryResult>(
@@ -452,7 +441,7 @@ public sealed class InterviewService(IApiClient apiClient) : IInterviewService
 
         while (page <= totalPages && page <= 20)
         {
-            var result = await GetSessionHistoryPageAsync(page, pageSize, null, null, null, cancellationToken);
+            var result = await GetSessionHistoryPageAsync(page, pageSize, null, null, null, null, cancellationToken);
             if (!result.Success || result.Data is null)
             {
                 return null;

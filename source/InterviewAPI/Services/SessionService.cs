@@ -7,6 +7,7 @@ using InterviewAPI.Helpers;
 using InterviewAPI.Models;
 using InterviewAPI.Repositories.Interfaces;
 using InterviewAPI.Services.Interfaces;
+using InterviewAPI.Services.Grading;
 using Microsoft.EntityFrameworkCore;
 
 namespace InterviewAPI.Services;
@@ -20,6 +21,9 @@ public class SessionService : ISessionService
 
     private static bool IsTerminalStatus(string status) =>
         status is "Completed" or "Cancelled" or "Expired";
+
+    private static bool CanGeneratePerformanceReport(string status, bool hasSubstantiveAnswer) =>
+        status == "Completed" || (status == "Cancelled" && hasSubstantiveAnswer);
 
     // Idle-reminder / auto-advance thresholds (seconds since AskedAt), by question difficulty.
     // NOTE: SessionQuestion has no persisted Difficulty column (ai-service's plan-time
@@ -91,7 +95,7 @@ public class SessionService : ISessionService
     private readonly IPaymentApiClient _paymentApiClient;
     private readonly InterviewDbContext _db;
     private readonly ILogger<SessionService> _logger;
-    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IGradingQueue _gradingQueue;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IProfileBiometricsRepository _biometricsRepository;
     private readonly ISessionVerificationEventRepository _verificationEventRepository;
@@ -103,7 +107,7 @@ public class SessionService : ISessionService
         IPaymentApiClient paymentApiClient,
         InterviewDbContext db,
         ILogger<SessionService> logger,
-        IServiceScopeFactory scopeFactory,
+        IGradingQueue gradingQueue,
         IHttpContextAccessor httpContextAccessor,
         IProfileBiometricsRepository biometricsRepository,
         ISessionVerificationEventRepository verificationEventRepository,
@@ -114,7 +118,7 @@ public class SessionService : ISessionService
         _paymentApiClient = paymentApiClient;
         _db = db;
         _logger = logger;
-        _scopeFactory = scopeFactory;
+        _gradingQueue = gradingQueue;
         _httpContextAccessor = httpContextAccessor;
         _biometricsRepository = biometricsRepository;
         _verificationEventRepository = verificationEventRepository;
@@ -542,6 +546,7 @@ public class SessionService : ISessionService
             return await BuildCurrentTurnResponseAsync(sessionId, currentQuestion.OrderIndex, ct);
         }
 
+        var answerPersisted = false;
         try
         {
             // Step C: Xác thực reason client gửi lên — "TimedOut" chỉ được tin khi server tự tính lại
@@ -563,26 +568,60 @@ public class SessionService : ISessionService
                     answerReason = "TimedOut";
             }
 
-            // Step D: Lưu câu trả lời của user vào ChatMessages.
-            await _repo.AddChatMessageAsync(new ChatMessage
+            // Step D: Persist the user's answer before offering substantive work to the grading queue.
+            var chatMessage = new ChatMessage
             {
                 MessageId = Guid.NewGuid(),
                 SessionQuestionId = req.SessionQuestionId,
-                SenderType = "User",
-                MessageType = "Answer",
+                SenderType = SubstantiveAnswerRules.UserSenderType,
+                MessageType = SubstantiveAnswerRules.AnswerMessageType,
                 Content = req.Content,
                 ResponseTimeMs = req.ResponseTimeMs,
                 AnswerReason = answerReason,
                 SentAt = VietnamTime.Now
-            }, ct);
+            };
+            await _repo.AddChatMessageAsync(chatMessage, ct);
+            answerPersisted = true;
 
-            // Step E: (đã tăng AnsweredQuestions atomically ở guard phía trên — không tăng lại ở đây.)
+            // Step E: AnsweredQuestions was incremented atomically by the claim above.
+            // Queue acceptance deliberately does not observe RequestAborted after persistence:
+            // ordinary navigation must not strand a saved substantive answer without grading work.
+            if (SubstantiveAnswerRules.IsSubstantive(chatMessage))
+            {
+                var bearerToken = _httpContextAccessor.HttpContext?.Request.Headers.Authorization.ToString();
+                var workItem = new GradingWorkItem(
+                    sessionId,
+                    currentQuestion.SessionQuestionId,
+                    chatMessage.MessageId,
+                    userId,
+                    new EvaluateAnswerPayload
+                    {
+                        Question = currentQuestion.Content,
+                        ReferenceAnswer = currentQuestion.ReferenceAnswer ?? string.Empty,
+                        Category = string.Empty,
+                        Difficulty = string.Empty,
+                        UserAnswer = chatMessage.Content
+                    },
+                    bearerToken);
 
-            // Step E.1: Grade this answer in the background so the interview turn stays fast and the
-            // report is ready by the time the user reaches it. Empty content (Skip) is graded as
-            // score 0 "No answer provided." by ai-service — no special handling needed here.
-            ScheduleGrading(sessionId, currentQuestion, req.Content);
-
+                try
+                {
+                    await _gradingQueue.EnqueueAsync(workItem);
+                }
+                catch (Exception ex)
+                {
+                    // The ChatMessage and counter now form one persisted answer. Shutdown may prevent
+                    // in-memory acceptance, but it must never roll back only the counter or fabricate data.
+                    _logger.LogWarning(
+                        ex,
+                        "Grading work could not be accepted after answer persistence for session {SessionId}, " +
+                        "question {SessionQuestionId}, message {ChatMessageId}, user {UserId}.",
+                        sessionId,
+                        currentQuestion.SessionQuestionId,
+                        chatMessage.MessageId,
+                        userId);
+                }
+            }
             // Step F: Tìm câu hỏi tiếp theo chưa được trả lời.
             var nextQuestion = await _repo.GetNextUnansweredQuestionAsync(
                 sessionId, currentQuestion.OrderIndex, ct);
@@ -657,10 +696,20 @@ public class SessionService : ISessionService
         }
         catch
         {
-            // A step after the successful claim failed (e.g. ChatMessage insert threw) — roll
-            // the claim back so this turn is not permanently stuck (a retry would otherwise
-            // always lose the race against a claim nothing ever completed).
-            await _repo.DecrementAnsweredAsync(sessionId, ct);
+            if (!answerPersisted)
+            {
+                // The claim did not produce a persisted answer, so a retry must be able to reclaim it.
+                await _repo.DecrementAnsweredAsync(sessionId, ct);
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "Answer processing failed after persistence for session {SessionId}, question {SessionQuestionId}; " +
+                    "the AnsweredQuestions claim remains aligned with the saved ChatMessage.",
+                    sessionId,
+                    req.SessionQuestionId);
+            }
+
             throw;
         }
     }
@@ -1070,6 +1119,7 @@ public class SessionService : ISessionService
     {
         var normalized = SessionHistoryQueryNormalizer.Normalize(query);
         var (sessions, totalItems, positionOptions) = await _repo.GetHistoryAsync(userId, normalized, ct);
+        var questionTypeOptions = await _repo.GetHistoryQuestionTypeOptionsAsync(userId, ct);
 
         return new SessionHistoryResult
         {
@@ -1094,7 +1144,8 @@ public class SessionService : ISessionService
             PageSize = normalized.PageSize,
             TotalItems = totalItems,
             TotalPages = totalItems == 0 ? 0 : (int)Math.Ceiling(totalItems / (double)normalized.PageSize),
-            PositionOptions = positionOptions
+            PositionOptions = positionOptions,
+            QuestionTypeOptions = questionTypeOptions
         };
     }
 
@@ -1113,8 +1164,10 @@ public class SessionService : ISessionService
             .ThenBy(q => q.SessionQuestionId)
             .Select(q => new SessionChatLogQuestionDto
             {
+                SessionQuestionId = q.SessionQuestionId,
                 QuestionIndex = q.OrderIndex,
                 QuestionText = q.Content,
+                HasSubstantiveAnswer = q.ChatMessages.Any(SubstantiveAnswerRules.IsSubstantive),
                 Messages = q.ChatMessages
                     .OrderBy(m => m.SentAt)
                     .ThenBy(m => m.MessageId)
@@ -1125,7 +1178,9 @@ public class SessionService : ISessionService
                         MessageType = m.MessageType,
                         Content = m.Content,
                         SentAt = m.SentAt,
-                        ResponseDurationMs = m.ResponseTimeMs
+                        ResponseDurationMs = m.ResponseTimeMs,
+                        AnswerReason = m.AnswerReason,
+                        IsSubstantiveAnswer = SubstantiveAnswerRules.IsSubstantive(m)
                     })
                     .ToList()
             })
@@ -1141,7 +1196,7 @@ public class SessionService : ISessionService
 
     public async Task<FeedbackEligibilityResponse> GetFeedbackEligibilityAsync(Guid userId, CancellationToken ct)
     {
-        var count = await _repo.CountFeedbackEligibleSessionsAsync(userId, ct);
+        var count = await _repo.CountSystemFeedbackQualifyingSessionsAsync(userId, ct);
         return new FeedbackEligibilityResponse
         {
             Eligible = count > 0,
@@ -1158,11 +1213,15 @@ public class SessionService : ISessionService
         if (session is null)
             throw new KeyNotFoundException("Session not found.");
 
+        var hasSubstantiveAnswer = await _repo.HasSubstantiveAnswerAsync(session.SessionId, ct);
+
         return new SessionFeedbackEligibilityResponse
         {
             SessionId = session.SessionId,
             Status = session.Status,
-            Eligible = session.Status == "Completed"
+            HasSubstantiveAnswer = hasSubstantiveAnswer,
+            CanSubmitInterviewFeedback = IsTerminalStatus(session.Status),
+            CanGeneratePerformanceReport = CanGeneratePerformanceReport(session.Status, hasSubstantiveAnswer)
         };
     }
 
@@ -1183,11 +1242,14 @@ public class SessionService : ISessionService
         // không có ChatMessage → ẩn khỏi transcript (dùng chung cho cả History và Report).
         var questions = session.SessionQuestions
             .Where(q => q.ChatMessages.Any())
+            .OrderBy(q => q.OrderIndex)
+            .ThenBy(q => q.SessionQuestionId)
             .Select(q => new TranscriptQuestionDto
             {
                 SessionQuestionId = q.SessionQuestionId,
                 OrderIndex = q.OrderIndex,
                 Content = q.Content,
+                HasSubstantiveAnswer = q.ChatMessages.Any(SubstantiveAnswerRules.IsSubstantive),
                 Category = null,   // DB không lưu Category riêng cho SessionQuestion
                 Difficulty = null  // DB không lưu Difficulty riêng cho SessionQuestion
             }).ToList();
@@ -1244,36 +1306,5 @@ public class SessionService : ISessionService
         return session is not null && session.UserId == userId;
     }
 
-
-    private void ScheduleGrading(Guid sessionId, SessionQuestion question, string userAnswer)
-    {
-        // Capture the token synchronously — HttpContext is not available inside the background task.
-        var bearerToken = _httpContextAccessor.HttpContext?.Request.Headers.Authorization.ToString();
-        var payload = new EvaluateAnswerPayload
-        {
-            Question = question.Content,
-            ReferenceAnswer = question.ReferenceAnswer ?? string.Empty,
-            Category = string.Empty,
-            Difficulty = string.Empty,
-            UserAnswer = userAnswer
-        };
-        var questionId = question.SessionQuestionId;
-
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                using var scope = _scopeFactory.CreateScope();
-                var client = scope.ServiceProvider.GetRequiredService<IEvaluationApiClient>();
-                await client.EvaluateAnswerAsync(sessionId, questionId, payload, bearerToken, CancellationToken.None);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex,
-                    "Background grading failed for question {QuestionId} in session {SessionId}.",
-                    questionId, sessionId);
-            }
-        });
-    }
 
 }

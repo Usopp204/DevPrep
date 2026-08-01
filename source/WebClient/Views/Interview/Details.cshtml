@@ -1,3 +1,4 @@
+@using WebClient.Models.Evaluation
 @using WebClient.Models.Feedback
 @model WebClient.Models.Interview.SessionDetailViewModel
 
@@ -6,10 +7,29 @@
     ViewData["Title"] = "Session Details";
     ViewData["BodyClass"] = "history-page";
     var session = Model.Session;
-    var report = Model.PerformanceReport;
+    var evaluation = Model.EvaluationReport;
+    var report = evaluation?.Report;
+    var isScored = evaluation?.DisplayState == EvaluationReportState.Scored && report is not null;
+    var showFeedbackTab = Model.FeedbackFormWasSubmitted || !string.IsNullOrWhiteSpace(Model.FeedbackMessage);
+    var evaluationsBySessionQuestionId = evaluation?.Questions.ToDictionary(question => question.SessionQuestionId)
+        ?? new Dictionary<Guid, ReportQuestionViewModel>();
     string ScoreClass(decimal? score) => score is null ? "score-muted" : score >= 80 ? "score-good" : score >= 60 ? "score-warn" : "score-bad";
     string Duration(int? ms) => ms is null ? string.Empty : ms.Value >= 1000 ? $"{Math.Round(ms.Value / 1000m, 1)}s" : $"{ms.Value}ms";
-    string StatusClass() => Model.IsCompleted ? "status-completed" : Model.IsCancelled ? "status-cancelled" : "status-expired";
+    string StatusClass() => Model.Status.ToUpperInvariant() switch
+    {
+        "COMPLETED" => "status-completed",
+        "CANCELLED" => "status-cancelled",
+        "EXPIRED" => "status-expired",
+        _ => string.Empty
+    };
+    string StateIcon() => evaluation?.DisplayState switch
+    {
+        EvaluationReportState.EvaluationIncomplete => "rule",
+        EvaluationReportState.NoEvaluatedAnswers => "speaker_notes_off",
+        EvaluationReportState.ExpiredNoResult => "timer_off",
+        EvaluationReportState.EvaluationUnavailable => "cloud_off",
+        _ => "analytics"
+    };
 }
 
 @section Styles {
@@ -18,203 +38,339 @@
     <link rel="stylesheet" href="~/css/pages/history.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/components/safe-text.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/components/star-rating.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/components/feedback-report.css" asp-append-version="true" />
 }
 
-    <div class="history-layout detail-layout">
-        <partial name="_InterviewSidebar" model="Model.Sidebar" />
+<div class="history-layout detail-layout">
+    <partial name="_InterviewSidebar" model="Model.Sidebar" />
 
-        <main class="history-transcript detail-transcript">
-            <div class="transcript-header">
-                <div class="detail-header-line">
-                    <div>
-                        <a class="detail-back" asp-controller="Interview" asp-action="History"
-                           aria-label="Back to Interview History" title="Back to Interview History">
-                            <svg class="detail-back-icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
-                                <path d="M11.75 4.75 6.5 10l5.25 5.25M7 10h7" />
-                            </svg>
-                            <span>Back to history</span>
-                        </a>
-                        <h2 class="transcript-title">@(session?.DisplayTitle ?? "Interview Session")</h2>
-                    </div>
-                    <span class="history-status @StatusClass()">@Model.Status</span>
+    <main class="history-transcript detail-transcript">
+        <div class="transcript-header">
+            <div class="detail-header-line">
+                <div>
+                    <a class="detail-back" asp-controller="Interview" asp-action="History"
+                       aria-label="Back to Interview History" title="Back to Interview History">
+                        <svg class="detail-back-icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+                            <path d="M11.75 4.75 6.5 10l5.25 5.25M7 10h7" />
+                        </svg>
+                        <span>Back to history</span>
+                    </a>
+                    <h2 class="transcript-title">@(session?.DisplayTitle ?? "Interview Session")</h2>
                 </div>
-                <div class="transcript-meta">
-                    <span class="chip"><span class="material-symbols-outlined" style="font-size:14px">signal_cellular_alt</span>@(session?.Level ?? "Level")</span>
-                    <span class="chip"><span class="material-symbols-outlined" style="font-size:14px">forum</span>@(session?.AnsweredQuestions ?? 0)/@(session?.TotalQuestions ?? 0) answered</span>
-                    <span class="chip"><span class="material-symbols-outlined" style="font-size:14px">timer</span>@(session?.DurationMinutes.ToString() ?? "-") min</span>
-                    @if (session?.EndedAt is not null)
-                    {
-                        <span class="chip"><span class="material-symbols-outlined" style="font-size:14px">event</span>@session.EndedAt.Value.ToString("MMM d, yyyy HH:mm")</span>
-                    }
-                </div>
+                <span class="history-status @StatusClass()" aria-label="Session status: @Model.Status">@Model.Status</span>
             </div>
-
-            <div class="transcript-body">
-                @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+            <div class="transcript-meta">
+                <span class="chip"><span class="material-symbols-outlined" style="font-size:14px">signal_cellular_alt</span>@(session?.Level ?? "Level")</span>
+                <span class="chip"><span class="material-symbols-outlined" style="font-size:14px">forum</span>@(session?.AnsweredQuestions ?? 0)/@(session?.TotalQuestions ?? 0) answered</span>
+                <span class="chip"><span class="material-symbols-outlined" style="font-size:14px">timer</span>@(session?.DurationMinutes.ToString() ?? "-") min</span>
+                @if (session?.EndedAt is not null)
                 {
-                    <div class="detail-alert error">@Model.ErrorMessage</div>
+                    <span class="chip"><span class="material-symbols-outlined" style="font-size:14px">event</span>@session.EndedAt.Value.ToString("MMM d, yyyy HH:mm")</span>
                 }
-                else if (Model.ChatLog?.Questions.Count is null or 0)
-                {
-                    <div class="panel-empty detail-empty">No chat messages were recorded for this session.</div>
-                }
-                else
-                {
-                    @foreach (var question in Model.ChatLog.Questions.OrderBy(q => q.QuestionIndex))
-                    {
-                        var aiMessages = question.Messages.Where(m => string.Equals(m.SenderRole, "AI", StringComparison.OrdinalIgnoreCase)).ToList();
-                        var userMessages = question.Messages.Where(m => string.Equals(m.SenderRole, "User", StringComparison.OrdinalIgnoreCase)).ToList();
+            </div>
+        </div>
 
-                        <section class="chat-question-group safe-text-container">
-                            <div class="q-divider">
-                                <div class="line"></div>
-                                <div class="label">Question @question.QuestionIndex</div>
-                                <div class="line"></div>
-                            </div>
+        <div class="transcript-body">
+            @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+            {
+                <div class="detail-alert error">@Model.ErrorMessage</div>
+            }
+            else if (Model.ChatLog?.Questions.Count is null or 0)
+            {
+                <div class="panel-empty detail-empty">No chat messages were recorded for this session.</div>
+            }
+            else
+            {
+                @foreach (var question in Model.ChatLog.Questions.OrderBy(q => q.QuestionIndex))
+                {
+                    var aiMessages = question.Messages
+                        .Where(m => string.Equals(m.SenderRole, "AI", StringComparison.OrdinalIgnoreCase))
+                        .ToList();
+                    var substantiveUserMessages = question.Messages
+                        .Where(m => m.IsSubstantiveAnswer)
+                        .OrderBy(m => m.SentAt)
+                        .ThenBy(m => m.MessageId)
+                        .ToList();
+                    var noAnswerReason = question.Messages
+                        .Where(m => string.Equals(m.SenderRole, "User", StringComparison.OrdinalIgnoreCase)
+                            && string.Equals(m.MessageType, "Answer", StringComparison.OrdinalIgnoreCase)
+                            && !m.IsSubstantiveAnswer)
+                        .OrderBy(m => m.SentAt)
+                        .ThenBy(m => m.MessageId)
+                        .Select(m => m.AnswerReason)
+                        .LastOrDefault(reason => !string.IsNullOrWhiteSpace(reason));
+                    evaluationsBySessionQuestionId.TryGetValue(question.SessionQuestionId, out var questionEvaluation);
+                    var evaluationUnavailable = evaluation?.QuestionEvaluationsUnavailable == true;
+                    var evaluated = !evaluationUnavailable && questionEvaluation?.Score is not null;
+                    var answerId = $"answer-{question.SessionQuestionId:N}";
 
-                            @foreach (var message in aiMessages.DefaultIfEmpty())
-                            {
-                                <div class="chat-row chat-row-ai">
-                                    <div class="chat-avatar">AI</div>
-                                    <div class="chat-bubble chat-bubble-ai">
-                                        <span class="chat-role">AI question</span>
-                                        <div class="chat-message-text safe-long-text">@(message?.Content ?? question.QuestionText)</div>
-                                        @if (message is not null)
-                                        {
-                                            <span class="chat-time">@message.SentAt.ToString("HH:mm")</span>
-                                        }
-                                    </div>
+                    <section class="chat-question-group safe-text-container" data-session-question-id="@question.SessionQuestionId">
+                        <div class="q-divider">
+                            <div class="line"></div>
+                            <div class="label">Question @question.QuestionIndex</div>
+                            <div class="line"></div>
+                        </div>
+
+                        @foreach (var message in aiMessages.DefaultIfEmpty())
+                        {
+                            <div class="chat-row chat-row-ai">
+                                <div class="chat-avatar">AI</div>
+                                <div class="chat-bubble chat-bubble-ai">
+                                    <span class="chat-role">AI question</span>
+                                    <div class="chat-message-text safe-long-text">@(message?.Content ?? question.QuestionText)</div>
+                                    @if (message is not null)
+                                    {
+                                        <span class="chat-time">@message.SentAt.ToString("HH:mm")</span>
+                                    }
                                 </div>
-                            }
+                            </div>
+                        }
 
-                            @if (userMessages.Count == 0 || userMessages.All(m => string.IsNullOrWhiteSpace(m.Content)))
+                        @if (!question.HasSubstantiveAnswer || substantiveUserMessages.Count == 0)
+                        {
+                            <div class="chat-row chat-row-user">
+                                <div class="chat-bubble chat-bubble-no-answer">
+                                    <span>No answer recorded</span>
+                                    @if (string.Equals(noAnswerReason, "Skipped", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        <span class="chat-answer-reason">Skipped</span>
+                                    }
+                                    else if (string.Equals(noAnswerReason, "TimedOut", StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        <span class="chat-answer-reason">Timed out</span>
+                                    }
+                                </div>
+                                <div class="chat-avatar">You</div>
+                            </div>
+                        }
+                        else
+                        {
+                            @foreach (var message in substantiveUserMessages)
                             {
                                 <div class="chat-row chat-row-user">
-                                    <div class="chat-bubble chat-bubble-no-answer">No answer recorded</div>
+                                    <div class="chat-bubble chat-bubble-user">
+                                        <span class="chat-role">Your answer</span>
+                                        <div id="@answerId" class="chat-message-text safe-long-text feedback-expandable" data-expandable-text data-lines="6">@message.Content</div>
+                                        <button class="feedback-expand-toggle transcript-expand-toggle"
+                                                type="button"
+                                                data-expand-toggle
+                                                aria-controls="@answerId"
+                                                aria-expanded="false"
+                                                hidden>Show more</button>
+                                        <span class="chat-time">@message.SentAt.ToString("HH:mm") @Duration(message.ResponseDurationMs)</span>
+                                    </div>
                                     <div class="chat-avatar">You</div>
                                 </div>
                             }
-                            else
-                            {
-                                @foreach (var message in userMessages)
+                        }
+
+                        <details class="transcript-evaluation safe-text-container">
+                            <summary>
+                                <span>Question evaluation</span>
+                                @if (!question.HasSubstantiveAnswer)
                                 {
-                                    <div class="chat-row chat-row-user">
-                                        <div class="chat-bubble chat-bubble-user">
-                                            <span class="chat-role">Your answer</span>
-                                            <div class="chat-message-text safe-long-text">@message.Content</div>
-                                            <span class="chat-time">@message.SentAt.ToString("HH:mm") @Duration(message.ResponseDurationMs)</span>
-                                        </div>
-                                        <div class="chat-avatar">You</div>
-                                    </div>
+                                    <span class="detail-question-status no-answer">No answer recorded</span>
                                 }
-                            }
-                        </section>
-                    }
-                }
-            </div>
-        </main>
+                                else if (evaluationUnavailable)
+                                {
+                                    <span class="detail-question-status pending">Evaluation unavailable</span>
+                                }
+                                else if (!evaluated)
+                                {
+                                    <span class="detail-question-status pending">Not evaluated</span>
+                                }
+                                else
+                                {
+                                    <span class="detail-question-status evaluated" aria-label="Question score @Math.Round(questionEvaluation!.Score!.Value) out of 100">@Math.Round(questionEvaluation!.Score!.Value)/100</span>
+                                }
+                            </summary>
 
-        <aside class="history-panel detail-panel">
-            <div class="panel-tabs" data-tabs>
-                <button class="panel-tab is-active" type="button" data-tab-target="score-tab">Score &amp; Stats</button>
-                <button class="panel-tab" type="button" data-tab-target="feedback-tab">Detailed Feedback</button>
-            </div>
-
-            <div class="panel-body detail-panel-body">
-                <section id="score-tab" class="detail-tab-panel is-active">
-                    <div class="panel-section-title">Performance Report</div>
-
-                    @if (report is null)
-                    {
-                        <div class="report-empty-state">
-                            <span class="material-symbols-outlined">@(Model.IsExpired ? "timer_off" : Model.IsCancelled ? "cancel" : "analytics")</span>
-                            <strong>Report not available</strong>
-                            <p>@(Model.ReportMessage ?? "No report is available for this session.")</p>
-                            @if (!Model.IsCompleted && session is not null)
+                            @if (evaluated && questionEvaluation is not null)
                             {
-                                <div class="report-empty-facts" aria-label="Session summary">
-                                    <div>
-                                        <span>Answered</span>
-                                        <strong>@session.AnsweredQuestions/@session.TotalQuestions</strong>
-                                    </div>
-                                    <div>
-                                        <span>Duration</span>
-                                        <strong>@session.DurationMinutes min</strong>
-                                    </div>
-                                    @if (session.EndedAt is not null)
+                                <div class="transcript-evaluation-body safe-text-container">
+                                    @if (questionEvaluation.CriteriaScores.Count > 0)
                                     {
-                                        <div>
-                                            <span>Ended</span>
-                                            <strong>@session.EndedAt.Value.ToString("MMM d, HH:mm")</strong>
+                                        <dl class="detail-criteria-grid">
+                                            @foreach (var criterion in questionEvaluation.CriteriaScores)
+                                            {
+                                                <div>
+                                                    <dt>@criterion.Label</dt>
+                                                    <dd aria-label="@criterion.Label score @Math.Round(criterion.Score) out of 100">@Math.Round(criterion.Score)/100</dd>
+                                                </div>
+                                            }
+                                        </dl>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(questionEvaluation.AiFeedback))
+                                    {
+                                        <div class="detail-question-copy">
+                                            <strong>AI Analysis</strong>
+                                            <p class="safe-long-text">@questionEvaluation.AiFeedback</p>
+                                        </div>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(questionEvaluation.Strengths))
+                                    {
+                                        <div class="detail-question-copy">
+                                            <strong>Strengths</strong>
+                                            <p class="safe-long-text">@questionEvaluation.Strengths</p>
+                                        </div>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(questionEvaluation.AreasToImprove))
+                                    {
+                                        <div class="detail-question-copy">
+                                            <strong>Areas to Improve</strong>
+                                            <p class="safe-long-text">@questionEvaluation.AreasToImprove</p>
                                         </div>
                                     }
                                 </div>
                             }
+                        </details>
+                    </section>
+                }
+            }
+        </div>
+    </main>
+
+    @if (Model.IsTerminal && Model.ChatLog is not null)
+    {
+        <aside class="history-panel detail-panel">
+            <div class="panel-tabs" data-tabs role="tablist" aria-label="Session detail sections">
+                <button id="score-tab-button"
+                        class="panel-tab @(!showFeedbackTab ? "is-active" : null)"
+                        type="button"
+                        role="tab"
+                        aria-controls="score-tab"
+                        aria-selected="@(!showFeedbackTab).ToString().ToLowerInvariant()"
+                        data-tab-target="score-tab">Score &amp; Stats</button>
+                <button id="feedback-tab-button"
+                        class="panel-tab @(showFeedbackTab ? "is-active" : null)"
+                        type="button"
+                        role="tab"
+                        aria-controls="feedback-tab"
+                        aria-selected="@showFeedbackTab.ToString().ToLowerInvariant()"
+                        data-tab-target="feedback-tab">Detailed Feedback</button>
+            </div>
+
+            <div class="panel-body detail-panel-body">
+                <section id="score-tab"
+                         class="detail-tab-panel @(!showFeedbackTab ? "is-active" : null)"
+                         role="tabpanel"
+                         aria-labelledby="score-tab-button"
+                         hidden="@showFeedbackTab">
+                    <div class="panel-section-title">Performance Report</div>
+
+                    @if (!isScored || report is null)
+                    {
+                        <div class="report-empty-state" data-performance-state="@(evaluation?.DisplayState.ToString() ?? EvaluationReportState.EvaluationUnavailable.ToString())">
+                            <span class="material-symbols-outlined">@StateIcon()</span>
+                            <strong>@(evaluation?.StateTitle ?? "Evaluation unavailable")</strong>
+                            <p>@(evaluation?.StateMessage ?? "Evaluation data cannot be loaded right now.")</p>
                         </div>
                     }
                     else
                     {
-                        var overallPct = Math.Min(100, Math.Max(0, (int)Math.Round(report.OverallScore)));
+                        var overallPct = Math.Clamp((int)Math.Round(report.OverallScore), 0, 100);
 
-                        <div class="score-hero" style="--score-pct:@overallPct%;">
+                        <div class="score-hero" style="--score-pct:@overallPct%;" aria-label="Overall score @Math.Round(report.OverallScore) out of 100">
                             <span class="num @ScoreClass(report.OverallScore)">
                                 @Math.Round(report.OverallScore)
                                 <span>/100</span>
                             </span>
-                            @if (!string.IsNullOrEmpty(report.Grade))
+                            @if (!string.IsNullOrWhiteSpace(report.Grade))
                             {
                                 <span class="grade">Grade @report.Grade</span>
                             }
                         </div>
 
-                        <div class="h-bars">
+                        <div class="h-bars" aria-label="Performance category scores">
                             @foreach (var metric in new[]
-                                                    {
-                                                new { Label = "Technical", Score = report.TechnicalScore, Class = "metric-technical" },
-                                                new { Label = "Communication", Score = report.CommunicationScore, Class = "metric-communication" },
-                                                new { Label = "Problem Solving", Score = report.ProblemSolvingScore, Class = "metric-problem-solving" }
-                                                })
+                            {
+                                new { Label = "Technical", Score = report.TechnicalScore, Class = "metric-technical" },                                new { Label = "Communication", Score = report.CommunicationScore, Class = "metric-communication" },
+                                new { Label = "Problem Solving", Score = report.ProblemSolvingScore, Class = "metric-problem-solving" }
+                            })
                             {
                                 if (metric.Score is not null)
                                 {
+                                    var metricWidth = Math.Clamp((int)Math.Round(metric.Score.Value), 0, 100);
                                     <div class="h-bar-row @metric.Class">
                                         <div class="h-bar-head">
                                             <span>@metric.Label</span>
-                                            <span class="h-bar-score @metric.Class">@Math.Round(metric.Score.Value)/100</span>
+                                            <span class="h-bar-score @ScoreClass(metric.Score)" aria-label="@metric.Label score @Math.Round(metric.Score.Value) out of 100">@Math.Round(metric.Score.Value)/100</span>
                                         </div>
-                                        <div class="h-bar-track">
-                                            <div class="h-bar-fill @metric.Class" style="width:@Math.Round(metric.Score.Value)%"></div>
+                                        <div class="h-bar-track" aria-hidden="true">
+                                            <div class="h-bar-fill @metric.Class" style="width:@metricWidth%"></div>
                                         </div>
                                     </div>
                                 }
                             }
                         </div>
 
-                        @if (!string.IsNullOrEmpty(report.Summary))
+                        @if (!string.IsNullOrWhiteSpace(report.Summary)
+                            || !string.IsNullOrWhiteSpace(report.Strengths)
+                            || !string.IsNullOrWhiteSpace(report.Improvements)
+                            || !string.IsNullOrWhiteSpace(report.Recommendations))
                         {
-                            <div class="fb-card summary">
-                                <h4>AI Coach Summary</h4>
-                                <p class="safe-long-text">@report.Summary</p>
-                            </div>
+                            <section class="detail-coach-summary safe-text-container" aria-labelledby="coach-summary-title">
+                                <h3 id="coach-summary-title">AI Coach Summary</h3>
+                                @if (!string.IsNullOrWhiteSpace(report.Summary))
+                                {
+                                    <div class="fb-card summary">
+                                        <h4>Advice &amp; Summary</h4>
+                                        <p class="safe-long-text">@report.Summary</p>
+                                    </div>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(report.Strengths))
+                                {
+                                    <div class="fb-card strengths">
+                                        <h4>Key Strengths</h4>
+                                        <ul>
+                                            @foreach (var item in report.Strengths.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                                            {
+                                                <li class="safe-long-text">@item</li>
+                                            }
+                                        </ul>
+                                    </div>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(report.Improvements))
+                                {
+                                    <div class="fb-card improve">
+                                        <h4>Areas to Improve</h4>
+                                        <ul>
+                                            @foreach (var item in report.Improvements.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                                            {
+                                                <li class="safe-long-text">@item</li>
+                                            }
+                                        </ul>
+                                    </div>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(report.Recommendations))
+                                {
+                                    <div class="fb-card recommendations">
+                                        <h4>Recommendations</h4>
+                                        <p class="safe-long-text">@report.Recommendations</p>
+                                    </div>
+                                }
+                            </section>
                         }
+
+
                     }
                 </section>
 
-                <section id="feedback-tab" class="detail-tab-panel">
+                <section id="feedback-tab"
+                         class="detail-tab-panel @(showFeedbackTab ? "is-active" : null)"
+                         role="tabpanel"
+                         aria-labelledby="feedback-tab-button"
+                         hidden="@(!showFeedbackTab)">
                     <div class="panel-section-title">Your Interview Feedback</div>
 
                     @if (!string.IsNullOrEmpty(Model.FeedbackMessage))
                     {
-                        <div class="detail-alert warning">@Model.FeedbackMessage</div>
+                        <div class="detail-alert warning" role="status">@Model.FeedbackMessage</div>
                     }
 
                     @if (Model.MyInterviewFeedback is not null)
                     {
                         var fb = Model.MyInterviewFeedback;
-                        var publicationStatus = fb.IsVisible &&
-                            string.Equals(fb.ModerationStatus, "Approved", StringComparison.OrdinalIgnoreCase)
-                                ? "Published"
-                                : "Not published";
                         <div class="my-feedback-card polished-feedback-card">
                             <div class="my-feedback-head">
                                 <div>
@@ -225,7 +381,6 @@
                                         Value = fb.OverallRating
                                     })
                                 </div>
-                                <span class="feedback-status-pill">@publicationStatus</span>
                             </div>
                             <div class="feedback-score-grid">
                                 <span>Question quality @await Html.PartialAsync("_StarRating", new WebClient.Models.Shared.StarRatingViewModel { Label = "Question quality", Value = fb.QuestionQualityRating, Compact = true })</span>
@@ -238,9 +393,19 @@
                                 <blockquote class="feedback-comment-box safe-long-text">@fb.Comment</blockquote>
                             }
                             <small>Submitted @fb.CreatedAt.ToString("MMM d, yyyy HH:mm")</small>
+                            <div class="feedback-owner-actions">
+                                <button type="button" class="feedback-owner-action feedback-owner-action-edit" data-edit-interview-trigger data-feedback-id="@fb.FeedbackId" data-overall="@fb.OverallRating" data-question="@fb.QuestionQualityRating" data-ai="@fb.AiAccuracyRating" data-scoring="@fb.ScoringFairnessRating" data-usefulness="@fb.FeedbackUsefulnessRating" data-comment="@fb.Comment" aria-label="Edit interview feedback">
+                                    <span class="material-symbols-outlined" aria-hidden="true">edit</span>
+                                    <span>Edit</span>
+                                </button>
+                                <button type="button" class="feedback-owner-action feedback-owner-action-delete" data-delete-interview-trigger data-feedback-id="@fb.FeedbackId" aria-label="Delete interview feedback">
+                                    <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+                                    <span>Delete</span>
+                                </button>
+                            </div>
                         </div>
                     }
-                    else if (Model.IsCompleted && report is not null && Model.CanSubmitInterviewFeedback)
+                    else if (Model.CanSubmitInterviewFeedback)
                     {
                         <form method="post" asp-controller="Interview" asp-action="SubmitInterviewFeedback" asp-route-id="@Model.SessionId" class="feedback-mini-form detail-feedback-form safe-text-container" data-feedback-form>
                             @Html.AntiForgeryToken()
@@ -261,6 +426,7 @@
                                     Name = field.Name,
                                     Label = field.Label,
                                     Value = Model.FeedbackFormWasSubmitted ? field.Value : 5,
+                                    InstancePrefix = "details-feedback-submit",
                                     Editable = true,
                                     Required = true
                                 })
@@ -287,33 +453,91 @@
                     else
                     {
                         <div class="report-empty-state">
-                            <span class="material-symbols-outlined">@(Model.IsExpired ? "reviews" : Model.IsCancelled ? "cancel" : "rate_review")</span>
-                            @if (Model.IsCancelled)
-                            {
-                                <strong>Detailed feedback unavailable</strong>
-                                <p>Interview feedback is unavailable because this interview was cancelled.</p>
-                            }
-                            else if (Model.IsExpired)
-                            {
-                                <strong>Detailed feedback unavailable</strong>
-                                <p>Interview feedback is unavailable because this interview expired.</p>
-                            }
-                            else if (report is null)
-                            {
-                                <strong>Performance report required</strong>
-                                <p>Interview feedback becomes available after the completed session report is ready.</p>
-                            }
-                            else
-                            {
-                                <strong>Feedback unavailable</strong>
-                                <p>Feedback cannot be submitted for this session right now.</p>
-                            }
+                            <span class="material-symbols-outlined">rate_review</span>
+                            <strong>Feedback unavailable</strong>
+                            <p>Interview feedback cannot be submitted for this session right now.</p>
                         </div>
                     }
                 </section>
             </div>
         </aside>
+    }
+</div>
+
+@if (Model.MyInterviewFeedback is not null)
+{
+    <div class="feedback-report-modal" data-edit-interview-modal data-open-on-load="@Model.FeedbackEditFormWasSubmitted.ToString().ToLowerInvariant()" hidden>
+        <div class="feedback-report-backdrop" data-edit-interview-close></div>
+        <section class="feedback-report-dialog" role="dialog" aria-modal="true" aria-labelledby="edit-interview-title">
+            <header class="feedback-report-dialog-header">
+                <div>
+                    <p>Interview Feedback</p>
+                    <h2 id="edit-interview-title">Edit feedback</h2>
+                </div>
+                <button type="button" class="feedback-report-close" data-edit-interview-close aria-label="Close dialog">
+                    <span class="material-symbols-outlined" aria-hidden="true">close</span>
+                </button>
+            </header>
+            <form method="post" asp-controller="Interview" asp-action="EditInterviewFeedback" asp-route-id="@Model.SessionId" class="feedback-form">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="feedbackId" value="@Model.MyInterviewFeedback.FeedbackId" />
+                <input type="hidden" name="source" value="Details" />
+                <input type="hidden" name="durationActualSec" value="0" />
+                @foreach (var field in new[]
+                {
+                    new { Name = "OverallRating", Label = "Overall rating", Value = Model.FeedbackEditFormWasSubmitted ? (int?)Model.EditFeedbackForm.OverallRating : (int?)Model.MyInterviewFeedback.OverallRating },
+                    new { Name = "QuestionQualityRating", Label = "Question quality", Value = Model.FeedbackEditFormWasSubmitted ? (int?)Model.EditFeedbackForm.QuestionQualityRating : (int?)Model.MyInterviewFeedback.QuestionQualityRating },
+                    new { Name = "AiAccuracyRating", Label = "AI accuracy", Value = Model.FeedbackEditFormWasSubmitted ? (int?)Model.EditFeedbackForm.AiAccuracyRating : (int?)Model.MyInterviewFeedback.AiAccuracyRating },
+                    new { Name = "ScoringFairnessRating", Label = "Scoring fairness", Value = Model.FeedbackEditFormWasSubmitted ? (int?)Model.EditFeedbackForm.ScoringFairnessRating : (int?)Model.MyInterviewFeedback.ScoringFairnessRating },
+                    new { Name = "FeedbackUsefulnessRating", Label = "Feedback usefulness", Value = Model.FeedbackEditFormWasSubmitted ? (int?)Model.EditFeedbackForm.FeedbackUsefulnessRating : (int?)Model.MyInterviewFeedback.FeedbackUsefulnessRating }
+                })
+                {
+                    @await Html.PartialAsync("_StarRating", new WebClient.Models.Shared.StarRatingViewModel
+                    {
+                        Name = field.Name,
+                        Label = field.Label,
+                        Value = field.Value,
+                        InstancePrefix = "details-feedback-edit",
+                        Editable = true,
+                        Required = true
+                    })
+                }
+                <label for="edit-interview-comment-details" class="feedback-dialog-label">Comment <span>(optional)</span></label>
+                <textarea id="edit-interview-comment-details" class="feedback-comment-input" name="Comment" rows="4" maxlength="@InterviewFeedbackRules.MaxCommentLength">@(Model.FeedbackEditFormWasSubmitted ? Model.EditFeedbackForm.Comment : Model.MyInterviewFeedback.Comment)</textarea>
+                <div class="feedback-report-actions">
+                    <button type="button" class="feedback-report-cancel" data-edit-interview-close>Cancel</button>
+                    <button type="submit" class="feedback-report-submit">Save Changes</button>
+                </div>
+            </form>
+        </section>
     </div>
+
+    <div class="feedback-report-modal" data-delete-interview-modal hidden>
+        <div class="feedback-report-backdrop" data-delete-interview-close></div>
+        <section class="feedback-report-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-interview-title">
+            <header class="feedback-report-dialog-header">
+                <div>
+                    <p>Confirmation</p>
+                    <h2 id="delete-interview-title">Delete interview feedback?</h2>
+                </div>
+                <button type="button" class="feedback-report-close" data-delete-interview-close aria-label="Close dialog">
+                    <span class="material-symbols-outlined" aria-hidden="true">close</span>
+                </button>
+            </header>
+            <p class="feedback-report-description">Are you sure you want to delete your interview feedback? After deletion, you will be able to submit new feedback for this session.</p>
+            <form method="post" asp-controller="Interview" asp-action="DeleteInterviewFeedback" asp-route-id="@Model.SessionId">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="feedbackId" value="@Model.MyInterviewFeedback.FeedbackId" />
+                <input type="hidden" name="source" value="Details" />
+                <input type="hidden" name="durationActualSec" value="0" />
+                <div class="feedback-report-actions">
+                    <button type="button" class="feedback-report-cancel" data-delete-interview-close>Cancel</button>
+                    <button type="submit" class="feedback-report-submit feedback-report-submit-danger">Delete</button>
+                </div>
+            </form>
+        </section>
+    </div>
+}
 
 @section Scripts {
     <script src="~/js/pages/dashboard.js" asp-append-version="true"></script>

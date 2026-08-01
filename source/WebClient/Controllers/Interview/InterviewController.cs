@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WebClient.Helpers;
+using WebClient.Controllers.Shared;
 using WebClient.Models.Evaluation;
 using WebClient.Models.Feedback;
 using WebClient.Models.Interview;
@@ -19,6 +20,7 @@ public class InterviewController(
     IBiometricsService biometricsService,
     IVerificationService verificationService,
     IFeedbackService feedbackService,
+    IEvaluationService evaluationService,
     IPaymentService paymentService) : Controller
 {
     private const int HistoryPageSize = 5;
@@ -220,10 +222,16 @@ public class InterviewController(
         int page = 1,
         string? status = null,
         string? position = null,
+        string? questionType = null,
         string? keyword = null,
         CancellationToken cancellationToken = default)
     {
-        var model = await interviewService.GetHistoryAsync(page, HistoryPageSize, status, position, keyword, cancellationToken);
+        var model = await interviewService.GetHistoryAsync(page, HistoryPageSize, status, position, questionType, keyword, cancellationToken);
+        if (model.LoadStatusCode == StatusCodes.Status401Unauthorized)
+        {
+            return CandidateAuthenticationRedirect.ToLogin(this, Request.Path + Request.QueryString);
+        }
+
         model.SuccessMessage = TempData["SuccessMessage"] as string;
         model.ErrorMessage ??= TempData["ErrorMessage"] as string;
         return View(model);
@@ -231,9 +239,17 @@ public class InterviewController(
 
     public async Task<IActionResult> Details(Guid id, CancellationToken cancellationToken)
     {
-        var model = await interviewService.GetSessionDetailAsync(id, cancellationToken);
-        await LoadMyInterviewFeedbackAsync(model, cancellationToken);
-        model.FeedbackMessage = TempData["FeedbackMessage"] as string;
+        var model = await LoadSessionDetailsAsync(id, cancellationToken);
+        if (model.LoadStatusCode == StatusCodes.Status401Unauthorized)
+        {
+            return CandidateAuthenticationRedirect.ToLogin(this, Request.Path + Request.QueryString);
+        }
+
+        var feedbackMessage = TempData["FeedbackMessage"] as string;
+        if (!string.IsNullOrWhiteSpace(feedbackMessage))
+        {
+            model.FeedbackMessage = feedbackMessage;
+        }
         return View(model);
     }
 
@@ -243,8 +259,18 @@ public class InterviewController(
         var result = await interviewService.GetRecentSessionsAsync(page, RecentSessionsPageSize, cancellationToken);
         if (!result.Success || result.Data is null)
         {
+            if (result.StatusCode == StatusCodes.Status401Unauthorized)
+            {
+                var returnUrl = Url.Action(nameof(Index), "Interview") ?? "/Interview";
+                return Unauthorized(new
+                {
+                    error = CandidateAuthenticationRedirect.ExpiredMessage,
+                    loginUrl = Url.Action("Login", "Auth", new { returnUrl })
+                });
+            }
+
             return StatusCode(result.StatusCode == 0 ? StatusCodes.Status500InternalServerError : result.StatusCode,
-                new { error = result.Error ?? "Could not load recent sessions." });
+                new { error = ToFeedbackMessage(result.StatusCode, result.Error, "Could not load recent sessions.") });
         }
 
         return Json(new
@@ -273,6 +299,7 @@ public class InterviewController(
         int page = 1,
         string? status = null,
         string? position = null,
+        string? questionType = null,
         string? keyword = null,
         CancellationToken cancellationToken = default)
     {
@@ -286,7 +313,7 @@ public class InterviewController(
             TempData["ErrorMessage"] = result.Error ?? "Could not remove this session from history.";
         }
 
-        return RedirectToAction(nameof(History), new { page, pageSize = HistoryPageSize, status, position, keyword });
+        return RedirectToAction(nameof(History), new { page, pageSize = HistoryPageSize, status, position, questionType, keyword });
     }
 
     [HttpPost]
@@ -295,6 +322,7 @@ public class InterviewController(
         Guid id,
         SubmitInterviewFeedbackRequest request,
         string? source,
+        int durationActualSec,
         CancellationToken cancellationToken)
     {
         request.SessionId = id;
@@ -305,7 +333,7 @@ public class InterviewController(
         {
             var fieldMessage = CommentValidationMessage();
             var validationSummary = fieldMessage ?? "Please choose a 1-5 star rating for each category.";
-            return await RedisplayInterviewFeedbackAsync(id, request, isEvaluationSource, validationSummary, fieldMessage, cancellationToken);
+            return await RedisplayInterviewFeedbackAsync(id, request, isEvaluationSource, durationActualSec, validationSummary, fieldMessage, cancellationToken);
         }
 
         var result = await feedbackService.SubmitInterviewFeedbackAsync(request, cancellationToken);
@@ -313,14 +341,14 @@ public class InterviewController(
         {
             TempData["FeedbackMessage"] = "Interview feedback submitted and published successfully.";
             return isEvaluationSource
-                ? RedirectToAction("Report", "Evaluation", new { sessionId = id })
+                ? RedirectToAction("Report", "Evaluation", new { sessionId = id, durationActualSec })
                 : RedirectToAction(nameof(Details), new { id });
         }
 
         if (result.StatusCode == StatusCodes.Status401Unauthorized)
         {
             var returnUrl = isEvaluationSource
-                ? Url.Action("Report", "Evaluation", new { sessionId = id })
+                ? Url.Action("Report", "Evaluation", new { sessionId = id, durationActualSec })
                 : Url.Action(nameof(Details), "Interview", new { id });
             return RedirectToAction("Login", "Auth", new { returnUrl });
         }
@@ -333,10 +361,10 @@ public class InterviewController(
                 TempData["FeedbackMessage"] = "Your existing feedback is shown below.";
                 if (isEvaluationSource)
                 {
-                    return RedirectToAction("Report", "Evaluation", new { sessionId = id });
+                    return RedirectToAction("Report", "Evaluation", new { sessionId = id, durationActualSec });
                 }
 
-                var duplicateModel = await interviewService.GetSessionDetailAsync(id, cancellationToken);
+                var duplicateModel = await LoadSessionDetailsAsync(id, cancellationToken);
                 duplicateModel.MyInterviewFeedback = existing.Data;
                 duplicateModel.FeedbackMessage = "Your existing feedback is shown below.";
                 return View(nameof(Details), duplicateModel);
@@ -346,6 +374,7 @@ public class InterviewController(
                 id,
                 request,
                 isEvaluationSource,
+                durationActualSec,
                 "Feedback already exists for this interview session, but it could not be reloaded right now.",
                 null,
                 cancellationToken);
@@ -356,7 +385,94 @@ public class InterviewController(
             && result.Error?.Contains("Comment", StringComparison.OrdinalIgnoreCase) == true
                 ? result.Error
                 : null;
-        return await RedisplayInterviewFeedbackAsync(id, request, isEvaluationSource, message, validationMessage, cancellationToken);
+        return await RedisplayInterviewFeedbackAsync(id, request, isEvaluationSource, durationActualSec, message, validationMessage, cancellationToken);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> EditInterviewFeedback(
+        Guid id,
+        Guid feedbackId,
+        UpdateInterviewFeedbackRequest request,
+        string? source,
+        int durationActualSec,
+        CancellationToken cancellationToken)
+    {
+        request.Comment = FeedbackInput.NormalizeOptionalComment(request.Comment);
+        var isEvaluationSource = string.Equals(source, "Evaluation", StringComparison.OrdinalIgnoreCase);
+
+        if (!ModelState.IsValid)
+        {
+            return await RedisplayInterviewFeedbackEditAsync(
+                id,
+                feedbackId,
+                request,
+                isEvaluationSource,
+                durationActualSec,
+                "Please choose a 1-5 star rating for each category.",
+                cancellationToken);
+        }
+
+        var result = await feedbackService.EditInterviewFeedbackAsync(feedbackId, request, cancellationToken);
+        if (result.Success)
+        {
+            TempData["FeedbackMessage"] = "Interview feedback updated successfully.";
+        }
+        else if (result.StatusCode == StatusCodes.Status401Unauthorized)
+        {
+            var returnUrl = isEvaluationSource
+                ? Url.Action("Report", "Evaluation", new { sessionId = id, durationActualSec })
+                : Url.Action(nameof(Details), "Interview", new { id });
+            return RedirectToAction("Login", "Auth", new { returnUrl });
+        }
+        else
+        {
+            return await RedisplayInterviewFeedbackEditAsync(
+                id,
+                feedbackId,
+                request,
+                isEvaluationSource,
+                durationActualSec,
+                result.Error ?? "Could not update interview feedback.",
+                cancellationToken);
+        }
+
+        return isEvaluationSource
+            ? RedirectToAction("Report", "Evaluation", new { sessionId = id, durationActualSec })
+            : RedirectToAction(nameof(Details), new { id });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteInterviewFeedback(
+        Guid id,
+        Guid feedbackId,
+        string? source,
+        int durationActualSec,
+        CancellationToken cancellationToken)
+    {
+        var isEvaluationSource = string.Equals(source, "Evaluation", StringComparison.OrdinalIgnoreCase);
+
+        var result = await feedbackService.DeleteInterviewFeedbackAsync(feedbackId, cancellationToken);
+        if (result.Success || result.StatusCode == StatusCodes.Status404NotFound)
+        {
+            TempData["FeedbackMessage"] = "Your interview feedback has been deleted. You can submit new feedback below.";
+        }
+        else if (result.StatusCode == StatusCodes.Status401Unauthorized)
+        {
+            var returnUrl = isEvaluationSource
+                ? Url.Action("Report", "Evaluation", new { sessionId = id, durationActualSec })
+                : Url.Action(nameof(Details), "Interview", new { id });
+            return RedirectToAction("Login", "Auth", new { returnUrl });
+        }
+        else
+        {
+            TempData["FeedbackMessage"] = result.Error ?? "Could not delete interview feedback.";
+        }
+
+        return isEvaluationSource
+            ? RedirectToAction("Report", "Evaluation", new { sessionId = id, durationActualSec })
+            : RedirectToAction(nameof(Details), new { id });
     }
 
     [HttpPost]
@@ -515,10 +631,38 @@ public class InterviewController(
     }
 
 
+    private async Task<SessionDetailViewModel> LoadSessionDetailsAsync(
+        Guid sessionId,
+        CancellationToken cancellationToken)
+    {
+        var model = await interviewService.GetSessionDetailAsync(sessionId, cancellationToken);
+        if (model.ChatLog is null || !model.IsTerminal)
+        {
+            return model;
+        }
+
+        try
+        {
+            model.EvaluationReport = await evaluationService.GetSessionDetailsReportAsync(
+                model.Session,
+                model.ChatLog,
+                model.FeedbackEligibility,
+                cancellationToken);
+        }
+        catch (AuthenticationExpiredException)
+        {
+            model.LoadStatusCode = StatusCodes.Status401Unauthorized;
+            return model;
+        }
+        await LoadMyInterviewFeedbackAsync(model, cancellationToken);
+        return model;
+    }
+
     private async Task<IActionResult> RedisplayInterviewFeedbackAsync(
         Guid sessionId,
         SubmitInterviewFeedbackRequest request,
         bool isEvaluationSource,
+        int durationActualSec,
         string message,
         string? validationMessage,
         CancellationToken cancellationToken)
@@ -528,15 +672,39 @@ public class InterviewController(
             TempData[FeedbackTempDataKeys.InterviewForm] = JsonSerializer.Serialize(request);
             TempData[FeedbackTempDataKeys.InterviewValidation] = validationMessage;
             TempData["FeedbackMessage"] = message;
-            return RedirectToAction("Report", "Evaluation", new { sessionId });
+            return RedirectToAction("Report", "Evaluation", new { sessionId, durationActualSec });
         }
 
-        var model = await interviewService.GetSessionDetailAsync(sessionId, cancellationToken);
+        var model = await LoadSessionDetailsAsync(sessionId, cancellationToken);
         model.FeedbackForm = request;
         model.FeedbackFormWasSubmitted = true;
         model.FeedbackValidationMessage = validationMessage;
         model.FeedbackMessage = message;
-        await LoadMyInterviewFeedbackAsync(model, cancellationToken);
+        return View(nameof(Details), model);
+    }
+
+    private async Task<IActionResult> RedisplayInterviewFeedbackEditAsync(
+        Guid sessionId,
+        Guid feedbackId,
+        UpdateInterviewFeedbackRequest request,
+        bool isEvaluationSource,
+        int durationActualSec,
+        string message,
+        CancellationToken cancellationToken)
+    {
+        if (isEvaluationSource)
+        {
+            TempData[FeedbackTempDataKeys.InterviewEditForm] = JsonSerializer.Serialize(request);
+            TempData[FeedbackTempDataKeys.InterviewEditFeedbackId] = feedbackId.ToString();
+            TempData["FeedbackMessage"] = message;
+            return RedirectToAction("Report", "Evaluation", new { sessionId, durationActualSec });
+        }
+
+        var model = await LoadSessionDetailsAsync(sessionId, cancellationToken);
+        model.EditFeedbackForm = request;
+        model.EditingFeedbackId = feedbackId;
+        model.FeedbackEditFormWasSubmitted = true;
+        model.FeedbackMessage = message;
         return View(nameof(Details), model);
     }
 
@@ -558,11 +726,17 @@ public class InterviewController(
         {
             model.MyInterviewFeedback = result.Data;
         }
+        else if (result.StatusCode == StatusCodes.Status401Unauthorized)
+        {
+            model.LoadStatusCode = result.StatusCode;
+        }
         else if (result.StatusCode != StatusCodes.Status404NotFound &&
-                 result.StatusCode != StatusCodes.Status401Unauthorized &&
                  result.StatusCode != StatusCodes.Status403Forbidden)
         {
-            model.FeedbackMessage ??= result.Error;
+            model.FeedbackMessage ??= ToFeedbackMessage(
+                result.StatusCode,
+                result.Error,
+                "Interview feedback cannot be loaded right now.");
         }
     }
 

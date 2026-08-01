@@ -7,6 +7,7 @@ using InterviewAPI.Repositories;
 using InterviewAPI.Repositories.Interfaces;
 using InterviewAPI.Services;
 using InterviewAPI.Services.Interfaces;
+using InterviewAPI.Services.Grading;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -31,6 +32,9 @@ builder.Services.AddScoped<IInterviewRepository, InterviewRepository>();
 builder.Services.AddScoped<IInterviewService, InterviewService>();
 builder.Services.AddScoped<ISessionRepository, SessionRepository>();
 builder.Services.AddScoped<ISessionService, SessionService>();
+builder.Services.AddSingleton(new GradingQueueOptions());
+builder.Services.AddSingleton<IGradingQueue, BoundedGradingQueue>();
+builder.Services.AddHostedService<GradingBackgroundService>();
 builder.Services.AddScoped<IProfileBiometricsRepository, ProfileBiometricsRepository>();
 builder.Services.AddScoped<IProfileBiometricsService, ProfileBiometricsService>();
 builder.Services.AddScoped<ISessionVerificationChallengeRepository, SessionVerificationChallengeRepository>();
@@ -86,7 +90,7 @@ builder.Services.AddHttpClient<IPaymentApiClient, PaymentApiClient>(client =>
 })
 .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { UseProxy = false });
 
-// Calls EvaluationAPI to grade each answer in the background (bearer token forwarded per call).
+// The hosted grading workers resolve this scoped client once per attempt.
 builder.Services.AddHttpClient<IEvaluationApiClient, EvaluationApiClient>(client =>
 {
     client.BaseAddress = new Uri(evaluationBaseUrl!);
@@ -94,7 +98,7 @@ builder.Services.AddHttpClient<IEvaluationApiClient, EvaluationApiClient>(client
 })
 .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { UseProxy = false });
 
-// Needed to read the caller's bearer token so background grading can forward it to EvaluationAPI.
+// Captures the caller's bearer token while accepting a substantive answer; queue workers never use HttpContext.
 builder.Services.AddHttpContextAccessor();
 
 // JWT: dùng chung Issuer/Audience/Key với AuthAPI để verify token Auth phát ra.

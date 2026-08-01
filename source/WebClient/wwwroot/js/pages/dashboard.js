@@ -122,6 +122,23 @@
     const loadedSessionIds = new Set(
         Array.from(list.querySelectorAll("[data-session-id]"), (item) => item.dataset.sessionId)
     );
+    let currentSessionId = list.dataset.currentSessionId || "";
+
+    function applyActiveSession() {
+        list.querySelectorAll("[data-session-id]").forEach((item) => {
+            const selected = currentSessionId !== "" && item.dataset.sessionId === currentSessionId;
+            item.classList.toggle("active", selected);
+            item.classList.toggle("is-active", selected);
+            if (selected) item.setAttribute("aria-current", "page");
+            else item.removeAttribute("aria-current");
+        });
+    }
+
+    function setCurrentSession(sessionId) {
+        currentSessionId = sessionId || "";
+        list.dataset.currentSessionId = currentSessionId;
+        applyActiveSession();
+    }
 
     function setState(message, mode) {
         if (!state) return;
@@ -158,9 +175,14 @@
 
         try {
             const response = await fetch(`${list.dataset.url}?page=${nextPage}`, { headers: { "Accept": "application/json" } });
-            if (!response.ok) throw new Error("Could not load recent sessions.");
-            const data = await response.json();
+            const data = await response.json().catch(() => ({}));
+            if (response.status === 401 && data.loginUrl) {
+                window.location.assign(data.loginUrl);
+                return;
+            }
+            if (!response.ok) throw new Error(data.error || "Could not load recent sessions.");
             (data.items || []).forEach(appendSession);
+            applyActiveSession();
             hasMore = data.totalPages > data.page;
             nextPage = data.page + 1;
             list.dataset.nextPage = String(nextPage);
@@ -173,6 +195,15 @@
         }
     }
 
+    list.addEventListener("click", (event) => {
+        const sessionLink = event.target.closest("[data-session-id]");
+        if (sessionLink) setCurrentSession(sessionLink.dataset.sessionId);
+    });
+
+    const activeStateObserver = new MutationObserver(applyActiveSession);
+    activeStateObserver.observe(list, { childList: true, subtree: true });
+    applyActiveSession();
+
     list.addEventListener("scroll", () => {
         const nearBottom = list.scrollTop + list.clientHeight >= list.scrollHeight - 24;
         if (nearBottom) loadMore();
@@ -181,13 +212,53 @@
 
 (function () {
     document.querySelectorAll("[data-tabs]").forEach((tabs) => {
+        const tabButtons = Array.from(tabs.querySelectorAll("[data-tab-target]"));
+        if (tabButtons.length === 0) return;
+
+        const scope = tabs.closest(".history-panel") || document;
+
+        function activateTab(button, moveFocus) {
+            const panelId = button.dataset.tabTarget;
+            tabButtons.forEach((tab) => {
+                const selected = tab === button;
+                tab.classList.toggle("is-active", selected);
+                tab.setAttribute("aria-selected", String(selected));
+                tab.tabIndex = selected ? 0 : -1;
+            });
+            scope.querySelectorAll(".detail-tab-panel").forEach((panel) => {
+                const selected = panel.id === panelId;
+                panel.classList.toggle("is-active", selected);
+                panel.hidden = !selected;
+            });
+            if (moveFocus) button.focus();
+        }
+
         tabs.addEventListener("click", (event) => {
             const button = event.target.closest("[data-tab-target]");
-            if (!button) return;
-            const panelId = button.dataset.tabTarget;
-            const scope = tabs.closest(".history-panel") || document;
-            tabs.querySelectorAll("[data-tab-target]").forEach((tab) => tab.classList.toggle("is-active", tab === button));
-            scope.querySelectorAll(".detail-tab-panel").forEach((panel) => panel.classList.toggle("is-active", panel.id === panelId));
+            if (button) activateTab(button, false);
         });
+
+        tabs.addEventListener("keydown", (event) => {
+            if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+            const currentIndex = tabButtons.indexOf(document.activeElement);
+            if (currentIndex < 0) return;
+            event.preventDefault();
+
+            let nextIndex;
+            if (event.key === "Home") {
+                nextIndex = 0;
+            } else if (event.key === "End") {
+                nextIndex = tabButtons.length - 1;
+            } else {
+                const direction = event.key === "ArrowRight" ? 1 : -1;
+                nextIndex = (currentIndex + direction + tabButtons.length) % tabButtons.length;
+            }
+            activateTab(tabButtons[nextIndex], true);
+        });
+
+        const initialTab = tabButtons.find((tab) =>
+            tab.getAttribute("aria-selected") === "true" || tab.classList.contains("is-active"))
+            || tabButtons[0];
+        activateTab(initialTab, false);
     });
 })();

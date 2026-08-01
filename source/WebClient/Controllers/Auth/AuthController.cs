@@ -4,27 +4,35 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
 using WebClient.Models.Auth;
 using WebClient.Services.Auth;
+using WebClient.Services.Home;
+using WebClient.Services.Shared;
 
 namespace WebClient.Controllers.Auth;
 
-public class AuthController(IAuthService authService) : Controller
+public class AuthController(
+    IAuthService authService,
+    IHomeFeedbackPopupGate popupGate) : Controller
 {
     // ============================ Login ============================
     [HttpGet]
-    public IActionResult Login(string? blocked = null)
+    public IActionResult Login(string? blocked = null, string? returnUrl = null)
     {
         // ?blocked=1: BlockedAccountMiddleware vừa đăng xuất cưỡng bức vì tài khoản bị khoá giữa phiên.
         if (blocked == "1")
         {
             ModelState.AddModelError(string.Empty, "Your account has been blocked. Please contact support.");
         }
-        return View(new LoginViewModel());
+        return View(new LoginViewModel
+        {
+            ReturnUrl = Url.IsLocalUrl(returnUrl) ? returnUrl : null
+        });
     }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Login(LoginViewModel model)
     {
+        model.ReturnUrl = Url.IsLocalUrl(model.ReturnUrl) ? model.ReturnUrl : null;
         if (!ModelState.IsValid)
         {
             return View(model);
@@ -33,8 +41,8 @@ public class AuthController(IAuthService authService) : Controller
         var result = await authService.LoginAsync(model);
         if (result.Success && result.Data is not null)
         {
-            await StoreAuthCookies(result.Data);
-            return RedirectAfterLogin(result.Data.Role);
+            await CompleteSuccessfulAuthenticationAsync(result.Data);
+            return RedirectAfterLogin(result.Data.Role, model.ReturnUrl);
         }
 
         ModelState.AddModelError(string.Empty, result.Message);
@@ -56,7 +64,7 @@ public class AuthController(IAuthService authService) : Controller
         var result = await authService.SsoFirebaseAsync(idToken);
         if (result.Success && result.Data is not null)
         {
-            await StoreAuthCookies(result.Data);
+            await CompleteSuccessfulAuthenticationAsync(result.Data);
             return RedirectAfterLogin(result.Data.Role);
         }
 
@@ -81,6 +89,7 @@ public class AuthController(IAuthService authService) : Controller
             Response.Cookies.Delete(name);
         }
 
+        HttpContext.Session.Clear();
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 
         return RedirectToAction("Index", "Home");
@@ -234,8 +243,13 @@ public class AuthController(IAuthService authService) : Controller
 
     // ============================ helpers ============================
     // Admin and Manager use separate workspaces; other roles -> Home.
-    private IActionResult RedirectAfterLogin(string? role)
+    private IActionResult RedirectAfterLogin(string? role, string? returnUrl = null)
     {
+        if (Url.IsLocalUrl(returnUrl))
+        {
+            return LocalRedirect(returnUrl);
+        }
+
         if (string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase))
         {
             return RedirectToAction("Index", "Admin");
@@ -282,5 +296,22 @@ public class AuthController(IAuthService authService) : Controller
         var principal = new ClaimsPrincipal(identity);
 
         await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
+    }
+
+    private async Task CompleteSuccessfulAuthenticationAsync(LoginResponseData data)
+    {
+        await StoreAuthCookies(data);
+
+        if (string.Equals(data.Role, "User", StringComparison.OrdinalIgnoreCase))
+        {
+            var userId = JwtUserId.FromToken(data.AccessToken);
+            if (userId.HasValue)
+            {
+                await popupGate.StartAuthenticatedLifecycleAsync(
+                    HttpContext.Session,
+                    userId.Value,
+                    HttpContext.RequestAborted);
+            }
+        }
     }
 }

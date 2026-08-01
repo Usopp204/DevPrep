@@ -92,16 +92,21 @@ public class SessionRepository : ISessionRepository
             .OrderBy(q => q.OrderIndex)
             .FirstOrDefaultAsync(ct);
 
-    public Task<bool> HasSubstantiveAnswerAsync(Guid sessionId, CancellationToken ct) =>
-        _db.ChatMessages.AnyAsync(m =>
-            m.SessionQuestion.SessionId == sessionId &&
-            m.SenderType == "User" &&
-            m.MessageType == "Answer" &&
-            m.Content != null &&
-            m.Content.Trim() != string.Empty &&
-            (m.AnswerReason == null ||
-             (m.AnswerReason != "TimedOut" && m.AnswerReason != "Skipped")),
-            ct);
+    public async Task<bool> HasSubstantiveAnswerAsync(Guid sessionId, CancellationToken ct)
+    {
+        var candidateContents = await _db.ChatMessages
+            .Where(m =>
+                m.SessionQuestion.SessionId == sessionId &&
+                m.SenderType == SubstantiveAnswerRules.UserSenderType &&
+                m.MessageType == SubstantiveAnswerRules.AnswerMessageType &&
+                (m.AnswerReason == null ||
+                 (m.AnswerReason != SubstantiveAnswerRules.TimedOutReason &&
+                  m.AnswerReason != SubstantiveAnswerRules.SkippedReason)))
+            .Select(m => m.Content)
+            .ToListAsync(ct);
+
+        return candidateContents.Any(SubstantiveAnswerRules.HasSubstantiveContent);
+    }
 
     // Lấy tất cả phiên của một user (không bao gồm đã xoá mềm), mới nhất trước.
     public Task<List<InterviewSession>> GetByUserAsync(Guid userId, CancellationToken ct) =>
@@ -157,6 +162,12 @@ public class SessionRepository : ISessionRepository
             sessions = sessions.Where(s => s.Position != null && s.Position.ToLower() == position);
         }
 
+        if (normalized.QuestionType is not null)
+        {
+            var questionType = normalized.QuestionType.ToLower();
+            sessions = sessions.Where(s => s.QuestionType.ToLower() == questionType);
+        }
+
         if (normalized.Keyword is not null)
         {
             var keyword = normalized.Keyword.ToLower();
@@ -178,6 +189,22 @@ public class SessionRepository : ISessionRepository
         return (items, totalItems, positionOptions);
     }
 
+    public async Task<IReadOnlyList<string>> GetHistoryQuestionTypeOptionsAsync(Guid userId, CancellationToken ct)
+    {
+        var values = await _db.InterviewSessions
+            .AsNoTracking()
+            .Where(s => s.UserId == userId && !s.IsDeleted)
+            .Where(s => s.Status == "Completed" || s.Status == "Cancelled" || s.Status == "Expired")
+            .Where(s => s.QuestionType != null && s.QuestionType.Trim() != string.Empty)
+            .Select(s => s.QuestionType.Trim())
+            .ToListAsync(ct);
+
+        return values
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(value => value, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
     public Task<InterviewSession?> GetChatLogAsync(Guid userId, Guid sessionId, CancellationToken ct) =>
         _db.InterviewSessions
             .AsNoTracking()
@@ -185,11 +212,11 @@ public class SessionRepository : ISessionRepository
                 .ThenInclude(q => q.ChatMessages.OrderBy(m => m.SentAt).ThenBy(m => m.MessageId))
             .FirstOrDefaultAsync(s => s.SessionId == sessionId && s.UserId == userId && !s.IsDeleted, ct);
 
-    public Task<int> CountFeedbackEligibleSessionsAsync(Guid userId, CancellationToken ct) =>
+    public Task<int> CountSystemFeedbackQualifyingSessionsAsync(Guid userId, CancellationToken ct) =>
         _db.InterviewSessions
             .AsNoTracking()
             .Where(s => s.UserId == userId && !s.IsDeleted)
-            .Where(s => s.Status == "Completed" || s.Status == "Expired")
+            .Where(s => s.Status == "Completed" || s.Status == "Cancelled" || s.Status == "Expired")
             .CountAsync(ct);
 
     public Task<InterviewSession?> GetFeedbackEligibilitySessionAsync(Guid userId, Guid sessionId, CancellationToken ct) =>

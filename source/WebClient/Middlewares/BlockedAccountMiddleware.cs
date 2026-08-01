@@ -51,6 +51,7 @@ public class BlockedAccountMiddleware(RequestDelegate next, IMemoryCache cache)
             {
                 context.Response.Cookies.Delete(name);
             }
+            context.Session.Clear();
             await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
             cache.Remove(cacheKey);
 

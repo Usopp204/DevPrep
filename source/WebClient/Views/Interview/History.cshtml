@@ -12,6 +12,7 @@
         pageSize = Model.PageSize,
         status = Model.Status,
         position = Model.Position,
+        questionType = Model.QuestionType,
         keyword = Model.Keyword
     }) ?? "#";
     string StatusClass(string status) => status switch
@@ -57,7 +58,7 @@
                 <label>
                     <span>Status</span>
                     <select name="status">
-                        <option value="">All final sessions</option>
+                        <option value="">All</option>
                         <option value="Completed" selected="@(Model.Status == "Completed")">Completed</option>
                         <option value="Cancelled" selected="@(Model.Status == "Cancelled")">Cancelled</option>
                         <option value="Expired" selected="@(Model.Status == "Expired")">Expired</option>
@@ -66,10 +67,20 @@
                 <label>
                     <span>Position</span>
                     <select name="position">
-                        <option value="">All positions</option>
+                        <option value="">All</option>
                         @foreach (var option in Model.Sessions.PositionOptions)
                         {
                             <option value="@option" selected="@(string.Equals(Model.Position, option, StringComparison.OrdinalIgnoreCase))">@option</option>
+                        }
+                    </select>
+                </label>
+                <label>
+                    <span>Question Type</span>
+                    <select name="questionType">
+                        <option value="">All</option>
+                        @foreach (var option in Model.Sessions.QuestionTypeOptions)
+                        {
+                            <option value="@option" selected="@(string.Equals(Model.QuestionType, option, StringComparison.OrdinalIgnoreCase))">@option</option>
                         }
                     </select>
                 </label>
@@ -97,6 +108,7 @@
                 <section class="history-table-shell">
                     <div class="history-table-head">
                         <span>Session</span>
+                        <span>Question Type</span>
                         <span>Level</span>
                         <span>Status</span>
                         <span>Questions</span>
@@ -107,11 +119,13 @@
                     @foreach (var session in Model.Sessions.Items)
                     {
                         var detailsUrl = Url.Action("Details", "Interview", new { id = session.SessionId });
+                        var reportUrl = Url.Action("Report", "Evaluation", new { sessionId = session.SessionId });
+                        var questionTypeDisplay = string.IsNullOrWhiteSpace(session.QuestionType) ? "Not specified" : session.QuestionType;
                         <article class="history-row" data-href="@detailsUrl">
                             <a class="history-row-main" href="@detailsUrl">
-                                <strong>@session.DisplayTitle</strong>
-                                <span class="safe-long-text">@(session.Position ?? "Interview") &middot; @session.QuestionType</span>
+                                <strong>@(session.Position ?? "Interview Session")</strong>
                             </a>
+                            <div class="history-cell-center history-question-type">@questionTypeDisplay</div>
                             <div class="history-cell-center">@session.Level</div>
                             <div class="history-cell-center"><span class="history-status @StatusClass(session.Status)">@session.DisplayStatus</span></div>
                             <div class="history-cell-center">@session.AnsweredQuestions/@session.TotalQuestions</div>
@@ -130,12 +144,19 @@
                                    title="View Details">
                                     <span class="material-symbols-outlined history-action-icon" aria-hidden="true">visibility</span>
                                 </a>
+                                <a class="history-action-btn history-icon-action history-report-btn"
+                                   href="@reportUrl"
+                                   aria-label="View Evaluation Report"
+                                   title="View Evaluation Report">
+                                    <span class="material-symbols-outlined history-action-icon" aria-hidden="true">assessment</span>
+                                </a>
                                 <form method="post" asp-controller="Interview" asp-action="DeleteSession" asp-route-id="@session.SessionId" onsubmit="return confirm('Remove this session from your history?');">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="page" value="@currentPage" />
                                     <input type="hidden" name="pageSize" value="@Model.PageSize" />
                                     <input type="hidden" name="status" value="@Model.Status" />
                                     <input type="hidden" name="position" value="@Model.Position" />
+                                    <input type="hidden" name="questionType" value="@Model.QuestionType" />
                                     <input type="hidden" name="keyword" value="@Model.Keyword" />
                                     <button type="submit"
                                             class="history-action-btn history-icon-action history-delete-btn"
@@ -149,12 +170,14 @@
                     }
                 </section>
 
+                <div class="history-pagination">
                 <partial name="_Pagination" model="new WebClient.Models.Shared.PaginationViewModel
                 {
                     CurrentPage = currentPage,
                     TotalPages = totalPages,
                     PageUrl = PageUrl
                 }" />
+                </div>
             }
         </main>
     </div>

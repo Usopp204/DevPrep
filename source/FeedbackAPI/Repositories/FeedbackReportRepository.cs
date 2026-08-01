@@ -1,7 +1,6 @@
 using System.Data;
 using FeedbackAPI.Models;
 using FeedbackAPI.Repositories.Interfaces;
-using FeedbackAPI.Validation;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 
@@ -20,22 +19,6 @@ public sealed class FeedbackReportRepository(FeedbackDbContext db) : IFeedbackRe
             .Include(report => report.InterviewFeedback)
             .Include(report => report.SystemFeedback);
 
-    public Task<InterviewFeedback?> GetInterviewFeedbackAsync(
-        Guid feedbackId,
-        bool tracking,
-        CancellationToken ct = default)
-    {
-        IQueryable<InterviewFeedback> query = db.InterviewFeedbacks;
-        if (!tracking)
-        {
-            query = query.AsNoTracking();
-        }
-
-        return query.SingleOrDefaultAsync(
-            feedback => feedback.InterviewFeedbackId == feedbackId,
-            ct);
-    }
-
     public Task<SystemFeedback?> GetSystemFeedbackAsync(
         Guid feedbackId,
         bool tracking,
@@ -50,21 +33,16 @@ public sealed class FeedbackReportRepository(FeedbackDbContext db) : IFeedbackRe
         return query.SingleOrDefaultAsync(feedback => feedback.FeedbackId == feedbackId, ct);
     }
 
-    public Task<bool> ExistsAsync(
-        string feedbackType,
+    public Task<bool> ExistsSystemAsync(
         Guid feedbackId,
         Guid reporterUserId,
         CancellationToken ct = default) =>
         db.FeedbackReports.AsNoTracking().AnyAsync(
             report => report.ReporterUserId == reporterUserId
-                && report.FeedbackType == feedbackType
-                && (feedbackType == FeedbackReportType.Interview
-                    ? report.InterviewFeedbackId == feedbackId
-                    : report.SystemFeedbackId == feedbackId),
+                && report.SystemFeedbackId == feedbackId,
             ct);
 
-    public async Task<IReadOnlyDictionary<Guid, FeedbackReportViewerState>> GetViewerStatesAsync(
-        string feedbackType,
+    public async Task<IReadOnlyDictionary<Guid, FeedbackReportViewerState>> GetSystemViewerStatesAsync(
         IReadOnlyCollection<Guid> feedbackIds,
         Guid viewerUserId,
         CancellationToken ct = default)
@@ -74,34 +52,13 @@ public sealed class FeedbackReportRepository(FeedbackDbContext db) : IFeedbackRe
             return new Dictionary<Guid, FeedbackReportViewerState>();
         }
 
-        var reportedIds = feedbackType == FeedbackReportType.Interview
-            ? await db.FeedbackReports.AsNoTracking()
-                .Where(report => report.ReporterUserId == viewerUserId
-                    && report.InterviewFeedbackId.HasValue
-                    && feedbackIds.Contains(report.InterviewFeedbackId.Value))
-                .Select(report => report.InterviewFeedbackId!.Value)
-                .ToListAsync(ct)
-            : await db.FeedbackReports.AsNoTracking()
-                .Where(report => report.ReporterUserId == viewerUserId
-                    && report.SystemFeedbackId.HasValue
-                    && feedbackIds.Contains(report.SystemFeedbackId.Value))
-                .Select(report => report.SystemFeedbackId!.Value)
-                .ToListAsync(ct);
-
+        var reportedIds = await db.FeedbackReports.AsNoTracking()
+            .Where(report => report.ReporterUserId == viewerUserId
+                && report.SystemFeedbackId.HasValue
+                && feedbackIds.Contains(report.SystemFeedbackId.Value))
+            .Select(report => report.SystemFeedbackId!.Value)
+            .ToListAsync(ct);
         var reported = reportedIds.ToHashSet();
-        if (feedbackType == FeedbackReportType.Interview)
-        {
-            return await db.InterviewFeedbacks.AsNoTracking()
-                .Where(feedback => feedbackIds.Contains(feedback.InterviewFeedbackId))
-                .ToDictionaryAsync(
-                    feedback => feedback.InterviewFeedbackId,
-                    feedback => new FeedbackReportViewerState(
-                        feedback.InterviewFeedbackId,
-                        feedback.UserId == viewerUserId,
-                        reported.Contains(feedback.InterviewFeedbackId)),
-                    ct);
-        }
-
         return await db.SystemFeedbacks.AsNoTracking()
             .Where(feedback => feedbackIds.Contains(feedback.FeedbackId))
             .ToDictionaryAsync(

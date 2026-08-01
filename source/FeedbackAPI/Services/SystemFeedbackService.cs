@@ -16,9 +16,7 @@ public class SystemFeedbackService : ISystemFeedbackService
 
     private const string NewStatus = "New";
     private const string RepliedStatus = "Replied";
-    private const string Pending = "Pending";
-    private const string Approved = "Approved";
-    private const string Rejected = "Rejected";
+    private const string ApprovedModerationStatus = "Approved";
 
     private readonly ISystemFeedbackRepository _repository;
     private readonly IUserApiClient _userApiClient;
@@ -81,10 +79,10 @@ public class SystemFeedbackService : ISystemFeedbackService
                 UsabilityRating = f.UsabilityRating,
                 FeatureQualityRating = f.FeatureQualityRating,
                 Status = f.Status,
-                ModerationStatus = f.ModerationStatus,
+
                 IsVisible = f.IsVisible,
-                ModeratedAt = f.ModeratedAt,
-                ModeratedBy = f.ModeratedBy,
+
+
                 ReplyCount = f.FeedbackReplies.Count,
                 IsDeleted = f.IsDeleted,
                 CreatedAt = f.CreatedAt,
@@ -147,8 +145,31 @@ public class SystemFeedbackService : ISystemFeedbackService
         {
             HasSubmittedSystemFeedback = feedbackCount > 0,
             FeedbackCount = feedbackCount,
-            LastSubmittedAt = latestFeedback?.CreatedAt
+            LastSubmittedAt = latestFeedback?.CreatedAt,
+            ActiveFeedbackId = latestFeedback?.FeedbackId
         };
+    }
+
+    public async Task<MySystemFeedbackDto?> GetMyFeedbackAsync(
+        Guid feedbackId,
+        Guid userId,
+        CancellationToken ct = default)
+    {
+        var feedback = await _repository.GetOwnedActiveByIdAsync(feedbackId, userId, ct: ct);
+        return feedback is null
+            ? null
+            : new MySystemFeedbackDto
+            {
+                FeedbackId = feedback.FeedbackId,
+                OverallRating = feedback.Rating ?? 0,
+                UiUxRating = feedback.UiUxRating ?? 0,
+                UsabilityRating = feedback.UsabilityRating ?? 0,
+                FeatureQualityRating = feedback.FeatureQualityRating ?? 0,
+                Comment = feedback.Content,
+                IsVisible = feedback.IsVisible,
+                CreatedAt = feedback.CreatedAt,
+                UpdatedAt = feedback.UpdatedAt
+            };
     }
 
     public async Task<CreatedSystemFeedbackDto> SubmitAsync(Guid userId, SubmitSystemFeedbackRequest request, string? bearerToken, CancellationToken ct = default)
@@ -158,6 +179,10 @@ public class SystemFeedbackService : ISystemFeedbackService
         ValidateRating(request.UsabilityRating, nameof(request.UsabilityRating));
         ValidateRating(request.FeatureQualityRating, nameof(request.FeatureQualityRating));
         var comment = FeedbackInput.NormalizeOptionalComment(request.Comment, SystemFeedbackRules.MaxCommentLength);
+
+
+        if (await _repository.CountByUserIdAsync(userId, ct) > 0)
+            throw new FeedbackEligibilityException("System feedback has already been submitted.");
 
         var eligibility = await _interviewApiClient.GetSystemFeedbackEligibilityAsync(bearerToken, ct);
         if (!eligibility.Eligible)
@@ -176,14 +201,14 @@ public class SystemFeedbackService : ISystemFeedbackService
             UsabilityRating = (byte)request.UsabilityRating,
             FeatureQualityRating = (byte)request.FeatureQualityRating,
             Status = NewStatus,
-            ModerationStatus = Approved,
             IsVisible = true,
+            ModerationStatus = ApprovedModerationStatus,
             CreatedAt = now,
             UpdatedAt = now
         };
 
-        await _repository.AddAsync(feedback, ct);
-        await _repository.SaveChangesAsync(ct);
+        if (!await _repository.TryAddActiveAsync(feedback, ct))
+            throw new FeedbackEligibilityException("System feedback has already been submitted.");
         return new CreatedSystemFeedbackDto
         {
             FeedbackId = feedback.FeedbackId,
@@ -192,35 +217,46 @@ public class SystemFeedbackService : ISystemFeedbackService
             UsabilityRating = feedback.UsabilityRating!.Value,
             FeatureQualityRating = feedback.FeatureQualityRating!.Value,
             Comment = comment,
-            ModerationStatus = feedback.ModerationStatus,
+
             IsVisible = feedback.IsVisible,
             CreatedAt = feedback.CreatedAt
         };
     }
 
-    public async Task<ModerationResponse?> ModerateAsync(Guid feedbackId, Guid adminId, ModerationRequest request, CancellationToken ct = default)
+    public async Task EditAsync(Guid feedbackId, Guid userId, UpdateSystemFeedbackRequest request, CancellationToken ct = default)
     {
-        var status = NormalizeModerationStatus(request.ModerationStatus);
-        var feedback = await _repository.GetByIdAsync(feedbackId, tracking: true, ct: ct);
-        if (feedback is null) return null;
-        var visible = status == Approved && request.IsVisible && !feedback.IsDeleted;
-        if (request.IsVisible && status == Approved && feedback.IsDeleted)
-            throw new FeedbackValidationException("Deleted feedback cannot become visible.");
+        var feedback = await _repository.GetOwnedActiveByIdAsync(feedbackId, userId, tracking: true, ct: ct);
+        if (feedback is null) throw new FeedbackNotFoundException("System feedback not found.");
 
-        feedback.ModerationStatus = status;
-        feedback.IsVisible = visible;
-        feedback.ModeratedAt = VietnamTime.Now;
-        feedback.ModeratedBy = adminId;
+        ValidateRating(request.OverallRating, nameof(request.OverallRating));
+        ValidateRating(request.UiUxRating, nameof(request.UiUxRating));
+        ValidateRating(request.UsabilityRating, nameof(request.UsabilityRating));
+        ValidateRating(request.FeatureQualityRating, nameof(request.FeatureQualityRating));
+
+        feedback.Rating = (byte)request.OverallRating;
+        feedback.UiUxRating = (byte)request.UiUxRating;
+        feedback.UsabilityRating = (byte)request.UsabilityRating;
+        feedback.FeatureQualityRating = (byte)request.FeatureQualityRating;
+        feedback.Content = FeedbackInput.NormalizeOptionalComment(request.Comment, SystemFeedbackRules.MaxCommentLength) ?? string.Empty;
+        feedback.IsVisible = true;
+        feedback.ModerationStatus = ApprovedModerationStatus;
         feedback.UpdatedAt = VietnamTime.Now;
+
         await _repository.SaveChangesAsync(ct);
-        return new ModerationResponse
-        {
-            FeedbackId = feedback.FeedbackId,
-            ModerationStatus = feedback.ModerationStatus,
-            IsVisible = feedback.IsVisible,
-            ModeratedAt = feedback.ModeratedAt,
-            ModeratedBy = feedback.ModeratedBy
-        };
+    }
+
+    public async Task CandidateDeleteAsync(Guid feedbackId, Guid userId, CancellationToken ct = default)
+    {
+        var feedback = await _repository.GetOwnedActiveByIdAsync(feedbackId, userId, tracking: true, ct: ct);
+        if (feedback is null) throw new FeedbackNotFoundException("System feedback not found.");
+
+        feedback.IsDeleted = true;
+        feedback.IsVisible = false;
+        feedback.DeletedAt = VietnamTime.Now;
+        feedback.UpdatedAt = VietnamTime.Now;
+        await _repository.ResolvePendingReportsAsync(feedback.FeedbackId, ct);
+
+        await _repository.SaveChangesAsync(ct);
     }
 
     public async Task<bool> SoftDeleteAsync(Guid id)
@@ -237,14 +273,10 @@ public class SystemFeedbackService : ISystemFeedbackService
 
     public async Task<bool> RestoreAsync(Guid id)
     {
-        var f = await _repository.GetByIdAsync(id, tracking: true);
-        if (f is null || !f.IsDeleted) return false;
-
-        f.IsDeleted = false;
-        f.DeletedAt = null;
-        f.UpdatedAt = VietnamTime.Now;
-        await _repository.SaveChangesAsync();
-        return true;
+        var outcome = await _repository.RestoreAsync(id, VietnamTime.Now);
+        if (outcome == FeedbackRestoreOutcome.Conflict)
+            throw new FeedbackEligibilityException("Cannot restore: user already has an active system feedback.");
+        return outcome == FeedbackRestoreOutcome.Restored;
     }
 
     public async Task<FeedbackReplyDto?> ReplyAsync(Guid feedbackId, Guid repliedBy, string replyContent)
@@ -301,10 +333,10 @@ public class SystemFeedbackService : ISystemFeedbackService
                 UsabilityRating = f.UsabilityRating,
                 FeatureQualityRating = f.FeatureQualityRating,
                 Status = f.Status,
-                ModerationStatus = f.ModerationStatus,
+
                 IsVisible = f.IsVisible,
-                ModeratedAt = f.ModeratedAt,
-                ModeratedBy = f.ModeratedBy,
+
+
             ReplyCount = f.FeedbackReplies.Count,
             IsDeleted = f.IsDeleted,
             CreatedAt = f.CreatedAt,
@@ -360,15 +392,6 @@ public class SystemFeedbackService : ISystemFeedbackService
     {
         if (rating < 1 || rating > 5) throw new FeedbackValidationException($"{field} must be between 1 and 5.");
     }
-
-
-    private static string NormalizeModerationStatus(string status) => status?.Trim() switch
-    {
-        Pending => Pending,
-        Approved => Approved,
-        Rejected => Rejected,
-        _ => throw new FeedbackValidationException("ModerationStatus must be Pending, Approved, or Rejected.")
-    };
 
     private static PagedResult<T> ToPaged<T>(IReadOnlyList<T> items, int page, int pageSize, int total) => new()
     {

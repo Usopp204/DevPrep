@@ -48,22 +48,6 @@ public class AiServiceClient : IAiServiceClient
         }
     }
 
-    public async Task<AiBuildReportResponse> BuildReportAsync(
-        AiBuildReportRequest request, CancellationToken ct = default)
-    {
-        try
-        {
-            var response = await _httpClient.PostAsJsonAsync("/internal/report", request, ct);
-            EnsureSuccess(response, "/internal/report");
-            return await response.Content.ReadFromJsonAsync<AiBuildReportResponse>(ct)
-                   ?? new AiBuildReportResponse();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Call to ai-service POST /internal/report failed.");
-            throw;
-        }
-    }
     private void EnsureSuccess(HttpResponseMessage response, string endpoint)
     {
         if (response.IsSuccessStatusCode)
