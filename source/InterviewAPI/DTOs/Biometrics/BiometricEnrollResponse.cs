@@ -7,8 +7,12 @@ public class BiometricEnrollResponse
     public int Dim { get; set; }
     public double? Quality { get; set; }
 
-    // True when THIS call is what completed enrollment for both Face and Voice, and the
-    // one-time credit bonus was awarded. False on every other call, including re-enrollment
-    // after the bonus was already granted once.
-    public bool BonusAwarded { get; set; }
+    // Outcome of the one-time enrollment bonus for THIS call. One of (see
+    // ProfileBiometricsService.BonusStatus* constants):
+    //   Awarded                — this call is what granted the 100-credit bonus.
+    //   AlreadyAwarded         — this account already received the bonus (normal re-enrollment).
+    //   IdentityAlreadyClaimed — an earlier account with the same face already claimed it.
+    //   NotAwarded             — the PaymentAPI award call did not succeed.
+    //   NotYetEligible         — the other modality isn't enrolled yet.
+    public string BonusStatus { get; set; } = string.Empty;
 }

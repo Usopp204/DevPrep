@@ -183,7 +183,7 @@ public class ProfileController(
             return BadRequest(new { error = error ?? "Could not enroll face." });
         }
 
-        return Json(new { enrolled = true, bonusAwarded = result?.BonusAwarded ?? false });
+        return Json(new { enrolled = true, bonusStatus = result?.BonusStatus ?? "" });
     }
 
     // Same-origin proxy for voice enrollment (recorded sample as multipart, like Interview/Stt).
@@ -208,7 +208,7 @@ public class ProfileController(
             return BadRequest(new { error = error ?? "Could not enroll voice." });
         }
 
-        return Json(new { enrolled = true, bonusAwarded = result?.BonusAwarded ?? false });
+        return Json(new { enrolled = true, bonusStatus = result?.BonusStatus ?? "" });
     }
 
     // ============================ Transaction History ============================
