@@ -89,7 +89,9 @@
     let sessionId = null;         // verify mode only
     let facePassed = false;
     let voiceResult = null;
-    let bonusAwarded = false; // enroll mode only — set true if either enroll call reports it
+    // enroll mode only — the merged bonusStatus across the face and voice enroll calls (see
+    // mergeBonusStatus below for why this can't just be "last call wins").
+    let bonusStatus = null;
     let cameraStream = null;
     let micStream = null;
     let mediaRecorder = null;
@@ -133,6 +135,29 @@
     function stopAllMedia() {
         stopCamera();
         stopMic();
+    }
+
+    // Priority order for merging bonusStatus across the face and voice enroll calls — a status
+    // earlier in this list always wins over one later in it, regardless of which call reported
+    // it last. This matters because both calls can report a "meaningful" (non-NotYetEligible)
+    // status when re-enrolling both modalities: e.g. the face call grants the bonus (Awarded),
+    // then the immediately-following voice call re-checks eligibility and correctly reports
+    // AlreadyAwarded (the bonus now already exists) — that must not overwrite the more important
+    // "you just got it" outcome from the first call.
+    const BONUS_STATUS_PRIORITY = [
+        "Awarded",
+        "IdentityAlreadyClaimed",
+        "NotAwarded",
+        "AlreadyAwarded",
+        "NotYetEligible"
+    ];
+
+    function mergeBonusStatus(current, incoming) {
+        if (!incoming) return current;
+        if (!current) return incoming;
+        return BONUS_STATUS_PRIORITY.indexOf(incoming) < BONUS_STATUS_PRIORITY.indexOf(current)
+            ? incoming
+            : current;
     }
 
     function show(el) { if (el) el.hidden = false; }
@@ -372,7 +397,7 @@
                 const form = new FormData();
                 form.append("face", blobs[0], "face.jpg");
                 const enrollResult = await fetchJson(urls.enrollFace, { method: "POST", body: form });
-                if (enrollResult && enrollResult.bonusAwarded) bonusAwarded = true;
+                bonusStatus = mergeBonusStatus(bonusStatus, enrollResult && enrollResult.bonusStatus);
                 hide(faceProcessing);
             }
         } catch (err) {
@@ -559,7 +584,7 @@
                 const form = new FormData();
                 form.append("voice", blob, "voice.webm");
                 const enrollResult = await fetchJson(urls.enrollVoice, { method: "POST", body: form });
-                if (enrollResult && enrollResult.bonusAwarded) bonusAwarded = true;
+                bonusStatus = mergeBonusStatus(bonusStatus, enrollResult && enrollResult.bonusStatus);
                 hide(voiceProcessing);
             }
             voiceResult = result;
@@ -604,8 +629,21 @@
         } else {
             doneTitle.textContent = "You're all set";
             doneMessage.textContent = "Identity verification is set up. You can re-enroll any time.";
-            if (bonusAwarded) {
-                doneMessage.textContent += " 🎉 You've been awarded 100 free credits for completing both Face and Voice enrollment!";
+            switch (bonusStatus) {
+                case "Awarded":
+                    doneMessage.textContent += " 🎉 You've been awarded 100 free credits for completing both Face and Voice enrollment!";
+                    break;
+                case "IdentityAlreadyClaimed":
+                    doneMessage.textContent += " This identity has already received the one-time enrollment bonus on another account, so it isn't awarded again here.";
+                    break;
+                case "NotAwarded":
+                    doneMessage.textContent += " Your enrollment bonus couldn't be credited right now — no action needed on your part; please check back later.";
+                    break;
+                case "AlreadyAwarded":
+                    doneMessage.textContent += " Your one-time 100-credit enrollment bonus was already credited to this account.";
+                    break;
+                default:
+                    break; // NotYetEligible or no meaningful status — no extra message
             }
             doneCta.textContent = "Done";
             doneCta.onclick = function () { window.location.href = urls.profile; };
