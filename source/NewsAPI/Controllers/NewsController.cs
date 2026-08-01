@@ -18,13 +18,22 @@ public class NewsController : ControllerBase
         _service = service;
     }
 
-    /// <summary>View News: danh sách tin đã xuất bản, sắp xếp mới nhất tới cũ, có phân trang.</summary>
+    /// <summary>View/Search/Filter News: danh sách tin đã xuất bản, lọc theo từ khoá và/hoặc danh mục (tuỳ chọn), sắp xếp mới nhất tới cũ, có phân trang.</summary>
     [HttpGet]
     [ProducesResponseType(typeof(ApiResponse<PagedResult<NewsListItemDto>>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetList([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+    public async Task<IActionResult> GetList([FromQuery] NewsQueryDto query)
     {
-        var result = await _service.GetListAsync(page, pageSize);
+        var result = await _service.GetListAsync(query);
         return Ok(ApiResponse<PagedResult<NewsListItemDto>>.Ok(result));
+    }
+
+    /// <summary>Danh mục đang có ít nhất một bài đã xuất bản — dùng để dựng chip lọc trên trang News.</summary>
+    [HttpGet("categories")]
+    [ProducesResponseType(typeof(ApiResponse<List<NewsCategoryDto>>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetCategories()
+    {
+        var categories = await _service.GetCategoriesAsync();
+        return Ok(ApiResponse<List<NewsCategoryDto>>.Ok(categories));
     }
 
     /// <summary>View News Detail theo id (giữ tương thích link cũ) + tăng lượt xem.</summary>
