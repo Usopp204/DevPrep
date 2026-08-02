@@ -105,4 +105,24 @@ public class PaymentAdminController(IPaymentAdminService adminService) : Control
 
         return View(model);
     }
+
+    // JSON feed for the transaction-detail modal on the Payments page. Deliberately does NOT
+    // use GuardAdmin(): that redirects to the login page, and fetch() would then receive the
+    // login HTML with a 200 status instead of an error it can act on.
+    [HttpGet("Payments/Detail/{id:guid}")]
+    public async Task<IActionResult> PaymentDetail(Guid id, CancellationToken ct = default)
+    {
+        if (string.IsNullOrEmpty(Request.Cookies["access_token"]))
+            return Unauthorized(new { error = "Your session has expired. Please sign in again." });
+
+        var role = Request.Cookies["user_role"] ?? string.Empty;
+        if (!string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(role, "Manager", StringComparison.OrdinalIgnoreCase))
+            return StatusCode(StatusCodes.Status403Forbidden, new { error = "Admin access required." });
+
+        var detail = await adminService.GetPaymentDetailAsync(id, ct);
+        return detail?.Order is null
+            ? NotFound(new { error = "Transaction not found." })
+            : Json(detail);
+    }
 }

@@ -19,6 +19,7 @@ public interface IPaymentAdminService
         decimal? minAmount = null, decimal? maxAmount = null,
         CancellationToken ct = default);
     Task<RevenueReportViewModel> GetRevenueReportAsync(string period = "today", DateTime? from = null, DateTime? to = null, CancellationToken ct = default);
+    Task<AdminPaymentDetailDto?> GetPaymentDetailAsync(Guid id, CancellationToken ct = default);
 }
 
 public sealed class PaymentAdminService(IApiClient apiClient) : IPaymentAdminService
@@ -169,6 +170,21 @@ public sealed class PaymentAdminService(IApiClient apiClient) : IPaymentAdminSer
         catch (Exception ex)
         {
             return new RevenueReportViewModel { Period = period, ErrorMessage = ex.Message };
+        }
+    }
+
+    public async Task<AdminPaymentDetailDto?> GetPaymentDetailAsync(Guid id, CancellationToken ct = default)
+    {
+        try
+        {
+            return await apiClient.HttpClient.GetFromJsonAsync<AdminPaymentDetailDto>(
+                $"api/payment/admin/payments/{id}", Opts, ct);
+        }
+        catch
+        {
+            // 404 from the API (unknown order) and a transport failure both land here; the
+            // caller turns a null into a 404 for the modal.
+            return null;
         }
     }
 

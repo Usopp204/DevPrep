@@ -118,6 +118,43 @@
         .revenue-stat-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 4px; }
         .revenue-stat-value { font-size: 22px; font-weight: 700; color: var(--text); }
         .revenue-range { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+        /* Row action + transaction detail modal */
+        .icon-btn { display: inline-flex; align-items: center; justify-content: center;
+                    width: 30px; height: 30px; border-radius: var(--r-sm);
+                    background: rgba(255,255,255,.05); border: 1px solid var(--ad-border);
+                    color: var(--text-muted); cursor: pointer;
+                    transition: background .15s, color .15s, border-color .15s; }
+        .icon-btn .material-symbols-outlined { font-size: 17px; }
+        .icon-btn:hover { background: var(--primary-dim); color: var(--primary);
+                          border-color: rgba(129,140,248,.3); }
+
+        .modal-overlay { display: none; position: fixed; inset: 0; z-index: 500;
+                         background: rgba(0,0,0,.7); backdrop-filter: blur(4px);
+                         align-items: center; justify-content: center; padding: 20px; }
+        .modal-overlay.open { display: flex; }
+        .tx-modal { background: #0e1323; border: 1px solid var(--ad-border); border-radius: var(--r-lg);
+                    width: 100%; max-width: 620px; max-height: 88vh; overflow-y: auto;
+                    box-shadow: 0 24px 64px rgba(0,0,0,.5); }
+        .tx-modal-head { display: flex; align-items: center; justify-content: space-between;
+                         padding: 18px 22px; border-bottom: 1px solid var(--ad-border); }
+        .tx-modal-title { font-size: 16px; font-weight: 700; color: var(--text); }
+        .tx-modal-body { padding: 18px 22px 24px; }
+        .tx-section-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600;
+                            letter-spacing: .1em; text-transform: uppercase; color: var(--primary);
+                            margin: 18px 0 8px; }
+        .tx-section-label:first-child { margin-top: 0; }
+        .tx-row { display: flex; justify-content: space-between; gap: 16px; padding: 7px 0;
+                  border-bottom: 1px solid var(--border-m); font-size: 13px; }
+        .tx-row:last-child { border-bottom: none; }
+        .tx-row .k { color: var(--text-dim); flex-shrink: 0; }
+        .tx-row .v { color: var(--text); text-align: right; word-break: break-all; }
+        .tx-empty { padding: 14px; border-radius: var(--r-sm); background: rgba(255,255,255,.03);
+                    border: 1px dashed var(--ad-border); color: var(--text-muted); font-size: 13px; }
+        .tx-raw { margin-top: 6px; background: #11121a; border: 1px solid #292c3d;
+                  border-radius: var(--r-sm); padding: 10px 12px; max-height: 190px; overflow: auto;
+                  font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted);
+                  white-space: pre-wrap; word-break: break-all; }
     </style>
     <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/components/pagination.css" asp-append-version="true" />
@@ -321,6 +358,7 @@
                             <col style="width:90px;" />
                             <col style="width:130px;" />
                             <col style="width:100px;" />
+                            <col style="width:70px;" />
                         </colgroup>
                         <thead>
                             <tr>
@@ -331,6 +369,7 @@
                                 <th>Method</th>
                                 <th>Date</th>
                                 <th style="text-align:center;">Status</th>
+                                <th style="text-align:center;">Detail</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -363,6 +402,12 @@
                                             <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">@badgeIcon</span>
                                             @o.Status
                                         </span>
+                                    </td>
+                                    <td style="text-align:center;">
+                                        <button type="button" class="icon-btn" title="View detail"
+                                                onclick="openDetail('@o.OrderId')">
+                                            <span class="material-symbols-outlined">visibility</span>
+                                        </button>
                                     </td>
                                 </tr>
                             }
@@ -402,5 +447,102 @@
         </div>
     }
 </main>
+
+<!-- ── Transaction detail modal (GET /Admin/Payment/Payments/Detail/{id}) ── -->
+<div class="modal-overlay" id="txModal">
+    <div class="tx-modal">
+        <div class="tx-modal-head">
+            <span class="tx-modal-title">Transaction Detail</span>
+            <button type="button" class="icon-btn" onclick="closeDetail()" title="Close">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <div class="tx-modal-body" id="txModalBody">
+            <div class="tx-empty">Loading…</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const txModal = document.getElementById('txModal');
+    const txBody  = document.getElementById('txModalBody');
+
+    function closeDetail() { txModal.classList.remove('open'); }
+
+    txModal.addEventListener('click', e => { if (e.target === txModal) closeDetail(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDetail(); });
+
+    function esc(v) {
+        return String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                              .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+    function row(k, v)   { return `<div class="tx-row"><span class="k">${esc(k)}</span><span class="v">${esc(v)}</span></div>`; }
+    function dash(v)     { return (v === null || v === undefined || v === '') ? '—' : v; }
+    function money(n, c) { return n === null || n === undefined ? '—' : Number(n).toLocaleString('en-US') + ' ' + (c || ''); }
+    function when(s) {
+        if (!s) return '—';
+        const d = new Date(s);
+        return isNaN(d) ? s : d.toLocaleString('en-GB', { day: '2-digit', month: '2-digit',
+            year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+
+    async function openDetail(id) {
+        txBody.innerHTML = '<div class="tx-empty">Loading…</div>';
+        txModal.classList.add('open');
+        try {
+            const res = await fetch(`/Admin/Payment/Payments/Detail/${id}`);
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                txBody.innerHTML = `<div class="tx-empty">${esc(err.error || `Request failed (HTTP ${res.status}).`)}</div>`;
+                return;
+            }
+            renderDetail(await res.json());
+        } catch (e) {
+            txBody.innerHTML = `<div class="tx-empty">Could not load the transaction: ${esc(e.message)}</div>`;
+        }
+    }
+
+    function renderDetail(data) {
+        const o = data.order, t = data.transaction;
+        let html = '<div class="tx-section-label">Order</div>'
+            + row('Order code',     dash(o.orderCode))
+            + row('Order ID',       dash(o.orderId))
+            + row('User ID',        dash(o.userId))
+            + row('Package ID',     dash(o.packageId))
+            + row('Amount',         money(o.amount, o.currency))
+            + row('Credits',        dash(o.credits))
+            + row('Payment method', dash(o.paymentMethod))
+            + row('Status',         dash(o.status))
+            + row('Created at',     when(o.createdAt))
+            + row('Expires at',     when(o.expiredAt))
+            + row('Paid at',        when(o.paidAt))
+            + row('Updated at',     when(o.updatedAt));
+
+        html += '<div class="tx-section-label">VNPay callback</div>';
+        if (!t) {
+            // An order only gets a PaymentTransaction row once ProcessReturnAsync succeeds, so
+            // Pending and Failed orders legitimately have nothing to show here.
+            html += '<div class="tx-empty">No VNPay callback recorded for this order yet '
+                  + '(the payment was never completed).</div>';
+        } else {
+            html += row('Transaction ID',    dash(t.transactionId))
+                 +  row('VNPay transaction', dash(t.vnpTransactionNo))
+                 +  row('Bank code',         dash(t.vnpBankCode))
+                 +  row('Response code',     dash(t.vnpResponseCode))
+                 +  row('VNPay pay date',    dash(t.vnpPayDate))
+                 +  row('Secure hash valid', t.secureHashValid === null ? '—' : (t.secureHashValid ? 'Yes' : 'No'))
+                 +  row('Amount',            money(t.amount, o.currency))
+                 +  row('Status',            dash(t.status))
+                 +  row('Recorded at',       when(t.createdAt));
+            if (t.rawCallbackJson) {
+                let pretty = t.rawCallbackJson;
+                try { pretty = JSON.stringify(JSON.parse(t.rawCallbackJson), null, 2); } catch { }
+                html += '<div class="tx-section-label">Raw callback payload</div>'
+                     +  `<div class="tx-raw">${esc(pretty)}</div>`;
+            }
+        }
+        txBody.innerHTML = html;
+    }
+</script>
 </body>
 </html>
