@@ -9,11 +9,9 @@ public interface IFeedbackReportRepository
 {
     IQueryable<FeedbackReport> Query();
     IQueryable<FeedbackReport> TrackingQuery();
-    Task<InterviewFeedback?> GetInterviewFeedbackAsync(Guid feedbackId, bool tracking, CancellationToken ct = default);
     Task<SystemFeedback?> GetSystemFeedbackAsync(Guid feedbackId, bool tracking, CancellationToken ct = default);
-    Task<bool> ExistsAsync(string feedbackType, Guid feedbackId, Guid reporterUserId, CancellationToken ct = default);
-    Task<IReadOnlyDictionary<Guid, FeedbackReportViewerState>> GetViewerStatesAsync(
-        string feedbackType,
+    Task<bool> ExistsSystemAsync(Guid feedbackId, Guid reporterUserId, CancellationToken ct = default);
+    Task<IReadOnlyDictionary<Guid, FeedbackReportViewerState>> GetSystemViewerStatesAsync(
         IReadOnlyCollection<Guid> feedbackIds,
         Guid viewerUserId,
         CancellationToken ct = default);

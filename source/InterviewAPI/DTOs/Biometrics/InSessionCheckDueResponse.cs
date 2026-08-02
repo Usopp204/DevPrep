@@ -12,4 +12,8 @@ public class InSessionCheckDueResponse
     public DateTime? ExpiresAt { get; set; }
     public bool ShouldEndSession { get; set; }
     public string? Message { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public string? TerminationReason { get; set; }
+    public bool CanGeneratePerformanceReport { get; set; }
+    public bool CanSubmitInterviewFeedback { get; set; }
 }

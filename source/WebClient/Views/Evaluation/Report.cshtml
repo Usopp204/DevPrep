@@ -1,9 +1,21 @@
 @using WebClient.Models.Feedback
+@using WebClient.Models.Evaluation
 @model WebClient.Models.Evaluation.ReportViewModel
 
 @{
     Layout = null;
     var report = Model.Report;
+    var isScored = Model.DisplayState == EvaluationReportState.Scored && report is not null;
+    var showFeedbackSection = Model.CanSubmitInterviewFeedback
+        || Model.MyInterviewFeedback is not null
+        || Model.FeedbackFormWasSubmitted
+        || !string.IsNullOrWhiteSpace(Model.FeedbackMessage);
+    var stateIcon = Model.DisplayState switch
+    {
+        EvaluationReportState.EvaluationIncomplete => "rule",
+        EvaluationReportState.EvaluationUnavailable => "cloud_off",
+        _ => "bar_chart"
+    };
     const double circumference = 2 * Math.PI * 45; // gauge radius 45
 
     string Band(decimal score) =>
@@ -40,13 +52,21 @@
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="~/css/theme-session.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/home.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/pages/report.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/components/safe-text.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/components/star-rating.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/components/feedback-report.css" asp-append-version="true" />
 </head>
 <body class="report-page">
+    @await Html.PartialAsync("_Navbar")
+
     <main class="report-main">
         <div class="report-topbar">
-            <span class="report-brand"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">auto_awesome</span> DevPrep</span>
+            <a class="btn-ghost" asp-controller="Interview" asp-action="Details" asp-route-id="@Model.SessionId">
+                <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+                View Session Details
+            </a>
             <a class="btn-primary-solid" asp-controller="Interview" asp-action="Index">＋ New Interview</a>
         </div>
 
@@ -55,7 +75,7 @@
             <div class="report-feedback-alert" role="status">@reportInfoMessage</div>
         }
 
-        @if (report is not null)
+        @if (isScored && report is not null)
         {
             var overall = report.OverallScore;
             var color = Band(overall);
@@ -64,10 +84,11 @@
             <!-- Hero -->
             <div class="glass-card report-hero">
                 <div>
-                    <h1 class="report-hero-title">@HeroTitle(overall)</h1>
+                    <h1 class="report-hero-title">@(string.Equals(Model.Status, "Cancelled", StringComparison.OrdinalIgnoreCase) ? "Cancelled interview results" : HeroTitle(overall))</h1>
                     <p class="report-hero-sub safe-long-text">@Model.Position &mdash; @Model.Level level</p>
                     <div class="report-chips">
                         <span class="report-chip"><span class="material-symbols-outlined" style="font-size:16px">forum</span>@Model.Questions.Count Questions</span>
+                        <span class="report-chip"><span class="material-symbols-outlined" style="font-size:16px">flag</span>@Model.Status</span>
                         @if (!string.IsNullOrEmpty(report.Grade))
                         {
                             <span class="report-chip"><span class="material-symbols-outlined" style="font-size:16px">grade</span>Grade @report.Grade</span>
@@ -92,32 +113,30 @@
             <!-- Performance by Category -->
             <h2 class="report-section-title">Performance by Category</h2>
             <div class="report-cat-grid">
-                @if (report.TechnicalScore is not null) { CategoryCard("Technical", "code", report.TechnicalScore.Value, CommentFor(report.TechnicalScore.Value)); }
-                @if (report.TheoryScore is not null) { CategoryCard("Theory", "menu_book", report.TheoryScore.Value, CommentFor(report.TheoryScore.Value)); }
-                @if (report.CommunicationScore is not null) { CategoryCard("Communication", "record_voice_over", report.CommunicationScore.Value, CommentFor(report.CommunicationScore.Value)); }
+                @if (report.TechnicalScore is not null) { CategoryCard("Technical", "code", report.TechnicalScore.Value, CommentFor(report.TechnicalScore.Value)); }                @if (report.CommunicationScore is not null) { CategoryCard("Communication", "record_voice_over", report.CommunicationScore.Value, CommentFor(report.CommunicationScore.Value)); }
                 @if (report.ProblemSolvingScore is not null) { CategoryCard("Problem Solving", "psychology", report.ProblemSolvingScore.Value, CommentFor(report.ProblemSolvingScore.Value)); }
             </div>
         }
         else
         {
-            <!-- Empty state: no answer has been graded, so there is no report to show. -->
-            <div class="glass-card report-empty-state">
-                <span class="material-symbols-outlined">bar_chart</span>
-                <h2>No evaluation yet</h2>
-                <p>This session hasn't been graded yet. Answer the questions and finish the interview to get your scored report.</p>
-                @if (!string.IsNullOrEmpty(Model.EmptyReason))
-                {
-                    <p class="report-empty-reason">@Model.EmptyReason</p>
-                }
-                <a class="btn-primary-solid" asp-controller="Interview" asp-action="Index">Start a new interview</a>
+            <div class="glass-card report-empty-state" data-report-state="@Model.DisplayState">
+                <span class="material-symbols-outlined">@stateIcon</span>
+                <h2>@Model.StateTitle</h2>
+                <p class="safe-long-text">@Model.StateMessage</p>
             </div>
         }
 
-        @if (report is not null)
+        @if (isScored || Model.DisplayState == EvaluationReportState.EvaluationIncomplete)
         {
         <!-- Question-by-Question Review -->
         <h2 class="report-section-title">Question-by-Question Review</h2>
-        @if (Model.Questions.Count == 0)
+        @if (Model.QuestionEvaluationsUnavailable)
+        {
+            <div class="glass-card report-empty" role="status">
+                Question-level evaluation details cannot be loaded right now.
+            </div>
+        }
+        else if (Model.Questions.Count == 0)
         {
             <div class="glass-card report-empty">No questions found for this session.</div>
         }
@@ -133,7 +152,11 @@
                                 <span class="report-q-num">@q.OrderIndex</span>
                                 <span class="report-q-text safe-long-text">@q.Content</span>
                             </span>
-                            @if (q.Score is not null)
+                            @if (!q.HasSubstantiveAnswer)
+                            {
+                                <span class="report-q-score" style="color:var(--color-text-secondary); border:1px solid var(--color-border)">No answer recorded</span>
+                            }
+                            else if (q.Score is not null)
                             {
                                 <span class="report-q-score" style="color:@qColor; border:1px solid @qColor">@Math.Round(q.Score.Value)/100</span>
                             }
@@ -143,18 +166,48 @@
                             }
                         </summary>
                         <div class="report-q-body safe-text-container">
-                            @if (!string.IsNullOrEmpty(q.AiFeedback))
+                            <div class="report-q-block safe-text-container">
+                                <span class="label">Your answer</span>
+                                <p class="safe-long-text">@(q.HasSubstantiveAnswer ? q.Answer : "No answer recorded")</p>
+                            </div>
+                            @if (q.Score is not null || q.CriteriaScores.Count > 0)
+                            {
+                                <dl class="report-q-metrics" aria-label="Question score and criteria">
+                                    @if (q.Score is not null)
+                                    {
+                                        <div>
+                                            <dt>Score</dt>
+                                            <dd aria-label="Question score @Math.Round(q.Score.Value) out of 100">@Math.Round(q.Score.Value)/100</dd>
+                                        </div>
+                                    }
+                                    @foreach (var criterion in q.CriteriaScores)
+                                    {
+                                        <div>
+                                            <dt>@criterion.Label</dt>
+                                            <dd aria-label="@criterion.Label score @Math.Round(criterion.Score) out of 100">@Math.Round(criterion.Score)/100</dd>
+                                        </div>
+                                    }
+                                </dl>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(q.AiFeedback))
                             {
                                 <div class="report-q-block safe-text-container">
                                     <span class="label">AI Analysis</span>
                                     <p class="safe-long-text">@q.AiFeedback</p>
                                 </div>
                             }
-                            @if (!string.IsNullOrEmpty(q.Strengths))
+                            @if (!string.IsNullOrWhiteSpace(q.Strengths))
                             {
                                 <div class="report-q-block strengths safe-text-container">
                                     <span class="label">Strengths</span>
                                     <p class="safe-long-text">@q.Strengths</p>
+                                </div>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(q.AreasToImprove))
+                            {
+                                <div class="report-q-block improve safe-text-container">
+                                    <span class="label">Areas to Improve</span>
+                                    <p class="safe-long-text">@q.AreasToImprove</p>
                                 </div>
                             }
                             @if (q.Score is null)
@@ -169,7 +222,7 @@
         }
 
         <!-- AI Coach Summary -->
-        @if (report is not null && (!string.IsNullOrEmpty(report.Strengths) || !string.IsNullOrEmpty(report.Improvements) || !string.IsNullOrEmpty(report.Summary)))
+        @if (isScored && report is not null && (report.Strengths?.Count > 0 || report.Improvements?.Count > 0 || !string.IsNullOrWhiteSpace(report.Summary)))
         {
             <div class="glass-card report-summary safe-text-container">
                 <h3 class="report-summary-title"><span class="material-symbols-outlined">auto_awesome</span> AI Coach Summary</h3>
@@ -181,7 +234,7 @@
                     <div class="report-summary-col strengths safe-text-container">
                         <h4>Key Strengths</h4>
                         <ul>
-                            @foreach (var item in (report.Strengths ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                            @foreach (var item in report.Strengths ?? new System.Collections.Generic.List<string>())
                             {
                                 <li class="safe-text-container"><span class="material-symbols-outlined">check_circle</span><span class="safe-long-text">@item</span></li>
                             }
@@ -190,7 +243,7 @@
                     <div class="report-summary-col improve safe-text-container">
                         <h4>Areas to Improve</h4>
                         <ul>
-                            @foreach (var item in (report.Improvements ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                            @foreach (var item in report.Improvements ?? new System.Collections.Generic.List<string>())
                             {
                                 <li class="safe-text-container"><span class="material-symbols-outlined">arrow_upward</span><span class="safe-long-text">@item</span></li>
                             }
@@ -200,9 +253,8 @@
             </div>
         }
 
-        @if (report is not null)
+        @if (showFeedbackSection)
         {
-            <link rel="stylesheet" href="~/css/components/star-rating.css" asp-append-version="true" />
             <div class="glass-card report-feedback safe-text-container">
                 <h3 class="report-feedback-title">How was this session?</h3>
                 <p class="report-feedback-sub">Help us improve the AI coaching experience.</p>
@@ -210,6 +262,8 @@
                 @if (!string.IsNullOrWhiteSpace(Model.FeedbackMessage))
                 {
                     var alertClass = Model.FeedbackMessage.StartsWith("Interview feedback submitted", StringComparison.OrdinalIgnoreCase)
+                        || Model.FeedbackMessage.StartsWith("Interview feedback updated", StringComparison.OrdinalIgnoreCase)
+                        || Model.FeedbackMessage.StartsWith("Your interview feedback has been deleted", StringComparison.OrdinalIgnoreCase)
                         ? "success"
                         : "warning";
                     <div class="report-feedback-alert @alertClass" role="status">@Model.FeedbackMessage</div>
@@ -218,17 +272,12 @@
                 @if (Model.MyInterviewFeedback is not null)
                 {
                     var submitted = Model.MyInterviewFeedback;
-                    var publicationStatus = submitted.IsVisible &&
-                        string.Equals(submitted.ModerationStatus, "Approved", StringComparison.OrdinalIgnoreCase)
-                            ? "Published"
-                            : "Not published";
                     <div class="report-feedback-submitted safe-text-container">
                         <div class="report-feedback-submitted-head">
                             <div>
                                 <strong>Your submitted feedback</strong>
                                 <span>Submitted @submitted.CreatedAt.ToLocalTime().ToString("MMM d, yyyy")</span>
                             </div>
-                            <span class="report-feedback-status">@publicationStatus</span>
                         </div>
                         <div class="report-feedback-scores">
                             @foreach (var metric in new[]
@@ -255,6 +304,16 @@
                         {
                             <blockquote class="report-feedback-comment safe-long-text">@submitted.Comment</blockquote>
                         }
+                        <div class="feedback-owner-actions">
+                            <button type="button" class="feedback-owner-action feedback-owner-action-edit" data-edit-interview-trigger data-feedback-id="@submitted.FeedbackId" data-overall="@submitted.OverallRating" data-question="@submitted.QuestionQualityRating" data-ai="@submitted.AiAccuracyRating" data-scoring="@submitted.ScoringFairnessRating" data-usefulness="@submitted.FeedbackUsefulnessRating" data-comment="@submitted.Comment" aria-label="Edit interview feedback">
+                                <span class="material-symbols-outlined" aria-hidden="true">edit</span>
+                                <span>Edit</span>
+                            </button>
+                            <button type="button" class="feedback-owner-action feedback-owner-action-delete" data-delete-interview-trigger data-feedback-id="@submitted.FeedbackId" aria-label="Delete interview feedback">
+                                <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+                                <span>Delete</span>
+                            </button>
+                        </div>
                     </div>
                 }
                 else if (Model.CanSubmitInterviewFeedback)
@@ -263,6 +322,7 @@
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="SessionId" value="@Model.SessionId" />
                         <input type="hidden" name="source" value="Evaluation" />
+                        <input type="hidden" name="durationActualSec" value="@Model.DurationActualSec" />
                         <p class="report-rating-help">1 star = poor, 5 stars = excellent</p>
 
                         @foreach (var field in new[]
@@ -279,6 +339,7 @@
                                 Name = field.Name,
                                 Label = field.Label,
                                 Value = Model.FeedbackFormWasSubmitted ? field.Value : 5,
+                                InstancePrefix = "evaluation-feedback-submit",
                                 Editable = true,
                                 Required = true,
                                 CssClass = "report-star-rating"
@@ -312,31 +373,81 @@
         }
     </main>
 
-    <div class="report-bottom">
-        <div class="report-bottom-inner">
-            <a class="btn-ghost" asp-controller="Interview" asp-action="Index"><span class="material-symbols-outlined" style="font-size:18px">arrow_back</span> Back to Interview Dashboard</a>
-            <div class="report-bottom-actions">
-                <!-- UI PLACEHOLDER: Share/Download are mockup-parity buttons; the real export logic
-                     is owned by another team member. Clicking shows a "Coming soon" note. -->
-                <span class="coming-soon-note" id="share-note" hidden>Coming soon — this feature is being built.</span>
-                <button type="button" class="btn-outline" data-coming-soon="share-note"><span class="material-symbols-outlined" style="font-size:18px">share</span> Share</button>
-                <button type="button" class="btn-outline" data-coming-soon="share-note"><span class="material-symbols-outlined" style="font-size:18px">download</span> Download</button>
-                <a class="btn-primary-solid" asp-controller="Interview" asp-action="Index">Start New Interview <span class="material-symbols-outlined" style="font-size:18px">play_arrow</span></a>
-            </div>
+    @if (Model.MyInterviewFeedback is not null)
+    {
+        <div class="feedback-report-modal" data-edit-interview-modal data-open-on-load="@Model.FeedbackEditFormWasSubmitted.ToString().ToLowerInvariant()" hidden>
+            <div class="feedback-report-backdrop" data-edit-interview-close></div>
+            <section class="feedback-report-dialog" role="dialog" aria-modal="true" aria-labelledby="edit-interview-title">
+                <header class="feedback-report-dialog-header">
+                    <div>
+                        <p>Interview Feedback</p>
+                        <h2 id="edit-interview-title">Edit feedback</h2>
+                    </div>
+                    <button type="button" class="feedback-report-close" data-edit-interview-close aria-label="Close dialog">
+                        <span class="material-symbols-outlined" aria-hidden="true">close</span>
+                    </button>
+                </header>
+                <form method="post" asp-controller="Interview" asp-action="EditInterviewFeedback" asp-route-id="@Model.SessionId" class="feedback-form">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="feedbackId" value="@Model.MyInterviewFeedback.FeedbackId" />
+                    <input type="hidden" name="source" value="Evaluation" />
+                    <input type="hidden" name="durationActualSec" value="@Model.DurationActualSec" />
+                    @foreach (var field in new[]
+                    {
+                        new { Name = "OverallRating", Label = "Overall rating", Value = Model.FeedbackEditFormWasSubmitted ? (int?)Model.EditFeedbackForm.OverallRating : (int?)Model.MyInterviewFeedback.OverallRating },
+                        new { Name = "QuestionQualityRating", Label = "Question quality", Value = Model.FeedbackEditFormWasSubmitted ? (int?)Model.EditFeedbackForm.QuestionQualityRating : (int?)Model.MyInterviewFeedback.QuestionQualityRating },
+                        new { Name = "AiAccuracyRating", Label = "AI accuracy", Value = Model.FeedbackEditFormWasSubmitted ? (int?)Model.EditFeedbackForm.AiAccuracyRating : (int?)Model.MyInterviewFeedback.AiAccuracyRating },
+                        new { Name = "ScoringFairnessRating", Label = "Scoring fairness", Value = Model.FeedbackEditFormWasSubmitted ? (int?)Model.EditFeedbackForm.ScoringFairnessRating : (int?)Model.MyInterviewFeedback.ScoringFairnessRating },
+                        new { Name = "FeedbackUsefulnessRating", Label = "Feedback usefulness", Value = Model.FeedbackEditFormWasSubmitted ? (int?)Model.EditFeedbackForm.FeedbackUsefulnessRating : (int?)Model.MyInterviewFeedback.FeedbackUsefulnessRating }
+                    })
+                    {
+                        @await Html.PartialAsync("_StarRating", new WebClient.Models.Shared.StarRatingViewModel
+                        {
+                            Name = field.Name,
+                            Label = field.Label,
+                            Value = field.Value,
+                            InstancePrefix = "evaluation-feedback-edit",
+                            Editable = true,
+                            Required = true
+                        })
+                    }
+                    <label for="edit-interview-comment" class="feedback-dialog-label">Comment <span>(optional)</span></label>
+                    <textarea id="edit-interview-comment" class="feedback-comment-input" name="Comment" rows="4" maxlength="@InterviewFeedbackRules.MaxCommentLength">@(Model.FeedbackEditFormWasSubmitted ? Model.EditFeedbackForm.Comment : Model.MyInterviewFeedback.Comment)</textarea>
+                    <div class="feedback-report-actions">
+                        <button type="button" class="feedback-report-cancel" data-edit-interview-close>Cancel</button>
+                        <button type="submit" class="feedback-report-submit">Save Changes</button>
+                    </div>
+                </form>
+            </section>
         </div>
-    </div>
 
-    <script>
-        (function () {
-            document.querySelectorAll("[data-coming-soon]").forEach(function (button) {
-                button.addEventListener("click", function () {
-                    var note = document.getElementById(button.dataset.comingSoon);
-                    if (note) note.hidden = false;
-                });
-            });
+        <div class="feedback-report-modal" data-delete-interview-modal hidden>
+            <div class="feedback-report-backdrop" data-delete-interview-close></div>
+            <section class="feedback-report-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-interview-title">
+                <header class="feedback-report-dialog-header">
+                    <div>
+                        <p>Confirmation</p>
+                        <h2 id="delete-interview-title">Delete interview feedback?</h2>
+                    </div>
+                    <button type="button" class="feedback-report-close" data-delete-interview-close aria-label="Close dialog">
+                        <span class="material-symbols-outlined" aria-hidden="true">close</span>
+                    </button>
+                </header>
+                <p class="feedback-report-description">Are you sure you want to delete your interview feedback? After deletion, you will be able to submit new feedback for this session.</p>
+                <form method="post" asp-controller="Interview" asp-action="DeleteInterviewFeedback" asp-route-id="@Model.SessionId">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="feedbackId" value="@Model.MyInterviewFeedback.FeedbackId" />
+                    <input type="hidden" name="source" value="Evaluation" />
+                    <input type="hidden" name="durationActualSec" value="@Model.DurationActualSec" />
+                    <div class="feedback-report-actions">
+                        <button type="button" class="feedback-report-cancel" data-delete-interview-close>Cancel</button>
+                        <button type="submit" class="feedback-report-submit feedback-report-submit-danger">Delete</button>
+                    </div>
+                </form>
+            </section>
+        </div>
+    }
 
-        })();
-    </script>
     <script src="~/js/components/feedback-content.js" asp-append-version="true"></script>
     <script src="~/js/components/star-rating.js" asp-append-version="true"></script>
 </body>

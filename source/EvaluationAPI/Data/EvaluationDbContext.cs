@@ -27,6 +27,7 @@ public class EvaluationDbContext : DbContext
         modelBuilder.Entity<FeedbackReport>(entity =>
         {
             entity.HasKey(e => e.ReportId);
+            entity.HasIndex(e => e.SessionId).IsUnique();
             entity.Property(e => e.ReportId).HasDefaultValueSql("(newsequentialid())");
             entity.Property(e => e.GeneratedAt).HasDefaultValueSql("(dateadd(hour,(7),sysutcdatetime()))");
         });

@@ -3,7 +3,7 @@ using FeedbackAPI.DTOs;
 namespace FeedbackAPI.Services.Interfaces;
 
 /// <summary>
-/// System feedback workflows for admin management, restore, moderation, public reviews, and Candidate submissions.
+/// System feedback workflows for admin management, restore, public reviews, and Candidate submissions.
 /// </summary>
 public interface ISystemFeedbackService
 {
@@ -11,8 +11,10 @@ public interface ISystemFeedbackService
     Task<SystemFeedbackListItemDto?> GetDetailAsync(Guid id);
     Task<PagedResult<PublicSystemFeedbackDto>> GetPublicReviewsAsync(PublicFeedbackQuery query, CancellationToken ct = default);
     Task<SystemFeedbackSubmissionStatusDto> GetSubmissionStatusAsync(Guid userId, CancellationToken ct = default);
+    Task<MySystemFeedbackDto?> GetMyFeedbackAsync(Guid feedbackId, Guid userId, CancellationToken ct = default);
     Task<CreatedSystemFeedbackDto> SubmitAsync(Guid userId, SubmitSystemFeedbackRequest request, string? bearerToken, CancellationToken ct = default);
-    Task<ModerationResponse?> ModerateAsync(Guid feedbackId, Guid adminId, ModerationRequest request, CancellationToken ct = default);
+    Task EditAsync(Guid feedbackId, Guid userId, UpdateSystemFeedbackRequest request, CancellationToken ct = default);
+    Task CandidateDeleteAsync(Guid feedbackId, Guid userId, CancellationToken ct = default);
     Task<bool> SoftDeleteAsync(Guid id);
     Task<bool> RestoreAsync(Guid id);
     Task<FeedbackReplyDto?> ReplyAsync(Guid feedbackId, Guid repliedBy, string replyContent);

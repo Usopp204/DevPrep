@@ -74,12 +74,12 @@ class EvaluateIn(BaseModel):
 
 
 class EvaluateOut(BaseModel):
-    score: float | None = None
-    criteria: dict | None = None
-    analysis: str = ""
-    suggested_improvement: str = ""
-    praise: str = ""
-    model_used: str = ""
+    score: float
+    criteria: dict[str, float]
+    analysis: str
+    suggested_improvement: str
+    praise: str
+    model_used: str
 
 
 @router.post("/evaluate-answer", response_model=EvaluateOut)
@@ -91,22 +91,30 @@ def evaluate_answer(body: EvaluateIn, x_internal_api_key: str | None = Header(de
         "user_answer": body.user_answer, "followups": body.followups, "skipped": False,
     }
     judge = evaluator.GeminiJudge()
-    graded = evaluator.grade_item(item, judge, evaluator.enrich_for(item))
-    if not graded:  # transient grader failure (e.g. rate limit) -> 200 with null score
-        return EvaluateOut(score=None, model_used=config.GEMINI_JUDGE_MODEL)
+    try:
+        graded = evaluator.grade_item(item, judge, evaluator.enrich_for(item))
+    except evaluator.GradingFailure:
+        raise HTTPException(status_code=503, detail="Grading failed, please try again.") from None
     return EvaluateOut(
-        score=graded.get("score"), criteria=graded.get("criteria"),
-        analysis=graded.get("analysis", ""),
-        suggested_improvement=graded.get("suggested_improvement", ""),
-        praise=graded.get("praise", ""), model_used=config.GEMINI_JUDGE_MODEL,
+        score=graded["score"], criteria=graded["criteria"],
+        analysis=graded["analysis"],
+        suggested_improvement=graded["suggested_improvement"],
+        praise=graded["praise"], model_used=judge.model,
     )
 
 
 # ---- 3. Aggregate report ----------------------------------------------------
 class EvalRow(BaseModel):
+    qid: str = ""
+    question: str = ""
+    user_answer: str = ""
     category: str = ""
+    difficulty: str = ""
     score: float = 0
     criteria: dict | None = None
+    analysis: str = ""
+    praise: str = ""
+    suggested_improvement: str = ""
 
 
 class ReportIn(BaseModel):
@@ -117,15 +125,21 @@ class ReportIn(BaseModel):
 @router.post("/report")
 def build_report(body: ReportIn, x_internal_api_key: str | None = Header(default=None)):
     _check_key(x_internal_api_key)
-    # Shape rows into the per-question report form aggregate() expects.
-    reports = []
-    for e in body.evaluations:
-        crit = e.criteria or {"knowledge": e.score, "problem_solving": e.score, "communication": e.score}
-        reports.append({
-            "qid": "Q", "question": "", "category": e.category, "user_answer": "x",
-            "score": e.score, "criteria": crit,
-            "analysis": "", "suggested_improvement": "", "praise": "",
-        })
+    reports = [
+        {
+            "qid": row.qid,
+            "question": row.question,
+            "user_answer": row.user_answer,
+            "category": row.category,
+            "difficulty": row.difficulty,
+            "score": row.score,
+            "criteria": row.criteria,
+            "analysis": row.analysis,
+            "praise": row.praise,
+            "suggested_improvement": row.suggested_improvement,
+        }
+        for row in body.evaluations
+    ]
     judge = evaluator.GeminiJudge()
     return evaluator.build_report(reports, judge, body.duration_actual_sec)
 

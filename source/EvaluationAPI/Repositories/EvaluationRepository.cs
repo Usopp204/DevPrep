@@ -2,6 +2,7 @@ using EvaluationAPI.Data;
 using EvaluationAPI.Models;
 using EvaluationAPI.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using System.Data;
 
 namespace EvaluationAPI.Repositories;
 
@@ -21,7 +22,6 @@ public class EvaluationRepository : IEvaluationRepository
         return eval;
     }
 
-    // Existing evaluation for one answer, if any (used to avoid double-grading a question).
     public Task<AnswerEvaluation?> GetBySessionQuestionAsync(
         Guid sessionId, Guid sessionQuestionId, CancellationToken ct) =>
         _db.AnswerEvaluations
@@ -30,28 +30,59 @@ public class EvaluationRepository : IEvaluationRepository
 
     public Task<List<AnswerEvaluation>> GetEvaluationsBySessionAsync(Guid sessionId, CancellationToken ct) =>
         _db.AnswerEvaluations
+            .AsNoTracking()
             .Where(e => e.SessionId == sessionId)
             .OrderBy(e => e.GeneratedAt)
             .ToListAsync(ct);
-
-    public async Task<FeedbackReport> AddReportAsync(FeedbackReport report, CancellationToken ct)
-    {
-        _db.FeedbackReports.Add(report);
-        await _db.SaveChangesAsync(ct);
-        return report;
-    }
-
-    public async Task AddMetricsAsync(List<PerformanceMetric> metrics, CancellationToken ct)
-    {
-        _db.PerformanceMetrics.AddRange(metrics);
-        await _db.SaveChangesAsync(ct);
-    }
-
-    public Task<bool> ReportExistsAsync(Guid sessionId, CancellationToken ct) =>
-        _db.FeedbackReports.AnyAsync(r => r.SessionId == sessionId, ct);
 
     public Task<FeedbackReport?> GetReportBySessionAsync(Guid sessionId, CancellationToken ct) =>
         _db.FeedbackReports
             .AsNoTracking()
             .FirstOrDefaultAsync(r => r.SessionId == sessionId, ct);
+
+    public async Task<FeedbackReport> CreateReportWithMetricsAsync(
+        FeedbackReport report,
+        IReadOnlyCollection<PerformanceMetric> metrics,
+        CancellationToken ct)
+    {
+        await using var transaction = await _db.Database.BeginTransactionAsync(
+            IsolationLevel.Serializable,
+            ct);
+
+        var existing = await _db.FeedbackReports
+            .AsNoTracking()
+            .FirstOrDefaultAsync(item => item.SessionId == report.SessionId, ct);
+        if (existing is not null)
+        {
+            await transaction.CommitAsync(ct);
+            return existing;
+        }
+
+        _db.FeedbackReports.Add(report);
+        _db.PerformanceMetrics.AddRange(metrics);
+        await _db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
+        return report;
+    }
+
+    public async Task UpdateReportAggregateAsync(
+        Guid reportId,
+        decimal overallScore,
+        decimal? technicalScore,
+        decimal? communicationScore,
+        decimal? problemSolvingScore,
+        string grade,
+        CancellationToken ct)
+    {
+        var report = await _db.FeedbackReports
+            .FirstOrDefaultAsync(item => item.ReportId == reportId, ct)
+            ?? throw new InvalidOperationException("The performance report no longer exists.");
+
+        report.OverallScore = overallScore;
+        report.TechnicalScore = technicalScore;
+        report.CommunicationScore = communicationScore;
+        report.ProblemSolvingScore = problemSolvingScore;
+        report.Grade = grade;
+        await _db.SaveChangesAsync(ct);
+    }
 }

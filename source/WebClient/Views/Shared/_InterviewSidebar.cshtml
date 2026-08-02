@@ -21,6 +21,7 @@
     <div class="dash-session-list"
          id="recent-session-list"
          data-url="@Url.Action("RecentSessions", "Interview")"
+         data-current-session-id="@(Model.ActiveSessionId?.ToString() ?? string.Empty)"
          data-next-page="2"
          data-has-more="@(Model.RecentSessions.Count >= 6 ? "true" : "false")">
         @if (Model.RecentSessions.Count == 0)
@@ -47,18 +48,4 @@
     </div>
 
     <div class="dash-recent-state" id="recent-session-state" aria-live="polite">@Model.RecentError</div>
-
-    <div class="dash-sidebar-spacer"></div>
-
-    <div class="dash-sidebar-footer">
-        <a class="dash-footer-item" asp-controller="Home" asp-action="Index">
-            <span class="material-symbols-outlined">home</span>
-            <span>Home</span>
-        </a>
-
-        <a class="dash-footer-item" asp-controller="Feedback" asp-action="System">
-            <span class="material-symbols-outlined">help</span>
-            <span>Support</span>
-        </a>
-    </div>
 </nav>

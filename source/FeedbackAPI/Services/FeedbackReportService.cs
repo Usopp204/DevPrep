@@ -25,6 +25,11 @@ public sealed class FeedbackReportService(IFeedbackReportRepository repository) 
             throw new FeedbackReportForbiddenException("A Candidate account is required to report feedback.");
         }
 
+        if (feedbackType == FeedbackReportType.Interview)
+        {
+            throw new FeedbackReportForbiddenException("AI feedback cannot be reported. Only system feedback can be reported.");
+        }
+
         ValidateFeedbackType(feedbackType);
         if (feedbackId == Guid.Empty)
         {
@@ -32,7 +37,7 @@ public sealed class FeedbackReportService(IFeedbackReportRepository repository) 
         }
 
         await using var transaction = await repository.BeginSerializableTransactionAsync(ct);
-        var ownerUserId = await GetPublicTargetOwnerAsync(feedbackType, feedbackId, ct);
+        var ownerUserId = await GetPublicSystemTargetOwnerAsync(feedbackId, ct);
         if (ownerUserId == reporterUserId)
         {
             throw new FeedbackReportForbiddenException("You cannot report your own feedback.");
@@ -48,7 +53,7 @@ public sealed class FeedbackReportService(IFeedbackReportRepository repository) 
             throw new FeedbackReportValidationException("Details are required when the reason is Other.");
         }
 
-        if (await repository.ExistsAsync(feedbackType, feedbackId, reporterUserId, ct))
+        if (await repository.ExistsSystemAsync(feedbackId, reporterUserId, ct))
         {
             throw new DuplicateFeedbackReportException();
         }
@@ -56,9 +61,8 @@ public sealed class FeedbackReportService(IFeedbackReportRepository repository) 
         var report = new FeedbackReport
         {
             FeedbackReportId = Guid.NewGuid(),
-            FeedbackType = feedbackType,
-            InterviewFeedbackId = feedbackType == FeedbackReportType.Interview ? feedbackId : null,
-            SystemFeedbackId = feedbackType == FeedbackReportType.System ? feedbackId : null,
+            FeedbackType = FeedbackReportType.System,
+            SystemFeedbackId = feedbackId,
             ReporterUserId = reporterUserId,
             ReasonCode = request.ReasonCode,
             Details = details,
@@ -82,7 +86,7 @@ public sealed class FeedbackReportService(IFeedbackReportRepository repository) 
                 await transaction.RollbackAsync(ct);
             }
 
-            if (await repository.ExistsAsync(feedbackType, feedbackId, reporterUserId, ct))
+            if (await repository.ExistsSystemAsync(feedbackId, reporterUserId, ct))
             {
                 throw new DuplicateFeedbackReportException();
             }
@@ -99,41 +103,41 @@ public sealed class FeedbackReportService(IFeedbackReportRepository repository) 
         };
     }
 
-    public Task ApplySystemViewerStateAsync(
+    public async Task ApplySystemViewerStateAsync(
         IReadOnlyList<PublicSystemFeedbackDto> feedback,
         Guid? viewerUserId,
         bool isCandidate,
-        CancellationToken ct = default) =>
-        ApplyViewerStateAsync(
-            FeedbackReportType.System,
-            feedback,
-            item => item.FeedbackId,
-            (item, canReport, hasReported) =>
+        CancellationToken ct = default)
+    {
+        if (!isCandidate || !viewerUserId.HasValue || viewerUserId == Guid.Empty)
+        {
+            foreach (var item in feedback)
             {
-                item.CanReport = canReport;
-                item.HasReported = hasReported;
-            },
-            viewerUserId,
-            isCandidate,
-            ct);
+                item.CanReport = false;
+                item.HasReported = false;
+                item.IsOwner = false;
+            }
 
-    public Task ApplyInterviewViewerStateAsync(
-        IReadOnlyList<PublicAiFeedbackDto> feedback,
-        Guid? viewerUserId,
-        bool isCandidate,
-        CancellationToken ct = default) =>
-        ApplyViewerStateAsync(
-            FeedbackReportType.Interview,
-            feedback,
-            item => item.FeedbackId,
-            (item, canReport, hasReported) =>
+            return;
+        }
+
+        var ids = feedback.Select(item => item.FeedbackId).ToArray();
+        var states = await repository.GetSystemViewerStatesAsync(ids, viewerUserId.Value, ct);
+        foreach (var item in feedback)
+        {
+            if (!states.TryGetValue(item.FeedbackId, out var state))
             {
-                item.CanReport = canReport;
-                item.HasReported = hasReported;
-            },
-            viewerUserId,
-            isCandidate,
-            ct);
+                item.CanReport = false;
+                item.HasReported = false;
+                item.IsOwner = false;
+                continue;
+            }
+
+            item.CanReport = !state.IsOwner && !state.HasReported;
+            item.HasReported = state.HasReported;
+            item.IsOwner = state.IsOwner;
+        }
+    }
 
     public async Task<PagedResult<FeedbackReportListItemDto>> GetListAsync(
         FeedbackReportQuery query,
@@ -356,63 +360,17 @@ public sealed class FeedbackReportService(IFeedbackReportRepository repository) 
         return ToResolution(report, pendingReports.Count, feedbackDeleted: true);
     }
 
-    private async Task<Guid> GetPublicTargetOwnerAsync(
-        string feedbackType,
+    private async Task<Guid> GetPublicSystemTargetOwnerAsync(
         Guid feedbackId,
         CancellationToken ct)
     {
-        if (feedbackType == FeedbackReportType.Interview)
-        {
-            var target = await repository.GetInterviewFeedbackAsync(feedbackId, tracking: false, ct);
-            if (target is null || target.IsDeleted || !target.IsVisible || target.ModerationStatus != "Approved")
-            {
-                throw new FeedbackReportNotFoundException("The feedback is no longer publicly available.");
-            }
-
-            return target.UserId;
-        }
-
-        var systemTarget = await repository.GetSystemFeedbackAsync(feedbackId, tracking: false, ct);
-        if (systemTarget is null || systemTarget.IsDeleted || !systemTarget.IsVisible || systemTarget.ModerationStatus != "Approved")
+        var target = await repository.GetSystemFeedbackAsync(feedbackId, tracking: false, ct);
+        if (target is null || target.IsDeleted || !target.IsVisible)
         {
             throw new FeedbackReportNotFoundException("The feedback is no longer publicly available.");
         }
 
-        return systemTarget.UserId;
-    }
-
-    private async Task ApplyViewerStateAsync<T>(
-        string feedbackType,
-        IReadOnlyList<T> feedback,
-        Func<T, Guid> idSelector,
-        Action<T, bool, bool> apply,
-        Guid? viewerUserId,
-        bool isCandidate,
-        CancellationToken ct)
-    {
-        if (!isCandidate || !viewerUserId.HasValue || viewerUserId == Guid.Empty)
-        {
-            foreach (var item in feedback)
-            {
-                apply(item, false, false);
-            }
-
-            return;
-        }
-
-        var ids = feedback.Select(idSelector).ToArray();
-        var states = await repository.GetViewerStatesAsync(feedbackType, ids, viewerUserId.Value, ct);
-        foreach (var item in feedback)
-        {
-            var id = idSelector(item);
-            if (!states.TryGetValue(id, out var state))
-            {
-                apply(item, false, false);
-                continue;
-            }
-
-            apply(item, !state.IsOwner && !state.HasReported, state.HasReported);
-        }
+        return target.UserId;
     }
 
     private IQueryable<FeedbackReport> RelatedQuery(FeedbackReport report) =>
@@ -453,7 +411,7 @@ public sealed class FeedbackReportService(IFeedbackReportRepository repository) 
             UiUxRating = system?.UiUxRating,
             UsabilityRating = system?.UsabilityRating,
             FeatureQualityRating = system?.FeatureQualityRating,
-            FeedbackModerationStatus = interview?.ModerationStatus ?? system?.ModerationStatus,
+
             ReviewedAt = report.ReviewedAt,
             ReviewedBy = report.ReviewedBy,
             ResolutionNote = report.ResolutionNote,

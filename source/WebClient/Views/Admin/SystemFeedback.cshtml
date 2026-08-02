@@ -407,6 +407,11 @@
                 try {
                     const res = await fetch(`${API_BASE}/${id}/restore`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
                     if (res.status === 403) { alert('Only Admin can restore.'); return; }
+                    if (res.status === 409) {
+                        const payload = await res.json().catch(() => null);
+                        alert(payload?.message || 'This feedback cannot be restored because an active replacement already exists.');
+                        return;
+                    }
                     if (!res.ok) throw new Error(`HTTP ${res.status}`);
                     currentId = null; toggleDrawer(false); fetchList();
                 } catch (e) { alert('Restore failed.'); }

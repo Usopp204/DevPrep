@@ -36,6 +36,9 @@ public partial class InterviewSession
     [StringLength(20)]
     public string Status { get; set; } = null!;
 
+    [StringLength(32)]
+    public string? TerminationReason { get; set; }
+
     public DateTime? StartedAt { get; set; }
 
     public DateTime? EndedAt { get; set; }

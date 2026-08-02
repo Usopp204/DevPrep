@@ -10,5 +10,6 @@ public class EvaluateAnswerResponse
     public string? CriteriaScoresJson { get; set; }
     public string? Strengths { get; set; }
     public string? AiFeedback { get; set; }
+    public string? AreasToImprove { get; set; }
     public string? ModelUsed { get; set; }
 }

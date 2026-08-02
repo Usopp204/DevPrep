@@ -22,19 +22,87 @@ public class FeedbackController(IFeedbackService feedbackService, IInterviewServ
     [HttpGet]
     public async Task<IActionResult> Ai(int page = 1, CancellationToken cancellationToken = default)
     {
-        var reviews = await feedbackService.GetAiReviewsAsync(page, PublicPageSize, cancellationToken);
-        var model = new FeedbackPageViewModel
-        {
-            ActiveSection = "Ai",
-            AiReviews = reviews.Data ?? new WebClient.Models.Shared.PagedResult<PublicAiFeedbackDto> { Page = Math.Max(1, page), PageSize = PublicPageSize },
-            Page = reviews.Data?.Page ?? Math.Max(1, page),
-            PageSize = PublicPageSize,
-            IsAuthenticatedUser = IsAuthenticatedUser(),
-            ErrorMessage = reviews.Success ? null : reviews.Error,
-            SuccessMessage = TempData["SuccessMessage"] as string
-        };
-
+        var model = await BuildAiModelAsync(page, PublicPageSize, cancellationToken);
         return View("Index", model);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> EditAi(
+        Guid feedbackId,
+        UpdateInterviewFeedbackRequest request,
+        int page = 1,
+        CancellationToken cancellationToken = default)
+    {
+        if (!IsAuthenticatedUser())
+        {
+            return RedirectToAction("Login", "Auth", new { returnUrl = AiReturnUrl(page) });
+        }
+
+        request.Comment = FeedbackInput.NormalizeOptionalComment(request.Comment);
+        if (!ModelState.IsValid)
+        {
+            return await RedisplayAiEditAsync(
+                feedbackId,
+                request,
+                page,
+                CommentValidationMessage() ?? "Please choose a 1-5 rating for each required category.",
+                cancellationToken);
+        }
+
+        var result = await feedbackService.EditInterviewFeedbackAsync(feedbackId, request, cancellationToken);
+        if (result.Success)
+        {
+            TempData["SuccessMessage"] = "Your AI feedback has been updated successfully.";
+        }
+        else if (result.StatusCode == StatusCodes.Status401Unauthorized)
+        {
+            return RedirectToAction("Login", "Auth", new { returnUrl = AiReturnUrl(page) });
+        }
+        else if (result.StatusCode is StatusCodes.Status400BadRequest or StatusCodes.Status422UnprocessableEntity)
+        {
+            return await RedisplayAiEditAsync(
+                feedbackId,
+                request,
+                page,
+                result.Error ?? "Please correct the feedback fields and try again.",
+                cancellationToken);
+        }
+        else
+        {
+            TempData["ErrorMessage"] = result.Error ?? "Could not update AI feedback.";
+        }
+
+        return RedirectToAction(nameof(Ai), new { page });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteAi(
+        Guid feedbackId,
+        int page = 1,
+        CancellationToken cancellationToken = default)
+    {
+        if (!IsAuthenticatedUser())
+        {
+            return RedirectToAction("Login", "Auth", new { returnUrl = AiReturnUrl(page) });
+        }
+
+        var result = await feedbackService.DeleteInterviewFeedbackAsync(feedbackId, cancellationToken);
+        if (result.Success || result.StatusCode == StatusCodes.Status404NotFound)
+        {
+            TempData["SuccessMessage"] = "Your AI feedback has been deleted.";
+        }
+        else if (result.StatusCode == StatusCodes.Status401Unauthorized)
+        {
+            return RedirectToAction("Login", "Auth", new { returnUrl = AiReturnUrl(page) });
+        }
+        else
+        {
+            TempData["ErrorMessage"] = result.Error ?? "Could not delete AI feedback.";
+        }
+
+        return RedirectToAction(nameof(Ai), new { page });
     }
 
     [HttpPost]
@@ -79,6 +147,92 @@ public class FeedbackController(IFeedbackService feedbackService, IInterviewServ
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    public async Task<IActionResult> EditSystem(
+        Guid feedbackId,
+        UpdateSystemFeedbackRequest request,
+        int page = 1,
+        string? returnUrl = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (!IsAuthenticatedUser())
+        {
+            return RedirectToAction("Login", "Auth", new { returnUrl = LocalReturnUrl(returnUrl) });
+        }
+
+        request.Comment = FeedbackInput.NormalizeOptionalComment(request.Comment);
+        if (!ModelState.IsValid)
+        {
+            var model = await BuildSystemModelAsync(page, PublicPageSize, cancellationToken);
+            model.EditSystemForm = request;
+            model.EditingFeedbackId = feedbackId;
+            model.EditFormWasSubmitted = true;
+            model.FeedbackValidationMessage = CommentValidationMessage();
+            model.ErrorMessage = model.FeedbackValidationMessage
+                ?? "Please choose a 1-5 rating for each required category.";
+            return View("Index", model);
+        }
+
+        var result = await feedbackService.EditSystemFeedbackAsync(feedbackId, request, cancellationToken);
+        if (result.Success)
+        {
+            TempData["SuccessMessage"] = "Your system feedback has been updated successfully.";
+        }
+        else if (result.StatusCode == StatusCodes.Status401Unauthorized)
+        {
+            return RedirectToAction("Login", "Auth", new { returnUrl = LocalReturnUrl(returnUrl) });
+        }
+        else if (result.StatusCode is StatusCodes.Status400BadRequest or StatusCodes.Status422UnprocessableEntity)
+        {
+            var model = await BuildSystemModelAsync(page, PublicPageSize, cancellationToken);
+            model.EditSystemForm = request;
+            model.EditingFeedbackId = feedbackId;
+            model.EditFormWasSubmitted = true;
+            model.FeedbackValidationMessage = result.Error?.Contains("Comment", StringComparison.OrdinalIgnoreCase) == true
+                ? result.Error
+                : null;
+            model.ErrorMessage = result.Error ?? "Please correct the feedback fields and try again.";
+            return View("Index", model);
+        }
+        else
+        {
+            TempData["ErrorMessage"] = result.Error ?? "Could not update system feedback.";
+        }
+
+        return RedirectToAction(nameof(System), new { page });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteSystem(
+        Guid feedbackId,
+        int page = 1,
+        string? returnUrl = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (!IsAuthenticatedUser())
+        {
+            return RedirectToAction("Login", "Auth", new { returnUrl = LocalReturnUrl(returnUrl) });
+        }
+
+        var result = await feedbackService.DeleteSystemFeedbackAsync(feedbackId, cancellationToken);
+        if (result.Success || result.StatusCode == StatusCodes.Status404NotFound)
+        {
+            TempData["SuccessMessage"] = "Your system feedback has been deleted.";
+        }
+        else if (result.StatusCode == StatusCodes.Status401Unauthorized)
+        {
+            return RedirectToAction("Login", "Auth", new { returnUrl = LocalReturnUrl(returnUrl) });
+        }
+        else
+        {
+            TempData["ErrorMessage"] = result.Error ?? "Could not delete system feedback.";
+        }
+
+        return RedirectToAction(nameof(System), new { page });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
     [Consumes("application/json")]
     public async Task<IActionResult> SubmitReport(
         [FromQuery] Guid feedbackId,
@@ -105,9 +259,12 @@ public class FeedbackController(IFeedbackService feedbackService, IInterviewServ
             ModelState.AddModelError(nameof(feedbackId), "The feedback is no longer available.");
         }
 
-        if (feedbackType is not (FeedbackReportRules.SystemType or FeedbackReportRules.InterviewType))
+        if (feedbackType != FeedbackReportRules.SystemType)
         {
-            ModelState.AddModelError(nameof(feedbackType), "Feedback type is invalid.");
+            var err = feedbackType == FeedbackReportRules.InterviewType
+                ? "AI feedback cannot be reported. Only system feedback can be reported."
+                : "Feedback type is invalid.";
+            ModelState.AddModelError(nameof(feedbackType), err);
         }
 
         if (string.IsNullOrWhiteSpace(request.ReasonCode) || !FeedbackReportRules.Reasons.ContainsKey(request.ReasonCode))
@@ -193,10 +350,60 @@ public class FeedbackController(IFeedbackService feedbackService, IInterviewServ
         return RedirectSafely(returnUrl);
     }
 
+    private async Task<IActionResult> RedisplayAiEditAsync(
+        Guid feedbackId,
+        UpdateInterviewFeedbackRequest request,
+        int page,
+        string message,
+        CancellationToken cancellationToken)
+    {
+        var model = await BuildAiModelAsync(page, PublicPageSize, cancellationToken);
+        model.EditInterviewForm = request;
+        model.EditingFeedbackId = feedbackId;
+        model.EditFormWasSubmitted = true;
+        model.FeedbackValidationMessage = CommentValidationMessage();
+        model.ErrorMessage = message;
+        return View("Index", model);
+    }
+
+    private async Task<FeedbackPageViewModel> BuildAiModelAsync(
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
+        var reviews = await feedbackService.GetAiReviewsAsync(page, pageSize, cancellationToken);
+        if (reviews.Success && reviews.Data is not null && reviews.Data.Items.Count == 0 && page > 1)
+        {
+            page = Math.Max(1, reviews.Data.TotalPages);
+            reviews = await feedbackService.GetAiReviewsAsync(page, pageSize, cancellationToken);
+        }
+
+        return new FeedbackPageViewModel
+        {
+            ActiveSection = "Ai",
+            AiReviews = reviews.Data ?? new WebClient.Models.Shared.PagedResult<PublicAiFeedbackDto>
+            {
+                Page = Math.Max(1, page),
+                PageSize = pageSize
+            },
+            Page = reviews.Data?.Page ?? Math.Max(1, page),
+            PageSize = pageSize,
+            IsAuthenticatedUser = IsAuthenticatedUser(),
+            ErrorMessage = reviews.Success ? TempData["ErrorMessage"] as string : reviews.Error,
+            SuccessMessage = TempData["SuccessMessage"] as string
+        };
+    }
+
     private async Task<FeedbackPageViewModel> BuildSystemModelAsync(
         int page, int pageSize, CancellationToken cancellationToken)
     {
         var reviews = await feedbackService.GetSystemReviewsAsync(page, pageSize, cancellationToken);
+        if (reviews.Success && reviews.Data is not null && reviews.Data.Items.Count == 0 && page > 1)
+        {
+            page = Math.Max(1, reviews.Data.TotalPages);
+            reviews = await feedbackService.GetSystemReviewsAsync(page, pageSize, cancellationToken);
+        }
+
         var model = new FeedbackPageViewModel
         {
             ActiveSection = "System",
@@ -210,6 +417,39 @@ public class FeedbackController(IFeedbackService feedbackService, IInterviewServ
 
         if (model.IsAuthenticatedUser)
         {
+            var status = await feedbackService.GetSystemSubmissionStatusAsync(cancellationToken);
+            if (status.Success && status.Data?.ActiveFeedbackId is Guid feedbackId)
+            {
+                var owned = await feedbackService.GetMySystemFeedbackAsync(feedbackId, cancellationToken);
+                if (owned.Success && owned.Data is not null)
+                {
+                    model.MySystemFeedback = owned.Data;
+                    if (model.SystemReviews.Items.All(item => item.FeedbackId != owned.Data.FeedbackId))
+                    {
+                        model.SystemReviews.Items.Insert(0, new PublicSystemFeedbackDto
+                        {
+                            FeedbackId = owned.Data.FeedbackId,
+                            AuthorDisplayName = "You",
+                            OverallRating = owned.Data.OverallRating,
+                            UiUxRating = owned.Data.UiUxRating,
+                            UsabilityRating = owned.Data.UsabilityRating,
+                            FeatureQualityRating = owned.Data.FeatureQualityRating,
+                            Comment = owned.Data.Comment,
+                            CreatedAt = owned.Data.CreatedAt,
+                            IsOwner = true
+                        });
+                    }
+                }
+                else
+                {
+                    model.ErrorMessage ??= "Could not load your active system feedback right now.";
+                }
+            }
+            else if (!status.Success && status.StatusCode != StatusCodes.Status404NotFound)
+            {
+                model.ErrorMessage ??= "Could not confirm your system feedback status right now.";
+            }
+
             var eligibility = await interviewService.GetFeedbackEligibilityAsync(cancellationToken);
             if (eligibility.Success)
             {
@@ -251,6 +491,9 @@ public class FeedbackController(IFeedbackService feedbackService, IInterviewServ
 
         return RedirectToAction(nameof(System));
     }
+
+    private string AiReturnUrl(int page) =>
+        Url.Action(nameof(Ai), "Feedback", new { page }) ?? "/Feedback/Ai";
 
     private string LocalReturnUrl(string? returnUrl) =>
         !string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl)

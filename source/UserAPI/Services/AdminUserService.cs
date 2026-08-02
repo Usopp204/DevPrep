@@ -1,4 +1,4 @@
-﻿
+
 
 using System.Net.Http.Json;
 using Microsoft.Extensions.Logging;
@@ -25,6 +25,33 @@ public class AdminUserService : IAdminUserService
         _logger = logger;
     }
 
+    public async Task<CandidateStatisticsDto> GetCandidateStatisticsAsync(
+        DateOnly from,
+        DateOnly to,
+        string authorizationHeader,
+        CancellationToken cancellationToken)
+    {
+        var vietnamOffset = TimeSpan.FromHours(7);
+        var fromUtc = new DateTimeOffset(from.ToDateTime(TimeOnly.MinValue), vietnamOffset).UtcDateTime;
+        var toExclusiveUtc = new DateTimeOffset(to.AddDays(1).ToDateTime(TimeOnly.MinValue), vietnamOffset).UtcDateTime;
+        var url = $"/api/internal/accounts/statistics/candidates" +
+                  $"?fromUtc={Uri.EscapeDataString(fromUtc.ToString("O"))}" +
+                  $"&toExclusiveUtc={Uri.EscapeDataString(toExclusiveUtc.ToString("O"))}";
+
+        var client = _clientFactory.CreateClient("AuthServiceClient");
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        request.Headers.TryAddWithoutValidation("Authorization", authorizationHeader);
+        using var response = await client.SendAsync(request, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+            throw new HttpRequestException("AuthAPI candidate statistics request failed.", null, response.StatusCode);
+
+        var result = await response.Content.ReadFromJsonAsync<CandidateStatisticsDto>(
+            cancellationToken: cancellationToken);
+        if (result is null || result.From != from || result.To != to)
+            throw new InvalidOperationException("AuthAPI returned an invalid candidate statistics response.");
+
+        return result;
+    }
     // =========================================================
     // DANH SÁCH USER (HTTP AGGREGATION) -  TÌM THEO TÊN
     // =========================================================

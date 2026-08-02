@@ -6,14 +6,17 @@ using WebClient.Models.Shared;
 using WebClient.Services.Feedback;
 using WebClient.Services.Home;
 using WebClient.Services.Interview;
+using WebClient.Services.Shared;
 
 namespace WebClient.Controllers.Home;
 
 public class HomeController(
     IInterviewService interviewService,
     IFeedbackService feedbackService,
+    IHomeFeedbackPopupGate popupGate,
     IAnnouncementService announcementService) : Controller
 {
+
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
         var model = new HomeViewModel
@@ -29,18 +32,49 @@ public class HomeController(
             model.FeedbackFormWasSubmitted = true;
         }
 
-        if (IsAuthenticatedUser())
+        var candidateUserId = GetAuthenticatedCandidateUserId();
+        if (candidateUserId.HasValue)
         {
-            var eligibility = await interviewService.GetFeedbackEligibilityAsync(cancellationToken);
-            var status = eligibility.Success
-                ? await feedbackService.GetSystemSubmissionStatusAsync(cancellationToken)
-                : ApiCallResult<WebClient.Models.Feedback.SystemFeedbackSubmissionStatusDto>.Fail("Status unavailable.", StatusCodes.Status503ServiceUnavailable);
+            if (model.FeedbackFormWasSubmitted)
+            {
+                model.ShowSystemFeedbackPopup = true;
+            }
+            else
+            {
+                using var popupLease = await popupGate.AcquireAsync(
+                    HttpContext.Session.Id,
+                    cancellationToken);
+                await HttpContext.Session.LoadAsync(cancellationToken);
 
-            model.ShowSystemFeedbackPopup = eligibility.Success
-                && status.Success
-                && eligibility.Data?.QualifyingSessionCount >= 1
-                && status.Data is not null
-                && (!status.Data.HasSubmittedSystemFeedback || status.Data.FeedbackCount < 1);
+                if (popupGate.PrepareAuthenticatedLifecycle(
+                        HttpContext.Session,
+                        candidateUserId.Value))
+                {
+                    await HttpContext.Session.CommitAsync(cancellationToken);
+                }
+
+                if (!popupGate.WasShownFor(HttpContext.Session, candidateUserId.Value))
+                {
+                    var eligibility = await interviewService.GetFeedbackEligibilityAsync(cancellationToken);
+                    var status = eligibility.Success
+                        ? await feedbackService.GetSystemSubmissionStatusAsync(cancellationToken)
+                        : ApiCallResult<SystemFeedbackSubmissionStatusDto>.Fail(
+                            "Status unavailable.",
+                            StatusCodes.Status503ServiceUnavailable);
+
+                    model.ShowSystemFeedbackPopup = eligibility.Success
+                        && status.Success
+                        && eligibility.Data?.QualifyingSessionCount >= 1
+                        && status.Data is not null
+                        && (!status.Data.HasSubmittedSystemFeedback || status.Data.FeedbackCount < 1);
+
+                    if (model.ShowSystemFeedbackPopup)
+                    {
+                        popupGate.MarkShown(HttpContext.Session, candidateUserId.Value);
+                        await HttpContext.Session.CommitAsync(cancellationToken);
+                    }
+                }
+            }
         }
 
         return View(model);
@@ -69,10 +103,13 @@ public class HomeController(
         });
     }
 
-    private bool IsAuthenticatedUser()
+    private Guid? GetAuthenticatedCandidateUserId()
     {
         var token = Request.Cookies["access_token"];
         var role = Request.Cookies["user_role"];
-        return !string.IsNullOrEmpty(token) && string.Equals(role, "User", StringComparison.OrdinalIgnoreCase);
+        return string.Equals(role, "User", StringComparison.OrdinalIgnoreCase)
+            ? JwtUserId.FromToken(token)
+            : null;
     }
+
 }

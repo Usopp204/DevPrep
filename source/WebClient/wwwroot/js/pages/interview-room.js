@@ -83,6 +83,18 @@
     const startedAtMs = Date.now();
     let ended = !isActive;
 
+    function buildReportUrl() {
+        const query = new URLSearchParams({
+            sessionId: root.dataset.sessionId,
+            durationActualSec: Math.max(0, Math.round((Date.now() - startedAtMs) / 1000)).toString()
+        });
+        return `${reportUrl}?${query.toString()}`;
+    }
+
+    function isTerminalStatus(status) {
+        return status === "Completed" || status === "Cancelled" || status === "Expired";
+    }
+
     const chatEl = document.getElementById("chat-messages");
     const inputEl = document.getElementById("answer-input");
     const sendBtn = document.getElementById("send-btn");
@@ -371,7 +383,7 @@
             {
                 element: "#cancel-interview-btn",                popover: {
                     title: "Cancel the Interview",
-                    description: "Cancelling ends the session without an evaluation report or interview feedback."
+                    description: "Cancelling ends the session immediately. Submitted answers may still be evaluated, and Interview Feedback remains available."
                 }
             }
         ];
@@ -649,8 +661,8 @@
         if (!cancelInterviewDialog || typeof cancelInterviewDialog.showModal !== "function") {
             // Kept in sync with #cancel-interview-description in Room.cshtml — this is the
             // fallback for browsers without <dialog> support, same warning either way.
-            const warning = "Your current interview will be cancelled. " +
-                "You will not receive an evaluation report, and you will not be able to submit interview feedback. " +
+            const warning = "Cancelling ends this session immediately. " +
+                "Any answers already submitted may still be evaluated, and you can still submit Interview Feedback. " +
                 "Credit already spent on this interview will not be refunded.";
             if (window.confirm(`Cancel this interview?\n\n${warning}`)) cancelInterview();
             return;
@@ -714,10 +726,7 @@
         } else {
             await new Promise((resolve) => setTimeout(resolve, 2500));
         }
-        const elapsedSeconds = Math.round((Date.now() - startedAtMs) / 1000);
-        window.location.href = completed
-            ? `${reportUrl}?sessionId=${root.dataset.sessionId}&durationActualSec=${elapsedSeconds}`
-            : detailsUrl;
+        window.location.href = isTerminalStatus(completion.status) ? buildReportUrl() : detailsUrl;
     }
 
     async function cancelInterview() {

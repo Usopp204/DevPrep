@@ -46,7 +46,15 @@ public class AdminSystemFeedbackController : ControllerBase
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Restore(Guid id)
     {
-        var ok = await _service.RestoreAsync(id);
+        bool ok;
+        try
+        {
+            ok = await _service.RestoreAsync(id);
+        }
+        catch (FeedbackAPI.Services.FeedbackEligibilityException exception)
+        {
+            return Conflict(ApiResponse<object>.Fail(exception.Message));
+        }
         if (!ok) return NotFound(ApiResponse<object>.Fail("System feedback not found or not deleted."));
         return Ok(ApiResponse<object>.Ok(new { id }, "System feedback restored successfully."));
     }

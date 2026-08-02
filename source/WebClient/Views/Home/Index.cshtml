@@ -21,6 +21,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="~/css/home.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/components/safe-text.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/components/star-rating.css" asp-append-version="true" />
 </head>
 <body class="home-page">
     <!-- Ambient Background -->
@@ -222,18 +223,15 @@
                             new { Name = "FeatureQualityRating", Label = "Feature quality", Value = Model.SystemFeedbackForm.FeatureQualityRating }
                         })
                         {
-                            <fieldset class="hm-rating-field">
-                                <legend>@field.Label</legend>
-                                <div class="hm-rating-row">
-                                    @for (var value = 1; value <= 5; value++)
-                                    {
-                                        <label>
-                                            <input type="radio" name="@field.Name" value="@value" checked="@(value == (Model.FeedbackFormWasSubmitted ? field.Value : 5))" required />
-                                            <span>@value</span>
-                                        </label>
-                                    }
-                                </div>
-                            </fieldset>
+                            @await Html.PartialAsync("_StarRating", new WebClient.Models.Shared.StarRatingViewModel
+                            {
+                                Name = field.Name,
+                                Label = field.Label,
+                                Value = Model.FeedbackFormWasSubmitted ? field.Value : 5,
+                                InstancePrefix = "home-system-submit",
+                                Editable = true,
+                                Required = true
+                            })
                         }
                     </div>
                     <label class="hm-feedback-label" for="home-system-comment">Comment <span>(optional)</span></label>
@@ -279,6 +277,7 @@
         </script>
     }
 
+    <script src="~/js/components/star-rating.js" asp-append-version="true"></script>
     @await Html.PartialAsync("_Footer")
     <script src="~/js/components/feedback-content.js" asp-append-version="true"></script>
 </body>

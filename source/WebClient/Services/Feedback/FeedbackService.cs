@@ -17,6 +17,9 @@ public interface IFeedbackService
     Task<ApiCallResult<SystemFeedbackSubmissionStatusDto>> GetSystemSubmissionStatusAsync(
         CancellationToken cancellationToken);
 
+    Task<ApiCallResult<MySystemFeedbackDto>> GetMySystemFeedbackAsync(
+        Guid feedbackId, CancellationToken cancellationToken);
+
     Task<ApiCallResult<CreatedSystemFeedbackDto>> SubmitSystemFeedbackAsync(
         SubmitSystemFeedbackRequest request, CancellationToken cancellationToken);
 
@@ -24,6 +27,18 @@ public interface IFeedbackService
 
     Task<ApiCallResult<CreatedInterviewFeedbackDto>> SubmitInterviewFeedbackAsync(
         SubmitInterviewFeedbackRequest request, CancellationToken cancellationToken);
+
+    Task<ApiCallResult<object>> EditSystemFeedbackAsync(
+        Guid feedbackId, UpdateSystemFeedbackRequest request, CancellationToken cancellationToken);
+
+    Task<ApiCallResult<object>> DeleteSystemFeedbackAsync(
+        Guid feedbackId, CancellationToken cancellationToken);
+
+    Task<ApiCallResult<object>> EditInterviewFeedbackAsync(
+        Guid feedbackId, UpdateInterviewFeedbackRequest request, CancellationToken cancellationToken);
+
+    Task<ApiCallResult<object>> DeleteInterviewFeedbackAsync(
+        Guid feedbackId, CancellationToken cancellationToken);
 
     Task<ApiCallResult<CreatedFeedbackReportDto>> SubmitFeedbackReportAsync(
         string feedbackType,
@@ -76,6 +91,13 @@ public sealed class FeedbackService(IApiClient apiClient) : IFeedbackService
             body: null,
             cancellationToken);
 
+    public Task<ApiCallResult<MySystemFeedbackDto>> GetMySystemFeedbackAsync(
+        Guid feedbackId, CancellationToken cancellationToken) =>
+        SendAsync<MySystemFeedbackDto>(HttpMethod.Get,
+            $"api/feedback/system/{feedbackId}/my-feedback",
+            body: null,
+            cancellationToken);
+
     public Task<ApiCallResult<CreatedSystemFeedbackDto>> SubmitSystemFeedbackAsync(
         SubmitSystemFeedbackRequest request, CancellationToken cancellationToken) =>
         SendAsync<CreatedSystemFeedbackDto>(HttpMethod.Post,
@@ -95,6 +117,34 @@ public sealed class FeedbackService(IApiClient apiClient) : IFeedbackService
             request,
             cancellationToken);
 
+    public Task<ApiCallResult<object>> EditSystemFeedbackAsync(
+        Guid feedbackId, UpdateSystemFeedbackRequest request, CancellationToken cancellationToken) =>
+        SendAsync<object>(HttpMethod.Put,
+            $"api/feedback/system/{feedbackId}",
+            request,
+            cancellationToken);
+
+    public Task<ApiCallResult<object>> DeleteSystemFeedbackAsync(
+        Guid feedbackId, CancellationToken cancellationToken) =>
+        SendAsync<object>(HttpMethod.Delete,
+            $"api/feedback/system/{feedbackId}",
+            body: null,
+            cancellationToken);
+
+    public Task<ApiCallResult<object>> EditInterviewFeedbackAsync(
+        Guid feedbackId, UpdateInterviewFeedbackRequest request, CancellationToken cancellationToken) =>
+        SendAsync<object>(HttpMethod.Put,
+            $"api/feedback/interview/{feedbackId}",
+            request,
+            cancellationToken);
+
+    public Task<ApiCallResult<object>> DeleteInterviewFeedbackAsync(
+        Guid feedbackId, CancellationToken cancellationToken) =>
+        SendAsync<object>(HttpMethod.Delete,
+            $"api/feedback/interview/{feedbackId}",
+            body: null,
+            cancellationToken);
+
     public Task<ApiCallResult<CreatedFeedbackReportDto>> SubmitFeedbackReportAsync(
         string feedbackType,
         Guid feedbackId,
@@ -103,14 +153,16 @@ public sealed class FeedbackService(IApiClient apiClient) : IFeedbackService
     {
         var typeSegment = feedbackType switch
         {
-            FeedbackReportRules.InterviewType => "ai",
             FeedbackReportRules.SystemType => "system",
             _ => null
         };
         if (typeSegment is null)
         {
+            var message = feedbackType == FeedbackReportRules.InterviewType
+                ? "AI feedback cannot be reported. Only system feedback can be reported."
+                : "Feedback type is invalid.";
             return Task.FromResult(ApiCallResult<CreatedFeedbackReportDto>.Fail(
-                "Feedback type is invalid.",
+                message,
                 StatusCodes.Status400BadRequest));
         }
 

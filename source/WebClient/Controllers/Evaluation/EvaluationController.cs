@@ -1,9 +1,11 @@
 using System.Text.Json;
 using WebClient.Models.Feedback;
+using WebClient.Controllers.Shared;
 using Microsoft.AspNetCore.Mvc;
 using WebClient.Services.Evaluation;
 using WebClient.Services.Feedback;
 using WebClient.Services.Interview;
+using WebClient.Services.Shared;
 
 namespace WebClient.Controllers.Evaluation;
 
@@ -19,12 +21,28 @@ public class EvaluationController(
 
     public async Task<IActionResult> Report(Guid sessionId, int durationActualSec, CancellationToken cancellationToken)
     {
-        var (success, report, error) = await evaluationService.GetReportAsync(sessionId, durationActualSec, cancellationToken);
+        (bool success, WebClient.Models.Evaluation.ReportViewModel? report, string? error) result;
+        try
+        {
+            result = await evaluationService.GetReportAsync(sessionId, durationActualSec, cancellationToken);
+        }
+        catch (AuthenticationExpiredException)
+        {
+            return CandidateAuthenticationRedirect.ToLogin(this, Request.Path + Request.QueryString);
+        }
 
+        var (success, report, error) = result;
         if (!success || report is null)
         {
             TempData["ErrorMessage"] = error ?? "Could not load the report.";
             return RedirectToAction("Index", "Interview");
+        }
+
+        if (string.Equals(report.TerminationReason, "IntegrityViolation", StringComparison.Ordinal))
+        {
+            TempData["ReportInfoMessage"] =
+                "A performance report is not available because this interview ended after an integrity-policy violation. You can still review the session details and submit Interview Feedback.";
+            return RedirectToAction("Details", "Interview", new { id = sessionId });
         }
 
         report.FeedbackForm.SessionId = sessionId;
@@ -36,14 +54,31 @@ public class EvaluationController(
             report.FeedbackForm.SessionId = sessionId;
             report.FeedbackFormWasSubmitted = true;
         }
+        if (TempData[FeedbackTempDataKeys.InterviewEditForm] is string serializedEditForm)
+        {
+            report.EditFeedbackForm = JsonSerializer.Deserialize<UpdateInterviewFeedbackRequest>(serializedEditForm) ?? new();
+            report.EditingFeedbackId = TempData[FeedbackTempDataKeys.InterviewEditFeedbackId] is string feedbackIdText
+                && Guid.TryParse(feedbackIdText, out var feedbackId)
+                    ? feedbackId
+                    : null;
+            report.FeedbackEditFormWasSubmitted = true;
+        }
 
         var eligibility = await interviewService.GetSessionFeedbackEligibilityAsync(sessionId, cancellationToken);
-        report.CanSubmitInterviewFeedback = string.Equals(report.Status, "Completed", StringComparison.OrdinalIgnoreCase)
-            && report.Report is not null
-            && eligibility.Success
-            && eligibility.Data?.Eligible == true;
+        if (eligibility.StatusCode == StatusCodes.Status401Unauthorized)
+        {
+            return CandidateAuthenticationRedirect.ToLogin(this, Request.Path + Request.QueryString);
+        }
+
+        report.CanSubmitInterviewFeedback = eligibility.Success
+            && eligibility.Data?.CanSubmitInterviewFeedback == true;
 
         var submittedFeedback = await feedbackService.GetMyInterviewFeedbackAsync(sessionId, cancellationToken);
+        if (submittedFeedback.StatusCode == StatusCodes.Status401Unauthorized)
+        {
+            return CandidateAuthenticationRedirect.ToLogin(this, Request.Path + Request.QueryString);
+        }
+
         if (submittedFeedback.Success)
         {
             report.MyInterviewFeedback = submittedFeedback.Data;

@@ -31,12 +31,6 @@
             </div>
         </header>
 
-        <nav class="feedback-management-tabs" aria-label="Feedback management sections">
-            <a asp-controller="Admin" asp-action="AiFeedback">AI Feedback</a>
-            <a asp-controller="Admin" asp-action="SystemFeedback">System Feedback</a>
-            <a class="active" asp-controller="Admin" asp-action="ReportedFeedback" aria-current="page">Reported Feedback</a>
-        </nav>
-
         @if (!string.IsNullOrWhiteSpace(Model.SuccessMessage))
         {
             <div class="reported-feedback-alert success" role="status">@Model.SuccessMessage</div>

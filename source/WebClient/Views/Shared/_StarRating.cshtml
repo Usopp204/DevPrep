@@ -5,6 +5,11 @@
     var disabledClass = Model.Disabled ? "star-rating--disabled" : null;
     var rootClass = $"star-rating {sizeClass} {disabledClass} {Model.CssClass}".Trim();
     var safeName = string.Concat(Model.Name.Select(character => char.IsLetterOrDigit(character) ? character : '-'));
+    var safePrefix = string.Concat(Model.InstancePrefix.Select(character => char.IsLetterOrDigit(character) ? character : '-'));
+    if (Model.Editable && string.IsNullOrWhiteSpace(safePrefix))
+    {
+        throw new InvalidOperationException("Editable star ratings require a unique instance prefix.");
+    }
 }
 
 @if (Model.Editable)
@@ -17,7 +22,7 @@
               data-star-selected="@rating">
             @for (var value = 1; value <= 5; value++)
             {
-                var inputId = $"star-rating-{safeName}-{value}";
+                var inputId = $"star-rating-{safePrefix}-{safeName}-{value}";
                 <label class="star-rating-option" data-star-value="@value" for="@inputId">
                     <input id="@inputId"
                            type="radio"

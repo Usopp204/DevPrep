@@ -38,10 +38,15 @@ public class EvaluationController : ControllerBase
     private IActionResult Forbidden() =>
         StatusCode(StatusCodes.Status403Forbidden, ApiResponse<object>.Fail("You do not have access to this session."));
 
-    /// <summary>Chấm điểm một câu trả lời của phiên (gọi ai-service), lưu vào AnswerEvaluations.</summary>
+    private IActionResult EvaluationUnavailable() =>
+        StatusCode(StatusCodes.Status503ServiceUnavailable, ApiResponse<object>.Fail("Evaluation is temporarily unavailable."));
+
     [HttpPost("{id:guid}/answers/{answerId:guid}")]
     public async Task<IActionResult> EvaluateAnswer(
-        Guid id, Guid answerId, [FromBody] EvaluateAnswerRequest req, CancellationToken cancellationToken)
+        Guid id,
+        Guid answerId,
+        [FromBody] EvaluateAnswerRequest req,
+        CancellationToken cancellationToken)
     {
         try
         {
@@ -51,55 +56,53 @@ public class EvaluationController : ControllerBase
             var result = await _service.EvaluateAnswerAsync(id, answerId, req, cancellationToken);
             return Ok(ApiResponse<EvaluateAnswerResponse>.Ok(result));
         }
-        catch (Exception ex)
+        catch (InterviewApiUnauthorizedException)
         {
-            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+            return Unauthorized(ApiResponse<object>.Fail("Unauthorized."));
         }
-    }
-
-    /// <summary>Tổng hợp báo cáo cuối từ các đánh giá đã chấm (gọi ai-service), lưu FeedbackReports + PerformanceMetrics.</summary>
-    [HttpPost("{id:guid}/report")]
-    public async Task<IActionResult> BuildReport(
-        Guid id, [FromBody] BuildReportRequest req, CancellationToken cancellationToken)
-    {
-        try
+        catch (InterviewApiForbiddenException)
         {
-            if (!await UserOwnsSessionAsync(id, cancellationToken))
-                return Forbidden();
-
-            var result = await _service.BuildReportAsync(
-                id,
-                req,
-                Request.Headers.Authorization.ToString(),
-                cancellationToken);
-            return Ok(ApiResponse<ReportResponse>.Ok(result));
+            return Forbidden();
         }
-        catch (Exception ex)
+        catch (InterviewApiSessionNotFoundException)
         {
-            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+            return Forbidden();
         }
-    }
-
-    /// <summary>Lấy báo cáo đã tồn tại của một phiên (dùng để xem lại, không gọi ai-service).</summary>
-    [HttpGet("{id:guid}/report")]
-    public async Task<IActionResult> GetReport(Guid id, CancellationToken cancellationToken)
-    {
-        try
+        catch (InterviewApiTimeoutException)
         {
-            if (!await UserOwnsSessionAsync(id, cancellationToken))
-                return Forbidden();
-
-            var result = await _service.GetExistingReportAsync(
-                id,
-                Request.Headers.Authorization.ToString(),
-                cancellationToken);
-            if (result is null)
-                return NotFound(ApiResponse<object>.Fail("No report found for this session."));
-            return Ok(ApiResponse<ReportResponse>.Ok(result));
+            return EvaluationUnavailable();
         }
-        catch (Exception ex)
+        catch (InterviewApiDependencyException)
         {
-            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+            return EvaluationUnavailable();
+        }
+        catch (EvaluationDependencyException)
+        {
+            return EvaluationUnavailable();
+        }
+        catch (EvaluationPersistenceException)
+        {
+            return EvaluationUnavailable();
+        }
+        catch (EvaluationRequestException)
+        {
+            return BadRequest(ApiResponse<object>.Fail("The grading request is invalid."));
+        }
+        catch (ArgumentException)
+        {
+            return BadRequest(ApiResponse<object>.Fail("The grading request is invalid."));
+        }
+        catch (InvalidOperationException)
+        {
+            return BadRequest(ApiResponse<object>.Fail("The grading request is invalid."));
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            return EvaluationUnavailable();
         }
     }
 
@@ -107,13 +110,13 @@ public class EvaluationController : ControllerBase
     [Authorize(Roles = "User")]
     public async Task<IActionResult> GetPerformance(Guid sessionId, CancellationToken cancellationToken)
     {
-        if (!TryGetAuthenticatedUserId(out var userId))
+        if (!TryGetAuthenticatedUserId(out _))
             return Unauthorized(ApiResponse<object>.Fail("Unauthorized."));
 
         try
         {
             var bearerToken = Request.Headers.Authorization.ToString();
-            var result = await _service.GetPerformanceReportAsync(userId, sessionId, bearerToken, cancellationToken);
+            var result = await _service.GetPerformanceReportAsync(sessionId, bearerToken, cancellationToken);
             return Ok(ApiResponse<PerformanceReportResponse>.Ok(result));
         }
         catch (InterviewApiUnauthorizedException)
@@ -132,21 +135,81 @@ public class EvaluationController : ControllerBase
         {
             return Conflict(ApiResponse<object>.Fail(ex.Message));
         }
-        catch (ReportNotFoundException ex)
-        {
-            return NotFound(ApiResponse<object>.Fail(ex.Message));
-        }
         catch (InterviewApiTimeoutException)
         {
-            return StatusCode(StatusCodes.Status503ServiceUnavailable, ApiResponse<object>.Fail("InterviewAPI request timed out."));
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, ApiResponse<object>.Fail("Evaluation data is unavailable."));
         }
         catch (InterviewApiDependencyException)
         {
-            return StatusCode(StatusCodes.Status503ServiceUnavailable, ApiResponse<object>.Fail("InterviewAPI dependency failure."));
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, ApiResponse<object>.Fail("Evaluation data is unavailable."));
+        }
+        catch (Exception)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, ApiResponse<object>.Fail("Evaluation data is unavailable."));
         }
     }
 
     /// <summary>Lấy danh sách kết quả chấm điểm từng câu trả lời của một phiên.</summary>
+    [HttpPost("{sessionId:guid}/report")]
+    [Authorize(Roles = "User")]
+    public async Task<IActionResult> EnsureReport(Guid sessionId, CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out _))
+            return Unauthorized(ApiResponse<object>.Fail("Unauthorized."));
+
+        try
+        {
+            var result = await _service.EnsurePerformanceReportAsync(
+                sessionId,
+                Request.Headers.Authorization.ToString(),
+                cancellationToken);
+            return Ok(ApiResponse<PerformanceReportResponse>.Ok(result));
+        }
+        catch (InterviewApiUnauthorizedException)
+        {
+            return Unauthorized(ApiResponse<object>.Fail("Unauthorized."));
+        }
+        catch (InterviewApiForbiddenException)
+        {
+            return Forbidden();
+        }
+        catch (InterviewApiSessionNotFoundException ex)
+        {
+            return NotFound(ApiResponse<object>.Fail(ex.Message));
+        }
+        catch (SessionNotEligibleForPerformanceReportException ex)
+        {
+            return Conflict(ApiResponse<object>.Fail(ex.Message));
+        }
+        catch (AggregateReportNotReadyException ex)
+        {
+            return Conflict(ApiResponse<object>.Fail(ex.Message));
+        }
+        catch (InterviewApiTimeoutException)
+        {
+            return EvaluationUnavailable();
+        }
+        catch (InterviewApiDependencyException)
+        {
+            return EvaluationUnavailable();
+        }
+        catch (EvaluationDependencyException)
+        {
+            return EvaluationUnavailable();
+        }
+        catch (EvaluationPersistenceException)
+        {
+            return EvaluationUnavailable();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            return EvaluationUnavailable();
+        }
+    }
     [HttpGet("{id:guid}/answers")]
     public async Task<IActionResult> GetAnswerEvaluations(Guid id, CancellationToken cancellationToken)
     {
@@ -155,12 +218,39 @@ public class EvaluationController : ControllerBase
             if (!await UserOwnsSessionAsync(id, cancellationToken))
                 return Forbidden();
 
-            var result = await _service.GetAnswerEvaluationsAsync(id, cancellationToken);
+            var result = await _service.GetAnswerEvaluationsAsync(
+                id,
+                Request.Headers.Authorization.ToString(),
+                cancellationToken);
             return Ok(ApiResponse<List<EvaluateAnswerResponse>>.Ok(result));
         }
-        catch (Exception ex)
+        catch (InterviewApiUnauthorizedException)
         {
-            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+            return Unauthorized(ApiResponse<object>.Fail("Unauthorized."));
+        }
+        catch (InterviewApiForbiddenException)
+        {
+            return Forbidden();
+        }
+        catch (InterviewApiSessionNotFoundException)
+        {
+            return Forbidden();
+        }
+        catch (InterviewApiTimeoutException)
+        {
+            return EvaluationUnavailable();
+        }
+        catch (InterviewApiDependencyException)
+        {
+            return EvaluationUnavailable();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            return BadRequest(ApiResponse<object>.Fail("Unable to load answer evaluations."));
         }
     }
 

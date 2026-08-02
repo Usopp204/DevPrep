@@ -86,7 +86,7 @@ public class FeedbackReportDetailsDto : FeedbackReportListItemDto
     public byte? UiUxRating { get; set; }
     public byte? UsabilityRating { get; set; }
     public byte? FeatureQualityRating { get; set; }
-    public string? FeedbackModerationStatus { get; set; }
+
     public DateTime? ReviewedAt { get; set; }
     public Guid? ReviewedBy { get; set; }
     public string? ResolutionNote { get; set; }
@@ -116,7 +116,7 @@ public class ReportedFeedbackPageViewModel
     public PagedResult<FeedbackReportListItemDto> Reports { get; set; } = new();
     public FeedbackReportDetailsDto? SelectedReport { get; set; }
     public string FeedbackType { get; set; } = "All";
-    public string Status { get; set; } = FeedbackReportRules.PendingStatus;
+    public string Status { get; set; } = "All";
     public string ReasonCode { get; set; } = "All";
     public string Keyword { get; set; } = string.Empty;
     public bool IsAdmin { get; set; }

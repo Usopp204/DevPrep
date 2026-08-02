@@ -33,6 +33,7 @@ builder.Services.AddScoped<IFeedbackReportRepository, FeedbackReportRepository>(
 builder.Services.AddScoped<IAiFeedbackService, AiFeedbackService>();
 builder.Services.AddScoped<ISystemFeedbackService, SystemFeedbackService>();
 builder.Services.AddScoped<IFeedbackReportService, FeedbackReportService>();
+builder.Services.AddScoped<IFeedbackStatisticsService, FeedbackStatisticsService>();
 
 // Client nội bộ resolve Tên (UserAPI) + Email (AuthAPI) cho AI feedback. UseProxy=false + header khoá nội bộ.
 var internalApiKey = builder.Configuration.GetValue<string>("INTERNAL_API_KEY", string.Empty);

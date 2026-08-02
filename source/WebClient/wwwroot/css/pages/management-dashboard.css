@@ -1,0 +1,264 @@
+.ad-dashboard-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1.5rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.ad-range {
+    display: flex;
+    align-items: center;
+    gap: .625rem;
+    flex-wrap: wrap;
+}
+
+.ad-range label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .75rem;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: #c8c5d0;
+}
+
+.ad-range input[type="date"] {
+    background: rgba(26, 31, 48, .8);
+    border: 1px solid rgba(255, 255, 255, .12);
+    color: #e5e1e7;
+    border-radius: .5rem;
+    padding: .4rem .625rem;
+    font-size: .875rem;
+    outline: none;
+    color-scheme: dark;
+}
+
+.ad-range input[type="date"]:focus-visible,
+.ad-range .ad-apply:focus-visible,
+.ad-chart-bar .bar:focus-visible {
+    outline: 2px solid #a5b4fc;
+    outline-offset: 2px;
+}
+
+.ad-range .ad-apply {
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    color: #fff;
+    border: 0;
+    border-radius: .5rem;
+    padding: .45rem 1.125rem;
+    font-weight: 600;
+    font-size: .875rem;
+    cursor: pointer;
+}
+
+.ad-range .ad-apply:hover {
+    opacity: .9;
+}
+
+.ad-range .ad-apply:disabled {
+    cursor: wait;
+    opacity: .6;
+}
+
+.ad-last-updated,
+.ad-rev-summary {
+    color: #c8c5d0;
+    font-size: .875rem;
+}
+
+.ad-last-updated {
+    margin-top: .35rem;
+}
+
+.ad-rev-summary {
+    min-height: 1.5rem;
+    margin-bottom: .75rem;
+}
+
+.ad-chart {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: 18rem;
+    padding: 0;
+}
+
+.ad-chart-plot {
+    --bucket-count: 1;
+    display: grid;
+    grid-template-columns: repeat(var(--bucket-count), minmax(0, 1fr));
+    align-items: stretch;
+    gap: clamp(.125rem, .6vw, .75rem);
+    width: 100%;
+    height: 100%;
+    border-bottom: 1px solid rgba(255, 255, 255, .18);
+    background-image: linear-gradient(to bottom, rgba(255, 255, 255, .09) 1px, transparent 1px);
+    background-size: 100% 25%;
+}
+
+.ad-chart-bar {
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) 2rem;
+    align-items: end;
+    gap: .4rem;
+    min-width: 0;
+    height: 100%;
+}
+
+.ad-chart-bar-slot {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    min-width: 0;
+    height: 100%;
+}
+
+.ad-chart-bar .bar {
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    border-radius: .375rem .375rem 0 0;
+    background: linear-gradient(180deg, #818cf8, #4f46e5);
+    opacity: .9;
+    cursor: help;
+}
+
+.ad-chart-bar .bar:hover,
+.ad-chart-bar .bar:focus-visible {
+    opacity: 1;
+}
+
+.ad-chart-tick {
+    align-self: center;
+    justify-self: center;
+    width: max-content;
+    max-width: none;
+    overflow: visible;
+    color: #aaa6b2;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .68rem;
+    line-height: 1rem;
+    text-align: center;
+    text-overflow: clip;
+    white-space: nowrap;
+}
+
+.ad-chart-tick[hidden] {
+    display: none;
+}
+
+.ad-chart-tick.is-first {
+    justify-self: start;
+    text-align: left;
+}
+
+.ad-chart-tick.is-last {
+    justify-self: end;
+    text-align: right;
+}
+
+.ad-chart-tick > span {
+    display: block;
+}
+
+.ad-chart-tick .ad-chart-tick-separator {
+    display: none;
+}
+
+.ad-chart-note {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #aaa6b2;
+    font-size: .875rem;
+    text-align: center;
+}
+
+.ad-chart-note.is-error {
+    color: #ffb4ab;
+}
+
+.ad-stat-caption {
+    margin-top: .5rem;
+    text-transform: none;
+}
+
+[data-management-dashboard],
+[data-management-dashboard] .ad-section {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.ad-kpi-grid .col {
+    display: flex;
+}
+
+.ad-kpi-grid .ad-stat {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    width: 100%;
+    min-width: 0;
+    min-height: 9.5rem;
+}
+
+.ad-kpi-grid .ad-stat-top {
+    align-items: flex-start;
+    gap: .75rem;
+}
+
+.ad-kpi-grid .ad-stat-top .ad-stat-label {
+    min-width: 0;
+    line-height: 1.35;
+    white-space: normal;
+}
+
+.ad-chart-empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #aaa6b2;
+    font-size: .875rem;
+    pointer-events: none;
+}
+
+.ad-chart-bar .bar.is-zero {
+    height: 2px !important;
+    background: rgba(129, 140, 248, .45);
+}
+
+.ad-stat-revenue {
+    color: #c3c0ff;
+    font-size: 1.5rem;
+    line-height: 1.2;
+}
+
+@media (max-width: 640px) {
+    .ad-section {
+        padding: 1.25rem;
+    }
+
+    .ad-range {
+        width: 100%;
+        align-items: stretch;
+    }
+
+    .ad-range input,
+    .ad-range button {
+        width: 100%;
+    }
+
+    .ad-chart {
+        height: 15rem;
+    }
+
+    .ad-chart-bar span {
+        font-size: .6rem;
+    }
+}

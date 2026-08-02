@@ -3,6 +3,8 @@ namespace InterviewAPI.DTOs.Session;
 public class MessageResponse
 {
     public bool Ended { get; set; }
+    public bool ShouldEndSession => Ended;
+    public string Message { get; set; } = string.Empty;
     public NextQuestionDto? NextQuestion { get; set; }
 
     // Authoritative progress from the server — the Room's progress display should sync from
@@ -10,4 +12,8 @@ public class MessageResponse
     // shown number past reality.
     public int AnsweredQuestions { get; set; }
     public int TotalQuestions { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public string? TerminationReason { get; set; }
+    public bool CanGeneratePerformanceReport { get; set; }
+    public bool CanSubmitInterviewFeedback { get; set; }
 }
