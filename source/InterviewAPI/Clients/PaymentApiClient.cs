@@ -165,7 +165,9 @@ public class PaymentApiClient : IPaymentApiClient
     {
         try
         {
-            var response = await _httpClient.GetAsync($"/credits/balance?userId={userId}", ct);
+            var request = new HttpRequestMessage(HttpMethod.Get, "/credits/balance");
+            request.Headers.Add("X-User-Id", userId.ToString());
+            var response = await _httpClient.SendAsync(request, ct);
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning("GetBalance failed: status={StatusCode}, userId={UserId}",

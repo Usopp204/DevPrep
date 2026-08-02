@@ -99,3 +99,6 @@ infra/collect_sample.py
 
 # SQL migrations shared via Zalo, not tracked
 /source/*/Sql/
+
+# Personal AI context file
+/DEVPREP_MEMORY.md

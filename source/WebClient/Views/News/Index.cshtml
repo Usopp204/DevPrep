@@ -34,143 +34,112 @@
                 <span>@Model.Error</span>
             </div>
         }
-
-        @if (Model.HasItems)
+        else
         {
-            <!-- Search + category filter (client-side trên trang hiện tại) -->
+            <!-- Search + category filter — cả 2 chạy qua server (GET /News, form/link nạp lại trang). -->
             <section class="nw-glass nw-toolbar">
-                <div class="nw-search">
-                    <span class="material-symbols-outlined">search</span>
-                    <input type="text" id="nw-search-input" placeholder="Search articles..." autocomplete="off" />
-                </div>
-                <div class="nw-chips" id="nw-chips">
-                    <button type="button" class="nw-chip active" data-cat="__all">All</button>
+                <form class="nw-search" method="get" asp-controller="News" asp-action="Index">
+                    <input type="hidden" name="categoryId" value="@Model.CategoryId" />
+                    <button type="submit" class="nw-search-btn" aria-label="Search">
+                        <span class="material-symbols-outlined">search</span>
+                    </button>
+                    <input type="text" name="keyword" value="@Model.Keyword" placeholder="Search articles..." autocomplete="off" />
+                </form>
+                <div class="nw-chips">
+                    <a class="nw-chip @(Model.CategoryId is null ? "active" : "")"
+                       href="@Url.Action("Index", "News", new { keyword = Model.Keyword, categoryId = (Guid?)null })">All</a>
                     @foreach (var cat in Model.Categories)
                     {
-                        <button type="button" class="nw-chip" data-cat="@cat.ToLowerInvariant()">@cat</button>
+                        <a class="nw-chip @(Model.CategoryId == cat.CategoryId ? "active" : "")"
+                           href="@Url.Action("Index", "News", new { keyword = Model.Keyword, categoryId = cat.CategoryId })">@cat.Name</a>
                     }
                 </div>
+                @if (Model.IsFiltering)
+                {
+                    <a class="nw-clear-filters" href="@Url.Action("Index", "News")">Clear filters</a>
+                }
             </section>
 
-            @if (featured is not null)
+            @if (Model.HasItems)
             {
-                <a class="nw-glass nw-featured nw-item"
-                   asp-controller="News" asp-action="Detail" asp-route-slug="@featured.Slug"
-                   data-title="@featured.Title.ToLowerInvariant()"
-                   data-summary="@((featured.Summary ?? string.Empty).ToLowerInvariant())"
-                   data-cat="@featured.Category.ToLowerInvariant()">
-                    @if (featured.HasThumbnail)
-                    {
-                        <div class="nw-featured-media"><img src="@featured.ThumbnailUrl" alt="@featured.Title" /></div>
-                    }
-                    else
-                    {
-                        <div class="nw-featured-media nw-ph"><span>@featured.Initial</span></div>
-                    }
-                    <div class="nw-featured-body">
-                        <span class="nw-badge nw-badge-featured">@featured.Category</span>
-                        <h2 class="nw-featured-title">@featured.Title</h2>
-                        <p class="nw-featured-summary">@featured.Summary</p>
-                        <div class="nw-meta">
-                            <span>@featured.DisplayDate.ToString("MMM dd, yyyy")</span>
-                            <span class="dot"></span>
-                            <span><span class="material-symbols-outlined">visibility</span> @featured.ViewCount views</span>
-                        </div>
-                    </div>
-                </a>
-            }
-
-            <div class="nw-grid" id="nw-grid">
-                @foreach (var item in rest)
+                @if (featured is not null)
                 {
-                    <a class="nw-glass nw-card nw-item"
-                       asp-controller="News" asp-action="Detail" asp-route-slug="@item.Slug"
-                       data-title="@item.Title.ToLowerInvariant()"
-                       data-summary="@((item.Summary ?? string.Empty).ToLowerInvariant())"
-                       data-cat="@item.Category.ToLowerInvariant()">
-                        @if (item.HasThumbnail)
+                    <a class="nw-glass nw-featured nw-item"
+                       asp-controller="News" asp-action="Detail" asp-route-slug="@featured.Slug">
+                        @if (featured.HasThumbnail)
                         {
-                            <div class="nw-thumb"><img src="@item.ThumbnailUrl" alt="@item.Title" /></div>
+                            <div class="nw-featured-media"><img src="@featured.ThumbnailUrl" alt="@featured.Title" /></div>
                         }
                         else
                         {
-                            <div class="nw-thumb-ph"><span>@item.Initial</span></div>
+                            <div class="nw-featured-media nw-ph"><span>@featured.Initial</span></div>
                         }
-                        <div class="nw-card-body">
-                            <span class="nw-badge">@item.Category</span>
-                            <h3 class="nw-card-title">@item.Title</h3>
-                            <p class="nw-card-summary">@item.Summary</p>
+                        <div class="nw-featured-body">
+                            <span class="nw-badge nw-badge-featured">@featured.Category</span>
+                            <h2 class="nw-featured-title">@featured.Title</h2>
+                            <p class="nw-featured-summary">@featured.Summary</p>
                             <div class="nw-meta">
-                                <span>@item.DisplayDate.ToString("MMM dd, yyyy")</span>
+                                <span>@featured.DisplayDate.ToString("MMM dd, yyyy")</span>
                                 <span class="dot"></span>
-                                <span><span class="material-symbols-outlined">visibility</span> @item.ViewCount</span>
+                                <span><span class="material-symbols-outlined">visibility</span> @featured.ViewCount views</span>
                             </div>
                         </div>
                     </a>
                 }
-            </div>
 
-            <div class="nw-empty" id="nw-empty" style="display:none;">No articles match your search.</div>
-
-            @if (Model.TotalPages > 1)
-            {
-                <nav class="nw-glass nw-pagination" style="border-radius:14px; padding:8px; max-width:fit-content; margin:0 auto;">
-                    <a class="nw-page-btn @(Model.Page <= 1 ? "disabled" : "")" href="?page=@(Model.Page - 1)">
-                        <span class="material-symbols-outlined">chevron_left</span>
-                    </a>
-                    @for (var p = 1; p <= Model.TotalPages; p++)
+                <div class="nw-grid">
+                    @foreach (var item in rest)
                     {
-                        <a class="nw-page-btn @(p == Model.Page ? "active" : "")" href="?page=@p">@p</a>
+                        <a class="nw-glass nw-card nw-item"
+                           asp-controller="News" asp-action="Detail" asp-route-slug="@item.Slug">
+                            @if (item.HasThumbnail)
+                            {
+                                <div class="nw-thumb"><img src="@item.ThumbnailUrl" alt="@item.Title" /></div>
+                            }
+                            else
+                            {
+                                <div class="nw-thumb-ph"><span>@item.Initial</span></div>
+                            }
+                            <div class="nw-card-body">
+                                <span class="nw-badge">@item.Category</span>
+                                <h3 class="nw-card-title">@item.Title</h3>
+                                <p class="nw-card-summary">@item.Summary</p>
+                                <div class="nw-meta">
+                                    <span>@item.DisplayDate.ToString("MMM dd, yyyy")</span>
+                                    <span class="dot"></span>
+                                    <span><span class="material-symbols-outlined">visibility</span> @item.ViewCount</span>
+                                </div>
+                            </div>
+                        </a>
                     }
-                    <a class="nw-page-btn @(Model.Page >= Model.TotalPages ? "disabled" : "")" href="?page=@(Model.Page + 1)">
-                        <span class="material-symbols-outlined">chevron_right</span>
-                    </a>
-                </nav>
+                </div>
+
+                @if (Model.TotalPages > 1)
+                {
+                    <nav class="nw-glass nw-pagination" style="border-radius:14px; padding:8px; max-width:fit-content; margin:0 auto;">
+                        <a class="nw-page-btn @(Model.Page <= 1 ? "disabled" : "")"
+                           href="@Url.Action("Index", "News", new { page = Model.Page - 1, keyword = Model.Keyword, categoryId = Model.CategoryId })">
+                            <span class="material-symbols-outlined">chevron_left</span>
+                        </a>
+                        @for (var p = 1; p <= Model.TotalPages; p++)
+                        {
+                            <a class="nw-page-btn @(p == Model.Page ? "active" : "")"
+                               href="@Url.Action("Index", "News", new { page = p, keyword = Model.Keyword, categoryId = Model.CategoryId })">@p</a>
+                        }
+                        <a class="nw-page-btn @(Model.Page >= Model.TotalPages ? "disabled" : "")"
+                           href="@Url.Action("Index", "News", new { page = Model.Page + 1, keyword = Model.Keyword, categoryId = Model.CategoryId })">
+                            <span class="material-symbols-outlined">chevron_right</span>
+                        </a>
+                    </nav>
+                }
             }
-        }
-        else if (string.IsNullOrEmpty(Model.Error))
-        {
-            <div class="nw-empty">No news articles have been published yet.</div>
+            else
+            {
+                <div class="nw-empty">@(Model.IsFiltering ? "No articles match your search." : "No news articles have been published yet.")</div>
+            }
         }
     </main>
 
     @await Html.PartialAsync("_Footer")
-
-    <script>
-        (function () {
-            var search = document.getElementById('nw-search-input');
-            var chips = document.getElementById('nw-chips');
-            var empty = document.getElementById('nw-empty');
-            if (!chips) return;
-            var items = Array.prototype.slice.call(document.querySelectorAll('.nw-item'));
-            var activeCat = '__all';
-
-            function apply() {
-                var q = (search ? search.value : '').trim().toLowerCase();
-                var visible = 0;
-                items.forEach(function (el) {
-                    var cat = el.getAttribute('data-cat') || '';
-                    var title = el.getAttribute('data-title') || '';
-                    var summ = el.getAttribute('data-summary') || '';
-                    var okCat = activeCat === '__all' || cat === activeCat;
-                    var okText = !q || title.indexOf(q) !== -1 || summ.indexOf(q) !== -1;
-                    var show = okCat && okText;
-                    el.style.display = show ? '' : 'none';
-                    if (show) visible++;
-                });
-                if (empty) empty.style.display = visible === 0 ? 'block' : 'none';
-            }
-
-            chips.addEventListener('click', function (e) {
-                var btn = e.target.closest('.nw-chip');
-                if (!btn) return;
-                chips.querySelectorAll('.nw-chip').forEach(function (c) { c.classList.remove('active'); });
-                btn.classList.add('active');
-                activeCat = btn.getAttribute('data-cat');
-                apply();
-            });
-            if (search) search.addEventListener('input', apply);
-        })();
-    </script>
 </body>
 </html>

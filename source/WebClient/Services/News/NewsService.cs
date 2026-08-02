@@ -9,22 +9,28 @@ namespace WebClient.Services.News;
 
 public interface INewsService
 {
-    Task<NewsViewModel> GetListAsync(int page, int pageSize);
+    Task<NewsViewModel> GetListAsync(int page, int pageSize, string? keyword = null, Guid? categoryId = null);
+    Task<List<NewsCategoryOption>> GetCategoriesAsync();
     Task<NewsDetailViewModel> GetDetailAsync(Guid id);
     Task<NewsDetailViewModel> GetDetailBySlugAsync(string slug);
 }
 
 public sealed class NewsService(IApiClient apiClient) : INewsService
 {
-    public async Task<NewsViewModel> GetListAsync(int page, int pageSize)
+    public async Task<NewsViewModel> GetListAsync(int page, int pageSize, string? keyword = null, Guid? categoryId = null)
     {
         if (page < 1) page = 1;
+        keyword = string.IsNullOrWhiteSpace(keyword) ? null : keyword.Trim();
 
-        var url = QueryHelpers.AddQueryString("api/news", new Dictionary<string, string?>
+        var queryParams = new Dictionary<string, string?>
         {
             ["page"] = page.ToString(),
             ["pageSize"] = pageSize.ToString()
-        });
+        };
+        if (keyword is not null) queryParams["keyword"] = keyword;
+        if (categoryId.HasValue) queryParams["categoryId"] = categoryId.Value.ToString();
+
+        var url = QueryHelpers.AddQueryString("api/news", queryParams);
 
         try
         {
@@ -38,7 +44,9 @@ public sealed class NewsService(IApiClient apiClient) : INewsService
                     Items = body.Data.Items ?? new List<NewsListItem>(),
                     Page = body.Data.PageIndex <= 0 ? page : body.Data.PageIndex,
                     PageSize = body.Data.PageSize <= 0 ? pageSize : body.Data.PageSize,
-                    TotalPages = Math.Max(1, body.Data.TotalPages)
+                    TotalPages = Math.Max(1, body.Data.TotalPages),
+                    Keyword = keyword,
+                    CategoryId = categoryId
                 };
             }
 
@@ -46,6 +54,8 @@ public sealed class NewsService(IApiClient apiClient) : INewsService
             {
                 Page = page,
                 PageSize = pageSize,
+                Keyword = keyword,
+                CategoryId = categoryId,
                 Error = body?.Message ?? "Could not load news."
             };
         }
@@ -55,8 +65,25 @@ public sealed class NewsService(IApiClient apiClient) : INewsService
             {
                 Page = page,
                 PageSize = pageSize,
+                Keyword = keyword,
+                CategoryId = categoryId,
                 Error = "Cannot reach the server. Please make sure the API Gateway is running and try again."
             };
+        }
+    }
+
+    // Best-effort: chip lọc chỉ để trống nếu lỗi, không chặn hiển thị danh sách chính.
+    public async Task<List<NewsCategoryOption>> GetCategoriesAsync()
+    {
+        try
+        {
+            var body = await apiClient.HttpClient
+                .GetFromJsonAsync<BackendResponse<List<NewsCategoryOption>>>("api/news/categories");
+            return body?.Success == true && body.Data is not null ? body.Data : new List<NewsCategoryOption>();
+        }
+        catch (Exception)
+        {
+            return new List<NewsCategoryOption>();
         }
     }
 

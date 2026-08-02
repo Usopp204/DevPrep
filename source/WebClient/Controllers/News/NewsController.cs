@@ -8,9 +8,15 @@ public class NewsController(INewsService newsService) : Controller
 {
     private const int PageSize = 9;
 
-    public async Task<IActionResult> Index(int page = 1)
+    public async Task<IActionResult> Index(int page = 1, string? keyword = null, Guid? categoryId = null)
     {
-        var model = await newsService.GetListAsync(page, PageSize);
+        // Danh sách (đã lọc theo keyword/categoryId) và danh mục chip chạy song song — 2 lời gọi độc lập.
+        var listTask = newsService.GetListAsync(page, PageSize, keyword, categoryId);
+        var categoriesTask = newsService.GetCategoriesAsync();
+        await Task.WhenAll(listTask, categoriesTask);
+
+        var model = listTask.Result;
+        model.Categories = categoriesTask.Result;
         return View(model);
     }
 

@@ -40,6 +40,15 @@
     let idleTier = 0; // 0 = none shown, 1 = reminder shown, 2 = warning+countdown shown
     const TIER2_LEAD_SECONDS = 20;
 
+    // Safety bound (NOT a UX feature) against a stuck MediaRecorder: while recording, tickIdle()
+    // freezes idleSeconds instead of advancing it (see tickIdle below), but if "recording" never
+    // ends (mic error, stream dies without firing onstop, user never clicks stop), that freeze
+    // would be unbounded and auto-advance could never fire again. Once this many consecutive
+    // seconds of recording-freeze have elapsed, tickIdle stops freezing and resumes counting even
+    // though mediaRecorder.state is still "recording".
+    const RECORDING_FREEZE_CAP_SECONDS = 180;
+    let recordingFreezeSeconds = 0;
+
     // Reentrancy guard for autoAdvance(): unlike sendAnswer/skipQuestion (locked by disabling the
     // button that triggers them), autoAdvance is fired by tickIdle() on a recurring 1s timer, which
     // keeps calling it every tick until idleSeconds resets — and that reset only happens once THIS
@@ -495,6 +504,18 @@
 
     function tickIdle() {
         if (ended || !currentQuestionId) return;
+
+        if (mediaRecorder && mediaRecorder.state === "recording") {
+            if (recordingFreezeSeconds < RECORDING_FREEZE_CAP_SECONDS) {
+                recordingFreezeSeconds += 1;
+                return; // frozen: recording counts as answering, not idling
+            }
+            // Cap reached — a recorder stuck at "recording" must not freeze idle tracking forever.
+            // Fall through and resume counting until it actually stops.
+        } else {
+            recordingFreezeSeconds = 0;
+        }
+
         idleSeconds += 1;
 
         if (idleSeconds >= idleHardSeconds) {
@@ -600,11 +621,16 @@
             }
         }, 1000);
 
-        // Rolling reset on any real interaction — keydown/mousemove/click/focus all count.
-        ["keydown", "mousemove", "click"].forEach((evt) =>
-            document.addEventListener(evt, resetIdle, { passive: true })
+        // Rolling reset scoped to real answering activity, not just "touching the computer".
+        // keydown covers typing; input covers paste/IME composition/mobile input (neither reliably
+        // fires keydown); click is narrowed to the controls involved in answering, not the whole
+        // document. mousemove and window focus no longer count — see tickIdle for the recording
+        // freeze that covers voice answers instead.
+        document.addEventListener("keydown", resetIdle, { passive: true });
+        inputEl?.addEventListener("input", resetIdle, { passive: true });
+        [inputEl, micBtn, hintBtn, sendBtn].forEach((el) =>
+            el?.addEventListener("click", resetIdle, { passive: true })
         );
-        window.addEventListener("focus", resetIdle);
     }
 
     function disableLifecycleControls() {
@@ -1105,6 +1131,7 @@
 
             // Fill the box; the user reviews/edits and presses Send (existing message flow).
             inputEl.value = data.text || "";
+            resetIdle(); // programmatic .value assignment fires no "input" event — reset explicitly
             autoResizeInput();
             inputEl.focus();
         } catch (err) {
