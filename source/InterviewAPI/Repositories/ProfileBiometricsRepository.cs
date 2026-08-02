@@ -23,6 +23,11 @@ public class ProfileBiometricsRepository : IProfileBiometricsRepository
             .Where(b => b.UserId == userId)
             .ToListAsync(ct);
 
+    public Task<List<ProfileBiometric>> ListByModalityAsync(string modality, CancellationToken ct) =>
+        _db.ProfileBiometrics.AsNoTracking()
+            .Where(b => b.Modality == modality)
+            .ToListAsync(ct);
+
     public async Task AddAsync(ProfileBiometric entity, CancellationToken ct)
     {
         _db.ProfileBiometrics.Add(entity);

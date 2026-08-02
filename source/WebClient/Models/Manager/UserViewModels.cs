@@ -33,7 +33,7 @@ public class UserDetailsViewModel
     public DateTime? BlockedAt { get; set; }
     public int CreditBalance { get; set; }
     public List<CreditTransactionViewModel> CreditTransactions { get; set; } = new();
-    public List<CompletedSessionViewModel> CompletedSessions { get; set; } = new();
+    public List<ManagerUserSessionViewModel> Sessions { get; set; } = new();
 }
 
 public class CreditTransactionViewModel
@@ -46,7 +46,7 @@ public class CreditTransactionViewModel
     public DateTime CreatedAt { get; set; }
 }
 
-public class CompletedSessionViewModel
+public class ManagerUserSessionViewModel
 {
     public Guid SessionId { get; set; }
     public string? Title { get; set; }

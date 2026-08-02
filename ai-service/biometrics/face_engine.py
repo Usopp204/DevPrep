@@ -28,7 +28,9 @@ def _get_analyzer():
 
 
 class FaceQualityError(ValueError):
-    pass
+    def __init__(self, message: str, code: str = "face_quality"):
+        self.code = code
+        super().__init__(message)
 
 
 class MultipleFacesError(FaceQualityError):
@@ -39,7 +41,7 @@ class MultipleFacesError(FaceQualityError):
 
     def __init__(self, face_count: int):
         self.face_count = face_count
-        super().__init__(f"Multiple faces detected ({face_count})")
+        super().__init__(f"Multiple faces detected ({face_count})", "multiple_faces")
 
 
 def _blur_variance(bgr):
@@ -51,14 +53,14 @@ def _decode(image_bytes):
     try:
         pil = Image.open(io.BytesIO(image_bytes)).convert("RGB")
     except Exception as exc:
-        raise FaceQualityError("Cannot decode image") from exc
+        raise FaceQualityError("Cannot decode image", "cannot_decode_image") from exc
     return cv2.cvtColor(np.array(pil), cv2.COLOR_RGB2BGR)
 
 
 def _primary_face(bgr, enforce_single=True):
     faces = _get_analyzer().get(bgr)
     if not faces:
-        raise FaceQualityError("No face detected")
+        raise FaceQualityError("No face detected", "no_face")
     if enforce_single and len(faces) > 1:
         raise MultipleFacesError(len(faces))
 
@@ -79,11 +81,13 @@ def extract_face_embedding(image_bytes: bytes) -> dict:
     ratio = (max(0.0, x2 - x1) * max(0.0, y2 - y1)) / float(w * h)
     blur = _blur_variance(bgr)
     if det < FACE_MIN_DET_SCORE:
-        raise FaceQualityError(f"Low detection confidence ({det:.2f})")
+        raise FaceQualityError(
+            f"Low detection confidence ({det:.2f})", "low_detection_confidence")
     if ratio < FACE_MIN_FACE_RATIO:
-        raise FaceQualityError("Face too small / too far from camera")
+        raise FaceQualityError(
+            "Face too small / too far from camera", "face_too_small")
     if blur < FACE_MIN_BLUR_VAR:
-        raise FaceQualityError("Image too blurry")
+        raise FaceQualityError("Image too blurry", "image_too_blurry")
 
     emb = np.asarray(face.normed_embedding, dtype=np.float32)  # 512-d, L2-normalized
     quality = float(min(1.0, det) * min(1.0, blur / 150.0))

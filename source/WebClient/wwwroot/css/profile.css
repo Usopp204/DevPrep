@@ -116,6 +116,20 @@ body.pf-page {
 .pf-dropdown-item:hover { background: rgba(255, 255, 255, .06); color: #fff; }
 .pf-dropdown-logout { color: #f87171; }
 
+/* Dòng Credits trong dropdown avatar khu Profile (JS điền số vào .pf-credit-value) */
+.pf-dropdown-credits { border-bottom: 1px solid var(--pf-border); margin-bottom: 6px; }
+.pf-credit-value {
+    margin-left: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .8rem;
+    font-weight: 700;
+    color: #F9D949;
+    background: rgba(249, 217, 73, .1);
+    border: 1px solid rgba(249, 217, 73, .25);
+    border-radius: 9999px;
+    padding: 2px 10px;
+}
+
 /* ---------------- Shell + Sidebar ---------------- */
 .pf-shell { display: flex; padding-top: var(--pf-topbar-h); }
 

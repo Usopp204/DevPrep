@@ -12,6 +12,7 @@
     const unpauseUrl = root.dataset.unpauseUrl;
     const cameraViolationUrl = root.dataset.cameraViolationUrl;
     const verifyInSessionUrl = root.dataset.verifyInSessionUrl;
+    const inSessionCheckUrl = root.dataset.inSessionCheckUrl;
     const tourSeenUrl = root.dataset.tourSeenUrl;
     const ttsUrl = root.dataset.ttsUrl;
     const sttUrl = root.dataset.sttUrl;
@@ -19,8 +20,11 @@
     const reportUrl = root.dataset.reportUrl;
     const detailsUrl = root.dataset.detailsUrl;
     const isActive = root.dataset.isActive === "true";
+    const sessionId = root.dataset.sessionId;
 
     let currentQuestionId = root.dataset.currentQuestionId || null;
+    let verificationCheckId = root.dataset.verificationCheckId || null;
+    let verificationCheckExpiresAt = root.dataset.verificationCheckExpiresAt || null;
     let currentQuestionText = "";
     let totalQuestions = parseInt(root.dataset.totalQuestions, 10) || 0;
     let answeredQuestions = parseInt(root.dataset.answeredQuestions, 10) || 0;
@@ -101,7 +105,13 @@
     const timerEl = document.getElementById("timer");
     const progressEl = document.getElementById("progress-text");
     const progressHeadEl = document.querySelector(".room-progress-head .v");
+    const progressFillEl = document.querySelector(".progress-fill");
     const statusEl = document.getElementById("status-text");
+
+    function setStatusDisplay(status) {
+        if (!statusEl) return;
+        statusEl.textContent = status === "InProgress" ? "Active" : status;
+    }
     const idleBannerEl = document.getElementById("idle-banner");
     const idleModalBackdropEl = document.getElementById("idle-modal-backdrop");
     const replayTourBtn = document.getElementById("replay-tour-btn");
@@ -139,7 +149,17 @@
         });
         const data = await response.json().catch(() => null);
         if (!response.ok) {
-            throw new Error((data && data.error) || `Request failed (${response.status}).`);
+            // message wins when present (e.g. Hint's {error: code, message: text} shape); other
+            // endpoints only ever set "error" to a human-readable string, so this stays compatible.
+            const err = new Error((data && (data.message || data.error)) || `Request failed (${response.status}).`);
+            err.status = response.status;
+            // Machine-readable code (e.g. "session_time_expired", "skip_cooldown") — checked
+            // instead of err.status alone so a new 409/429 reason later can't be misread as this one.
+            err.code = data && data.error ? data.error : null;
+            // Server-computed countdown for 429s (e.g. Skip cooldown) — never derive this from
+            // the client's own clock, which can be wrong or deliberately skewed.
+            err.retryAfterSeconds = data && typeof data.retryAfterSeconds === "number" ? data.retryAfterSeconds : null;
+            throw err;
         }
         return data;
     }
@@ -161,6 +181,10 @@
         const shown = Math.min(answeredQuestions, totalQuestions);
         if (progressEl) progressEl.textContent = `${shown}/${totalQuestions}`;
         if (progressHeadEl) progressHeadEl.textContent = `${shown} / ${totalQuestions}`;
+        if (progressFillEl) {
+            const progressPercent = totalQuestions > 0 ? (shown / totalQuestions) * 100 : 0;
+            progressFillEl.style.width = `${progressPercent}%`;
+        }
     }
 
     // Server is the source of truth for progress (SessionService.SendMessageAsync now returns
@@ -248,7 +272,7 @@
             pauseCount = data.pauseCount;
             pausesRemaining = data.pausesRemaining;
             pausedSecondsRemaining = data.pausedSecondsRemaining;
-            if (statusEl) statusEl.textContent = "Paused";
+            setStatusDisplay("Paused");
             setPausedUI(true);
         } catch (err) {
             appendBubble("AI", `Could not pause: ${err.message}.`);
@@ -266,7 +290,7 @@
             pausesRemaining = data.pausesRemaining;
             pausedSecondsRemaining = data.pausedSecondsRemaining;
             updateTimerDisplay();
-            if (statusEl) statusEl.textContent = "InProgress";
+            setStatusDisplay("InProgress");
             setPausedUI(false);
         } catch (err) {
             appendBubble("AI", `Could not resume: ${err.message}.`);
@@ -516,6 +540,8 @@
     // revealed after a short "AI is typing" delay (see showTypingIndicator).
     function applyNextQuestion(nextQuestion) {
         currentQuestionId = nextQuestion.sessionQuestionId;
+        verificationCheckId = nextQuestion.verificationCheckId || null;
+        verificationCheckExpiresAt = nextQuestion.verificationCheckExpiresAt || null;
         currentQuestionText = nextQuestion.content;
         idleReminderSeconds = nextQuestion.idleReminderSeconds || idleReminderSeconds;
         idleHardSeconds = nextQuestion.idleHardSeconds || idleHardSeconds;
@@ -536,6 +562,7 @@
             speak(nextQuestion.content);
             inputEl.disabled = false;
             sendBtn.disabled = false;
+            if (hintBtn) hintBtn.disabled = false;
             inputEl.focus();
 
             // One cheating check per new question, fired once the question is actually on
@@ -637,10 +664,18 @@
         if (ended) return;
         cleanupTransientUi();
         ended = true;
+        if (cameraRecoveryTimer) {
+            clearTimeout(cameraRecoveryTimer);
+            cameraRecoveryTimer = null;
+        }
+        if (skipCooldownTimer) {
+            clearInterval(skipCooldownTimer);
+            skipCooldownTimer = null;
+        }
         clearDraft();
         hideIdleBanner();
         disableLifecycleControls();
-        if (statusEl) statusEl.textContent = "Finalizing...";
+        setStatusDisplay("Finalizing...");
 
         let completion;
         try {
@@ -654,9 +689,9 @@
         const completed = completion.status === "Completed";
         const closing = completed
             ? "That wraps up our interview — thank you for your time and thoughtful answers! I'm now putting together your detailed evaluation."
-            : "That wraps up this interview. The session has expired without a performance score, and Interview Feedback remains available on the next page.";
+            : "That wraps up this interview. The session has expired and remains available in your history.";
         appendBubble("AI", closing);
-        if (statusEl) statusEl.textContent = completion.status;
+        setStatusDisplay(completion.status);
 
         // With AI Voice on, let the farewell finish speaking (10s safety cap so a hung clip never
         // strands the user); with it off, pause just long enough to read the bubble.
@@ -672,16 +707,24 @@
         if (ended) return;
         cleanupTransientUi();
         ended = true;
+        if (cameraRecoveryTimer) {
+            clearTimeout(cameraRecoveryTimer);
+            cameraRecoveryTimer = null;
+        }
+        if (skipCooldownTimer) {
+            clearInterval(skipCooldownTimer);
+            skipCooldownTimer = null;
+        }
         clearDraft();
         hideIdleBanner();
         if (countdownHandle) clearInterval(countdownHandle);
         disableLifecycleControls();
-        if (statusEl) statusEl.textContent = "Cancelling...";
+        setStatusDisplay("Cancelling...");
 
         try {
             const completion = await postProxy(cancelUrl);
-            if (statusEl) statusEl.textContent = completion.status;
-            window.location.href = isTerminalStatus(completion.status) ? buildReportUrl() : detailsUrl;
+            setStatusDisplay(completion.status);
+            window.location.href = detailsUrl;
         } catch (err) {
             ended = false;
             appendBubble("AI", `Could not cancel the interview: ${err.message}`);
@@ -761,6 +804,15 @@
 
     inputEl?.addEventListener("input", scheduleDraftSave);
 
+    // Server rejected an answer/skip/auto-advance because the session's time already ran out
+    // (SessionService.SendMessageAsync's deadline check — see report). The session was already
+    // finalized server-side when this was thrown, so completeInterview() just fetches that
+    // already-decided status and moves to the end screen — not a fresh completion decision.
+    async function handleSessionExpired() {
+        appendBubble("AI", "Your interview time has run out.");
+        await completeInterview();
+    }
+
     async function sendAnswer() {
         const content = inputEl.value.trim();
         if (!content || !currentQuestionId || ended) return;
@@ -802,6 +854,10 @@
             applyNextQuestion(data.nextQuestion);
             if (skipBtn) skipBtn.disabled = false;
         } catch (err) {
+            if (err.code === "session_time_expired") {
+                await handleSessionExpired();
+                return;
+            }
             appendBubble("AI", `Error: ${err.message}. Please try again.`);
             inputEl.disabled = false;
             sendBtn.disabled = false;
@@ -813,6 +869,35 @@
     // content still creates a User "Answer" message (so generate advances to the next question), and
     // ai-service grades an empty answer as a clean "No answer provided." (score 0) — never as a real
     // low-quality attempt. The chat flow is otherwise identical to a normal answer.
+    let skipCooldownTimer = null;
+
+    // Countdown display for a 429 "skip_cooldown" response — UX only. The server (SessionService.
+    // SendMessageAsync, Reason=="Skipped") is what actually enforces the cooldown; this just
+    // mirrors it. `seconds` MUST come from the server's retryAfterSeconds — never computed from
+    // the client's own clock, which can be wrong or deliberately skewed.
+    function startSkipCooldown(seconds) {
+        if (!skipBtn) return;
+        if (skipCooldownTimer) clearInterval(skipCooldownTimer);
+        skipBtn.disabled = true;
+        let remaining = Math.max(1, Math.round(seconds));
+        const countdownEl = document.createElement("span");
+        countdownEl.className = "skip-cooldown-countdown";
+        countdownEl.textContent = ` (${remaining}s)`;
+        skipBtn.appendChild(countdownEl);
+
+        skipCooldownTimer = setInterval(() => {
+            remaining -= 1;
+            if (ended || remaining <= 0) {
+                clearInterval(skipCooldownTimer);
+                skipCooldownTimer = null;
+                countdownEl.remove();
+                if (!ended) skipBtn.disabled = false;
+                return;
+            }
+            countdownEl.textContent = ` (${remaining}s)`;
+        }, 1000);
+    }
+
     async function skipQuestion() {
         if (!currentQuestionId || ended) return;
 
@@ -844,10 +929,22 @@
             applyNextQuestion(data.nextQuestion);
             if (skipBtn) skipBtn.disabled = false;
         } catch (err) {
-            appendBubble("AI", `Error: ${err.message}. Please try again.`);
             inputEl.disabled = false;
             sendBtn.disabled = false;
-            if (skipBtn) skipBtn.disabled = false;
+            if (err.code === "session_time_expired") {
+                note.textContent = "Time's up — this skip did not go through.";
+                await handleSessionExpired();
+                return;
+            }
+            if (err.status === 429) {
+                // The "Question skipped" note above already rendered before the server rejected
+                // it — correct it rather than leave a note on screen for a skip that didn't happen.
+                note.textContent = "Skip did not go through — please wait before trying again.";
+                startSkipCooldown(err.retryAfterSeconds || 10);
+            } else {
+                appendBubble("AI", `Error: ${err.message}. Please try again.`);
+                if (skipBtn) skipBtn.disabled = false;
+            }
         }
     }
 
@@ -888,6 +985,10 @@
             applyNextQuestion(data.nextQuestion);
             if (skipBtn) skipBtn.disabled = false;
         } catch (err) {
+            if (err.code === "session_time_expired") {
+                await handleSessionExpired();
+                return;
+            }
             appendBubble("AI", `Error: ${err.message}. Please try again.`);
             inputEl.disabled = false;
             sendBtn.disabled = false;
@@ -909,17 +1010,32 @@
 
     // Hint: ask ai-service (via same-origin proxy) for one light directional hint on the current
     // question, then show it as an AI bubble prefixed with 💡. Does not change the message flow.
+    // Server enforces one hint per question (SessionService.HintAsync) — the button stays
+    // disabled after use, or on a 409 "already used", and only re-enables on the NEXT question
+    // (applyNextQuestion). This client-side disable is UX only, not the security boundary.
     async function askHint() {
-        if (!currentQuestionText || ended || !hintUrl) return;
+        if (!currentQuestionText || !currentQuestionId || ended || !hintUrl) return;
 
         if (hintBtn) hintBtn.disabled = true;
         try {
-            const data = await postProxy(hintUrl, { question: currentQuestionText });
-            appendBubble("AI", "💡 " + (data.hint || ""));
+            const data = await postProxy(hintUrl, { sessionId, sessionQuestionId: currentQuestionId });
+            const hintText = data.hint || "";
+            appendBubble("AI", "💡 " + hintText);
+            // Text first, audio second: the user reads immediately without waiting on TTS. Not
+            // awaited — speak() already no-ops when AI Voice is off and swallows its own TTS
+            // errors, so a failure here can never affect the hint bubble already on screen.
+            // It also interrupts whatever audio is currently playing (e.g. the question being
+            // read aloud) — intended, the hint should be heard right away.
+            speak(hintText);
+            // Leave disabled: this question's one hint is now spent.
         } catch (err) {
-            appendBubble("AI", `Could not get a hint: ${err.message}.`);
-        } finally {
-            if (hintBtn && !ended) hintBtn.disabled = false;
+            if (err.status === 409) {
+                appendBubble("AI", "You've already used your hint for this question.");
+                // Leave disabled: matches the server's one-hint-per-question state.
+            } else {
+                appendBubble("AI", `Could not get a hint: ${err.message}.`);
+                if (hintBtn && !ended) hintBtn.disabled = false;
+            }
         }
     }
 
@@ -964,6 +1080,9 @@
         inputEl.placeholder = "Transcribing…";
         try {
             const form = new FormData();
+            const voiceCheckId = window.crypto.randomUUID();
+            form.append("sessionId", sessionId);
+            form.append("voiceCheckId", voiceCheckId);
             form.append("audio", blob, "answer.webm");
             const response = await fetch(sttUrl, { method: "POST", body: form });
             const data = await response.json().catch(() => null);
@@ -971,6 +1090,19 @@
                 appendBubble("AI", `Transcription failed${data && data.error ? ": " + data.error : ""}.`);
                 return;
             }
+
+            if (data.voiceMatched === false) {
+                const strikeText = `${data.message} (${data.strikeCount}/${data.maxStrikes} warnings)`;
+                setCheatingWarning(strikeText, "warning", 10000);
+
+                if (data.shouldEndSession) {
+                    await handleForcedCheatingEnd(data.message);
+                    return;
+                }
+
+                showCheatingBanner(strikeText, data.strikeCount === data.maxStrikes - 1);
+            }
+
             // Fill the box; the user reviews/edits and presses Send (existing message flow).
             inputEl.value = data.text || "";
             autoResizeInput();
@@ -987,14 +1119,20 @@
         else startRecording();
     });
 
-    // Camera preview — decorative only, the stream is never uploaded anywhere. Mandatory
-    // (anti-cheating): no toggle to turn it off. Declining permission or losing the camera
-    // mid-session is FLAGGED (server-side counter), never blocked — the interview continues
-    // either way (Biometrics:InSessionStrictness="Flag").
+    // Camera is mandatory. The live stream stays local, while individual verification frames
+    // are uploaded for in-session identity checks. A lost camera gets a reconnect attempt every
+    // 15-second grace period, repeating indefinitely until it comes back (or the session ends);
+    // only the FIRST failed attempt of each continuous loss reports a cheating strike.
     const cameraVideo = document.getElementById("camera-video");
     const cameraPlaceholder = document.getElementById("camera-placeholder");
     const cameraStatusEl = document.getElementById("camera-status");
+    const CAMERA_RECONNECT_GRACE_MS = 15000;
     let cameraStream = null;
+    let cameraRecoveryTimer = null;
+    // Guards against reporting more than one strike for the SAME ongoing camera-loss episode —
+    // scheduleCameraRecovery keeps retrying connectCamera() every 15s for as long as the camera
+    // stays down, but only the FIRST failed retry in that streak should count as a violation.
+    let cameraIncidentReported = false;
 
     function setCameraStatus(text, isWarning) {
         if (!cameraStatusEl) return;
@@ -1002,45 +1140,97 @@
         cameraStatusEl.classList.toggle("camera-status-warning", !!isWarning);
     }
 
-    // Fire-and-forget, best-effort — a failed report must never affect the interview itself.
-    // Called once per actual state change (permission denial, or a track actually ending) —
-    // never on a timer/poll, so this cannot spam the counter.
-    function reportCameraViolation(reason) {
-        if (!cameraViolationUrl) return;
-        postProxy(cameraViolationUrl, { reason }).catch(() => {});
+    function createIncidentId() {
+        if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
+        const bytes = crypto.getRandomValues(new Uint8Array(16));
+        bytes[6] = (bytes[6] & 0x0f) | 0x40;
+        bytes[8] = (bytes[8] & 0x3f) | 0x80;
+        const hex = Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
+        return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+    }
+
+    async function reportCameraViolation(reason) {
+        if (!cameraViolationUrl || ended) return;
+        try {
+            const data = await postProxy(cameraViolationUrl, {
+                incidentId: createIncidentId(),
+                reason
+            });
+            if (data.duplicate) return;
+
+            const strikeText = `${data.message} (${data.strikeCount}/${data.maxStrikes} warnings)`;
+            setCheatingWarning(strikeText, "critical");
+            if (!data.shouldEndSession) {
+                showCheatingBanner(strikeText, data.strikeCount === data.maxStrikes - 1);
+                return;
+            }
+
+            await handleForcedCheatingEnd(data.message);
+        } catch (error) {
+            setCheatingWarning(`Camera incident could not be reported: ${error.message}`, "warning");
+        }
+    }
+
+    function showCameraUnavailable(reason) {
+        if (cameraVideo) {
+            cameraVideo.srcObject = null;
+            cameraVideo.classList.add("d-none");
+        }
+        cameraPlaceholder?.classList.remove("d-none");
+        const label = reason === "PermissionDenied" ? "Camera: Access required" : "Camera: Disconnected";
+        setCameraStatus(`${label} — retrying in 15s`, true);
+    }
+
+    async function connectCamera() {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        cameraStream = stream;
+        // Camera is back — the next disconnect is a NEW episode and may report again.
+        cameraIncidentReported = false;
+        if (cameraVideo) {
+            cameraVideo.srcObject = stream;
+            cameraVideo.classList.remove("d-none");
+        }
+        cameraPlaceholder?.classList.add("d-none");
+        setCameraStatus("Camera: On", false);
+
+        const [track] = stream.getVideoTracks();
+        track?.addEventListener("ended", () => {
+            if (cameraStream !== stream || ended) return;
+            cameraStream = null;
+            scheduleCameraRecovery("Disconnected");
+        });
+        if (verificationCheckId) captureAndVerifyInSession();
+    }
+
+    function scheduleCameraRecovery(reason) {
+        if (ended || cameraRecoveryTimer) return;
+        showCameraUnavailable(reason);
+        cameraRecoveryTimer = setTimeout(async () => {
+            cameraRecoveryTimer = null;
+            try {
+                await connectCamera();
+            } catch {
+                showCameraUnavailable(reason);
+                setCameraStatus("Camera: Recovery failed", true);
+                // At most one violation per continuous camera-loss episode — the retry loop below
+                // keeps running regardless, so a camera left off doesn't rack up a strike every 15s.
+                if (!cameraIncidentReported) {
+                    cameraIncidentReported = true;
+                    await reportCameraViolation(reason);
+                }
+                // Keep retrying until connectCamera() succeeds or the session ends — previously
+                // this stopped after one failed attempt, permanently killing detection for the
+                // rest of the session (see bug report).
+                scheduleCameraRecovery(reason);
+            }
+        }, CAMERA_RECONNECT_GRACE_MS);
     }
 
     async function startCamera() {
         try {
-            cameraStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-            if (cameraVideo) {
-                cameraVideo.srcObject = cameraStream;
-                cameraVideo.classList.remove("d-none");
-            }
-            cameraPlaceholder?.classList.add("d-none");
-            setCameraStatus("Camera: On", false);
-
-            // Fires once if the track stops unexpectedly (device unplugged, OS-level permission
-            // revoked, ...) — NOT for our own track.stop() calls, since nothing in this file calls
-            // stop() anymore (there is no user-facing "turn off" path left).
-            const [track] = cameraStream.getVideoTracks();
-            if (track) {
-                track.addEventListener("ended", () => {
-                    if (cameraVideo) {
-                        cameraVideo.srcObject = null;
-                        cameraVideo.classList.add("d-none");
-                    }
-                    cameraPlaceholder?.classList.remove("d-none");
-                    setCameraStatus("Camera: Disconnected — please reconnect it", true);
-                    reportCameraViolation("Disconnected");
-                });
-            }
+            await connectCamera();
         } catch {
-            // Permission denied or no device — keep the placeholder, flag it, do not retry
-            // automatically (the user can reconnect/re-grant and the tour/support flow can point
-            // them at it; auto-retrying getUserMedia in a loop would just re-prompt repeatedly).
-            setCameraStatus("Camera: Off — please allow camera access", true);
-            reportCameraViolation("PermissionDenied");
+            scheduleCameraRecovery("PermissionDenied");
         }
     }
 
@@ -1058,8 +1248,13 @@
     // Rapid skipping is absorbed server-side (Biometrics:InSessionMinIntervalSeconds) rather
     // than here — a client-side interval could be bypassed, and this protects a shared resource.
     const cheatingWarningEl = document.getElementById("cheating-warning");
+    const integrityStatusIconEl = document.getElementById("integrity-status-icon");
+    const integrityStatusTitleEl = document.getElementById("integrity-status-title");
+    const integrityStatusMessageEl = document.getElementById("integrity-status-message");
     const inSessionCanvas = document.createElement("canvas");
     let inSessionCheckInFlight = false;
+    let integrityAlertVisibleUntil = 0;
+    let integrityAlertHideTimer = null;
 
     // tone controls which .cheating-warning--* class is applied (see interview-room.css):
     // "notice" (gentle no-face reminder, not yet a strike), "warning" (identity mismatch — could
@@ -1067,17 +1262,41 @@
     // most serious category, worth a visually distinct look from a plain mismatch).
     const cheatingWarningTones = ["notice", "warning", "critical"];
 
-    function setCheatingWarning(text, tone) {
+    function setCheatingWarning(text, tone, minimumVisibleMs) {
         if (!cheatingWarningEl) return;
-        cheatingWarningTones.forEach((t) => cheatingWarningEl.classList.remove(`cheating-warning--${t}`));
+        if (integrityAlertHideTimer) {
+            clearTimeout(integrityAlertHideTimer);
+            integrityAlertHideTimer = null;
+        }
+        if (text && minimumVisibleMs === 0 && Date.now() < integrityAlertVisibleUntil)
+            return;
+        cheatingWarningTones.forEach((t) => cheatingWarningEl.classList.remove(`integrity-alert--${t}`));
         if (!text) {
-            cheatingWarningEl.textContent = "";
+            const remainingVisibleMs = integrityAlertVisibleUntil - Date.now();
+            if (remainingVisibleMs > 0) {
+                integrityAlertHideTimer = setTimeout(
+                    () => setCheatingWarning(null, null, 0),
+                    remainingVisibleMs);
+                return;
+            }
             cheatingWarningEl.classList.add("d-none");
+            if (integrityStatusMessageEl) integrityStatusMessageEl.textContent = "";
             return;
         }
-        cheatingWarningEl.textContent = text;
-        if (tone) cheatingWarningEl.classList.add(`cheating-warning--${tone}`);
+        const effectiveTone = tone || "notice";
+        const visibleMs = minimumVisibleMs ?? (effectiveTone === "notice" ? 7000 : 10000);
+        integrityAlertVisibleUntil = Date.now() + visibleMs;
+        cheatingWarningEl.classList.add(`integrity-alert--${effectiveTone}`);
         cheatingWarningEl.classList.remove("d-none");
+        if (integrityStatusIconEl) {
+            integrityStatusIconEl.textContent = effectiveTone === "notice" ? "visibility" : "warning";
+        }
+        if (integrityStatusTitleEl) {
+            integrityStatusTitleEl.textContent = effectiveTone === "notice"
+                ? "Attention needed"
+                : effectiveTone === "critical" ? "Integrity violation" : "Verification warning";
+        }
+        if (integrityStatusMessageEl) integrityStatusMessageEl.textContent = text;
     }
 
     // Maps the server's WarningType to a client-rendered tone + prefix. NoFace only escalates to
@@ -1088,6 +1307,23 @@
         if (data.warningType === "NoFace") return data.noFaceJustBecameStrike ? "critical" : "notice";
         if (data.warningType === "IdentityMismatch") return "warning";
         return "notice";
+    }
+
+    const qualityWarningTypes = new Set([
+        "ImageTooBlurry",
+        "FaceTooSmall",
+        "LowDetectionConfidence",
+        "CannotDecode"
+    ]);
+
+    function isVerificationTokenError(message) {
+        if (!message) return false;
+        const normalized = message.toLowerCase();
+        return normalized.includes("verification check token")
+            || normalized.includes("token is invalid")
+            || normalized.includes("token is expired")
+            || normalized.includes("token has expired")
+            || normalized.includes("token is already used");
     }
 
     // Cheating strike popup — reuses the exact .idle-banner/.idle-modal-backdrop classes and
@@ -1140,26 +1376,101 @@
         okBtn.focus();
     }
 
+    async function handleForcedCheatingEnd(message) {
+        ended = true;
+        if (cameraRecoveryTimer) {
+            clearTimeout(cameraRecoveryTimer);
+            cameraRecoveryTimer = null;
+        }
+        if (skipCooldownTimer) {
+            clearInterval(skipCooldownTimer);
+            skipCooldownTimer = null;
+        }
+        clearDraft();
+        disableLifecycleControls();
+        appendBubble("AI", message);
+        await showCheatingTerminationModal(message);
+        window.location.href = "/Interview";
+    }
+
+    function showCheatingTerminationModal(message) {
+        return new Promise((resolve) => {
+            if (!cheatingBannerEl) {
+                resolve();
+                return;
+            }
+
+            cheatingBannerEl.className = "idle-banner tier1 cheating-banner--final";
+            cheatingBannerEl.innerHTML = "";
+
+            const title = document.createElement("p");
+            title.className = "idle-banner-message cheating-banner-title";
+            title.textContent = "Interview ended";
+
+            const body = document.createElement("p");
+            body.className = "idle-banner-message";
+            body.textContent = message
+                || "The maximum number of integrity warnings has been reached (3/3).";
+
+            const explanation = document.createElement("p");
+            explanation.className = "idle-banner-message";
+            explanation.textContent =
+                "This interview has been closed because the allowed integrity-warning limit was exceeded.";
+
+            const exitButton = document.createElement("button");
+            exitButton.type = "button";
+            exitButton.className = "idle-banner-ok";
+            exitButton.textContent = "Exit interview";
+            exitButton.addEventListener("click", resolve, { once: true });
+
+            cheatingBannerEl.appendChild(title);
+            cheatingBannerEl.appendChild(body);
+            cheatingBannerEl.appendChild(explanation);
+            cheatingBannerEl.appendChild(exitButton);
+            cheatingBannerBackdropEl?.classList.remove("d-none");
+            exitButton.focus();
+        });
+    }
+
     async function captureAndVerifyInSession() {
         if (ended || paused || !verifyInSessionUrl) return;
-        if (!cameraStream || !cameraVideo || inSessionCheckInFlight) return;
+        if (!verificationCheckId || !cameraStream || !cameraVideo || inSessionCheckInFlight) return;
+        if (verificationCheckExpiresAt && Date.parse(verificationCheckExpiresAt) <= Date.now()) return;
         inSessionCheckInFlight = true;
         try {
+            setCheatingWarning(
+                "Checking the face currently visible in the camera.",
+                "notice",
+                0);
+
             inSessionCanvas.width = cameraVideo.videoWidth || 640;
             inSessionCanvas.height = cameraVideo.videoHeight || 480;
             const ctx = inSessionCanvas.getContext("2d");
             ctx.drawImage(cameraVideo, 0, 0, inSessionCanvas.width, inSessionCanvas.height);
-            const blob = await new Promise((resolve) => inSessionCanvas.toBlob(resolve, "image/jpeg", 0.9));
-            if (!blob) return;
+            const frame = await new Promise(
+                (resolve) => inSessionCanvas.toBlob(resolve, "image/jpeg", 0.9));
+            if (!frame) return;
 
             const form = new FormData();
-            form.append("frame", blob, "frame.jpg");
+            form.append("frame", frame, "frame.jpg");
+            form.append("checkId", verificationCheckId);
+            verificationCheckId = null;
+            verificationCheckExpiresAt = null;
             // Not postProxy: this is multipart (an image blob), not JSON — same reasoning as the
             // capture uploads in biometric-wizard.js/entry-verify.js. Never set Content-Type
             // manually for FormData; the browser adds the multipart boundary itself.
             const response = await fetch(verifyInSessionUrl, { method: "POST", body: form });
             const data = await response.json().catch(() => null);
-            if (!response.ok || !data) return;
+            if (!response.ok || !data) {
+                const errorMessage = data?.error || data?.message
+                    || `Verification request failed (${response.status}).`;
+                if (isVerificationTokenError(errorMessage)) {
+                    setCheatingWarning(null);
+                    return;
+                }
+                setCheatingWarning(errorMessage, "warning");
+                return;
+            }
 
             if (data.passed) {
                 setCheatingWarning(null);
@@ -1168,6 +1479,12 @@
 
             if (data.warningType === "NoFace" && !data.noFaceJustBecameStrike) {
                 // Gentle heads-up only — not a strike yet, so no strike count attached.
+                setCheatingWarning(data.message, "notice");
+                return;
+            }
+
+            if (qualityWarningTypes.has(data.warningType)) {
+                // A technically unusable frame is guidance, not evidence of cheating.
                 setCheatingWarning(data.message, "notice");
                 return;
             }
@@ -1187,19 +1504,16 @@
             }
 
             if (data.shouldEndSession) {
-                ended = true;
-                clearDraft();
-                if (inputEl) inputEl.disabled = true;
-                if (sendBtn) sendBtn.disabled = true;
-                if (endBtn) endBtn.disabled = true;
-                if (skipBtn) skipBtn.disabled = true;
-                if (hintBtn) hintBtn.disabled = true;
-                appendBubble("AI", data.message);
-                await new Promise((resolve) => setTimeout(resolve, 3000));
-                window.location.href = buildReportUrl();
+                await handleForcedCheatingEnd(data.message);
             }
-        } catch {
-            // Best-effort — a failed check must never interrupt the interview.
+        } catch (error) {
+            if (isVerificationTokenError(error?.message)) {
+                setCheatingWarning(null);
+                return;
+            }
+            setCheatingWarning(
+                error?.message || "Verification is temporarily unavailable.",
+                "warning");
         } finally {
             inSessionCheckInFlight = false;
         }
@@ -1208,6 +1522,52 @@
 
     // AI Voice (TTS) — speaks AI questions when the toggle is on. Text/message flow is unchanged;
     // this only adds audio playback of the AI bubbles.
+    let verificationSchedulePollInFlight = false;
+
+    async function pollVerificationSchedule() {
+        if (ended || paused || !inSessionCheckUrl || !currentQuestionId
+            || verificationSchedulePollInFlight || inSessionCheckInFlight) return;
+
+        if (verificationCheckId
+            && (!verificationCheckExpiresAt
+                || Date.parse(verificationCheckExpiresAt) > Date.now())) {
+            captureAndVerifyInSession();
+            return;
+        }
+
+        verificationCheckId = null;
+        verificationCheckExpiresAt = null;
+        verificationSchedulePollInFlight = true;
+        try {
+            const separator = inSessionCheckUrl.includes("?") ? "&" : "?";
+            const response = await fetch(
+                `${inSessionCheckUrl}${separator}sessionQuestionId=${encodeURIComponent(currentQuestionId)}`);
+            const data = await response.json().catch(() => null);
+            if (!response.ok || !data) {
+                const errorMessage = data?.error || data?.message
+                    || `Monitoring request failed (${response.status}).`;
+                setCheatingWarning(errorMessage, "warning");
+                return;
+            }
+            if (data.shouldEndSession) {
+                await handleForcedCheatingEnd(
+                    data.message || "This interview has been ended.");
+                return;
+            }
+            if (!data.due || !data.checkId) return;
+
+            verificationCheckId = data.checkId;
+            verificationCheckExpiresAt = data.expiresAt || null;
+            captureAndVerifyInSession();
+        } catch (error) {
+            setCheatingWarning(
+                error?.message || "Integrity monitoring is temporarily unavailable.",
+                "warning");
+        } finally {
+            verificationSchedulePollInFlight = false;
+        }
+    }
+
     const voiceToggleBtn = document.getElementById("voice-toggle");
     let aiVoiceOn = voiceToggleBtn ? voiceToggleBtn.classList.contains("is-on") : false;
     let currentAudio = null;
@@ -1224,14 +1584,29 @@
             });
             if (!response.ok) return; // TTS unavailable — stay silent, never block the interview
             const blob = await response.blob();
+            if (!blob || blob.size === 0) {
+                console.warn("[TTS] empty audio response");
+                return;
+            }
             currentAudio?.pause();
             const audio = new Audio(URL.createObjectURL(blob));
             currentAudio = audio;
+            // Waveform follows the real <audio> element instead of just the AI-Voice toggle.
+            // Additive listeners only — onended/onerror/onpause below still own resolve().
+            const visualizer = document.querySelector(".visualizer");
+            const pauseVisualizer = () => visualizer?.classList.add("paused");
+            audio.addEventListener("play", () => visualizer?.classList.remove("paused"));
+            audio.addEventListener("ended", pauseVisualizer);
+            audio.addEventListener("error", pauseVisualizer);
+            audio.addEventListener("pause", pauseVisualizer);
             await new Promise((resolve) => {
                 audio.onended = resolve;
                 audio.onerror = resolve;
                 audio.onpause = resolve; // paused by toggle-off or a newer clip — stop waiting
-                audio.play().catch(resolve); // autoplay blocked — ignore
+                audio.play().catch((err) => {
+                    console.warn("[TTS] play blocked:", err?.name || err);
+                    resolve();
+                });
             });
         } catch {
             // Network/TTS error — ignore, the interview continues silently.

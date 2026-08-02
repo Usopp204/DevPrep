@@ -1,5 +1,5 @@
 // entry-verify.js — biometric ENTRY GATE for the Interview Room (face-only).
-// One face-match check for the session; pass → Room, out of attempts → back to the
+// One face-match check for the session; pass → Interview Integrity Policy, out of attempts → back to the
 // dashboard via the VerifyFailed action (sets TempData). No head-turn/liveness requirement —
 // see ai-service/biometrics/router.py for why (yaw measurement unreliable on real hardware).
 // The capture flow mirrors biometric-wizard.js verify mode (same proxies, same
@@ -14,7 +14,7 @@
         challenge: root.dataset.challengeUrl,
         verifyFace: root.dataset.verifyFaceUrl,
         entryGate: root.dataset.entryGateUrl,
-        room: root.dataset.roomUrl,
+        integrityPolicy: root.dataset.integrityPolicyUrl,
         failed: root.dataset.failedUrl,
     };
     const sessionId = root.dataset.sessionId;
@@ -41,6 +41,36 @@
     function show(el) { if (el) el.hidden = false; }
     function hide(el) { if (el) el.hidden = true; }
     function setGuidance(text) { guidance.textContent = text || ""; }
+
+    function showVerifiedState() {
+        const faceScreen = document.getElementById("screen-face");
+        const successScreen = document.getElementById("screen-verify-success");
+
+        if (faceScreen) {
+            faceScreen.hidden = true;
+        }
+
+        if (successScreen) {
+            successScreen.hidden = false;
+        }
+    }
+
+    let successNavigationStarted = false;
+
+    async function completeSuccessfulVerification() {
+        if (successNavigationStarted) return;
+        
+        successNavigationStarted = true;
+        actionBtn.disabled = true;
+        stopCamera();
+        hide(processing);
+        setOvalState("success");
+        showVerifiedState();
+
+        await delay(3200);
+
+        window.location.assign(urls.integrityPolicy);
+    }
 
     function setError(text) {
         errorEl.textContent = text || "";
@@ -86,6 +116,13 @@
         actionBtn.disabled = true;
         actionBtn.textContent = "I'm ready";
         setGuidance("Preparing camera…");
+
+        if (!urls.integrityPolicy) {
+            setGuidance("Configuration error");
+            setError("The integrity policy URL is missing.");
+            actionBtn.disabled = true;
+            return;
+        }
 
         try {
             // Still issues/consumes a server-side challenge (required before verify-face
@@ -163,10 +200,7 @@
             hide(processing);
 
             if (result.passed) {
-                setOvalState("success");
-                setGuidance("Verified ✓ — entering the room…");
-                await delay(900);
-                window.location.href = urls.room;
+                await completeSuccessfulVerification();
                 return;
             }
 
@@ -184,7 +218,10 @@
         try {
             const gate = await fetchJson(urls.entryGate + "?sessionId=" + encodeURIComponent(sessionId));
             setAttempts(gate.attemptsRemaining);
-            if (gate.allowed) { window.location.href = urls.room; return; }
+            if (gate.allowed) { 
+                await completeSuccessfulVerification(); 
+                return; 
+            }
             if (gate.attemptsRemaining <= 0) {
                 setOvalState("error");
                 setGuidance("Verification failed");

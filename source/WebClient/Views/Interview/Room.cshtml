@@ -31,11 +31,28 @@
 </head>
 <body class="room-page">
 
+    @if (TempData["RoomInfoMessage"] is string infoMessage)
+    {
+        <div class="room-info-banner" id="room-info-banner" role="status">@infoMessage</div>
+        <script>
+            (function () {
+                var banner = document.getElementById("room-info-banner");
+                if (!banner) return;
+                setTimeout(function () {
+                    banner.classList.add("fade-out");
+                    banner.addEventListener("animationend", function () { banner.remove(); }, { once: true });
+                }, 5000);
+            })();
+        </script>
+    }
+
     <div id="room-app"
          class="room-layout"
          data-session-id="@Model.SessionId"
          data-remaining-seconds="@Model.RemainingSeconds"
          data-current-question-id="@Model.CurrentQuestionId"
+         data-verification-check-id="@Model.VerificationCheckId"
+         data-verification-check-expires-at="@Model.VerificationCheckExpiresAt?.ToString("O")"
          data-idle-reminder-seconds="@Model.IdleReminderSeconds"
          data-idle-hard-seconds="@Model.IdleHardSeconds"
          data-idle-elapsed-seconds="@Model.IdleElapsedSeconds"
@@ -54,6 +71,7 @@
          data-unpause-url="@Url.Action("Unpause", "Interview", new { id = Model.SessionId })"
          data-camera-violation-url="@Url.Action("CameraViolation", "Interview", new { id = Model.SessionId })"
          data-verify-in-session-url="@Url.Action("VerifyInSession", "Verification", new { sessionId = Model.SessionId })"
+         data-in-session-check-url="@Url.Action("InSessionCheck", "Verification", new { sessionId = Model.SessionId })"
          data-tts-url="@Url.Action("Tts", "Interview")"
          data-stt-url="@Url.Action("Stt", "Interview")"
          data-hint-url="@Url.Action("Hint", "Interview")"
@@ -70,38 +88,43 @@
                 </div>
 
                 <div class="session-info">
-                    <div class="info-block">
+                    <span class="session-info-title">SESSION OVERVIEW</span>
+                    <div class="info-block info-block-role">
                         <span class="info-key">Role</span>
                         <span class="info-val">@(string.IsNullOrWhiteSpace(Model.Position) ? "—" : Model.Position)</span>
                     </div>
-                    <div class="info-block">
-                        <span class="info-key">Level</span>
-                        <span class="info-val">@Model.Level</span>
-                    </div>
-                    <div class="info-block">
-                        <span class="info-key">Type</span>
-                        <span class="info-val">@Model.QuestionType</span>
-                    </div>
-                    <div class="info-block">
-                        <span class="info-key">Status</span>
-                        <span class="info-val" id="status-text">@Model.Status</span>
-                    </div>
-                    <div class="info-block">
-                        <span class="info-key">Progress</span>
-                        <span class="info-val" id="progress-text">@Model.AnsweredQuestions/@Model.TotalQuestions</span>
+                    <div class="session-info-meta">
+                        <div class="info-block info-block-meta">
+                            <span class="info-key">Level</span>
+                            <span class="info-chip">@Model.Level</span>
+                        </div>
+                        <div class="info-block info-block-meta">
+                            <span class="info-key">Status</span>
+                            <span class="info-status" id="status-text">@(Model.Status == "InProgress" ? "Active" : Model.Status)</span>
+                        </div>
                     </div>
                 </div>
 
                 <!-- In-session cheating check warning (identity mismatch / multiple faces).
                      Hidden until interview-room.js's background check actually flags something —
                      see the .camera-status-warning/.content-warning tint pattern this reuses. -->
-                <p class="cheating-warning d-none" id="cheating-warning" role="alert"></p>
+                <div class="integrity-alert d-none" id="cheating-warning"
+                     role="alert" aria-live="assertive">
+                    <span class="material-symbols-outlined integrity-alert-icon"
+                          id="integrity-status-icon">warning</span>
+                    <div class="integrity-alert-content">
+                        <strong class="integrity-alert-title"
+                                id="integrity-status-title">Verification warning</strong>
+                        <span class="integrity-alert-message"
+                              id="integrity-status-message"></span>
+                    </div>
+                </div>
             </div>
 
             <div class="room-progress">
                 <div class="room-progress-head">
                     <span class="k">PROGRESS</span>
-                    <span class="v">@Model.AnsweredQuestions / @Model.TotalQuestions</span>
+                    <span class="v" id="progress-text">@Model.AnsweredQuestions / @Model.TotalQuestions</span>
                 </div>
                 <div class="progress-track">
                     <div class="progress-fill" style="width:@(progressPct)%"></div>
@@ -117,7 +140,7 @@
                         <span class="material-symbols-outlined">smart_toy</span>
                     </div>
                     <div>
-                        <div class="title">AI Interviewer <span class="status-dot"></span></div>
+                        <div class="title">DevPrep AI <span class="status-dot"></span></div>
                         <div class="subtitle">Active Session</div>
                     </div>
                 </div>
@@ -125,7 +148,6 @@
                     <button id="replay-tour-btn" type="button" title="Replay the guided tour" @(isActive ? "" : "disabled")>
                         <span class="material-symbols-outlined">help_outline</span>
                     </button>
-                    <button type="button"><span class="material-symbols-outlined">more_vert</span></button>
                 </div>
             </div>
 
@@ -136,6 +158,11 @@
                 </div>
                 @foreach (var message in Model.ChatHistory)
                 {
+                    // Empty user answers represent Skip/TimedOut and must not render as blank bubbles.
+                    if (message.SenderType == "User" && string.IsNullOrWhiteSpace(message.Content))
+                    {
+                        continue;
+                    }
                     var rowClass = message.SenderType == "AI" ? "chat-row chat-row-ai" : "chat-row chat-row-user";
                     var bubbleClass = message.SenderType == "AI" ? "chat-bubble chat-bubble-ai" : "chat-bubble chat-bubble-user";
                     <div class="@rowClass">
@@ -200,11 +227,10 @@
                             <span class="material-symbols-outlined">videocam_off</span>
                             <span>Camera off</span>
                         </div>
+                        <!-- Camera is mandatory (anti-cheating) — this overlay reports its current
+                             state and is updated by interview-room.js. -->
+                        <span id="camera-status" class="camera-status">Camera: Starting…</span>
                     </div>
-                    <!-- Camera is mandatory (anti-cheating) — no toggle, just a status indicator.
-                         Text is set by interview-room.js (Starting… / On / permission-denied /
-                         disconnected messaging); this is the pre-JS fallback. -->
-                    <span id="camera-status" class="camera-status">Camera: Starting…</span>
                 </div>
 
                 <div class="ai-voice-section">

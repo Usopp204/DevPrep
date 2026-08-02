@@ -8,6 +8,7 @@
         "Usage"    => "badge-usage",
         "Purchase" => "badge-purchase",
         "Refund"   => "badge-refund",
+        "Bonus"    => "badge-bonus",
         _          => "badge-usage"
     };
     string TypeIcon(string t) => t switch
@@ -15,6 +16,7 @@
         "Usage"    => "remove_circle",
         "Purchase" => "add_circle",
         "Refund"   => "replay_circle_filled",
+        "Bonus"    => "redeem",
         _          => "toll"
     };
 }
@@ -116,6 +118,8 @@
         .cr-table tbody tr:hover { background: var(--surface-hover); }
         .cr-table tbody tr:last-child td { border-bottom: none; }
         .th-right, .td-right { text-align: right; }
+        /* Specificity đủ mạnh để thắng `.cr-table th { text-align:left }` cho tiêu đề. */
+        .cr-table th.th-center, .cr-table td.td-center { text-align: center; }
 
         .cr-date { color: var(--text); font-weight: 500; }
         .cr-time { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
@@ -135,7 +139,8 @@
         .badge .material-symbols-outlined { font-size: 12px; }
         .badge-usage    { background: var(--error-dim);   color: var(--error); }
         .badge-purchase { background: var(--success-dim); color: var(--success); }
-        .badge-refund   { background: rgba(76,215,246,0.12); color: var(--secondary); }
+        .badge-refund   { background: var(--success-dim); color: var(--success); }
+        .badge-bonus    { background: var(--success-dim); color: var(--success); }
 
         .table-empty { text-align: center; padding: 64px 24px; color: var(--text-muted); }
         .table-empty .material-symbols-outlined { font-size: 48px; opacity: 0.25; display: block; margin-bottom: 12px; }
@@ -253,8 +258,8 @@
                                 <th>Date</th>
                                 <th>Type</th>
                                 <th>Description</th>
-                                <th class="th-right">Change</th>
-                                <th class="th-right col-hide">Balance After</th>
+                                <th class="th-center">Change</th>
+                                <th class="th-center col-hide">Balance After</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -279,10 +284,10 @@
                                             <div class="cr-ref">Ref: @e.ReferenceId.Value.ToString()[..8]…</div>
                                         }
                                     </td>
-                                    <td class="td-right">
+                                    <td class="td-center">
                                         <span class="cr-change @(neg ? "neg" : "pos")">@(neg ? "" : "+")@e.CreditChange</span>
                                     </td>
-                                    <td class="td-right col-hide">
+                                    <td class="td-center col-hide">
                                         <span class="cr-balance">@e.BalanceAfter</span>
                                     </td>
                                 </tr>

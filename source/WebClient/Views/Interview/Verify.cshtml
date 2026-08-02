@@ -27,6 +27,7 @@
      data-verify-face-url="@Url.Action("VerifyFace", "Verification")"
      data-entry-gate-url="@Url.Action("EntryGate", "Verification")"
      data-room-url="@Url.Action("Room", "Interview", new { id = Model.SessionId })"
+     data-integrity-policy-url="@Url.Action("IntegrityPolicy", "Interview", new { id = Model.SessionId })"
      data-failed-url="@Url.Action("VerifyFailed", "Interview")">
 
     <div class="ambient-blob ambient-blob-primary" aria-hidden="true"></div>
@@ -62,6 +63,42 @@
             <p class="hint-dark">Verify it's you before entering the interview room — keep your face inside the oval and look straight at the camera</p>
         </div>
     </section>
+
+    <!-- ════════════ Verify Success Overlay — ported from verifyfacesuccessfull.html (UI only, hidden by default) ════════════ -->
+    <div id="screen-verify-success" hidden style="display: contents;">
+        <div class="verify-bg-orb orb-1" aria-hidden="true"></div>
+        <div class="verify-bg-orb orb-2" aria-hidden="true"></div>
+        <div class="verify-bg-orb orb-3" aria-hidden="true"></div>
+        <div class="verify-glass-card verify-animate-in">
+            <div class="verify-header-badge">
+                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+                Identity verified
+            </div>
+            <div class="verify-inner">
+                <div class="verify-success-wrapper">
+                    <div class="verify-ring verify-ring-1"></div>
+                    <div class="verify-ring verify-ring-2"></div>
+                    <div class="verify-ring verify-ring-3"></div>
+                    <div class="verify-success-circle">
+                        <span class="material-symbols-outlined">check</span>
+                    </div>
+                </div>
+                <h1 class="verify-title">Identity <strong>Verified</strong></h1>
+                <div class="verify-status-container">
+                    <div class="verify-status-text">
+                        <span>Entering the interview room</span>
+                        <span class="verify-loading-dots">
+                            <span>.</span><span>.</span><span>.</span>
+                        </span>
+                    </div>
+                    <div class="verify-progress-bg">
+                        <div class="verify-progress-fill"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>
 <script src="~/js/pages/entry-verify.js" asp-append-version="true"></script>
 </body>

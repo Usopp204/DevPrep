@@ -2,6 +2,7 @@ using System.Security.Claims;
 using InterviewAPI.Clients;
 using InterviewAPI.DTOs;
 using InterviewAPI.DTOs.Session;
+using InterviewAPI.Services;
 using InterviewAPI.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -76,6 +77,21 @@ public class InterviewSessionController : ControllerBase
             return BadRequest(ApiResponse<object>.Fail(ex.Message));
         }
     }
+
+    /// <summary>
+    /// Newest InProgress/Paused session for the current user, or Data=null if none — used by the
+    /// Dashboard to surface an interview abandoned mid-session (Recent Sessions/History
+    /// intentionally exclude non-terminal statuses, so this is otherwise unreachable). No active
+    /// session is a normal state, not an error — always 200.
+    /// </summary>
+    [HttpGet("active")]
+    public async Task<IActionResult> GetActiveSession(CancellationToken cancellationToken)
+    {
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var result = await _service.GetActiveSessionAsync(userId, cancellationToken);
+        return Ok(ApiResponse<ActiveSessionResponse>.Ok(result!));
+    }
+
     [HttpGet("history")]
     [Authorize(Roles = "User")]
     public async Task<IActionResult> GetSessionHistory(
@@ -174,6 +190,40 @@ public class InterviewSessionController : ControllerBase
         if (!owns)
             return NotFound(ApiResponse<object>.Fail("Session not found."));
         return Ok(ApiResponse<object>.Ok(new { }));
+    }
+
+    [HttpGet("{id:guid}/integrity-policy")]
+    public async Task<IActionResult> GetIntegrityPolicyStatus(Guid id, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var result = await _service.GetIntegrityPolicyStatusAsync(userId, id, cancellationToken);
+            return Ok(ApiResponse<IntegrityPolicyStatusResponse>.Ok(result));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<object>.Fail(ex.Message));
+        }
+    }
+
+    [HttpPost("{id:guid}/integrity-policy/accept")]
+    public async Task<IActionResult> AcceptIntegrityPolicy(Guid id, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var result = await _service.AcceptIntegrityPolicyAsync(userId, id, cancellationToken);
+            return Ok(ApiResponse<IntegrityPolicyStatusResponse>.Ok(result));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<object>.Fail(ex.Message));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+        }
     }
 
     /// <summary>Lấy thời gian còn lại và trạng thái hiện tại của phiên phỏng vấn.</summary>
@@ -275,8 +325,9 @@ public class InterviewSessionController : ControllerBase
         }
     }
 
-    /// <summary>Ghi nhận vi phạm camera (từ chối quyền / mất kết nối giữa chừng) — chỉ để lưu vết,
-    /// KHÔNG chặn vào phòng hay chặn trả lời (Biometrics:InSessionStrictness="Flag").</summary>
+    /// <summary>Ghi nhận vi phạm camera (từ chối quyền / mất kết nối giữa chừng) — mặc định
+    /// (Biometrics:InSessionStrictness="Strict") sẽ tự kết thúc phiên khi đủ InSessionMaxStrikes.
+    /// Đặt Strictness="Flag" nếu chỉ muốn lưu vết, không chặn vào phòng hay chặn trả lời.</summary>
     [HttpPost("{id:guid}/camera-violation")]
     public async Task<IActionResult> ReportCameraViolation(
         Guid id, [FromBody] ReportCameraViolationRequest request, CancellationToken cancellationToken)
@@ -302,6 +353,12 @@ public class InterviewSessionController : ControllerBase
             var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var result = await _service.ResumeSessionAsync(userId, id, cancellationToken);
             return Ok(ApiResponse<ResumeResponse>.Ok(result));
+        }
+        catch (SessionGuardException ex)
+        {
+            if (ex.RetryAfterSeconds is int retryAfter)
+                Response.Headers.Append("Retry-After", retryAfter.ToString());
+            return StatusCode(ex.StatusCode, new { error = ex.ErrorCode, message = ex.Message });
         }
         catch (Exception ex)
         {
@@ -335,6 +392,12 @@ public class InterviewSessionController : ControllerBase
             var result = await _service.ConfigDurationAsync(userId, req, cancellationToken);
             return Ok(ApiResponse<ConfigResponse>.Ok(result));
         }
+        catch (SessionGuardException ex)
+        {
+            if (ex.RetryAfterSeconds is int retryAfter)
+                Response.Headers.Append("Retry-After", retryAfter.ToString());
+            return StatusCode(ex.StatusCode, new { error = ex.ErrorCode, message = ex.Message, activeSessionId = ex.ActiveSessionId });
+        }
         catch (Exception ex)
         {
             return BadRequest(ApiResponse<object>.Fail(ex.Message));
@@ -351,6 +414,12 @@ public class InterviewSessionController : ControllerBase
             var result = await _service.ConfigLevelAsync(userId, req, cancellationToken);
             return Ok(ApiResponse<ConfigResponse>.Ok(result));
         }
+        catch (SessionGuardException ex)
+        {
+            if (ex.RetryAfterSeconds is int retryAfter)
+                Response.Headers.Append("Retry-After", retryAfter.ToString());
+            return StatusCode(ex.StatusCode, new { error = ex.ErrorCode, message = ex.Message, activeSessionId = ex.ActiveSessionId });
+        }
         catch (Exception ex)
         {
             return BadRequest(ApiResponse<object>.Fail(ex.Message));
@@ -366,6 +435,12 @@ public class InterviewSessionController : ControllerBase
             var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var result = await _service.ConfigInteractionAsync(userId, req, cancellationToken);
             return Ok(ApiResponse<ConfigResponse>.Ok(result));
+        }
+        catch (SessionGuardException ex)
+        {
+            if (ex.RetryAfterSeconds is int retryAfter)
+                Response.Headers.Append("Retry-After", retryAfter.ToString());
+            return StatusCode(ex.StatusCode, new { error = ex.ErrorCode, message = ex.Message, activeSessionId = ex.ActiveSessionId });
         }
         catch (Exception ex)
         {
@@ -387,6 +462,12 @@ public class InterviewSessionController : ControllerBase
             var result = await _service.SendMessageAsync(userId, id, req, cancellationToken);
             return Ok(ApiResponse<MessageResponse>.Ok(result));
         }
+        catch (SessionGuardException ex)
+        {
+            if (ex.RetryAfterSeconds is int retryAfter)
+                Response.Headers.Append("Retry-After", retryAfter.ToString());
+            return StatusCode(ex.StatusCode, new { error = ex.ErrorCode, message = ex.Message });
+        }
         catch (Exception ex)
         {
             return BadRequest(ApiResponse<object>.Fail(ex.Message));
@@ -405,6 +486,12 @@ public class InterviewSessionController : ControllerBase
             var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var result = await _service.GenerateQuestionAsync(userId, id, cancellationToken);
             return Ok(ApiResponse<GenerateQuestionResponse>.Ok(result));
+        }
+        catch (SessionGuardException ex)
+        {
+            if (ex.RetryAfterSeconds is int retryAfter)
+                Response.Headers.Append("Retry-After", retryAfter.ToString());
+            return StatusCode(ex.StatusCode, new { error = ex.ErrorCode, message = ex.Message });
         }
         catch (Exception ex)
         {
@@ -425,6 +512,8 @@ public class InterviewSessionController : ControllerBase
         try
         {
             var audio = await _aiServiceClient.SynthesizeSpeechAsync(req.Text, cancellationToken);
+            if (audio is null || audio.Length == 0)
+                return StatusCode(502, new { error = "tts_unavailable" });
             return File(audio, "audio/mpeg");
         }
         catch (Exception ex)
@@ -461,19 +550,28 @@ public class InterviewSessionController : ControllerBase
     }
 
     /// <summary>
-    /// Gợi ý cho câu hỏi hiện tại (proxy tới ai-service /internal/hint). Stateless — chỉ cần text
-    /// câu hỏi; không lộ đáp án đầy đủ, trả về cùng ngôn ngữ với câu hỏi.
+    /// Gợi ý cho câu hỏi hiện tại (proxy tới ai-service /internal/hint). Server tự tra text câu
+    /// hỏi từ SessionQuestionId — không nhận text tuỳ ý từ client (tránh proxy Gemini miễn phí
+    /// cho bất kỳ ai có JWT hợp lệ). Mỗi câu hỏi chỉ dùng được 1 lần, enforce ở server.
     /// </summary>
-    [HttpPost("hint")]
-    public async Task<IActionResult> Hint([FromBody] HintRequest req, CancellationToken cancellationToken)
+    [HttpPost("{id:guid}/hint")]
+    public async Task<IActionResult> Hint(Guid id, [FromBody] HintRequest req, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(req.Question))
-            return BadRequest(ApiResponse<object>.Fail("Question is required."));
-
         try
         {
-            var hint = await _aiServiceClient.GetHintAsync(req.Question, cancellationToken);
-            return Ok(ApiResponse<HintResponse>.Ok(new HintResponse { Hint = hint }));
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var result = await _service.HintAsync(userId, id, req.SessionQuestionId, cancellationToken);
+            return Ok(ApiResponse<HintResponse>.Ok(result));
+        }
+        catch (SessionGuardException ex)
+        {
+            if (ex.RetryAfterSeconds is int retryAfter)
+                Response.Headers.Append("Retry-After", retryAfter.ToString());
+            return StatusCode(ex.StatusCode, new { error = ex.ErrorCode, message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<object>.Fail(ex.Message));
         }
         catch (Exception ex)
         {

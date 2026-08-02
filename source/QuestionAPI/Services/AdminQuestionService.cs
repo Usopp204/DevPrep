@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using QuestionAPI.Data;
 using QuestionAPI.DTOs;
 using QuestionAPI.Helpers;
@@ -10,7 +10,7 @@ namespace QuestionAPI.Services;
 
 public class AdminQuestionService : IAdminQuestionService
 {
-   // private const int MaxBrowsePages = 30;
+    // private const int MaxBrowsePages = 30;
     private const int DefaultPageSize = 10;
     private const int MaximumPageSize = 100;
 
@@ -23,18 +23,32 @@ public class AdminQuestionService : IAdminQuestionService
             "Inactive"
         };
 
+    private static readonly Dictionary<string, string> AllowedDifficulties =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Intern"] = "Intern",
+            ["Fresher"] = "Fresher",
+            ["Junior"] = "Junior",
+            ["Middle"] = "Middle",
+            ["Senior"] = "Senior",
+            ["Lead"] = "Lead"
+        };
+
     private readonly IAdminQuestionRepository _repo;
     private readonly QuestionBankDbContext _db;
     private readonly IQuestionIndexClient _indexClient;
+    private readonly IQuestionIndexEligibilityService _eligibilityService;
 
     public AdminQuestionService(
         IAdminQuestionRepository repo,
         QuestionBankDbContext db,
-        IQuestionIndexClient indexClient)
+        IQuestionIndexClient indexClient,
+        IQuestionIndexEligibilityService eligibilityService)
     {
         _repo = repo;
         _db = db;
         _indexClient = indexClient;
+        _eligibilityService = eligibilityService;
     }
 
     public async Task<AdminPagedResultDto<AdminQuestionListItemDto>> GetAsync(
@@ -119,10 +133,9 @@ public class AdminQuestionService : IAdminQuestionService
             throw new Exception("Question cannot be empty.");
         }
 
-        if (string.IsNullOrWhiteSpace(dto.Difficulty))
-        {
-            throw new Exception("Difficulty cannot be empty.");
-        }
+        var difficulty = NormalizeDifficulty(dto.Difficulty);
+        var status = ValidateAndNormalizeStatus(dto.Status);
+
 
         if (dto.PositionId.HasValue)
         {
@@ -149,12 +162,12 @@ public class AdminQuestionService : IAdminQuestionService
             CategoryId = dto.CategoryId,
 
             QuestionText = dto.Question.Trim(),
-            Difficulty = dto.Difficulty.Trim(),
+            Difficulty = difficulty,
 
             Answer = NormalizeNullable(dto.Answer),
             PositionId = dto.PositionId,
 
-            Status = "Active",
+            Status = status,
             IsDeleted = false,
 
             CreatedBy = adminId,
@@ -169,9 +182,7 @@ public class AdminQuestionService : IAdminQuestionService
         await _repo.SaveAsync();
 
         var categoryName = await GetCategoryAsync(question.CategoryId);
-
-        // Đồng bộ sang ChromaDB
-        await SyncQuestionIndexAsync(question, categoryName);
+        await SynchronizeCategoryAsync(question.CategoryId, question.QuestionId);
 
         return MapDetail(
             question,
@@ -199,16 +210,18 @@ public class AdminQuestionService : IAdminQuestionService
             );
         }
 
+        var originalCategoryId = question.CategoryId;
+        var targetCategoryId = dto.CategoryId ?? originalCategoryId;
+        var affectedCategoryIds = new[] { originalCategoryId, targetCategoryId }
+            .Where(categoryId => categoryId.HasValue)
+            .Select(categoryId => categoryId!.Value)
+            .Distinct()
+            .ToList();
+
         if (dto.Question != null &&
             string.IsNullOrWhiteSpace(dto.Question))
         {
             throw new Exception("Question cannot be empty.");
-        }
-
-        if (dto.Difficulty != null &&
-            string.IsNullOrWhiteSpace(dto.Difficulty))
-        {
-            throw new Exception("Difficulty cannot be empty.");
         }
 
         if (dto.CategoryId.HasValue)
@@ -237,7 +250,7 @@ public class AdminQuestionService : IAdminQuestionService
 
         if (dto.Difficulty != null)
         {
-            question.Difficulty = dto.Difficulty.Trim();
+            question.Difficulty = NormalizeDifficulty(dto.Difficulty);
         }
 
         if (dto.Answer != null)
@@ -266,21 +279,7 @@ public class AdminQuestionService : IAdminQuestionService
 
         if (dto.Status != null)
         {
-            var status = dto.Status.Trim();
-
-            if (string.IsNullOrWhiteSpace(status))
-            {
-                throw new Exception("Status cannot be empty.");
-            }
-
-            if (!AllowedStatuses.Contains(status))
-            {
-                throw new Exception(
-                    "Status must be Active, Draft, Archived or Inactive."
-                );
-            }
-
-            question.Status = NormalizeStatus(status);
+            question.Status = ValidateAndNormalizeStatus(dto.Status);
         }
 
         question.UpdatedAt = VietnamTime.Now;
@@ -288,9 +287,13 @@ public class AdminQuestionService : IAdminQuestionService
         await _repo.SaveAsync();
 
         var categoryName = await GetCategoryAsync(question.CategoryId);
-
-        // Đồng bộ hóa thông minh (Thêm/Sửa hoặc Xoá khỏi ChromaDB dựa vào Status mới)
-        await SyncQuestionIndexAsync(question, categoryName);
+        foreach (var categoryId in affectedCategoryIds)
+        {
+            await _eligibilityService.SynchronizeCategoryAsync(
+                categoryId,
+                question.QuestionId,
+                CancellationToken.None);
+        }
 
         return MapDetail(
             question,
@@ -318,8 +321,7 @@ public class AdminQuestionService : IAdminQuestionService
 
         await _repo.SaveAsync();
 
-        // Gọi thẳng Client Delete vì câu hỏi đã bị soft-delete
-        await _indexClient.DeleteAsync(id);
+        await SynchronizeCategoryAsync(question.CategoryId, question.QuestionId);
 
         return true;
     }
@@ -341,10 +343,7 @@ public class AdminQuestionService : IAdminQuestionService
 
         await _repo.SaveAsync();
 
-        var categoryName = await GetCategoryAsync(question.CategoryId);
-
-        // Đồng bộ lại vào ChromaDB
-        await SyncQuestionIndexAsync(question, categoryName);
+        await SynchronizeCategoryAsync(question.CategoryId, question.QuestionId);
 
         return true;
     }
@@ -365,30 +364,61 @@ public class AdminQuestionService : IAdminQuestionService
 
     public async Task<AdminReindexResultDto> ReindexAllQuestionsAsync()
     {
-        // Lấy toàn bộ câu hỏi Active và Chưa bị xoá (kèm Position để index tên position)
-        var activeQuestions = await _db.Questions
+        var activeCategoryIds = await _db.QuestionCategories
             .AsNoTracking()
-            .Include(q => q.Position)
-            .Where(q => !q.IsDeleted && q.Status == "Active")
+            .Where(category => category.IsActive)
+            .Select(category => category.CategoryId)
             .ToListAsync();
 
-        // Lấy danh sách Categories để tối ưu hóa việc map tên thay vì truy vấn lặp trong DB
-        var categories = await _db.QuestionCategories
+        var readyCategoryIds = new List<Guid>();
+        foreach (var categoryId in activeCategoryIds)
+        {
+            if (await _eligibilityService.IsReadyAsync(categoryId, CancellationToken.None))
+            {
+                readyCategoryIds.Add(categoryId);
+            }
+        }
+
+        var activeQuestions = await _db.Questions
             .AsNoTracking()
-            .ToDictionaryAsync(c => c.CategoryId, c => c.Category);
+            .Include(q => q.Category)
+            .Include(q => q.Position)
+            .Where(q =>
+                q.CategoryId.HasValue &&
+                readyCategoryIds.Contains(q.CategoryId.Value) &&
+                !q.IsDeleted &&
+                q.Status == "Active" &&
+                q.Category != null &&
+                q.Category.IsActive &&
+                q.Position != null &&
+                !q.Position.IsDeleted &&
+                (q.Difficulty == "Intern" ||
+                 q.Difficulty == "Fresher" ||
+                 q.Difficulty == "Junior" ||
+                 q.Difficulty == "Middle" ||
+                 q.Difficulty == "Senior" ||
+                 q.Difficulty == "Lead"))
+            .ToListAsync();
 
         int successCount = 0;
         int failCount = 0;
 
+        if (!await _indexClient.ResetAsync())
+        {
+            return new AdminReindexResultDto
+            {
+                TotalProcessed = activeQuestions.Count,
+                SuccessCount = 0,
+                FailCount = activeQuestions.Count
+            };
+        }
+
         foreach (var question in activeQuestions)
         {
-            string? categoryName = null;
-            if (question.CategoryId.HasValue)
-            {
-                categories.TryGetValue(question.CategoryId.Value, out categoryName);
-            }
-
-            var isSuccess = await _indexClient.UpsertAsync(question, categoryName);
+            var isSuccess = await _indexClient.UpsertAsync(
+                question,
+                question.Category?.Category,
+                question.Position?.Name);
             if (isSuccess)
             {
                 successCount++;
@@ -407,7 +437,12 @@ public class AdminQuestionService : IAdminQuestionService
         };
     }
 
-   //huynh anh edit----------
+    // ------------------------------------------------------------
+    // ĐÃ SỬA: chuyển từ x.Field.ToLower().Contains(keyword) (non-sargable,
+    // buộc quét toàn bảng, dễ timeout trên dữ liệu lớn / gây lỗi ngẫu nhiên)
+    // sang EF.Functions.Like (dịch ra LIKE chuẩn SQL, tận dụng collation
+    // case-insensitive sẵn có và thân thiện với index hơn).
+    // ------------------------------------------------------------
     private IQueryable<Question> ApplyFilter(
     IQueryable<Question> query,
     AdminQuestionQueryDto filter)
@@ -416,14 +451,11 @@ public class AdminQuestionService : IAdminQuestionService
 
         if (!string.IsNullOrWhiteSpace(filter.Keyword))
         {
-            var keyword = filter.Keyword.Trim().ToLower();
+            var keyword = filter.Keyword.Trim();
+            var pattern = $"%{keyword}%";
 
             query = query.Where(x =>
-                x.QuestionText.ToLower().Contains(keyword) ||
-                (x.Answer != null && x.Answer.ToLower().Contains(keyword)) ||
-                (x.Position != null && x.Position.Name.ToLower().Contains(keyword)) ||
-                (x.Category != null && x.Category.Category.ToLower().Contains(keyword)) ||
-                x.Difficulty.ToLower().Contains(keyword)
+                EF.Functions.Like(x.QuestionText, pattern)
             );
         }
 
@@ -472,8 +504,6 @@ public class AdminQuestionService : IAdminQuestionService
         return query;
     }
     //-------------------------
-    
-    //huynh anh edit -----------------
 
     private async Task<AdminPagedResultDto<AdminQuestionListItemDto>> PagingAsync(
     IQueryable<Question> query,
@@ -758,14 +788,42 @@ public class AdminQuestionService : IAdminQuestionService
         return "Inactive";
     }
 
-    private Task SyncQuestionIndexAsync(Question question, string? category)
+    private static string ValidateAndNormalizeStatus(string? status)
     {
-        var shouldIndex = !question.IsDeleted &&
-                          string.Equals(question.Status, "Active", StringComparison.OrdinalIgnoreCase);
+        var normalized = status?.Trim();
 
-        return shouldIndex
-            ? _indexClient.UpsertAsync(question, category)
-            : _indexClient.DeleteAsync(question.QuestionId);
+        if (string.IsNullOrWhiteSpace(normalized) || !AllowedStatuses.Contains(normalized))
+        {
+            throw new Exception("Status must be Active, Draft, Archived or Inactive.");
+        }
+
+        return NormalizeStatus(normalized);
+    }
+
+    private static string NormalizeDifficulty(string? difficulty)
+    {
+        var normalized = difficulty?.Trim();
+
+        if (string.IsNullOrWhiteSpace(normalized) ||
+            !AllowedDifficulties.TryGetValue(normalized, out var canonical))
+        {
+            throw new Exception(
+                "Difficulty must be Intern, Fresher, Junior, Middle, Senior or Lead.");
+        }
+
+        return canonical;
+    }
+
+    private Task SynchronizeCategoryAsync(
+        Guid? categoryId,
+        Guid changedQuestionId)
+    {
+        return categoryId.HasValue
+            ? _eligibilityService.SynchronizeCategoryAsync(
+                categoryId.Value,
+                changedQuestionId,
+                CancellationToken.None)
+            : Task.CompletedTask;
     }
 
     ///thêm 

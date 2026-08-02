@@ -64,6 +64,8 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+[hidden] { display: none !important; }
+
 .bw-page {
     font-family: var(--font);
     background: var(--color-background);
@@ -82,16 +84,14 @@
 .screen { display: none; width: 100%; max-width: 460px; }
 
 .screen:not([hidden]) {
-    display: block;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     animation: rise .4s cubic-bezier(.2, .7, .2, 1);
 }
 
-/* Guide/Done are plain text cards — widen them on large viewports so they don't
-   look lost in a wide <main> (e.g. next to the 256px Profile sidebar). Face/Voice
-   keep the default 460px: they frame a fixed-size camera oval, so stretching them
-   would turn the camera box into an odd wide letterbox around a narrow portrait
-   oval instead of filling the extra space usefully. */
-#screen-guide.screen, #screen-done.screen { max-width: 760px; }
+/* Guide/Done/Success are plain text cards — widen them on large viewports */
+#screen-guide.screen, #screen-done.screen, #screen-verify-success.screen { max-width: 760px; }
 
 @keyframes rise {
     from { opacity: 0; transform: translateY(14px); }
@@ -446,15 +446,17 @@
     position: absolute;
     inset: 0;
     background: rgba(14, 19, 35, .55);
-    -webkit-mask: radial-gradient(120px 155px at 50% 45%, transparent 98%, #000 100%);
-    mask: radial-gradient(120px 155px at 50% 45%, transparent 98%, #000 100%);
+    -webkit-mask: radial-gradient(104px 135px at 50% 45%, transparent 98%, #000 100%);
+    mask: radial-gradient(104px 135px at 50% 45%, transparent 98%, #000 100%);
 }
 
+/* Sized to ~75% of .camera's height (was ~85%) — leaves visible breathing room
+   above/below the oval instead of the ring nearly touching the camera edges. */
 .oval {
     position: absolute;
     left: 50%; top: 45%;
     transform: translate(-50%, -50%);
-    width: 236px; height: 306px;
+    width: 208px; height: 270px;
     border-radius: 50%;
     border: 3px solid rgba(255, 255, 255, .35);
     box-shadow: 0 0 0 2px rgba(111, 61, 217, .25);
@@ -479,7 +481,7 @@
     position: absolute;
     left: 50%; top: 45%;
     transform: translate(-50%, -50%);
-    width: 230px; height: 2px;
+    width: 202px; height: 2px;
     background: linear-gradient(90deg, transparent, var(--color-tertiary-container), transparent);
     animation: scan 2s ease-in-out infinite;
     border-radius: 2px;
@@ -527,6 +529,31 @@
 }
 
 .face .cta-row { margin-top: 18px; }
+
+/* Shown instead of the (disabled-looking) action button while runFaceCapture's success
+   path auto-advances to the Voice screen — design.md "Pulsing dot" component, so the
+   auto-advance reads as "in progress", not as a stuck/disabled control. */
+.face-transition {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: var(--color-on-surface-variant);
+    font: 600 13px/1 var(--font);
+    margin-top: 18px;
+}
+
+.face-transition .pulse-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--color-success);
+    animation: dotpulse 2s ease-in-out infinite;
+}
+
+@keyframes dotpulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50%      { transform: scale(1.2); opacity: .5; }
+}
 
 .hint-dark { color: var(--color-on-surface-variant); text-align: center; font-size: 12.5px; margin-top: 12px; }
 
@@ -771,23 +798,26 @@
 .bw-anim-paused .ring,
 .bw-anim-paused .oval,
 .bw-anim-paused .scanline,
+.bw-anim-paused .pulse-dot,
 .bw-anim-paused .check::after { animation-play-state: paused !important; }
 
 @media (max-width: 500px) {
     .stage { padding: 12px; }
     .camera { height: 300px; }
-    .oval { width: 200px; height: 260px; }
-    .scanline { width: 194px; }
+    /* Same ~75%-of-camera-height ratio as the desktop oval above. */
+    .oval { width: 176px; height: 228px; }
+    .scanline { width: 170px; }
     .camera .mask {
-        -webkit-mask: radial-gradient(100px 130px at 50% 45%, transparent 98%, #000 100%);
-        mask: radial-gradient(100px 130px at 50% 45%, transparent 98%, #000 100%);
+        -webkit-mask: radial-gradient(88px 114px at 50% 45%, transparent 98%, #000 100%);
+        mask: radial-gradient(88px 114px at 50% 45%, transparent 98%, #000 100%);
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
     .screen:not([hidden]),
     .orbit, .ic, .ring, .oval, .scanline, .count,
-    .check::after, .check path, .spinner {
+    .check::after, .check path, .spinner, .pulse-dot,
+    #entry-verify.is-verified #face-guidance {
         animation: none !important;
     }
     .check path { stroke-dashoffset: 0; }
@@ -850,6 +880,100 @@
 #entry-verify .ambient-blob-primary   { top: 10%;  left: -140px; }
 #entry-verify .ambient-blob-secondary { bottom: 10%; right: -140px; }
 
+/* Entry verification success state. Keep the transition focused inside the camera
+   instead of leaving stale controls and attempt counters visible during redirect. */
+#entry-verify.is-verified .topbar {
+    justify-content: center;
+}
+
+#entry-verify.is-verified .topbar .bead {
+    background: var(--color-success);
+    border-color: var(--color-success);
+    box-shadow: 0 0 20px rgba(16, 185, 129, .25);
+}
+
+#entry-verify.is-verified #attempts-pill,
+#entry-verify.is-verified .cta-row,
+#entry-verify.is-verified .hint-dark,
+#entry-verify.is-verified #face-oval,
+#entry-verify.is-verified #face-scanline,
+#entry-verify.is-verified #face-countdown,
+#entry-verify.is-verified #face-processing {
+    display: none !important;
+}
+
+/* Collapse the immersive 360px camera frame down to a snug result panel — once
+   verified there's no live feed left to show, so keeping the full camera height
+   just leaves a mostly-empty dark box around a small centered checkmark. */
+#entry-verify.is-verified .camera {
+    height: 200px;
+    transition: height .25s ease;
+}
+
+#entry-verify.is-verified .camera video {
+    filter: brightness(.32) saturate(.7) blur(2px);
+    transform: scaleX(-1) scale(1.02);
+    transition: filter .25s ease, transform .25s ease;
+}
+
+#entry-verify.is-verified .camera .mask {
+    background: rgba(14, 19, 35, .54);
+    -webkit-mask: none;
+    mask: none;
+}
+
+#entry-verify.is-verified #face-guidance {
+    inset: 0;
+    transform: none;
+    max-width: none;
+    padding: 24px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    overflow: visible;
+    white-space: normal;
+    text-align: center;
+    animation: verified-rise .3s ease-out both;
+}
+
+#entry-verify.is-verified #face-guidance::before {
+    content: "check";
+    width: 64px;
+    height: 64px;
+    margin-bottom: 10px;
+    border: 1px solid rgba(16, 185, 129, .45);
+    border-radius: 50%;
+    background: rgba(16, 185, 129, .16);
+    box-shadow: 0 0 40px -8px rgba(16, 185, 129, .65);
+    color: var(--color-success);
+    display: grid;
+    place-items: center;
+    font-family: "Material Symbols Outlined";
+    font-size: 38px;
+    font-weight: 500;
+}
+
+.verified-title {
+    color: var(--color-on-surface);
+    font: 700 24px/1.25 var(--font);
+    letter-spacing: -.01em;
+}
+
+.verified-message {
+    color: var(--color-on-surface-variant);
+    font: 400 14px/1.5 var(--font);
+}
+
+@keyframes verified-rise {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: none; }
+}
+
 /* Footer under the wizard, inside .identity-main — never overlaps the sidebar. */
 .identity-footer {
     max-width: 460px;
@@ -862,3 +986,599 @@
 
 .identity-footer a { color: var(--color-on-surface-variant); text-decoration: none; }
 .identity-footer a:hover { color: var(--color-on-surface); }
+
+/* ==========================================================================
+   Ported from test_ui/ HTML prototypes — face enroll success pill,
+   voice prompt enhancements, and verify-face success overlay.
+   UI-only additions; no logic changes.
+   ========================================================================== */
+
+/* ---- Face Enroll Success: status pill inside camera (enrollfacesussecfull) ---- */
+.face-success-pill {
+    position: absolute;
+    left: 50%;
+    bottom: 60px;
+    transform: translateX(-50%) translateY(16px);
+    z-index: 3;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(14, 19, 35, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 100px;
+    padding: 10px 20px;
+    font: 500 14px/1 var(--font);
+    color: var(--color-on-surface);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.face-success-pill .material-symbols-outlined {
+    font-size: 16px !important;
+    color: var(--color-success);
+}
+
+/* ---- Verify Face Success Overlay (verifyfacesuccessfull) ---- */
+
+/* Floating background orbs */
+.verify-bg-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.15;
+    animation: verify-float 20s infinite ease-in-out alternate;
+    z-index: 0;
+    pointer-events: none;
+}
+
+.verify-bg-orb.orb-1 {
+    width: 400px; height: 400px;
+    background: var(--color-success);
+    top: 10%; left: 20%;
+}
+
+.verify-bg-orb.orb-2 {
+    width: 500px; height: 500px;
+    background: var(--color-primary-container);
+    bottom: 10%; right: 15%;
+    animation-delay: -5s;
+}
+
+.verify-bg-orb.orb-3 {
+    width: 300px; height: 300px;
+    background: var(--color-tertiary-container);
+    top: 40%; left: 60%;
+    animation-delay: -10s;
+}
+
+@keyframes verify-float {
+    0%   { transform: translate(0, 0) scale(1); }
+    33%  { transform: translate(30px, -50px) scale(1.1); }
+    66%  { transform: translate(-20px, 20px) scale(0.9); }
+    100% { transform: translate(0, 0) scale(1); }
+}
+
+/* Premium glass card — verify success */
+.verify-glass-card {
+    background: linear-gradient(145deg, rgba(25, 25, 35, 0.6) 0%, rgba(15, 15, 20, 0.8) 100%);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 32px;
+    padding: 64px 48px; /* Mockup style="padding-top: 64px; padding-bottom: 64px;" with default 48px horizontal */
+    width: 100%;
+    max-width: 540px;
+    position: relative;
+    z-index: 10;
+    box-shadow:
+        0 30px 60px -12px rgba(0, 0, 0, 0.8),
+        0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+        0 20px 40px rgba(16, 185, 129, 0.05);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    overflow: hidden;
+}
+
+/* Sheen overlay */
+.verify-glass-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, transparent 40%, transparent 60%, rgba(255,255,255,0.02) 100%);
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* Header badge "Identity verified" */
+.verify-header-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(90deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05));
+    color: var(--color-on-surface);
+    padding: 8px 20px;
+    border-radius: 9999px;
+    margin-bottom: 72px; /* Mockup style="margin-bottom: 72px;" */
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    font: 500 13px/1 var(--font-mono);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);
+    position: relative;
+    z-index: 2;
+}
+
+.verify-header-badge .material-symbols-outlined {
+    color: var(--color-success);
+    font-size: 16px;
+}
+
+/* Inner container */
+.verify-inner {
+    background: rgba(10, 10, 15, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.03);
+    border-radius: 24px;
+    width: 100%;
+    padding: 80px 32px 64px; /* Mockup style="padding: 80px 32px 64px;" */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    z-index: 2;
+    box-shadow: inset 0 2px 20px rgba(0, 0, 0, 0.5);
+}
+
+/* Multi-ring pulsing success checkmark */
+.verify-success-wrapper {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    margin-bottom: 56px; /* Mockup style="margin-bottom: 56px;" */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.verify-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.verify-ring-1 {
+    width: 100%; height: 100%;
+    animation: verify-pulse-ring 3s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+}
+
+.verify-ring-2 {
+    width: 130%; height: 130%;
+    border-color: rgba(16, 185, 129, 0.1);
+    animation: verify-pulse-ring 3s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+    animation-delay: 0.5s;
+}
+
+.verify-ring-3 {
+    width: 160%; height: 160%;
+    border-color: rgba(16, 185, 129, 0.05);
+    animation: verify-pulse-ring 3s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+    animation-delay: 1s;
+}
+
+@keyframes verify-pulse-ring {
+    0%   { transform: translate(-50%, -50%) scale(0.8); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
+}
+
+.verify-success-circle {
+    width: 80px; height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.05));
+    border: 1px solid rgba(16, 185, 129, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 5;
+    box-shadow:
+        0 0 30px rgba(16, 185, 129, 0.2),
+        inset 0 0 20px rgba(16, 185, 129, 0.2);
+}
+
+.verify-success-circle::after {
+    content: '';
+    position: absolute;
+    top: -2px; left: -2px; right: -2px; bottom: -2px;
+    border-radius: 50%;
+    background: conic-gradient(from 0deg, transparent 0%, rgba(16, 185, 129, 0.5) 50%, transparent 100%);
+    z-index: -1;
+    animation: verify-spin 4s linear infinite;
+}
+
+@keyframes verify-spin { 100% { transform: rotate(360deg); } }
+
+.verify-success-circle .material-symbols-outlined {
+    color: #fff;
+    font-size: 40px;
+    font-weight: 600;
+    text-shadow: 0 0 10px rgba(16, 185, 129, 0.8);
+}
+
+/* Gradient title */
+.verify-title {
+    font: 300 36px/1.15 var(--font);
+    letter-spacing: -0.02em;
+    margin: 0 0 56px 0; /* Mockup style="margin-bottom: 56px;" */
+    background: linear-gradient(180deg, #FFFFFF 0%, #A1A1AA 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    position: relative;
+    z-index: 2;
+}
+
+.verify-title strong {
+    font-weight: 600;
+    background: linear-gradient(180deg, #FFFFFF 0%, #E4E1E9 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Status text + loading dots */
+.verify-status-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    position: relative;
+    z-index: 2;
+}
+
+.verify-status-text {
+    font: 400 14px/1 var(--font);
+    color: var(--color-on-surface-variant);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.verify-loading-dots {
+    display: inline-flex;
+    width: 20px;
+}
+
+.verify-loading-dots span {
+    animation: verify-dot-blink 1.4s infinite both;
+    font-size: 16px;
+    line-height: 1;
+}
+
+.verify-loading-dots span:nth-child(1) { animation-delay: 0.2s; }
+.verify-loading-dots span:nth-child(2) { animation-delay: 0.4s; }
+.verify-loading-dots span:nth-child(3) { animation-delay: 0.6s; }
+
+@keyframes verify-dot-blink {
+    0%   { opacity: 0.2; }
+    20%  { opacity: 1; }
+    100% { opacity: 0.2; }
+}
+
+/* Progress bar */
+.verify-progress-bg {
+    height: 4px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+}
+
+.verify-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--color-success), #4ade80);
+    width: 0%;
+    border-radius: 4px;
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+    animation: verify-progress 3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes verify-progress {
+    0%   { width: 0%; }
+    50%  { width: 60%; }
+    100% { width: 100%; }
+}
+
+/* Entrance animation for verify glass card */
+.verify-glass-card.verify-animate-in {
+    animation: verify-card-rise 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes verify-card-rise {
+    from { opacity: 0; transform: translateY(30px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Pause verify animations when tab hidden */
+.bw-anim-paused .verify-ring,
+.bw-anim-paused .verify-success-circle::after,
+.bw-anim-paused .verify-bg-orb,
+.bw-anim-paused .verify-progress-fill { animation-play-state: paused !important; }
+
+@media (prefers-reduced-motion: reduce) {
+    .verify-ring,
+    .verify-success-circle::after,
+    .verify-bg-orb,
+    .verify-progress-fill,
+    .verify-glass-card.verify-animate-in,
+    .face-success-pill { animation: none !important; }
+    .verify-progress-fill { width: 100%; }
+}
+
+/* ==========================================================================
+   Voice screen redesign — ported from test_ui/enrollvoice.html.
+   Scoped via .ev-voice (added alongside existing .voice on #voice-card).
+   All old .voice/.phrase/.timer CSS remains intact for backward compat;
+   these ev-* rules layer on top when .ev-voice is present.
+   ========================================================================== */
+
+/* Card override — subtle purple glow behind */
+.ev-voice {
+    background: rgba(17, 17, 24, 0.7) !important;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid #22222d;
+    overflow: hidden;
+}
+
+.ev-voice::before {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80%; height: 80%;
+    background: radial-gradient(circle, rgba(139, 92, 246, 0.05) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* ---- Header / Steps ---- */
+.ev-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 32px;
+    position: relative;
+    z-index: 1;
+}
+
+.ev-steps {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+}
+
+.ev-step {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-family: 'Inter', var(--font);
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.ev-step-completed { color: var(--color-on-surface-variant); }
+
+.ev-step-completed .ev-step-icon {
+    background-color: var(--color-success);
+    color: #000;
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+}
+
+.ev-step-active {
+    color: var(--color-on-surface);
+    font-weight: 600;
+}
+
+.ev-step-active .ev-step-icon {
+    background: linear-gradient(135deg, #6d5dfc 0%, #8b5cf6 100%);
+    color: #fff;
+    box-shadow: 0 0 15px rgba(139, 92, 246, 0.4);
+}
+
+.ev-step-icon {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+}
+
+.ev-step-icon .material-symbols-outlined {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+/* Close button */
+.ev-close-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--color-on-surface-variant);
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 0;
+}
+
+.ev-close-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--color-on-surface);
+}
+
+.ev-close-btn .material-symbols-outlined { font-size: 18px; }
+
+/* ---- Prompt card ---- */
+.ev-prompt-card {
+    background-color: #1a1a24;
+    border: 1px solid #22222d;
+    border-radius: 16px;
+    padding: 24px;
+    text-align: center;
+    margin-bottom: 40px;
+    position: relative;
+    z-index: 1;
+}
+
+.ev-prompt-label {
+    font-family: 'Inter', var(--font);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--color-on-surface-variant);
+    margin-bottom: 16px;
+}
+
+.ev-prompt-text {
+    font-family: 'Inter', var(--font);
+    font-size: 18px;
+    font-weight: 500;
+    line-height: 1.5;
+    color: var(--color-on-surface);
+    margin: 0;
+}
+
+/* ---- Visualizer enhancements ---- */
+.ev-visualizer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 200px;
+    margin-bottom: 40px;
+    z-index: 1;
+    position: relative;
+}
+
+/* Override ring styles for ev- variant: purple pulsing rings, always visible */
+.ev-voice .ring {
+    display: block !important;
+    position: absolute;
+    top: auto; left: auto; right: auto; bottom: auto;
+    border-radius: 50%;
+    border: 1px solid rgba(139, 92, 246, 0.3) !important;
+    background: rgba(139, 92, 246, 0.05) !important;
+    animation: ev-pulse-ring 3s cubic-bezier(0.4, 0, 0.6, 1) infinite !important;
+}
+.ev-voice .ring.r1 {
+    width: 180px; height: 180px;
+    animation-delay: -1s !important;
+}
+.ev-voice .ring.r2 {
+    width: 140px; height: 140px;
+    animation-delay: -2s !important;
+    border-color: rgba(139, 92, 246, 0.5) !important;
+}
+.ev-voice .ring.r3 {
+    display: none !important; /* Test UI only uses 2 rings */
+}
+
+@keyframes ev-pulse-ring {
+    0% { transform: scale(0.85); opacity: 0; }
+    50% { opacity: 1; }
+    100% { transform: scale(1.15); opacity: 0; }
+}
+
+.ev-orb {
+    position: relative;
+    z-index: 10;
+    width: 100px; height: 100px;
+    background: linear-gradient(135deg, #6d5dfc 0%, #8b5cf6 100%) !important;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 30px rgba(139, 92, 246, 0.6),
+                inset 0 0 20px rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Override EQ bars behavior before JS takes over */
+.ev-voice:not(.recording) .ev-eq {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    height: 24px;
+}
+
+.ev-voice:not(.recording) .ev-eq i {
+    width: 4px;
+    background-color: #fff;
+    border-radius: 4px;
+    animation: ev-eq-bounce 1s ease-in-out infinite alternate !important;
+}
+
+.ev-voice:not(.recording) .ev-eq i:nth-child(1) { height: 8px !important; animation-delay: 0.1s !important; }
+.ev-voice:not(.recording) .ev-eq i:nth-child(2) { height: 16px !important; animation-delay: 0.3s !important; }
+.ev-voice:not(.recording) .ev-eq i:nth-child(3) { height: 24px !important; animation-delay: 0.0s !important; }
+.ev-voice:not(.recording) .ev-eq i:nth-child(4) { height: 16px !important; animation-delay: 0.2s !important; }
+.ev-voice:not(.recording) .ev-eq i:nth-child(5) { height: 8px !important; animation-delay: 0.4s !important; }
+.ev-voice:not(.recording) .ev-eq i:nth-child(6) { display: none !important; /* Test UI uses 5 bars, original has 6 */ }
+
+@keyframes ev-eq-bounce {
+    0% { transform: scaleY(0.7); }
+    100% { transform: scaleY(1.2); }
+}
+
+/* ---- Footer ---- */
+.ev-footer {
+    text-align: center;
+    position: relative;
+    z-index: 1;
+}
+
+.ev-timer {
+    margin-bottom: 8px;
+    text-align: center;
+}
+
+.ev-timer-time {
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--color-on-surface);
+}
+
+.ev-timer-status {
+    font-size: 14px;
+    color: var(--color-on-surface-variant);
+}
+
+.ev-instructions {
+    font-size: 14px;
+    color: var(--color-on-surface-variant);
+    margin-bottom: 24px;
+    min-height: 19px;
+}
+
+.ev-btn-primary {
+    width: 100%;
+    background: linear-gradient(135deg, #6d5dfc 0%, #8b5cf6 100%) !important;
+    box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3) !important;
+}
+
+.ev-btn-primary:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 20px rgba(139, 92, 246, 0.5) !important;
+    filter: brightness(1.1);
+}
+
+.ev-btn-primary:active {
+    transform: translateY(0) !important;
+    box-shadow: 0 2px 10px rgba(139, 92, 246, 0.3) !important;
+}

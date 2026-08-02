@@ -9,4 +9,6 @@ public class NextQuestionDto
     public int IdleReminderSeconds { get; set; }
     public int IdleHardSeconds { get; set; }
     public int IdleElapsedSeconds { get; set; }
+    public Guid? VerificationCheckId { get; set; }
+    public DateTime? VerificationCheckExpiresAt { get; set; }
 }

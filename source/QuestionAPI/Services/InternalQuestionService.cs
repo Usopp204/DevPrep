@@ -36,11 +36,36 @@ public class InternalQuestionService
         // Position is treated as no longer offered). Restoring the Position later requires
         // re-running the export/seed for those questions to reappear in Chroma.
         const string sql = @"
+            WITH EligibleCategories AS
+            (
+                SELECT q.CategoryId
+                FROM Questions q
+                INNER JOIN QuestionCategories c ON q.CategoryId = c.CategoryId
+                INNER JOIN Positions p ON q.PositionId = p.PositionId
+                WHERE q.IsDeleted = 0
+                  AND q.Status = 'Active'
+                  AND c.IsActive = 1
+                  AND p.IsDeleted = 0
+                  AND q.PositionId IS NOT NULL
+                GROUP BY q.CategoryId
+                HAVING COUNT(DISTINCT CASE WHEN q.Difficulty = 'Intern' THEN LTRIM(RTRIM(q.Question)) END) >= 50
+                   AND COUNT(DISTINCT CASE WHEN q.Difficulty = 'Fresher' THEN LTRIM(RTRIM(q.Question)) END) >= 50
+                   AND COUNT(DISTINCT CASE WHEN q.Difficulty = 'Junior' THEN LTRIM(RTRIM(q.Question)) END) >= 50
+                   AND COUNT(DISTINCT CASE WHEN q.Difficulty = 'Middle' THEN LTRIM(RTRIM(q.Question)) END) >= 50
+                   AND COUNT(DISTINCT CASE WHEN q.Difficulty = 'Senior' THEN LTRIM(RTRIM(q.Question)) END) >= 50
+                   AND COUNT(DISTINCT CASE WHEN q.Difficulty = 'Lead' THEN LTRIM(RTRIM(q.Question)) END) >= 50
+            )
             SELECT q.QuestionId, q.Question, q.Answer, p.Name AS Position, c.Category AS CategoryName, q.Difficulty
             FROM Questions q
             INNER JOIN QuestionCategories c ON q.CategoryId = c.CategoryId
             INNER JOIN Positions p ON q.PositionId = p.PositionId
-            WHERE q.IsDeleted = 0 AND q.PositionId IS NOT NULL AND p.IsDeleted = 0";
+            INNER JOIN EligibleCategories ec ON q.CategoryId = ec.CategoryId
+            WHERE q.IsDeleted = 0
+              AND q.Status = 'Active'
+              AND q.PositionId IS NOT NULL
+              AND p.IsDeleted = 0
+              AND c.IsActive = 1
+              AND q.Difficulty IN ('Intern', 'Fresher', 'Junior', 'Middle', 'Senior', 'Lead')";
 
         var result = new List<QuestionExportDto>();
 

@@ -7,9 +7,10 @@ namespace InterviewAPI.Clients;
 /// </summary>
 public class BiometricQualityException : Exception
 {
-    // Set only for the structured multi-face rejection from POST /internal/biometrics/verify
-    // (see AiServiceClient.VerifyFaceAsync). Null for every other quality rejection (no face,
-    // blurry, too small, ...), which still carry only a plain message like before.
+    // Set for structured face-quality rejections from POST /internal/biometrics/verify.
+    public string? QualityCode { get; }
+
+    // Set only when QualityCode is "multiple_faces".
     public int? FaceCount { get; }
 
     public BiometricQualityException(string message) : base(message)
@@ -18,6 +19,13 @@ public class BiometricQualityException : Exception
 
     public BiometricQualityException(string message, int faceCount) : base(message)
     {
+        FaceCount = faceCount;
+    }
+
+    public BiometricQualityException(string message, string? qualityCode, int? faceCount = null)
+        : base(message)
+    {
+        QualityCode = qualityCode;
         FaceCount = faceCount;
     }
 }

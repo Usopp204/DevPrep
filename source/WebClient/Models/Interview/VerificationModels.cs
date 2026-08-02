@@ -31,15 +31,31 @@ public class EntryGateStatusModel
     public string Reason { get; set; } = string.Empty;
 }
 
-// Mirrors InterviewAPI.DTOs.Biometrics.InSessionVerifyResponse.
+// Mirrors InterviewAPI.DTOs.Biometrics.InSessionVerifyResponse exactly so the same-origin
+// proxy does not discard fields that interview-room.js needs for warning classification.
 public class InSessionVerifyResultModel
 {
     public bool Passed { get; set; }
     public bool NoFaceDetected { get; set; }
+    public string WarningType { get; set; } = "None";
     public int StrikeCount { get; set; }
     public int MaxStrikes { get; set; }
+    public int NoFaceCount { get; set; }
+    public int NoFaceStrikeThreshold { get; set; }
+    public bool NoFaceJustBecameStrike { get; set; }
     public bool ShouldEndSession { get; set; }
     public string Message { get; set; } = string.Empty;
+}
+
+public class InSessionCheckDueModel
+{
+    public bool Due { get; set; }
+    public double ElapsedMinutes { get; set; }
+    public double TargetMinutes { get; set; }
+    public Guid? CheckId { get; set; }
+    public DateTime? ExpiresAt { get; set; }
+    public bool ShouldEndSession { get; set; }
+    public string? Message { get; set; }
 }
 
 // View model for the Interview/Verify page (biometric entry gate before the Room).

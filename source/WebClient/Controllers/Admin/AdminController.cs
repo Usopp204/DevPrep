@@ -57,6 +57,30 @@ public class AdminController(
         return View();
     }
 
+    // Trang cộng/trừ credit theo email (admin nhập tay). Guard UI: chỉ Admin.
+    public IActionResult Credits()
+    {
+        if (!IsAdminRole())
+        {
+            TempData["Error"] = "You must sign in with an Admin account to access the dashboard.";
+            return RedirectToAction("Login", "Auth");
+        }
+
+        return View();
+    }
+
+    // Trang quản lý Announcements (CRUD + bật/tắt hiển thị trên homepage). Guard UI: chỉ Admin.
+    public IActionResult Announcements()
+    {
+        if (!IsAdminRole())
+        {
+            TempData["Error"] = "You must sign in with an Admin account to access the dashboard.";
+            return RedirectToAction("Login", "Auth");
+        }
+
+        return View();
+    }
+
     // Trang quản lý Positions (CRUD + xoá mềm/khôi phục). Guard UI: chỉ Admin; backend tự chặn quyền.
     public IActionResult Positions()
     {

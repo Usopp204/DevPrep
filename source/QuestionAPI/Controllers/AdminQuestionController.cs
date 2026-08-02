@@ -22,12 +22,20 @@ public class AdminQuestionController : ControllerBase
     [HttpGet("questions")]
     public async Task<IActionResult> Get([FromQuery] AdminQuestionQueryDto q)
     {
-        var result = await _service.GetAsync(q);
+        try
+        {
+            var result = await _service.GetAsync(q);
 
-        return Ok(ApiResponse<AdminPagedResultDto<AdminQuestionListItemDto>>.Ok(
-            result,
-            "Fetched questions successfully."
-        ));
+            return Ok(ApiResponse<AdminPagedResultDto<AdminQuestionListItemDto>>.Ok(
+                result,
+                "Fetched questions successfully."
+            ));
+        }
+        catch (Exception ex)
+        {
+            var message = ex.InnerException?.Message ?? ex.Message;
+            return StatusCode(500, ApiResponse<object>.Fail(message));
+        }
     }
 
     // GET /api/admin/questions/{id}
@@ -58,7 +66,7 @@ public class AdminQuestionController : ControllerBase
 
             return Ok(ApiResponse<AdminQuestionDetailDto>.Ok(
                 result,
-                "Created question successfully và synced sang AI."
+                "Created question and synchronized the AI index successfully."
             ));
         }
         catch (Exception ex)
@@ -84,7 +92,7 @@ public class AdminQuestionController : ControllerBase
 
             return Ok(ApiResponse<AdminQuestionDetailDto>.Ok(
                 result,
-                "Updated question successfully và synced sang AI."
+                "Updated question and synchronized the AI index successfully."
             ));
         }
         catch (Exception ex)
@@ -112,7 +120,7 @@ public class AdminQuestionController : ControllerBase
 
             return Ok(ApiResponse<object>.Ok(
                 true,
-                "Soft-deleted question successfully và removed khỏi AI."
+                "Soft-deleted question and synchronized the AI index successfully."
             ));
         }
         catch (Exception ex)
@@ -139,7 +147,7 @@ public class AdminQuestionController : ControllerBase
 
             return Ok(ApiResponse<object>.Ok(
                 true,
-                "Restored question successfully và synced sang AI."
+                "Restored question and synchronized the AI index successfully."
             ));
         }
         catch (Exception ex)
@@ -174,24 +182,40 @@ public class AdminQuestionController : ControllerBase
     [HttpGet("search-questions")]
     public async Task<IActionResult> Search([FromQuery] AdminQuestionQueryDto q)
     {
-        var result = await _service.SearchAsync(q);
+        try
+        {
+            var result = await _service.SearchAsync(q);
 
-        return Ok(ApiResponse<AdminPagedResultDto<AdminQuestionListItemDto>>.Ok(
-            result,
-            "Searched questions successfully."
-        ));
+            return Ok(ApiResponse<AdminPagedResultDto<AdminQuestionListItemDto>>.Ok(
+                result,
+                "Searched questions successfully."
+            ));
+        }
+        catch (Exception ex)
+        {
+            var message = ex.InnerException?.Message ?? ex.Message;
+            return StatusCode(500, ApiResponse<object>.Fail(message));
+        }
     }
 
     // GET /api/admin/filter-questions
     [HttpGet("filter-questions")]
     public async Task<IActionResult> Filter([FromQuery] AdminQuestionQueryDto q)
     {
-        var result = await _service.FilterAsync(q);
+        try
+        {
+            var result = await _service.FilterAsync(q);
 
-        return Ok(ApiResponse<AdminPagedResultDto<AdminQuestionListItemDto>>.Ok(
-            result,
-            "Filtered questions successfully."
-        ));
+            return Ok(ApiResponse<AdminPagedResultDto<AdminQuestionListItemDto>>.Ok(
+                result,
+                "Filtered questions successfully."
+            ));
+        }
+        catch (Exception ex)
+        {
+            var message = ex.InnerException?.Message ?? ex.Message;
+            return StatusCode(500, ApiResponse<object>.Fail(message));
+        }
     }
 
     // GET /api/admin/questions/categories

@@ -44,6 +44,12 @@ public class InterviewController(
             var balance = await paymentService.GetCreditBalanceAsync(userId.Value, cancellationToken);
             dashboard.CreditBalance = balance.Balance;
         }
+
+        // Best-effort: a failed lookup just means no banner, never breaks the dashboard.
+        var activeSession = await interviewService.GetActiveSessionAsync(cancellationToken);
+        if (activeSession.Success)
+            dashboard.ActiveSession = activeSession.Data;
+
         return dashboard;
     }
 
@@ -65,6 +71,17 @@ public class InterviewController(
         var result = await interviewService.StartInterviewAsync(
             model.DurationMinutes, model.Level, model.Position, model.Jd,
             model.FocusAreas ?? new List<string>(), cancellationToken);
+
+        if (!result.Success && result.ActiveSessionId is Guid activeSessionId)
+        {
+            // Not an error — send the user to where they actually need to be instead of making
+            // them figure it out from an error message. RoomInfoMessage (not the shared
+            // InfoMessage key) — InfoMessage is read by other views too (e.g. Profile/Identity),
+            // and TempData persists across one full redirect chain, so a message meant for one
+            // page could otherwise surface on a completely unrelated page reached right after.
+            TempData["RoomInfoMessage"] = "Resuming your session in progress.";
+            return RedirectToAction(nameof(Room), new { id = activeSessionId });
+        }
 
         if (!result.Success)
         {
@@ -134,6 +151,43 @@ public class InterviewController(
         return Json(catalog);
     }
 
+    [HttpGet]
+    public async Task<IActionResult> IntegrityPolicy(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await interviewService.GetIntegrityPolicyStatusAsync(id, cancellationToken);
+        if (!result.Success)
+        {
+            TempData["ErrorMessage"] = result.Error ?? "Could not load session policy status.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        if (result.Data?.Accepted == true)
+        {
+            return RedirectToAction(nameof(Room), new { id });
+        }
+
+        Response.Headers.Append("Cache-Control", "no-cache, no-store, must-revalidate");
+        Response.Headers.Append("Pragma", "no-cache");
+        Response.Headers.Append("Expires", "0");
+        
+        ViewData["SessionId"] = id;
+        return View();
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AcceptIntegrityPolicy(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await interviewService.AcceptIntegrityPolicyAsync(id, cancellationToken);
+        if (!result.Success)
+        {
+            TempData["ErrorMessage"] = result.Error ?? "Could not accept integrity policy.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        return RedirectToAction(nameof(Room), new { id });
+    }
+
     // Statuses that may still render as an interactive Room. Anything else (Completed,
     // Cancelled, Expired, ...) is a session that has already ended.
     private static readonly string[] ActiveRoomStatuses = { "Initialized", "InProgress", "Paused" };
@@ -164,7 +218,10 @@ public class InterviewController(
 
         if (!ActiveRoomStatuses.Contains(room.Status))
         {
-            TempData["InfoMessage"] = "This interview has already ended.";
+            // ReportInfoMessage (not the shared InfoMessage key) — nothing at the Evaluation/
+            // Report destination used to read InfoMessage, so it sat unread in TempData and
+            // could surface later on an unrelated page reached right after (see report).
+            TempData["ReportInfoMessage"] = "This interview has already ended.";
             return RedirectToAction("Report", "Evaluation", new { sessionId = id, durationActualSec = 0 });
         }
 
@@ -186,6 +243,19 @@ public class InterviewController(
 
             TempData["ErrorMessage"] = gate.Reason;
             return RedirectToAction(nameof(Index));
+        }
+
+        // Integrity Policy guard: must accept rules after biometric check, before entering the Room.
+        var policyStatus = await interviewService.GetIntegrityPolicyStatusAsync(id, cancellationToken);
+        if (!policyStatus.Success)
+        {
+            TempData["ErrorMessage"] = policyStatus.Error ?? "Could not verify integrity policy.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        if (policyStatus.Data?.Accepted != true)
+        {
+            return RedirectToAction(nameof(IntegrityPolicy), new { id });
         }
 
         // Materialize the current/first question now that the entry gate has passed (this is
@@ -478,11 +548,18 @@ public class InterviewController(
     [HttpPost]
     public async Task<IActionResult> Message(Guid id, [FromBody] SendMessageRequest request, CancellationToken cancellationToken)
     {
-        var (success, message, error) = await interviewService.SendMessageAsync(id, request, cancellationToken);
+        var (success, message, error, errorCode, retryAfterSeconds, statusCode) =
+            await interviewService.SendMessageAsync(id, request, cancellationToken);
 
         if (!success || message is null)
         {
-            return BadRequest(new { error = error ?? "Could not send the answer." });
+            // Forward the backend's status + machine-readable error code intact (e.g. 429
+            // "skip_cooldown") instead of collapsing everything to 400 — the client reads
+            // retryAfterSeconds to drive the Skip button's cooldown countdown.
+            if (retryAfterSeconds is int retryAfter)
+                Response.Headers.Append("Retry-After", retryAfter.ToString());
+            return StatusCode(statusCode == 0 ? StatusCodes.Status500InternalServerError : statusCode,
+                new { error = errorCode, message = error ?? "Could not send the answer.", retryAfterSeconds });
         }
 
         return Json(message);
@@ -507,8 +584,16 @@ public class InterviewController(
     }
 
     [HttpPost]
-    public async Task<IActionResult> Stt(IFormFile audio, CancellationToken cancellationToken)
+    public async Task<IActionResult> Stt(
+        Guid sessionId,
+        Guid voiceCheckId,
+        IFormFile audio,
+        CancellationToken cancellationToken)
     {
+        if (sessionId == Guid.Empty || voiceCheckId == Guid.Empty)
+        {
+            return BadRequest(new { error = "Session id and voice check id are required." });
+        }
         if (audio is null || audio.Length == 0)
         {
             return BadRequest(new { error = "Audio is required." });
@@ -519,30 +604,35 @@ public class InterviewController(
         var contentType = string.IsNullOrEmpty(audio.ContentType) ? "audio/webm" : audio.ContentType;
         var fileName = string.IsNullOrEmpty(audio.FileName) ? "answer.webm" : audio.FileName;
 
-        var (success, text, error) = await interviewService.TranscribeAudioAsync(
-            stream.ToArray(), fileName, contentType, cancellationToken);
+        var (success, result, error) = await interviewService.TranscribeAudioAsync(
+            sessionId, voiceCheckId, stream.ToArray(), fileName, contentType, cancellationToken);
 
-        if (!success)
+        if (!success || result is null)
         {
             return BadRequest(new { error = error ?? "Could not transcribe audio." });
         }
 
-        return Json(new { text });
+        return Json(result);
     }
 
     [HttpPost]
     public async Task<IActionResult> Hint([FromBody] HintProxyRequest request, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request?.Question))
+        if (request is null || request.SessionId == Guid.Empty || request.SessionQuestionId == Guid.Empty)
         {
-            return BadRequest(new { error = "Question is required." });
+            return BadRequest(new { error = "SessionId and SessionQuestionId are required." });
         }
 
-        var (success, hint, error) = await interviewService.GetHintAsync(request.Question, cancellationToken);
+        var (success, hint, error, errorCode, statusCode) = await interviewService.GetHintAsync(
+            request.SessionId, request.SessionQuestionId, cancellationToken);
 
         if (!success)
         {
-            return BadRequest(new { error = error ?? "Could not get a hint." });
+            // Forward the backend's status + machine-readable error code intact (e.g. 409
+            // "hint_already_used") instead of collapsing everything to 400 — the client checks
+            // the status code to decide whether to disable the Hint button.
+            return StatusCode(statusCode == 0 ? StatusCodes.Status500InternalServerError : statusCode,
+                new { error = errorCode, message = error ?? "Could not get a hint." });
         }
 
         return Json(new { hint });
@@ -587,20 +677,20 @@ public class InterviewController(
         return Json(pause);
     }
 
-    // Same-origin proxy for flagging a mandatory-camera policy violation (permission denied /
-    // disconnected mid-session). Flag-only — never blocks the Room or answering.
+    // Same-origin proxy for one idempotent camera incident after the reconnect grace period.
     [HttpPost]
     public async Task<IActionResult> CameraViolation(
         Guid id, [FromBody] CameraViolationProxyRequest request, CancellationToken cancellationToken)
     {
-        var (success, error) = await interviewService.ReportCameraViolationAsync(id, request.Reason, cancellationToken);
+        var (success, result, error) = await interviewService.ReportCameraViolationAsync(
+            id, request.IncidentId, request.Reason, cancellationToken);
 
-        if (!success)
+        if (!success || result is null)
         {
             return BadRequest(new { error = error ?? "Could not report the camera violation." });
         }
 
-        return Json(new { ok = true });
+        return Json(result);
     }
 
     // Same-origin proxy for un-pausing the interview (Room UX Phase 2).

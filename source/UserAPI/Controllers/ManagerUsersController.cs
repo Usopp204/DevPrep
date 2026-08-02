@@ -86,7 +86,7 @@ public class ManagerUsersController : ControllerBase
                     a.Role,
                     a.Status,
                     a.CreatedAt AS RegistrationTimestamp,
-                    (SELECT COUNT(*) FROM DevPrep_Interview.dbo.InterviewSessions s WHERE s.UserId = p.UserId AND s.IsDeleted = 0) AS TotalInterviewCount
+                    (SELECT COUNT(*) FROM DevPrep_Interview.dbo.InterviewSessions s WHERE s.UserId = a.AccountId) AS TotalInterviewCount
                 FROM DevPrep_User.dbo.UserProfiles p
                 INNER JOIN DevPrep_Auth.dbo.Accounts a ON p.AccountId = a.AccountId
                 WHERE {whereSql}
@@ -248,34 +248,42 @@ public class ManagerUsersController : ControllerBase
                 }
             }
 
-            // 4. Get Completed sessions (from InterviewSessions)
+            // 4. Get every session, matching the Admin detail history and list counter.
             var sessionsQuery = @"
-                SELECT SessionId, Level, InteractionMode, Status, StartedAt, DurationMinutes, TotalQuestions, AnsweredQuestions, CreditCost
-                FROM DevPrep_Interview.dbo.InterviewSessions
-                WHERE UserId = @UserId AND Status = 'Completed' AND IsDeleted = 0
-                ORDER BY CreatedAt DESC";
+                SELECT s.SessionId, s.Position, s.Level, s.InteractionMode, s.QuestionType, s.Status,
+                       s.StartedAt, s.DurationMinutes, s.TotalQuestions,
+                       (SELECT COUNT(*)
+                        FROM DevPrep_Interview.dbo.ChatMessages m
+                        INNER JOIN DevPrep_Interview.dbo.SessionQuestions sq
+                            ON m.SessionQuestionId = sq.SessionQuestionId
+                        WHERE sq.SessionId = s.SessionId
+                          AND m.SenderType = 'User'
+                          AND m.MessageType = 'Answer') AS AnsweredQuestions,
+                       s.CreditCost
+                FROM DevPrep_Interview.dbo.InterviewSessions s
+                WHERE s.UserId = @UserId
+                ORDER BY s.CreatedAt DESC";
 
             using (var cmd = new SqlCommand(sessionsQuery, conn))
             {
-                cmd.Parameters.AddWithValue("@UserId", id);
+                cmd.Parameters.AddWithValue("@UserId", details.AccountId);
                 using (var reader = await cmd.ExecuteReaderAsync())
                 {
                     while (await reader.ReadAsync())
                     {
-                        var level = reader.IsDBNull(1) ? null : reader.GetString(1);
-
-                        details.CompletedSessions.Add(new CompletedSessionDto
+                        details.Sessions.Add(new ManagerUserSessionDto
                         {
                             SessionId = reader.GetGuid(0),
-                            Title = string.IsNullOrWhiteSpace(level) ? "Interview Session" : $"{level} Interview",
-                            Level = level,
-                            InteractionMode = reader.IsDBNull(2) ? null : reader.GetString(2),
-                            Status = reader.IsDBNull(3) ? null : reader.GetString(3),
-                            StartedAt = reader.IsDBNull(4) ? null : reader.GetDateTime(4),
-                            DurationMinutes = reader.IsDBNull(5) ? null : reader.GetInt32(5),
-                            TotalQuestions = reader.GetInt32(6),
-                            AnsweredQuestions = reader.GetInt32(7),
-                            CreditCost = reader.GetInt32(8)
+                            Title = reader.IsDBNull(1) ? "Ch\u01B0a x\u00E1c \u0111\u1ECBnh" : reader.GetString(1),
+                            Level = reader.IsDBNull(2) ? null : reader.GetString(2),
+                            InteractionMode = reader.IsDBNull(3) ? null : reader.GetString(3),
+                            QuestionType = reader.IsDBNull(4) ? null : reader.GetString(4),
+                            Status = reader.IsDBNull(5) ? null : reader.GetString(5),
+                            StartedAt = reader.IsDBNull(6) ? null : reader.GetDateTime(6),
+                            DurationMinutes = reader.IsDBNull(7) ? null : reader.GetInt32(7),
+                            TotalQuestions = reader.GetInt32(8),
+                            AnsweredQuestions = reader.GetInt32(9),
+                            CreditCost = reader.GetInt32(10)
                         });
                     }
                 }

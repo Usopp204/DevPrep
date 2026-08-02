@@ -17,17 +17,20 @@ public class ProfileBiometricsService : IProfileBiometricsService
     private readonly IAiServiceClient _aiServiceClient;
     private readonly IPaymentApiClient _paymentApiClient;
     private readonly ILogger<ProfileBiometricsService> _logger;
+    private readonly IConfiguration _configuration;
 
     public ProfileBiometricsService(
         IProfileBiometricsRepository repository,
         IAiServiceClient aiServiceClient,
         IPaymentApiClient paymentApiClient,
-        ILogger<ProfileBiometricsService> logger)
+        ILogger<ProfileBiometricsService> logger,
+        IConfiguration configuration)
     {
         _repository = repository;
         _aiServiceClient = aiServiceClient;
         _paymentApiClient = paymentApiClient;
         _logger = logger;
+        _configuration = configuration;
     }
 
     public async Task<BiometricEnrollResponse> EnrollAsync(
@@ -61,6 +64,7 @@ public class ProfileBiometricsService : IProfileBiometricsService
         }
         else
         {
+            EnsureReEnrollmentMatches(existing, result, modality);
             existing.Embedding = EmbeddingCodec.ToBytes(result.Embedding);
             existing.Dim = result.Dim;
             existing.ModelVersion = result.ModelVersion;
@@ -80,6 +84,30 @@ public class ProfileBiometricsService : IProfileBiometricsService
         };
     }
 
+    private void EnsureReEnrollmentMatches(
+        ProfileBiometric existing,
+        BiometricEmbeddingResult candidate,
+        string modality)
+    {
+        if (existing.Dim != candidate.Dim || existing.ModelVersion != candidate.ModelVersion)
+        {
+            throw new InvalidOperationException(
+                $"The enrolled {modality.ToLowerInvariant()} template uses an incompatible biometric model.");
+        }
+
+        var score = BiometricSimilarity.Cosine(
+            EmbeddingCodec.ToFloats(existing.Embedding),
+            candidate.Embedding);
+        var thresholdKey = modality == ModalityFace
+            ? "Biometrics:FaceReEnrollmentMatchThreshold"
+            : "Biometrics:VoiceReEnrollmentMatchThreshold";
+        var fallbackThreshold = modality == ModalityFace ? 0.35 : 0.25;
+        var threshold = _configuration.GetValue(thresholdKey, fallbackThreshold);
+
+        if (score < threshold)
+            throw new BiometricIdentityMismatchException(modality, score, threshold);
+    }
+
     // One-time bonus once BOTH Face and Voice are enrolled — checked by "does the OTHER modality
     // already exist", not "did I just enroll voice", so it fires correctly regardless of which
     // order the user enrolls in. Called after every enroll (including re-enrollment), which is
@@ -92,6 +120,14 @@ public class ProfileBiometricsService : IProfileBiometricsService
         var other = await _repository.GetAsync(userId, otherModality, ct);
         if (other is null)
             return false; // still missing the other modality — not eligible yet.
+
+        if (!await IsCanonicalBonusAccountAsync(userId, ct))
+        {
+            _logger.LogInformation(
+                "Biometric enrollment bonus skipped because this identity belongs to an earlier account. userId={UserId}",
+                userId);
+            return false;
+        }
 
         // Enroll is the primary action here — a PaymentAPI hiccup must never fail enrollment,
         // it only means no bonus this time (logged, not surfaced as an error to the user).
@@ -118,6 +154,31 @@ public class ProfileBiometricsService : IProfileBiometricsService
             _logger.LogWarning(ex, "Biometric enrollment bonus award threw: userId={UserId}", userId);
             return false;
         }
+    }
+
+    private async Task<bool> IsCanonicalBonusAccountAsync(Guid userId, CancellationToken ct)
+    {
+        var faceTemplates = await _repository.ListByModalityAsync(ModalityFace, ct);
+        var current = faceTemplates.FirstOrDefault(template => template.UserId == userId);
+        if (current is null)
+            return false;
+
+        var currentEmbedding = EmbeddingCodec.ToFloats(current.Embedding);
+        var threshold = _configuration.GetValue(
+            "Biometrics:BonusIdentityMatchThreshold", 0.35);
+
+        var canonicalAccount = faceTemplates
+            .Where(template =>
+                template.Dim == current.Dim
+                && template.ModelVersion == current.ModelVersion
+                && BiometricSimilarity.Cosine(
+                    currentEmbedding,
+                    EmbeddingCodec.ToFloats(template.Embedding)) >= threshold)
+            .OrderBy(template => template.CreatedAt)
+            .ThenBy(template => template.Id)
+            .FirstOrDefault();
+
+        return canonicalAccount is not null && canonicalAccount.UserId == userId;
     }
 
     public async Task<BiometricStatusResponse> GetStatusAsync(Guid userId, CancellationToken ct)

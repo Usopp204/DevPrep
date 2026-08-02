@@ -70,6 +70,11 @@
             <a class="btn-primary-solid" asp-controller="Interview" asp-action="Index">＋ New Interview</a>
         </div>
 
+        @if (TempData["ReportInfoMessage"] is string reportInfoMessage)
+        {
+            <div class="report-feedback-alert" role="status">@reportInfoMessage</div>
+        }
+
         @if (isScored && report is not null)
         {
             var overall = report.OverallScore;
@@ -217,7 +222,7 @@
         }
 
         <!-- AI Coach Summary -->
-        @if (isScored && report is not null && (!string.IsNullOrEmpty(report.Strengths) || !string.IsNullOrEmpty(report.Improvements) || !string.IsNullOrEmpty(report.Summary)))
+        @if (isScored && report is not null && (report.Strengths?.Count > 0 || report.Improvements?.Count > 0 || !string.IsNullOrWhiteSpace(report.Summary)))
         {
             <div class="glass-card report-summary safe-text-container">
                 <h3 class="report-summary-title"><span class="material-symbols-outlined">auto_awesome</span> AI Coach Summary</h3>
@@ -229,7 +234,7 @@
                     <div class="report-summary-col strengths safe-text-container">
                         <h4>Key Strengths</h4>
                         <ul>
-                            @foreach (var item in (report.Strengths ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                            @foreach (var item in report.Strengths ?? new System.Collections.Generic.List<string>())
                             {
                                 <li class="safe-text-container"><span class="material-symbols-outlined">check_circle</span><span class="safe-long-text">@item</span></li>
                             }
@@ -238,7 +243,7 @@
                     <div class="report-summary-col improve safe-text-container">
                         <h4>Areas to Improve</h4>
                         <ul>
-                            @foreach (var item in (report.Improvements ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                            @foreach (var item in report.Improvements ?? new System.Collections.Generic.List<string>())
                             {
                                 <li class="safe-text-container"><span class="material-symbols-outlined">arrow_upward</span><span class="safe-long-text">@item</span></li>
                             }

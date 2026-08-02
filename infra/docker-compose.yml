@@ -25,6 +25,7 @@ services:
     volumes:
       # Localized model weights (no image bloat, hot-swappable).
       - ../ai-service/models:/app/models
+      - tts-cache:/app/tts_cache
       # Persist the ChromaDB index across rebuilds (matches CHROMA_DIR below).
       # Separate dir from the venv mode's ./chroma_data so the two modes never
       # write to the same Chroma index concurrently.
@@ -71,3 +72,4 @@ networks:
 # ----------------------------------------------------------------------------
 volumes:
   hf-cache:
+  tts-cache:

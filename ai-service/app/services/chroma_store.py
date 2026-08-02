@@ -33,6 +33,7 @@ NEAR_DUP_THRESHOLD = float(os.getenv("NEAR_DUP_THRESHOLD", "0.92"))
 _client = chromadb.PersistentClient(path=CHROMA_DIR)
 _embed = embedding_functions.SentenceTransformerEmbeddingFunction(model_name=EMBED_MODEL)
 _collection = _client.get_or_create_collection(name=COLLECTION, embedding_function=_embed)
+_catalog_cache: dict[str, list[str]] | None = None
 
 
 # --- Clean the Answer field: scraped data is polluted with HTML/markdown junk -
@@ -75,7 +76,7 @@ def _collect_records(rows) -> dict[str, tuple[str, dict]]:
         if not question:
             continue
         uid = (row.get("Id") or "").strip() or _uid(question, row["Position"])
-        records[uid] = (question, {                    # last occurrence wins
+        records[uid] = (question, {
             "answer": _clean(row["Answer"]),
             "category": (row["Category"] or "").strip(),
             "difficulty": (row["Difficulty"] or "").strip().lower(),  # 'Junior' -> 'junior'
@@ -94,6 +95,7 @@ def _upsert_records(records: dict[str, tuple[str, dict]], batch_size: int) -> in
             documents=[doc for _, (doc, _) in chunk],
             metadatas=[meta for _, (_, meta) in chunk],
         )
+    _invalidate_catalog_cache()
     return len(records)
 
 
@@ -121,6 +123,12 @@ def _reset_collection() -> None:
         if not ids:
             break
         _collection.delete(ids=ids)
+    _invalidate_catalog_cache()
+
+
+def reset_index() -> None:
+    """Remove all indexed questions before a full SQL Server reconciliation."""
+    _reset_collection()
 
 
 def index_from_api(base_url: str, api_key: str, batch_size: int = 1000) -> int:
@@ -183,6 +191,7 @@ def delete_question(question_id: str) -> None:
     """Remove one document by ID (called by QuestionAPI on admin soft-delete). Deleting an id
     that is not in the collection is a no-op."""
     _collection.delete(ids=[question_id])
+    _invalidate_catalog_cache()
 
 
 def _drop_near_duplicates(pool: list[dict], embeddings) -> list[dict]:
@@ -242,7 +251,9 @@ def build_question_pool(
     return pool
 
 
-_catalog_cache: dict[str, list[str]] | None = None
+def _invalidate_catalog_cache() -> None:
+    global _catalog_cache
+    _catalog_cache = None
 
 
 def catalog() -> dict[str, list[str]]:
