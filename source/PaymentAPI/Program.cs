@@ -52,7 +52,15 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddAuthorization();
+// Authentication alone never rejects anything — an endpoint has to ask for it. The /admin/*
+// minimal-API routes below opt in through this policy so they stop relying on WebClient's
+// cookie check, which anyone could bypass by calling the gateway directly.
+// Manager is allowed as well as Admin on purpose: WebClient's PaymentAdminController.GuardAdmin
+// accepts both, and the Manager dashboard reads /admin/payments/revenue-daily.
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("AdminArea", policy => policy.RequireRole("Admin", "Manager"));
+});
 
 // ── Repositories ──────────────────────────────────────────────────────────────
 builder.Services.AddScoped<ICreditPackageRepository, CreditPackageRepository>();
@@ -252,14 +260,14 @@ app.MapGet("/admin/credit-packages", async (ICreditPackageRepository repo) =>
 {
     var packages = await repo.GetAllAsync();
     return Results.Ok(packages.Cast<CreditPackage>().OrderBy(p => p.SortOrder).ThenBy(p => p.CreatedAt));
-});
+}).RequireAuthorization("AdminArea");
 
 // --- Admin: GET /admin/credit-packages/{id} ---
 app.MapGet("/admin/credit-packages/{id:guid}", async (Guid id, ICreditPackageRepository repo) =>
 {
     var pkg = await repo.GetByIdAsync(id);
     return pkg is null ? Results.NotFound() : Results.Ok(pkg);
-});
+}).RequireAuthorization("AdminArea");
 
 // --- Admin: POST /admin/credit-packages ---
 app.MapPost("/admin/credit-packages", async (HttpContext ctx, ICreditPackageRepository repo) =>
@@ -290,7 +298,7 @@ app.MapPost("/admin/credit-packages", async (HttpContext ctx, ICreditPackageRepo
     await repo.AddAsync(pkg);
     await repo.SaveChangesAsync();
     return Results.Created($"/admin/credit-packages/{pkg.PackageId}", pkg);
-});
+}).RequireAuthorization("AdminArea");
 
 // --- Admin: PUT /admin/credit-packages/{id} ---
 app.MapPut("/admin/credit-packages/{id:guid}", async (Guid id, HttpContext ctx, ICreditPackageRepository repo) =>
@@ -316,7 +324,7 @@ app.MapPut("/admin/credit-packages/{id:guid}", async (Guid id, HttpContext ctx, 
     pkg.UpdatedAt    = DateTime.UtcNow.AddHours(7);
     await repo.SaveChangesAsync();
     return Results.Ok(pkg);
-});
+}).RequireAuthorization("AdminArea");
 
 // --- Admin: DELETE /admin/credit-packages/{id} (soft delete) ---
 app.MapDelete("/admin/credit-packages/{id:guid}", async (Guid id, ICreditPackageRepository repo) =>
@@ -328,7 +336,7 @@ app.MapDelete("/admin/credit-packages/{id:guid}", async (Guid id, ICreditPackage
     pkg.UpdatedAt = DateTime.UtcNow.AddHours(7);
     await repo.SaveChangesAsync();
     return Results.NoContent();
-});
+}).RequireAuthorization("AdminArea");
 
 // --- Admin: POST /admin/credit-packages/{id}/restore ---
 app.MapPost("/admin/credit-packages/{id:guid}/restore", async (Guid id, ICreditPackageRepository repo) =>
@@ -341,7 +349,7 @@ app.MapPost("/admin/credit-packages/{id:guid}/restore", async (Guid id, ICreditP
     pkg.UpdatedAt = DateTime.UtcNow.AddHours(7);
     await repo.SaveChangesAsync();
     return Results.Ok(pkg);
-});
+}).RequireAuthorization("AdminArea");
 
 // --- Admin: GET /admin/payments (filter + search + aggregates) ---
 app.MapGet("/admin/payments", async (
@@ -425,7 +433,7 @@ app.MapGet("/admin/payments", async (
             o.Amount, o.Credits, o.Currency, o.PaymentMethod, o.Status, o.PaidAt, o.CreatedAt
         })
     });
-});
+}).RequireAuthorization("AdminArea");
 
 // --- Admin: GET /admin/payments/revenue-report ---
 app.MapGet("/admin/payments/revenue-report", async (
@@ -472,7 +480,7 @@ app.MapGet("/admin/payments/revenue-report", async (
         TotalRevenue = totalRevenue,
         TotalCredits = totalCredits
     });
-});
+}).RequireAuthorization("AdminArea");
 
 // --- Admin: GET /admin/payments/revenue-daily ---
 // Doanh thu theo TỪNG NGÀY trong khoảng [from..to] (yyyy-MM-dd, inclusive) — phục vụ chart dashboard.
@@ -510,7 +518,7 @@ app.MapGet("/admin/payments/revenue-daily", async (
         TotalCredits = days.Sum(d => d.Credits),
         Days = days
     });
-});
+}).RequireAuthorization("AdminArea");
 
 // --- Admin: GET /admin/payments/{id} ---
 app.MapGet("/admin/payments/{id:guid}", async (Guid id, IOrderRepository orderRepo, ITransactionRepository txRepo) =>
@@ -519,7 +527,7 @@ app.MapGet("/admin/payments/{id:guid}", async (Guid id, IOrderRepository orderRe
     if (order is null) return Results.NotFound();
     var tx = await txRepo.GetByOrderIdAsync(id);
     return Results.Ok(new { Order = order, Transaction = tx });
-});
+}).RequireAuthorization("AdminArea");
 
 // --- Admin: POST /admin/credits/add ---
 // Cộng credit cho account theo EMAIL (admin nhập tay). Ghi ledger EntryType='Refund'
