@@ -206,31 +206,14 @@ body.home-page {
 .hm-cta .hm-btn-lg { font-size: 20px; padding: 16px 64px; }
 
 /* ============ Footer ============ */
+/* The footer carries no links or form any more, so the grid, social, column, newsletter
+   and legal-link rules that used to style them were removed with the markup. */
 .hm-footer { width: 100%; padding: 32px 0; margin-top: 64px; background: var(--hm-surface-lowest); border-top: 1px solid var(--hm-border); }
-.hm-footer-grid { max-width: 1200px; margin: 0 auto; padding: 0 24px; display: grid; grid-template-columns: 1fr; gap: 32px; }
-@media (min-width: 768px) { .hm-footer-grid { grid-template-columns: repeat(3, 1fr); } }
+.hm-footer-intro { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
 .hm-footer-brand { font-size: 24px; line-height: 32px; font-weight: 700; color: var(--hm-primary); margin-bottom: 16px; }
-.hm-footer-about { color: var(--hm-on-surface-variant); font-size: 14px; line-height: 20px; margin-bottom: 24px; }
-.hm-footer-social { display: flex; gap: 16px; }
-.hm-footer-social a { color: var(--hm-on-surface-variant); text-decoration: none; transition: color .2s; }
-.hm-footer-social a:hover { color: var(--hm-secondary); }
-.hm-footer-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.hm-footer-col { display: flex; flex-direction: column; gap: 12px; }
-.hm-footer-col .hm-col-title { font-family: 'JetBrains Mono', monospace; font-size: 13px; letter-spacing: .05em; color: var(--hm-outline); margin-bottom: 8px; text-transform: uppercase; }
-.hm-footer-col a { color: var(--hm-on-surface-variant); text-decoration: none; font-size: 14px; line-height: 20px; transition: color .2s; }
-.hm-footer-col a:hover { color: var(--hm-secondary); }
-.hm-newsletter .hm-col-title { font-family: 'JetBrains Mono', monospace; font-size: 13px; letter-spacing: .05em; color: var(--hm-outline); text-transform: uppercase; display: block; margin-bottom: 12px; }
-.hm-newsletter p { font-size: 14px; line-height: 20px; color: var(--hm-on-surface-variant); margin: 0 0 16px; }
-.hm-newsletter-form { display: flex; }
-.hm-newsletter-form input { flex: 1; background: var(--hm-surface-container); border: 1px solid var(--hm-outline-variant); border-radius: .75rem 0 0 .75rem; padding: 8px 16px; color: var(--hm-on-surface); outline: none; }
-.hm-newsletter-form input:focus { border-color: var(--hm-primary-container); }
-.hm-newsletter-form button { background: var(--hm-primary-container); color: #fff; padding: 8px 16px; border: none; border-radius: 0 .75rem .75rem 0; font-weight: 700; cursor: pointer; }
-.hm-footer-bottom { max-width: 1200px; margin: 48px auto 0; padding: 24px 24px 0; border-top: 1px solid var(--hm-border); display: flex; flex-direction: column; gap: 16px; align-items: center; justify-content: space-between; }
-@media (min-width: 768px) { .hm-footer-bottom { flex-direction: row; } }
+.hm-footer-about { color: var(--hm-on-surface-variant); font-size: 14px; line-height: 20px; margin: 0; max-width: 34rem; }
+.hm-footer-bottom { max-width: 1200px; margin: 32px auto 0; padding: 24px 24px 0; border-top: 1px solid var(--hm-border); display: flex; align-items: center; justify-content: center; }
 .hm-footer-bottom span { color: var(--hm-on-surface-variant); font-size: 14px; }
-.hm-footer-legal { display: flex; gap: 24px; }
-.hm-footer-legal a { color: var(--hm-on-surface-variant); text-decoration: none; font-size: 14px; transition: color .2s; }
-.hm-footer-legal a:hover { color: var(--hm-secondary); }
 
 /* ============================================================
    Homepage v2 (updated mockup: two-column hero, stats bar,

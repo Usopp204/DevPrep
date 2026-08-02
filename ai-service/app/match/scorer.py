@@ -113,13 +113,13 @@ def calculate_score(cv_json: dict, jd_json: dict) -> dict:
 
     suggestions = []
     for skill in missing_req[:5]:
-        suggestions.append(f"Học thêm kỹ năng: {skill}")
+        suggestions.append(f"Learn this skill: {skill}")
     if total < 60:
-        suggestions.append("CV chưa phù hợp nhiều với JD này, cân nhắc các vị trí phù hợp hơn")
+        suggestions.append("This CV isn't a strong fit for this JD — consider more suitable positions")
     elif total < 80:
-        suggestions.append("Bổ sung các kỹ năng còn thiếu để tăng cơ hội ứng tuyển")
+        suggestions.append("Fill in the missing skills to improve your application chances")
     else:
-        suggestions.append("CV rất phù hợp với vị trí này!")
+        suggestions.append("This CV is a great fit for this position!")
 
     return {
         "score": total,

@@ -1,15 +1,87 @@
 @*
-    Firebase SSO (Google + GitHub) — dùng chung cho Login và Register.
-    Nút bấm cần có id="btn-google" / id="btn-github".
-    Config Firebase (apiKey là khóa public phía client, không phải secret).
+    Firebase SSO (Google + GitHub) — shared by the Login and Register pages.
+    The host page must provide buttons with id="btn-google" / id="btn-github".
+    The Firebase apiKey below is the public client key, not a secret.
 
-    Xử lý auth/account-exists-with-different-credential mà KHÔNG tự mở popup thứ 2
-    (tránh auth/popup-blocked): lưu tạm credential đang chờ, báo user tự bấm nút
-    provider gốc; khi đăng nhập provider đó xong thì tự liên kết credential đã lưu.
+    auth/account-exists-with-different-credential is handled WITHOUT opening a second popup
+    (which browsers block): the pending credential is kept, the user is asked to press the
+    original provider button, and the credential is linked automatically once that sign-in
+    succeeds.
+
+    The dialog styling lives here rather than in login.css / register.css because this
+    partial is included by both pages, which load different stylesheets.
 *@
 <form asp-controller="Auth" asp-action="SsoFirebase" method="post" id="sso-form" class="d-none">
     <input type="hidden" name="idToken" id="sso-idtoken" />
 </form>
+
+<div class="sso-modal" id="sso-modal" role="dialog" aria-modal="true" aria-labelledby="sso-modal-title">
+    <div class="sso-modal-box">
+        <div class="sso-modal-icon" id="sso-modal-icon">
+            <span class="material-symbols-outlined">link</span>
+        </div>
+        <h3 class="sso-modal-title" id="sso-modal-title">Account already exists</h3>
+        <p class="sso-modal-text" id="sso-modal-text"></p>
+        <button type="button" class="sso-modal-btn" id="sso-modal-ok">Got it</button>
+    </div>
+</div>
+
+<style>
+    .sso-modal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 900;
+        background: rgba(0, 0, 0, .65);
+        backdrop-filter: blur(4px);
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+    .sso-modal.open { display: flex; }
+    .sso-modal-box {
+        width: 100%;
+        max-width: 420px;
+        background: #171b2e;
+        border: 1px solid rgba(255, 255, 255, .08);
+        border-radius: 1rem;
+        padding: 28px 26px 24px;
+        text-align: center;
+        box-shadow: 0 24px 64px rgba(0, 0, 0, .5);
+        font-family: 'Inter', system-ui, sans-serif;
+        color: #e5e1e7;
+    }
+    .sso-modal-icon {
+        width: 52px;
+        height: 52px;
+        margin: 0 auto 16px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(129, 140, 248, .12);
+        color: #818cf8;
+    }
+    .sso-modal-icon .material-symbols-outlined { font-size: 26px; }
+    .sso-modal-icon.is-error { background: rgba(248, 113, 113, .12); color: #f87171; }
+    .sso-modal-title { font-size: 18px; font-weight: 700; margin: 0 0 10px; color: #e5e1e7; }
+    .sso-modal-text { font-size: 14px; line-height: 21px; color: #9ca3af; margin: 0 0 22px; }
+    .sso-modal-text strong { color: #e5e1e7; font-weight: 600; }
+    .sso-modal-btn {
+        width: 100%;
+        padding: 11px 0;
+        border: none;
+        border-radius: .5rem;
+        background: linear-gradient(135deg, #6366f1, #a855f7);
+        color: #fff;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: opacity .15s;
+    }
+    .sso-modal-btn:hover { opacity: .88; }
+    .sso-modal-btn:focus-visible { outline: 2px solid #a855f7; outline-offset: 2px; }
+</style>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -29,8 +101,35 @@
     const providerByMethod = { "google.com": providers.google, "github.com": providers.github };
     const niceName = { "google.com": "Google", "github.com": "GitHub" };
 
-    // Credential đang chờ liên kết (được set khi gặp lỗi account-exists), persist giữa 2 lần bấm.
+    // Credential waiting to be linked, set when account-exists is raised. It has to survive
+    // between the two button presses, so it lives outside ssoLogin().
     let pendingCred = null;
+
+    const modal = document.getElementById('sso-modal');
+    const modalIcon = document.getElementById('sso-modal-icon');
+    const modalTitle = document.getElementById('sso-modal-title');
+    const modalText = document.getElementById('sso-modal-text');
+    const modalOk = document.getElementById('sso-modal-ok');
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function showModal(title, html, isError) {
+        modalTitle.textContent = title;
+        modalText.innerHTML = html;
+        modalIcon.classList.toggle('is-error', !!isError);
+        modalIcon.querySelector('.material-symbols-outlined').textContent = isError ? 'error' : 'link';
+        modal.classList.add('open');
+        modalOk.focus();
+    }
+    function closeModal() { modal.classList.remove('open'); }
+
+    modalOk.addEventListener('click', closeModal);
+    modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
     function submitToken(idToken) {
         document.getElementById('sso-idtoken').value = idToken;
@@ -41,7 +140,8 @@
         return GithubAuthProvider.credentialFromError(error) || GoogleAuthProvider.credentialFromError(error);
     }
 
-    // KHÔNG mở popup ở đây — chỉ lưu credential + hướng dẫn user bấm nút provider gốc.
+    // No popup is opened here on purpose: a popup not started by a user gesture is blocked.
+    // The credential is stored and the user is asked to press the original provider button.
     async function handleAccountExists(error) {
         const email = error.customData && error.customData.email;
         pendingCred = pendingCredentialFromError(error);
@@ -51,9 +151,13 @@
         const existingMethod = methods.find(m => providerByMethod[m]) || "google.com";
         const nice = niceName[existingMethod] || existingMethod;
 
-        alert(
-            'Email "' + (email || '') + '" đã được đăng ký bằng ' + nice + '.\n\n' +
-            'Hãy bấm nút ' + nice + ' để đăng nhập — GitHub sẽ tự được liên kết vào tài khoản này.'
+        showModal(
+            'Account already exists',
+            'The email <strong>' + escapeHtml(email || '') + '</strong> is already registered with '
+            + '<strong>' + escapeHtml(nice) + '</strong>.<br><br>'
+            + 'Please sign in with ' + escapeHtml(nice) + ' — the other provider will be linked to '
+            + 'this account automatically.',
+            false
         );
     }
 
@@ -63,7 +167,7 @@
             if (button) button.disabled = true;
             const result = await signInWithPopup(auth, providers[key]);
 
-            // Nếu vừa đăng nhập bằng provider gốc và có credential GitHub đang chờ -> liên kết.
+            // Just signed in with the original provider and a credential is waiting -> link it.
             if (pendingCred) {
                 try { await linkWithCredential(result.user, pendingCred); } catch (_) { }
                 pendingCred = null;
@@ -78,7 +182,7 @@
                 return;
             }
             console.error('SSO error', e);
-            alert('Sign-in failed: ' + ((e && (e.message || e.code)) || e));
+            showModal('Sign-in failed', escapeHtml((e && (e.message || e.code)) || e), true);
         }
     }
 
