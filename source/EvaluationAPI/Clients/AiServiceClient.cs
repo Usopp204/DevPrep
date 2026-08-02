@@ -48,8 +48,25 @@ public class AiServiceClient : IAiServiceClient
         }
     }
 
-    private void EnsureSuccess(HttpResponseMessage response, string endpoint)
+    public async Task<AiBuildReportResponse> BuildReportAsync(
+        AiBuildReportRequest request,
+        CancellationToken ct = default)
     {
+        try
+        {
+            using var response = await _httpClient.PostAsJsonAsync("/internal/report", request, ct);
+            EnsureSuccess(response, "/internal/report");
+            return await response.Content.ReadFromJsonAsync<AiBuildReportResponse>(ct)
+                ?? throw new HttpRequestException("AI-Service returned an empty report response.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Call to ai-service POST /internal/report failed.");
+            throw;
+        }
+    }
+
+    private void EnsureSuccess(HttpResponseMessage response, string endpoint)    {
         if (response.IsSuccessStatusCode)
             return;
 

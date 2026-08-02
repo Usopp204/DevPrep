@@ -15,6 +15,11 @@ public interface IEvaluationService
         string? bearerToken,
         CancellationToken ct);
 
+    Task<PerformanceReportResponse> EnsurePerformanceReportAsync(
+        Guid sessionId,
+        string? bearerToken,
+        CancellationToken ct);
+
     Task<List<EvaluateAnswerResponse>> GetAnswerEvaluationsAsync(
         Guid sessionId,
         string? bearerToken,

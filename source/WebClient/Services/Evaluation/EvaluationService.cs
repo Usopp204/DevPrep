@@ -122,10 +122,12 @@ public sealed class EvaluationService(IApiClient apiClient) : IEvaluationService
 
         if (!eligibility.CanGeneratePerformanceReport)
         {
+            viewModel.TerminationReason = eligibility.TerminationReason ?? viewModel.TerminationReason;
+            if (EqualsIgnoreCase(viewModel.TerminationReason, "IntegrityViolation"))
+                await LoadQuestionEvaluationsAsync(viewModel, context, cancellationToken);
             SetEvaluationUnavailable(viewModel);
             return viewModel;
         }
-
         var performanceResult = await SendAsync<PerformanceReportResponse>(
             HttpMethod.Get,
             $"api/evaluation/sessions/{context.SessionId}/performance",
@@ -140,10 +142,45 @@ public sealed class EvaluationService(IApiClient apiClient) : IEvaluationService
         }
 
         var performance = performanceResult.Data;
-        if (!Enum.TryParse<EvaluationReportState>(performance.State, ignoreCase: true, out var state))
-        {
+        if (!Enum.TryParse<EvaluationReportState>(performance.State, ignoreCase: true, out var state))        {
             SetEvaluationUnavailable(viewModel);
             return viewModel;
+        }
+
+        if (state == EvaluationReportState.Scored && !performance.HasPersistedReport)
+        {
+            var ensureResult = await SendAsync<PerformanceReportResponse>(
+                HttpMethod.Post,
+                $"api/evaluation/sessions/{context.SessionId}/report",
+                body: null,
+                cancellationToken);
+            if (ensureResult.StatusCode == StatusCodes.Status401Unauthorized)
+                throw new AuthenticationExpiredException();
+            if (!ensureResult.Success)
+            {
+                SetEvaluationUnavailable(viewModel);
+                return viewModel;
+            }
+
+            performanceResult = await SendAsync<PerformanceReportResponse>(
+                HttpMethod.Get,
+                $"api/evaluation/sessions/{context.SessionId}/performance",
+                body: null,
+                cancellationToken);
+            if (performanceResult.StatusCode == StatusCodes.Status401Unauthorized)
+                throw new AuthenticationExpiredException();
+            if (!performanceResult.Success || performanceResult.Data is null)
+            {
+                SetEvaluationUnavailable(viewModel);
+                return viewModel;
+            }
+
+            performance = performanceResult.Data;
+            if (!Enum.TryParse<EvaluationReportState>(performance.State, ignoreCase: true, out state))
+            {
+                SetEvaluationUnavailable(viewModel);
+                return viewModel;
+            }
         }
 
         if (state == EvaluationReportState.NoEvaluatedAnswers)
@@ -178,8 +215,8 @@ public sealed class EvaluationService(IApiClient apiClient) : IEvaluationService
             SetState(
                 viewModel,
                 state,
-                "Evaluation incomplete",
-                "Some answers could not be evaluated before this interview ended, so a reliable overall score could not be calculated. No final score or grade is available for this session.");
+                "Evaluation is still processing",
+                "Some answers are still being evaluated. Refresh this page when you are ready to check again.");
             return viewModel;
         }
 
@@ -197,8 +234,8 @@ public sealed class EvaluationService(IApiClient apiClient) : IEvaluationService
             CommunicationScore = performance.CommunicationScore,
             ProblemSolvingScore = performance.ProblemSolvingScore,
             Summary = performance.Summary,
-            Strengths = JoinStoredItems(performance.Strengths),
-            Improvements = JoinStoredItems(performance.Improvements),
+            Strengths = performance.Strengths,
+            Improvements = performance.Improvements,
             Recommendations = performance.Recommendations,
             Grade = performance.Grade,
         };
@@ -229,11 +266,6 @@ public sealed class EvaluationService(IApiClient apiClient) : IEvaluationService
         viewModel.Questions = BuildQuestions(context.Questions, result.Data);
     }
 
-    private static string? JoinStoredItems(IEnumerable<string> items)
-    {
-        var values = items.Where(item => !string.IsNullOrWhiteSpace(item)).ToList();
-        return values.Count == 0 ? null : string.Join("; ", values);
-    }
 
     private static ReportViewModel CreateBaseViewModel(
         ReportSessionContext context,
@@ -245,6 +277,7 @@ public sealed class EvaluationService(IApiClient apiClient) : IEvaluationService
             Position = context.Position,
             Level = context.Level,
             Status = context.Status,
+            TerminationReason = context.TerminationReason,
             Questions = BuildQuestions(context.Questions, Array.Empty<EvaluateAnswerResponse>())
         };
 
@@ -467,6 +500,7 @@ public sealed class EvaluationService(IApiClient apiClient) : IEvaluationService
         public string? Position { get; init; }
         public string Level { get; init; } = string.Empty;
         public string Status { get; init; } = string.Empty;
+        public string? TerminationReason { get; init; }
         public IReadOnlyList<ReportQuestionSource> Questions { get; init; } = Array.Empty<ReportQuestionSource>();
         public bool IsCompleted => EqualsIgnoreCase(Status, "Completed");
         public bool IsCancelled => EqualsIgnoreCase(Status, "Cancelled");
@@ -480,6 +514,7 @@ public sealed class EvaluationService(IApiClient apiClient) : IEvaluationService
                 Position = transcript.Position,
                 Level = transcript.Level,
                 Status = transcript.Status,
+                TerminationReason = transcript.TerminationReason,
                 Questions = transcript.Questions
                     .Select(question =>
                     {

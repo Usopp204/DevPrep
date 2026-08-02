@@ -6,4 +6,5 @@ public interface IAiServiceClient
 {
     Task<AiQuestionPlanResponse> PlanQuestionsAsync(AiQuestionPlanRequest request, CancellationToken ct = default);
     Task<AiEvaluateAnswerResponse> EvaluateAnswerAsync(AiEvaluateAnswerRequest request, CancellationToken ct = default);
+    Task<AiBuildReportResponse> BuildReportAsync(AiBuildReportRequest request, CancellationToken ct = default);
 }

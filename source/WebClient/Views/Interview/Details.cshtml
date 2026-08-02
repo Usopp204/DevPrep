@@ -71,7 +71,10 @@
         </div>
 
         <div class="transcript-body">
-            @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+            @if (TempData["ReportInfoMessage"] is string reportInfoMessage)
+            {
+                <div class="detail-alert" role="status">@reportInfoMessage</div>
+            }            @if (!string.IsNullOrEmpty(Model.ErrorMessage))
             {
                 <div class="detail-alert error">@Model.ErrorMessage</div>
             }
@@ -217,7 +220,7 @@
                                     @if (!string.IsNullOrWhiteSpace(questionEvaluation.AreasToImprove))
                                     {
                                         <div class="detail-question-copy">
-                                            <strong>Areas to Improve</strong>
+                                            <strong>Suggested Improvement</strong>
                                             <p class="safe-long-text">@questionEvaluation.AreasToImprove</p>
                                         </div>
                                     }
@@ -264,6 +267,10 @@
                             <span class="material-symbols-outlined">@StateIcon()</span>
                             <strong>@(evaluation?.StateTitle ?? "Evaluation unavailable")</strong>
                             <p>@(evaluation?.StateMessage ?? "Evaluation data cannot be loaded right now.")</p>
+                            @if (evaluation?.DisplayState == EvaluationReportState.EvaluationIncomplete)
+                            {
+                                <a class="btn btn-primary" href="@Context.Request.Path@Context.Request.QueryString">Refresh</a>
+                            }
                         </div>
                     }
                     else
@@ -305,37 +312,37 @@
                         </div>
 
                         @if (!string.IsNullOrWhiteSpace(report.Summary)
-                            || !string.IsNullOrWhiteSpace(report.Strengths)
-                            || !string.IsNullOrWhiteSpace(report.Improvements)
+                            || report.Strengths.Count > 0
+                            || report.Improvements.Count > 0
                             || !string.IsNullOrWhiteSpace(report.Recommendations))
                         {
                             <section class="detail-coach-summary safe-text-container" aria-labelledby="coach-summary-title">
-                                <h3 id="coach-summary-title">AI Coach Summary</h3>
+                                <h3 id="coach-summary-title">Whole-Session AI Coaching</h3>
                                 @if (!string.IsNullOrWhiteSpace(report.Summary))
                                 {
                                     <div class="fb-card summary">
-                                        <h4>Advice &amp; Summary</h4>
+                                        <h4>AI Summary</h4>
                                         <p class="safe-long-text">@report.Summary</p>
                                     </div>
                                 }
-                                @if (!string.IsNullOrWhiteSpace(report.Strengths))
+                                @if (report.Strengths.Count > 0)
                                 {
                                     <div class="fb-card strengths">
                                         <h4>Key Strengths</h4>
                                         <ul>
-                                            @foreach (var item in report.Strengths.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                                            @foreach (var item in report.Strengths)
                                             {
                                                 <li class="safe-long-text">@item</li>
                                             }
                                         </ul>
                                     </div>
                                 }
-                                @if (!string.IsNullOrWhiteSpace(report.Improvements))
+                                @if (report.Improvements.Count > 0)
                                 {
                                     <div class="fb-card improve">
                                         <h4>Areas to Improve</h4>
                                         <ul>
-                                            @foreach (var item in report.Improvements.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                                            @foreach (var item in report.Improvements)
                                             {
                                                 <li class="safe-long-text">@item</li>
                                             }
@@ -345,7 +352,7 @@
                                 @if (!string.IsNullOrWhiteSpace(report.Recommendations))
                                 {
                                     <div class="fb-card recommendations">
-                                        <h4>Recommendations</h4>
+                                        <h4>AI Advice</h4>
                                         <p class="safe-long-text">@report.Recommendations</p>
                                     </div>
                                 }

@@ -13,6 +13,7 @@ public class PerformanceReportResponse
 {
     public string State { get; set; } = string.Empty;
     public Guid SessionId { get; set; }
+    public bool HasPersistedReport { get; set; }
     public decimal? OverallScore { get; set; }
     public decimal? TechnicalScore { get; set; }
     public decimal? CommunicationScore { get; set; }

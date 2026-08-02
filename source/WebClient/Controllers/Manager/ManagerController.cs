@@ -4,6 +4,8 @@ using Microsoft.Extensions.Options;
 using WebClient.Models.Feedback;
 using WebClient.Services.Feedback;
 using WebClient.Services.Manager;
+using WebClient.Models.Dashboard;
+using WebClient.Services.Dashboard;
 using WebClient.Services.Shared;
 
 namespace WebClient.Controllers.Manager;
@@ -13,28 +15,49 @@ namespace WebClient.Controllers.Manager;
 public class ManagerController(
     IOptions<ApiGatewayOptions> gatewayOptions,
     IFeedbackService feedbackService,
-    IManagerDashboardService dashboardService) : Controller
+    IManagementDashboardService dashboardService) : Controller
 {
     private string ApiBaseUrl => gatewayOptions.Value.BaseUrl?.TrimEnd('/') ?? "http://localhost:7000";
 
     public async Task<IActionResult> Index()
     {
-        var model = await dashboardService.GetStatsAsync(HttpContext.RequestAborted);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(7));
+        var from = new DateOnly(today.Year, today.Month, 1);
+        var result = await dashboardService.GetDashboardAsync(from, today, HttpContext.RequestAborted);
+        var model = new ManagementDashboardViewModel
+        {
+            Dashboard = result.Data ?? ManagementDashboardData.Unavailable(from, today),
+            DashboardDataUrl = Url.Action(nameof(DashboardData), "Manager") ?? "/Manager/DashboardData"
+        };
         return View(model);
     }
 
     [HttpGet]
-    public async Task<IActionResult> RevenueSeries(DateTime? from, DateTime? to)
+    public async Task<IActionResult> DashboardData(DateOnly? from, DateOnly? to)
     {
-        var nowVn = DateTime.UtcNow.AddHours(7).Date;
-        var f = (from ?? new DateTime(nowVn.Year, nowVn.Month, 1)).Date;
-        var t = (to ?? nowVn).Date;
+        var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(7));
+        if (!DashboardDateRange.TryResolve(from, to, today, out var rangeFrom, out var rangeTo, out var error))
+            return BadRequest(new { success = false, message = error });
 
-        var result = await dashboardService.GetRevenueDailyAsync(f, t, HttpContext.RequestAborted);
-        if (result is null)
-            return StatusCode(502, new { success = false, message = "Cannot reach PaymentAPI. Make sure the gateway and PaymentAPI are running." });
+        var result = await dashboardService.GetDashboardAsync(rangeFrom, rangeTo, HttpContext.RequestAborted);
+        if (!result.Success || result.Data is null)
+        {
+            var status = result.StatusCode is 400 or 401 or 403
+                ? result.StatusCode
+                : StatusCodes.Status502BadGateway;
+            return StatusCode(status, new
+            {
+                success = false,
+                message = result.Error ?? "Could not load dashboard statistics."
+            });
+        }
 
-        return Json(new { success = true, data = result });
+        return Json(new { success = true, data = result.Data });
+    }
+    public IActionResult Announcements()
+    {
+        ViewData["ApiBaseUrl"] = ApiBaseUrl;
+        return View();
     }
 
     public IActionResult Feedback()

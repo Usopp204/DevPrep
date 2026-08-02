@@ -260,7 +260,7 @@ body.history-page {
 .history-table-head,
 .history-row {
     display: grid;
-    grid-template-columns: minmax(240px, 1.15fr) 112px 76px 106px 86px 86px minmax(170px, 0.8fr) 132px;
+    grid-template-columns: minmax(240px, 1.15fr) 112px 76px 106px 86px 86px minmax(170px, 0.8fr) 92px;
     column-gap: 12px;
     align-items: center;
 }
@@ -379,7 +379,7 @@ body.history-page {
 }
 
 .history-actions {
-    width: 128px;
+    width: 84px;
     display: flex;
     gap: 8px;
     align-items: center;
@@ -436,17 +436,6 @@ body.history-page {
     .history-view-btn:hover {
         background: rgba(108, 99, 255, 0.32);
         border-color: rgba(196, 192, 255, 0.50);
-    }
-
-.history-report-btn {
-    color: #BAE6FD;
-    background: rgba(14, 165, 233, 0.12);
-    border: 1px solid rgba(56, 189, 248, 0.30);
-}
-
-    .history-report-btn:hover {
-        background: rgba(14, 165, 233, 0.22);
-        border-color: rgba(125, 211, 252, 0.52);
     }
 
 .history-delete-btn {
@@ -1353,7 +1342,7 @@ body.history-page {
 @media (max-width: 1180px) {
     .history-table-head,
     .history-row {
-        grid-template-columns: minmax(220px, 1fr) 100px 70px 96px 76px 76px minmax(145px, 0.7fr) 126px;
+        grid-template-columns: minmax(220px, 1fr) 100px 70px 96px 76px 76px minmax(145px, 0.7fr) 92px;
     }
 
     .detail-panel {

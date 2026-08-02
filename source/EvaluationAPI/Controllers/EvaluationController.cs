@@ -150,6 +150,66 @@ public class EvaluationController : ControllerBase
     }
 
     /// <summary>Lấy danh sách kết quả chấm điểm từng câu trả lời của một phiên.</summary>
+    [HttpPost("{sessionId:guid}/report")]
+    [Authorize(Roles = "User")]
+    public async Task<IActionResult> EnsureReport(Guid sessionId, CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out _))
+            return Unauthorized(ApiResponse<object>.Fail("Unauthorized."));
+
+        try
+        {
+            var result = await _service.EnsurePerformanceReportAsync(
+                sessionId,
+                Request.Headers.Authorization.ToString(),
+                cancellationToken);
+            return Ok(ApiResponse<PerformanceReportResponse>.Ok(result));
+        }
+        catch (InterviewApiUnauthorizedException)
+        {
+            return Unauthorized(ApiResponse<object>.Fail("Unauthorized."));
+        }
+        catch (InterviewApiForbiddenException)
+        {
+            return Forbidden();
+        }
+        catch (InterviewApiSessionNotFoundException ex)
+        {
+            return NotFound(ApiResponse<object>.Fail(ex.Message));
+        }
+        catch (SessionNotEligibleForPerformanceReportException ex)
+        {
+            return Conflict(ApiResponse<object>.Fail(ex.Message));
+        }
+        catch (AggregateReportNotReadyException ex)
+        {
+            return Conflict(ApiResponse<object>.Fail(ex.Message));
+        }
+        catch (InterviewApiTimeoutException)
+        {
+            return EvaluationUnavailable();
+        }
+        catch (InterviewApiDependencyException)
+        {
+            return EvaluationUnavailable();
+        }
+        catch (EvaluationDependencyException)
+        {
+            return EvaluationUnavailable();
+        }
+        catch (EvaluationPersistenceException)
+        {
+            return EvaluationUnavailable();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            return EvaluationUnavailable();
+        }
+    }
     [HttpGet("{id:guid}/answers")]
     public async Task<IActionResult> GetAnswerEvaluations(Guid id, CancellationToken cancellationToken)
     {

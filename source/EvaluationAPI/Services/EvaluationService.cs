@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text.Json;
 using EvaluationAPI.Clients;
 using EvaluationAPI.DTOs.AiService;
@@ -11,6 +12,7 @@ namespace EvaluationAPI.Services;
 
 public class EvaluationService : IEvaluationService
 {
+    private static readonly ConcurrentDictionary<Guid, SemaphoreSlim> ReportGates = new();
     private readonly IEvaluationRepository _repo;
     private readonly IAiServiceClient _aiServiceClient;
     private readonly IInterviewApiClient _interviewApiClient;
@@ -229,26 +231,190 @@ public class EvaluationService : IEvaluationService
         return ToPerformanceReportResponse(sessionId, report, aggregate);
     }
 
-    public async Task<List<EvaluateAnswerResponse>> GetAnswerEvaluationsAsync(
+    public async Task<PerformanceReportResponse> EnsurePerformanceReportAsync(
         Guid sessionId,
         string? bearerToken,
         CancellationToken ct)
     {
-        await EnsurePerformanceReportAllowedAsync(sessionId, bearerToken, ct);
-        var evaluations = await _repo.GetEvaluationsBySessionAsync(sessionId, ct);
-        return evaluations.Select(ToResponse).ToList();
+        var eligibility = await _interviewApiClient.GetSessionFeedbackEligibilityAsync(
+            sessionId,
+            bearerToken,
+            ct);
+        if (!eligibility.CanGeneratePerformanceReport)
+            throw new SessionNotEligibleForPerformanceReportException(eligibility.Status);
+
+        var existing = await _repo.GetReportBySessionAsync(sessionId, ct);
+        if (existing is not null)
+            return await GetPerformanceReportAsync(sessionId, bearerToken, ct);
+
+        var reportGate = ReportGates.GetOrAdd(sessionId, static _ => new SemaphoreSlim(1, 1));
+        await reportGate.WaitAsync(ct);
+        try
+        {
+            existing = await _repo.GetReportBySessionAsync(sessionId, ct);
+            if (existing is not null)
+                return await GetPerformanceReportAsync(sessionId, bearerToken, ct);
+
+            var performance = await GetPerformanceReportAsync(sessionId, bearerToken, ct);
+            if (!string.Equals(performance.State, EvaluationLifecycleStates.Scored, StringComparison.Ordinal))
+                throw new AggregateReportNotReadyException(performance.State);
+
+            var context = await _interviewApiClient.GetSessionEvaluationContextAsync(
+                sessionId,
+                bearerToken,
+                ct);
+            var substantiveQuestionIds = context.Questions
+                .Where(question => question.HasSubstantiveAnswer)
+                .Select(question => question.SessionQuestionId)
+                .Where(questionId => questionId != Guid.Empty)
+                .Distinct()
+                .ToHashSet();
+            var evaluations = (await _repo.GetEvaluationsBySessionAsync(sessionId, ct))
+                .Where(evaluation => substantiveQuestionIds.Contains(evaluation.SessionQuestionId))
+                .GroupBy(evaluation => evaluation.SessionQuestionId)
+                .Select(group => group
+                    .OrderByDescending(evaluation => evaluation.GeneratedAt)
+                    .ThenByDescending(evaluation => evaluation.EvaluationId)
+                    .First())
+                .ToList();
+            if (evaluations.Count != substantiveQuestionIds.Count)
+                throw new AggregateReportNotReadyException(EvaluationLifecycleStates.EvaluationIncomplete);
+
+            var aggregate = CalculateAggregate(evaluations);
+            var durationSeconds = CalculateDurationSeconds(context);
+            AiBuildReportResponse aiReport;
+            try
+            {
+                var contextByQuestionId = context.Questions
+                    .Where(question => question.SessionQuestionId != Guid.Empty)
+                    .GroupBy(question => question.SessionQuestionId)
+                    .ToDictionary(group => group.Key, group => group.First());
+
+                aiReport = await _aiServiceClient.BuildReportAsync(new AiBuildReportRequest
+                {
+                    DurationActualSec = durationSeconds,
+                    Evaluations = evaluations.Select(evaluation =>
+                    {
+                        contextByQuestionId.TryGetValue(
+                            evaluation.SessionQuestionId,
+                            out var questionContext);
+                        return new AiAggregateEvaluationRow
+                        {
+                            Qid = evaluation.SessionQuestionId.ToString("D"),
+                            Question = evaluation.QuestionContent ?? string.Empty,
+                            UserAnswer = evaluation.UserAnswer ?? string.Empty,
+                            Category = questionContext?.Category ?? string.Empty,
+                            Difficulty = questionContext?.Difficulty ?? string.Empty,
+                            Score = (double)evaluation.Score,
+                            Criteria = (ParseCriteria(evaluation) ?? new Dictionary<string, decimal>())
+                                .ToDictionary(item => item.Key, item => (double)item.Value),
+                            Analysis = evaluation.AiFeedback ?? string.Empty,
+                            Praise = evaluation.Strengths ?? string.Empty,
+                            SuggestedImprovement = evaluation.Weaknesses ?? string.Empty
+                        };
+                    }).ToList()
+                }, ct);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                throw new EvaluationDependencyException(ex);
+            }
+
+            var validatedSummary = ValidateAggregateResponse(aiReport, evaluations.Count);
+
+            var generatedAt = VietnamTime.Now;
+            var report = new FeedbackReport
+            {
+                ReportId = Guid.NewGuid(),
+                SessionId = sessionId,
+                OverallScore = aggregate.OverallScore,
+                TechnicalScore = aggregate.TechnicalScore,
+                CommunicationScore = aggregate.CommunicationScore,
+                ProblemSolvingScore = aggregate.ProblemSolvingScore,
+                Summary = validatedSummary.Praise,
+                Strengths = JsonSerializer.Serialize(validatedSummary.Strengths),
+                Improvements = JsonSerializer.Serialize(validatedSummary.AreasToImprove),
+                Recommendations = validatedSummary.Advice,
+                Grade = aggregate.Grade,
+                GeneratedAt = generatedAt
+            };
+            var metrics = BuildMetrics(sessionId, aggregate, generatedAt);
+            await _repo.CreateReportWithMetricsAsync(report, metrics, ct);
+            return await GetPerformanceReportAsync(sessionId, bearerToken, ct);
+        }
+        finally
+        {
+            reportGate.Release();
+        }
     }
 
-    private async Task EnsurePerformanceReportAllowedAsync(
-        Guid sessionId,
+    public async Task<List<EvaluateAnswerResponse>> GetAnswerEvaluationsAsync(        Guid sessionId,
         string? bearerToken,
         CancellationToken ct)
     {
         var eligibility = await _interviewApiClient.GetSessionFeedbackEligibilityAsync(sessionId, bearerToken, ct);
-        if (!eligibility.CanGeneratePerformanceReport)
+        if (!eligibility.CanSubmitInterviewFeedback)
             throw new SessionNotEligibleForPerformanceReportException(eligibility.Status);
+        var evaluations = await _repo.GetEvaluationsBySessionAsync(sessionId, ct);
+        return evaluations.Select(ToResponse).ToList();
     }
 
+
+    private static ValidatedAggregateSummary ValidateAggregateResponse(
+        AiBuildReportResponse response,
+        int expectedQuestionCount)
+    {
+        if (response.NumQuestions != expectedQuestionCount || response.Summary is null)
+            throw InvalidAggregateResponse();
+
+        var praise = SanitizeText(response.Summary.Praise ?? string.Empty);
+        var advice = SanitizeText(response.Summary.Advice ?? string.Empty);
+        if (string.IsNullOrWhiteSpace(praise)
+            || string.IsNullOrWhiteSpace(advice)
+            || IsLegacyScoreBandSummary(praise))
+        {
+            throw InvalidAggregateResponse();
+        }
+
+        var strengths = ValidateSummaryItems(
+            response.Summary.Strengths,
+            minimumCount: 1);
+        var areasToImprove = ValidateSummaryItems(
+            response.Summary.AreasToImprove,
+            minimumCount: 0);
+
+        return new ValidatedAggregateSummary(
+            praise,
+            strengths,
+            areasToImprove,
+            advice);
+    }
+
+    private static List<string> ValidateSummaryItems(
+        List<string>? values,
+        int minimumCount)
+    {
+        if (values is null || values.Count < minimumCount || values.Count > 4)
+            throw InvalidAggregateResponse();
+
+        var normalized = values.Select(value => SanitizeText(value ?? string.Empty)).ToList();
+        if (normalized.Any(string.IsNullOrWhiteSpace))
+            throw InvalidAggregateResponse();
+
+        return normalized;
+    }
+
+    private static bool IsLegacyScoreBandSummary(string value) =>
+        string.Equals(value, "Excellent performance!", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(value, "Good performance!", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(value, "Keep practicing!", StringComparison.OrdinalIgnoreCase);
+
+    private static EvaluationDependencyException InvalidAggregateResponse() =>
+        new(new InvalidDataException("AI-Service returned an invalid aggregate report response."));
     private static AggregateResult CalculateAggregate(IReadOnlyCollection<AnswerEvaluation> evaluations)
     {
         var overallScore = Math.Round(evaluations.Average(evaluation => evaluation.Score));
@@ -319,6 +485,7 @@ public class EvaluationService : IEvaluationService
         {
             State = EvaluationLifecycleStates.Scored,
             SessionId = sessionId,
+            HasPersistedReport = report is not null,
             OverallScore = aggregate.OverallScore,
             TechnicalScore = aggregate.TechnicalScore,
             CommunicationScore = aggregate.CommunicationScore,
@@ -330,8 +497,42 @@ public class EvaluationService : IEvaluationService
             Grade = aggregate.Grade,
         };
 
-    private static EvaluateAnswerResponse ToResponse(AnswerEvaluation evaluation) => new()
+    private static int CalculateDurationSeconds(SessionEvaluationContextResult context)
     {
+        if (context.StartedAt is null || context.EndedAt is null)
+            return 0;
+
+        var elapsed = (context.EndedAt.Value - context.StartedAt.Value).TotalSeconds
+            - Math.Max(0, context.TotalPausedSeconds);
+        return Math.Max(0, (int)Math.Round(elapsed));
+    }
+
+    private static List<PerformanceMetric> BuildMetrics(
+        Guid sessionId,
+        AggregateResult aggregate,
+        DateTime recordedAt)
+    {
+        var values = new List<(string Name, decimal? Value)>
+        {
+            ("OverallScore", aggregate.OverallScore),
+            ("TechnicalScore", aggregate.TechnicalScore),
+            ("CommunicationScore", aggregate.CommunicationScore),
+            ("ProblemSolvingScore", aggregate.ProblemSolvingScore)
+        };
+        return values
+            .Where(item => item.Value.HasValue)
+            .Select(item => new PerformanceMetric
+            {
+                MetricId = Guid.NewGuid(),
+                SessionId = sessionId,
+                MetricName = item.Name,
+                MetricValue = item.Value!.Value,
+                RecordedAt = recordedAt
+            })
+            .ToList();
+    }
+
+    private static EvaluateAnswerResponse ToResponse(AnswerEvaluation evaluation) => new()    {
         EvaluationId = evaluation.EvaluationId,
         SessionId = evaluation.SessionId,
         SessionQuestionId = evaluation.SessionQuestionId,
@@ -406,6 +607,12 @@ public class EvaluationService : IEvaluationService
 
     private static string SanitizeText(string value) =>
         value.Replace("\r", " ").Replace("\n", " ").Trim();
+
+    private sealed record ValidatedAggregateSummary(
+        string Praise,
+        List<string> Strengths,
+        List<string> AreasToImprove,
+        string Advice);
 
     private sealed record AggregateResult(
         decimal OverallScore,

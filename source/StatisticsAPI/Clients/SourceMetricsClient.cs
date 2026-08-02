@@ -1,32 +1,50 @@
-using System.Globalization;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Text.Json;
 using StatisticsAPI.Services;
 
 namespace StatisticsAPI.Clients;
 
-/// <summary>Doanh thu theo ngày lấy từ PaymentAPI (đã gộp sẵn tổng + map theo ngày).</summary>
-public sealed record RevenueDailyData(
+public sealed record SourceCountDay(DateOnly Date, long Count);
+public sealed record CandidateStatisticsSourceData(
+    DateOnly From,
+    DateOnly To,
+    long TotalCandidates,
+    List<SourceCountDay> Days);
+public sealed record InterviewDashboardSourceData(
+    DateOnly From,
+    DateOnly To,
+    long TotalInterviewSessions,
+    long CompletedInterviewSessions,
+    List<SourceCountDay> Days);
+public sealed record SourceRevenueDay(DateOnly Date, decimal Revenue, long Orders);
+public sealed record RevenueDailySourceData(
+    DateOnly From,
+    DateOnly To,
     decimal TotalRevenue,
-    int TotalOrders,
-    Dictionary<DateOnly, (decimal Revenue, int Orders)> ByDay);
+    long TotalOrders,
+    List<SourceRevenueDay> Days);
+public sealed record SourceFeedbackDay(
+    DateOnly Date,
+    long SystemFeedbacks,
+    long InterviewFeedbacks,
+    long TotalFeedbacks);
+public sealed record FeedbackDashboardSourceData(
+    DateOnly From,
+    DateOnly To,
+    long AllTimeSystemFeedbacks,
+    long AllTimeInterviewFeedbacks,
+    long AllTimeTotalFeedbacks,
+    List<SourceFeedbackDay> Days);
 
 public interface ISourceMetricsClient
 {
-    Task<long> GetUserCountAsync(DateTime? createdFrom, DateTime? createdTo, string? status, CancellationToken ct);
-    Task<long> GetInterviewCountAsync(DateTime? from, DateTime? to, string? status, bool includeDeleted, CancellationToken ct);
-    Task<long> GetFeedbackCountAsync(string kind, DateTime? from, DateTime? to, CancellationToken ct);
-    Task<RevenueDailyData> GetRevenueDailyAsync(DateOnly from, DateOnly to, CancellationToken ct);
-    Task<decimal> GetRevenueReportTotalAsync(string period, CancellationToken ct);
+    Task<CandidateStatisticsSourceData> GetCandidateStatisticsAsync(DateOnly from, DateOnly to, CancellationToken cancellationToken);
+    Task<InterviewDashboardSourceData> GetInterviewDashboardStatisticsAsync(DateOnly from, DateOnly to, CancellationToken cancellationToken);
+    Task<RevenueDailySourceData> GetRevenueDailyAsync(DateOnly from, DateOnly to, CancellationToken cancellationToken);
+    Task<FeedbackDashboardSourceData> GetFeedbackDashboardStatisticsAsync(DateOnly from, DateOnly to, CancellationToken cancellationToken);
 }
 
-/// <summary>
-/// Gọi admin endpoint của các service nguồn (User/Interview/Feedback/Payment) QUA ApiGateway
-/// để lấy số liệu tổng hợp. KHÔNG join DB chéo (đúng tinh thần microservice). Đính JWT role=Admin
-/// tự ký cho các endpoint cần [Authorize] (gateway forward nguyên header Authorization);
-/// PaymentAPI /admin/payments/* không cần auth nhưng đính token cũng vô hại.
-/// Named HttpClient "gateway" set BaseAddress (:7000) + UseProxy=false ở Program.cs.
-/// </summary>
 public sealed class SourceMetricsClient(
     IHttpClientFactory httpClientFactory,
     IServiceTokenFactory tokenFactory) : ISourceMetricsClient
@@ -35,82 +53,138 @@ public sealed class SourceMetricsClient(
     private string? _token;
     private string Token => _token ??= tokenFactory.CreateAdminToken();
 
-    public async Task<long> GetUserCountAsync(DateTime? createdFrom, DateTime? createdTo, string? status, CancellationToken ct)
+    public async Task<CandidateStatisticsSourceData> GetCandidateStatisticsAsync(
+        DateOnly from,
+        DateOnly to,
+        CancellationToken cancellationToken)
     {
-        var qs = new List<string> { "Page=1", "PageSize=1" };
-        if (createdFrom.HasValue) qs.Add("CreatedFrom=" + Iso(createdFrom.Value));
-        if (createdTo.HasValue) qs.Add("CreatedTo=" + Iso(createdTo.Value));
-        if (!string.IsNullOrWhiteSpace(status)) qs.Add("Status=" + Uri.EscapeDataString(status));
-
-        using var doc = await GetJsonAsync("api/admin/users?" + string.Join("&", qs), ct);
-        return doc.RootElement.GetProperty("data").GetProperty("totalCount").GetInt64();
+        var envelope = await GetAsync<SourceEnvelope<CandidateStatisticsSourceData>>(
+            $"api/admin/users/statistics/candidates?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}",
+            cancellationToken);
+        var data = envelope.Success ? envelope.Data : null;
+        ValidateRange(data?.From, data?.To, from, to, data?.Days.Select(day => day.Date), "candidate");
+        if (data is null || data.TotalCandidates < 0 || data.Days.Any(day => day.Count < 0))
+            throw new InvalidOperationException("Candidate statistics response is invalid.");
+        return data;
     }
 
-    public async Task<long> GetInterviewCountAsync(DateTime? from, DateTime? to, string? status, bool includeDeleted, CancellationToken ct)
+    public async Task<InterviewDashboardSourceData> GetInterviewDashboardStatisticsAsync(
+        DateOnly from,
+        DateOnly to,
+        CancellationToken cancellationToken)
     {
-        var qs = new List<string> { "page=1", "pageSize=1" };
-        if (!string.IsNullOrWhiteSpace(status)) qs.Add("status=" + Uri.EscapeDataString(status));
-        if (from.HasValue) qs.Add("dateFrom=" + Iso(from.Value));
-        if (to.HasValue) qs.Add("dateTo=" + Iso(to.Value));
-        if (includeDeleted) qs.Add("includeDeleted=true");
-
-        using var doc = await GetJsonAsync("api/admin/interviews?" + string.Join("&", qs), ct);
-        return doc.RootElement.GetProperty("data").GetProperty("totalItems").GetInt64();
-    }
-
-    public async Task<long> GetFeedbackCountAsync(string kind, DateTime? from, DateTime? to, CancellationToken ct)
-    {
-        var qs = new List<string> { "page=1", "pageSize=1" };
-        if (from.HasValue) qs.Add("dateFrom=" + Iso(from.Value));
-        if (to.HasValue) qs.Add("dateTo=" + Iso(to.Value));
-
-        using var doc = await GetJsonAsync($"api/admin/feedbacks/{kind}?" + string.Join("&", qs), ct);
-        return doc.RootElement.GetProperty("data").GetProperty("totalItems").GetInt64();
-    }
-
-    public async Task<RevenueDailyData> GetRevenueDailyAsync(DateOnly from, DateOnly to, CancellationToken ct)
-    {
-        // Qua gateway: route /api/payment/* strip prefix -> PaymentAPI nhận /admin/payments/...
-        var url = $"api/payment/admin/payments/revenue-daily?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}";
-        using var doc = await GetJsonAsync(url, ct);
-        var root = doc.RootElement;
-
-        var byDay = new Dictionary<DateOnly, (decimal, int)>();
-        if (root.TryGetProperty("days", out var days) && days.ValueKind == JsonValueKind.Array)
+        var envelope = await GetAsync<SourceEnvelope<InterviewDashboardSourceData>>(
+            $"api/admin/interviews/statistics/dashboard?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}",
+            cancellationToken);
+        var data = envelope.Success ? envelope.Data : null;
+        ValidateRange(data?.From, data?.To, from, to, data?.Days.Select(day => day.Date), "interview");
+        if (data is null ||
+            data.TotalInterviewSessions < 0 ||
+            data.CompletedInterviewSessions < 0 ||
+            data.CompletedInterviewSessions > data.TotalInterviewSessions ||
+            data.Days.Any(day => day.Count < 0))
         {
-            foreach (var d in days.EnumerateArray())
-            {
-                var date = DateOnly.FromDateTime(d.GetProperty("date").GetDateTime());
-                var rev = d.GetProperty("revenue").GetDecimal();
-                var ord = d.GetProperty("orders").GetInt32();
-                byDay[date] = (rev, ord);
-            }
+            throw new InvalidOperationException("Interview statistics response is invalid.");
         }
 
-        return new RevenueDailyData(
-            root.GetProperty("totalRevenue").GetDecimal(),
-            root.GetProperty("totalOrders").GetInt32(),
-            byDay);
+        return data;
     }
 
-    public async Task<decimal> GetRevenueReportTotalAsync(string period, CancellationToken ct)
+    public async Task<RevenueDailySourceData> GetRevenueDailyAsync(
+        DateOnly from,
+        DateOnly to,
+        CancellationToken cancellationToken)
     {
-        using var doc = await GetJsonAsync($"api/payment/admin/payments/revenue-report?period={Uri.EscapeDataString(period)}", ct);
-        return doc.RootElement.GetProperty("totalRevenue").GetDecimal();
+        var data = await GetAsync<RevenueDailySourceData>(
+            $"api/payment/admin/payments/revenue-daily?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}",
+            cancellationToken);
+        ValidateRange(data?.From, data?.To, from, to, data?.Days.Select(day => day.Date), "payment");
+        if (data is null ||
+            data.TotalRevenue < 0 ||
+            data.TotalOrders < 0 ||
+            data.Days.Any(day => day.Revenue < 0 || day.Orders < 0))
+        {
+            throw new InvalidOperationException("Payment statistics response is invalid.");
+        }
+
+        if (data.TotalRevenue != data.Days.Sum(day => day.Revenue) ||
+            data.TotalOrders != data.Days.Sum(day => day.Orders))
+        {
+            throw new InvalidOperationException("Payment statistics totals are inconsistent.");
+        }
+
+        return data;
     }
 
-    // --- helpers ---------------------------------------------------------------
+    public async Task<FeedbackDashboardSourceData> GetFeedbackDashboardStatisticsAsync(
+        DateOnly from,
+        DateOnly to,
+        CancellationToken cancellationToken)
+    {
+        var envelope = await GetAsync<SourceEnvelope<FeedbackDashboardSourceData>>(
+            $"api/admin/feedbacks/statistics/dashboard?from={from:yyyy-MM-dd}&to={to:yyyy-MM-dd}",
+            cancellationToken);
+        var data = envelope.Success ? envelope.Data : null;
+        ValidateRange(data?.From, data?.To, from, to, data?.Days.Select(day => day.Date), "feedback");
+        if (data is null ||
+            data.AllTimeSystemFeedbacks < 0 ||
+            data.AllTimeInterviewFeedbacks < 0 ||
+            data.AllTimeTotalFeedbacks < 0 ||
+            data.AllTimeTotalFeedbacks != data.AllTimeSystemFeedbacks + data.AllTimeInterviewFeedbacks ||
+            data.Days.Any(day =>
+                day.SystemFeedbacks < 0 ||
+                day.InterviewFeedbacks < 0 ||
+                day.TotalFeedbacks < 0 ||
+                day.TotalFeedbacks != day.SystemFeedbacks + day.InterviewFeedbacks))
+        {
+            throw new InvalidOperationException("Feedback statistics response is invalid.");
+        }
 
-    private async Task<JsonDocument> GetJsonAsync(string relativeUrl, CancellationToken ct)
+        return data;
+    }
+
+    private static void ValidateRange(
+        DateOnly? actualFrom,
+        DateOnly? actualTo,
+        DateOnly expectedFrom,
+        DateOnly expectedTo,
+        IEnumerable<DateOnly>? dates,
+        string sourceName)
+    {
+        var expectedDays = expectedTo.DayNumber - expectedFrom.DayNumber + 1;
+        var dateList = dates?.ToList();
+        var actualDates = dateList?.ToHashSet();
+        if (actualFrom != expectedFrom ||
+            actualTo != expectedTo ||
+            dateList?.Count != expectedDays ||
+            actualDates is null ||
+            actualDates.Count != expectedDays)
+        {
+            throw new InvalidOperationException($"{sourceName} statistics range is incomplete.");
+        }
+
+        for (var date = expectedFrom; date <= expectedTo; date = date.AddDays(1))
+        {
+            if (!actualDates.Contains(date))
+                throw new InvalidOperationException($"{sourceName} statistics range is incomplete.");
+        }
+    }
+
+    private async Task<T> GetAsync<T>(string relativeUrl, CancellationToken cancellationToken)
     {
         var client = httpClientFactory.CreateClient("gateway");
-        using var req = new HttpRequestMessage(HttpMethod.Get, relativeUrl);
-        req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Token);
-        using var resp = await client.SendAsync(req, ct);
-        resp.EnsureSuccessStatusCode();
-        var stream = await resp.Content.ReadAsStreamAsync(ct);
-        return await JsonDocument.ParseAsync(stream, cancellationToken: ct);
+        using var request = new HttpRequestMessage(HttpMethod.Get, relativeUrl);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Token);
+        using var response = await client.SendAsync(request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        var data = await response.Content.ReadFromJsonAsync<T>(Json, cancellationToken);
+        return data ?? throw new JsonException("Statistics source returned an empty response.");
     }
 
-    private static string Iso(DateTime dt) => Uri.EscapeDataString(dt.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture));
+    private sealed class SourceEnvelope<T>
+    {
+        public bool Success { get; set; }
+        public T? Data { get; set; }
+    }
 }

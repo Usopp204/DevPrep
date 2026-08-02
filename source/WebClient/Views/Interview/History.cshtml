@@ -119,7 +119,6 @@
                     @foreach (var session in Model.Sessions.Items)
                     {
                         var detailsUrl = Url.Action("Details", "Interview", new { id = session.SessionId });
-                        var reportUrl = Url.Action("Report", "Evaluation", new { sessionId = session.SessionId });
                         var questionTypeDisplay = string.IsNullOrWhiteSpace(session.QuestionType) ? "Not specified" : session.QuestionType;
                         <article class="history-row" data-href="@detailsUrl">
                             <a class="history-row-main" href="@detailsUrl">
@@ -143,12 +142,6 @@
                                    aria-label="View Details"
                                    title="View Details">
                                     <span class="material-symbols-outlined history-action-icon" aria-hidden="true">visibility</span>
-                                </a>
-                                <a class="history-action-btn history-icon-action history-report-btn"
-                                   href="@reportUrl"
-                                   aria-label="View Evaluation Report"
-                                   title="View Evaluation Report">
-                                    <span class="material-symbols-outlined history-action-icon" aria-hidden="true">assessment</span>
                                 </a>
                                 <form method="post" asp-controller="Interview" asp-action="DeleteSession" asp-route-id="@session.SessionId" onsubmit="return confirm('Remove this session from your history?');">
                                     @Html.AntiForgeryToken()

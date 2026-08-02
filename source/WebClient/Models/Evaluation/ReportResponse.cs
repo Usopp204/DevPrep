@@ -9,8 +9,8 @@ public class ReportResponse
     public decimal? CommunicationScore { get; set; }
     public decimal? ProblemSolvingScore { get; set; }
     public string? Summary { get; set; }
-    public string? Strengths { get; set; }
-    public string? Improvements { get; set; }
+    public List<string> Strengths { get; set; } = new();
+    public List<string> Improvements { get; set; } = new();
     public string? Recommendations { get; set; }
     public string? Grade { get; set; }
 }

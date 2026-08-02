@@ -218,13 +218,12 @@ public class InterviewController(
 
         if (!ActiveRoomStatuses.Contains(room.Status))
         {
-            // ReportInfoMessage (not the shared InfoMessage key) — nothing at the Evaluation/
-            // Report destination used to read InfoMessage, so it sat unread in TempData and
-            // could surface later on an unrelated page reached right after (see report).
+            var eligibility = await interviewService.GetSessionFeedbackEligibilityAsync(id, cancellationToken);
             TempData["ReportInfoMessage"] = "This interview has already ended.";
-            return RedirectToAction("Report", "Evaluation", new { sessionId = id, durationActualSec = 0 });
+            return eligibility.Success && eligibility.Data?.CanGeneratePerformanceReport == true
+                ? RedirectToAction("Report", "Evaluation", new { sessionId = id, durationActualSec = 0 })
+                : RedirectToAction(nameof(Details), new { id });
         }
-
         // Entry gate guard: typing the Room URL directly cannot skip the Verify screen.
         // (InterviewAPI additionally blocks question serving server-side without a passed check.)
         // Fail-CLOSED: if the entry-gate check itself fails, do not open the Room — the
@@ -648,7 +647,7 @@ public class InterviewController(
             return BadRequest(new { error = error ?? "Could not complete the session." });
         }
 
-        return Json(new { status = completion.Status });
+        return Json(completion);
     }
 
     [HttpPost]
@@ -661,7 +660,7 @@ public class InterviewController(
             return BadRequest(new { error = error ?? "Could not cancel the session." });
         }
 
-        return Json(new { status = cancellation.Status });
+        return Json(cancellation);
     }
 
     [HttpPost]

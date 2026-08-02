@@ -63,8 +63,26 @@ public class SessionService : ISessionService
     private static bool IsTerminalStatus(string status) =>
         status is "Completed" or "Cancelled" or "Expired";
 
-    private static bool CanGeneratePerformanceReport(string status, bool hasSubstantiveAnswer) =>
-        status == "Completed" || (status == "Cancelled" && hasSubstantiveAnswer);
+    private async Task<EndResponse> BuildEndResponseAsync(
+        InterviewSession session,
+        CancellationToken ct,
+        string message = "")
+    {
+        var hasSubstantiveAnswer = await _repo.HasSubstantiveAnswerAsync(session.SessionId, ct);
+        var capabilities = SessionCapabilityPolicy.Evaluate(
+            session.Status,
+            session.TerminationReason,
+            hasSubstantiveAnswer);
+        return new EndResponse
+        {
+            Status = session.Status,
+            EndedAt = session.EndedAt,
+            TerminationReason = session.TerminationReason,
+            CanGeneratePerformanceReport = capabilities.CanGeneratePerformanceReport,
+            CanSubmitInterviewFeedback = capabilities.CanSubmitInterviewFeedback,
+            Message = message
+        };
+    }
 
     // Idle-reminder / auto-advance thresholds (seconds since AskedAt), by question difficulty.
     // NOTE: SessionQuestion has no persisted Difficulty column (ai-service's plan-time
@@ -152,6 +170,7 @@ public class SessionService : ISessionService
 
         var hasSubstantiveAnswer = await _repo.HasSubstantiveAnswerAsync(session.SessionId, ct);
         session.Status = hasSubstantiveAnswer ? "Completed" : "Expired";
+        session.TerminationReason = hasSubstantiveAnswer ? null : SessionCapabilityPolicy.TimeExpired;
         session.EndedAt = VietnamTime.Now;
         session.UpdatedAt = VietnamTime.Now;
 
@@ -236,8 +255,16 @@ public class SessionService : ISessionService
         await SettleExpiredVerificationChecksAsync(session, ct);
         if (session.Status != "InProgress")
         {
+            var capabilities = SessionCapabilityPolicy.Evaluate(
+                session.Status,
+                session.TerminationReason,
+                await _repo.HasSubstantiveAnswerAsync(session.SessionId, ct));
             return new InSessionCheckDueResponse
             {
+                Status = session.Status,
+                TerminationReason = session.TerminationReason,
+                CanGeneratePerformanceReport = capabilities.CanGeneratePerformanceReport,
+                CanSubmitInterviewFeedback = capabilities.CanSubmitInterviewFeedback,
                 ShouldEndSession = session.Status == "Cancelled",
                 Message = session.Status == "Cancelled"
                     ? "Maximum cheating warnings reached. This interview has been ended."
@@ -316,6 +343,7 @@ public class SessionService : ISessionService
             return;
 
         session.Status = "Cancelled";
+        session.TerminationReason = SessionCapabilityPolicy.IntegrityViolation;
         session.EndedAt = VietnamTime.Now;
         session.UpdatedAt = VietnamTime.Now;
         var room = await _repo.GetRoomBySessionAsync(session.SessionId, ct);
@@ -913,6 +941,7 @@ public class SessionService : ISessionService
             // Step H: Đã trả lời hết — đóng phiên và phòng phỏng vấn.
             var hasSubstantiveAnswer = await _repo.HasSubstantiveAnswerAsync(sessionId, ct);
             session.Status = hasSubstantiveAnswer ? "Completed" : "Expired";
+            session.TerminationReason = hasSubstantiveAnswer ? null : SessionCapabilityPolicy.TimeExpired;
             session.EndedAt = VietnamTime.Now;
             session.UpdatedAt = VietnamTime.Now;
 
@@ -928,9 +957,16 @@ public class SessionService : ISessionService
                 await _repo.SaveChangesAsync(ct); // chỉ lưu session
             }
 
+            var capabilities = SessionCapabilityPolicy.Evaluate(
+                session.Status, session.TerminationReason, hasSubstantiveAnswer);
             return new MessageResponse
             {
                 Ended = true,
+                Status = session.Status,
+                TerminationReason = session.TerminationReason,
+                CanGeneratePerformanceReport = capabilities.CanGeneratePerformanceReport,
+                CanSubmitInterviewFeedback = capabilities.CanSubmitInterviewFeedback,
+                Message = "This interview has ended.",
                 NextQuestion = null,
                 // Same reasoning as the Step G response above: session.AnsweredQuestions is the
                 // pre-claim Step A snapshot (ExecuteUpdateAsync never refreshes it), so the
@@ -975,12 +1011,23 @@ public class SessionService : ISessionService
 
         if (nextQuestion is null)
         {
+            if (session is null)
+                return new MessageResponse { Ended = true, Message = "This interview has ended." };
+
+            var hasSubstantiveAnswer = await _repo.HasSubstantiveAnswerAsync(sessionId, ct);
+            var capabilities = SessionCapabilityPolicy.Evaluate(
+                session.Status, session.TerminationReason, hasSubstantiveAnswer);
             return new MessageResponse
             {
                 Ended = true,
+                Status = session.Status,
+                TerminationReason = session.TerminationReason,
+                CanGeneratePerformanceReport = capabilities.CanGeneratePerformanceReport,
+                CanSubmitInterviewFeedback = capabilities.CanSubmitInterviewFeedback,
+                Message = "This interview has ended.",
                 NextQuestion = null,
-                AnsweredQuestions = session?.AnsweredQuestions ?? 0,
-                TotalQuestions = session?.TotalQuestions ?? 0
+                AnsweredQuestions = session.AnsweredQuestions,
+                TotalQuestions = session.TotalQuestions
             };
         }
 
@@ -1104,7 +1151,7 @@ public class SessionService : ISessionService
         if (session is null || session.UserId != userId)
             throw new InvalidOperationException("Session not found.");
         if (IsTerminalStatus(session.Status))
-            return new EndResponse { Status = session.Status, EndedAt = session.EndedAt };
+            return await BuildEndResponseAsync(session, ct);
         if (session.Status != "InProgress")
             throw new InvalidOperationException("Session cannot complete from its current state.");
 
@@ -1116,11 +1163,10 @@ public class SessionService : ISessionService
 
         var room = await _repo.GetRoomBySessionAsync(sessionId, ct);
         var hasSubstantiveAnswer = await _repo.HasSubstantiveAnswerAsync(sessionId, ct);
-        var candidateWasActiveAtDeadline = hasSubstantiveAnswer &&
-                                           string.Equals(room?.Status, "Active", StringComparison.OrdinalIgnoreCase);
-        session.Status = candidateWasActiveAtDeadline
-            ? "Completed"
-            : "Expired";
+        session.Status = hasSubstantiveAnswer ? "Completed" : "Expired";
+        session.TerminationReason = hasSubstantiveAnswer
+            ? null
+            : SessionCapabilityPolicy.TimeExpired;
         session.EndedAt = VietnamTime.Now;
         session.UpdatedAt = session.EndedAt.Value;
 
@@ -1135,7 +1181,7 @@ public class SessionService : ISessionService
             await _repo.SaveChangesAsync(ct);
         }
 
-        return new EndResponse { Status = session.Status, EndedAt = session.EndedAt };
+        return await BuildEndResponseAsync(session, ct, "This interview has ended.");
     }
 
     public async Task<EndResponse> EndSessionAsync(Guid userId, Guid sessionId, CancellationToken ct)
@@ -1144,11 +1190,12 @@ public class SessionService : ISessionService
         if (session is null || session.UserId != userId)
             throw new InvalidOperationException("Session not found.");
         if (IsTerminalStatus(session.Status))
-            return new EndResponse { Status = session.Status, EndedAt = session.EndedAt };
+            return await BuildEndResponseAsync(session, ct);
         if (session.Status is not ("Initialized" or "InProgress" or "Paused"))
             throw new InvalidOperationException("Session cannot be cancelled from its current state.");
 
         session.Status = "Cancelled";
+        session.TerminationReason = SessionCapabilityPolicy.CandidateCancelled;
 
         session.EndedAt = VietnamTime.Now;
         session.UpdatedAt = VietnamTime.Now;
@@ -1165,7 +1212,7 @@ public class SessionService : ISessionService
             await _repo.SaveChangesAsync(ct);
         }
 
-        return new EndResponse { Status = session.Status, EndedAt = session.EndedAt };
+        return await BuildEndResponseAsync(session, ct, "This interview has been cancelled.");
     }
 
     public async Task<PauseResponse> PauseSessionAsync(Guid userId, Guid sessionId, CancellationToken ct)
@@ -1283,6 +1330,7 @@ public class SessionService : ISessionService
         if (shouldEndSession)
         {
             session.Status = "Cancelled";
+            session.TerminationReason = SessionCapabilityPolicy.IntegrityViolation;
             session.EndedAt = VietnamTime.Now;
             session.UpdatedAt = VietnamTime.Now;
 
@@ -1302,8 +1350,16 @@ public class SessionService : ISessionService
                       "This interview has been ended.";
         }
 
+        var capabilities = SessionCapabilityPolicy.Evaluate(
+            session.Status,
+            session.TerminationReason,
+            await _repo.HasSubstantiveAnswerAsync(session.SessionId, ct));
         return new ReportCameraViolationResponse
         {
+            Status = session.Status,
+            TerminationReason = session.TerminationReason,
+            CanGeneratePerformanceReport = capabilities.CanGeneratePerformanceReport,
+            CanSubmitInterviewFeedback = capabilities.CanSubmitInterviewFeedback,
             CameraViolationCount = count,
             StrikeCount = displayStrikeCount,
             MaxStrikes = maxStrikes,
@@ -1590,13 +1646,18 @@ public class SessionService : ISessionService
 
         var hasSubstantiveAnswer = await _repo.HasSubstantiveAnswerAsync(session.SessionId, ct);
 
+        var capabilities = SessionCapabilityPolicy.Evaluate(
+            session.Status,
+            session.TerminationReason,
+            hasSubstantiveAnswer);
         return new SessionFeedbackEligibilityResponse
         {
             SessionId = session.SessionId,
             Status = session.Status,
+            TerminationReason = session.TerminationReason,
             HasSubstantiveAnswer = hasSubstantiveAnswer,
-            CanSubmitInterviewFeedback = IsTerminalStatus(session.Status),
-            CanGeneratePerformanceReport = CanGeneratePerformanceReport(session.Status, hasSubstantiveAnswer)
+            CanSubmitInterviewFeedback = capabilities.CanSubmitInterviewFeedback,
+            CanGeneratePerformanceReport = capabilities.CanGeneratePerformanceReport
         };
     }
 
@@ -1649,9 +1710,11 @@ public class SessionService : ISessionService
             Position = session.Position,
             Level = session.Level,
             Status = session.Status,
+            TerminationReason = session.TerminationReason,
             DurationMinutes = session.DurationMinutes,
             StartedAt = session.StartedAt,
             EndedAt = session.EndedAt,
+            TotalPausedSeconds = session.TotalPausedSeconds,
             TotalQuestions = session.TotalQuestions,
             AnsweredQuestions = session.AnsweredQuestions,
             Questions = questions,

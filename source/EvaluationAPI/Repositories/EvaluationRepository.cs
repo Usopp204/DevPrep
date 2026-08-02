@@ -2,6 +2,7 @@ using EvaluationAPI.Data;
 using EvaluationAPI.Models;
 using EvaluationAPI.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using System.Data;
 
 namespace EvaluationAPI.Repositories;
 
@@ -38,6 +39,31 @@ public class EvaluationRepository : IEvaluationRepository
         _db.FeedbackReports
             .AsNoTracking()
             .FirstOrDefaultAsync(r => r.SessionId == sessionId, ct);
+
+    public async Task<FeedbackReport> CreateReportWithMetricsAsync(
+        FeedbackReport report,
+        IReadOnlyCollection<PerformanceMetric> metrics,
+        CancellationToken ct)
+    {
+        await using var transaction = await _db.Database.BeginTransactionAsync(
+            IsolationLevel.Serializable,
+            ct);
+
+        var existing = await _db.FeedbackReports
+            .AsNoTracking()
+            .FirstOrDefaultAsync(item => item.SessionId == report.SessionId, ct);
+        if (existing is not null)
+        {
+            await transaction.CommitAsync(ct);
+            return existing;
+        }
+
+        _db.FeedbackReports.Add(report);
+        _db.PerformanceMetrics.AddRange(metrics);
+        await _db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
+        return report;
+    }
 
     public async Task UpdateReportAggregateAsync(
         Guid reportId,

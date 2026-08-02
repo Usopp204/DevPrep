@@ -2,6 +2,7 @@ using Microsoft.Extensions.Options;
 using WebClient.Services.Admin;
 using WebClient.Services.Auth;
 using WebClient.Services.CvJd;
+using WebClient.Services.Dashboard;
 using WebClient.Services.Evaluation;
 using WebClient.Services.Feedback;
 using WebClient.Services.Home;
@@ -55,9 +56,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAnnouncementService, AnnouncementService>();
         services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<IAdminService, AdminService>();
-        services.AddScoped<IAdminDashboardService, AdminDashboardService>();
         services.AddScoped<IManagerService, ManagerService>();
-        services.AddScoped<IManagerDashboardService, ManagerDashboardService>();
+        services.AddScoped<IManagementDashboardService, ManagementDashboardService>();
         services.AddScoped<IManagerQuestionService, ManagerQuestionService>();
         services.AddScoped<IManagerTechStackService, ManagerTechStackService>();
         services.AddScoped<IManagerUserService, ManagerUserService>();

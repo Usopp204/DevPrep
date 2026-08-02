@@ -27,6 +27,7 @@ body.dashboard-page {
     width: 260px;
     height: calc(100vh - var(--interview-header-height));
     max-height: calc(100vh - var(--interview-header-height));
+    min-height: 0;
     padding: 24px 16px;
     display: flex;
     flex-direction: column;
@@ -39,6 +40,7 @@ body.dashboard-page {
     font-size: var(--text-body-md-size);
     line-height: var(--text-body-md-line);
     color: var(--color-on-surface);
+    overflow: hidden;
 }
 
 .dash-brand {
@@ -140,6 +142,11 @@ body.dashboard-page {
     scrollbar-color: transparent transparent;
 }
 
+.dash-session-list.is-capacity-measured {
+    flex: 0 0 var(--dash-recent-list-height);
+    height: var(--dash-recent-list-height);
+}
+
 .dash-session-list:hover,
 .dash-session-list:focus-within {
     scrollbar-color: rgba(196, 192, 255, 0.28) transparent;
@@ -160,7 +167,11 @@ body.dashboard-page {
 }
 
 .dash-session-item {
+    height: 56px;
+    min-height: 56px;
+    flex: 0 0 56px;
     display: flex;
+    overflow: hidden;
     flex-direction: column;
     gap: 2px;
     padding: 8px 16px;
@@ -184,6 +195,7 @@ body.dashboard-page {
 
 .dash-session-title {
     font-size: 14px;
+    line-height: 18px;
     font-weight: 500;
     color: var(--color-on-surface);
     white-space: nowrap;
@@ -193,7 +205,11 @@ body.dashboard-page {
 
 .dash-session-meta {
     font-size: 12px;
+    line-height: 16px;
     color: var(--color-on-surface-variant);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .dash-sidebar-empty {
@@ -209,34 +225,6 @@ body.dashboard-page {
     color: var(--color-on-surface-variant);
 }
 
-.dash-sidebar-spacer {
-    display: none;
-}
-
-.dash-sidebar-footer {
-    flex-shrink: 0;
-    margin-top: auto;
-    padding-top: 16px;
-    border-top: 1px solid rgba(70, 69, 85, 0.3);
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.dash-sidebar-footer .dash-footer-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
-    border-radius: var(--radius-lg);
-    color: var(--color-on-surface-variant);
-    text-decoration: none;
-}
-
-.dash-sidebar-footer .dash-footer-item:hover {
-    background: rgba(42, 41, 47, 0.5);
-    color: var(--color-on-surface);
-}
 
 /* ---- Primary gradient button (from the mockup .btn-primary) ---- */
 .btn-gradient {

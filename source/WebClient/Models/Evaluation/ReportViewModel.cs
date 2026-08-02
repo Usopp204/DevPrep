@@ -18,6 +18,7 @@ public class ReportViewModel
     public string? Position { get; set; }
     public string Level { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
+    public string? TerminationReason { get; set; }
     public EvaluationReportState DisplayState { get; set; }
     public string StateTitle { get; set; } = string.Empty;
     public string StateMessage { get; set; } = string.Empty;

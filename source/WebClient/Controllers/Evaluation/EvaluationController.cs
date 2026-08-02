@@ -38,6 +38,13 @@ public class EvaluationController(
             return RedirectToAction("Index", "Interview");
         }
 
+        if (string.Equals(report.TerminationReason, "IntegrityViolation", StringComparison.Ordinal))
+        {
+            TempData["ReportInfoMessage"] =
+                "A performance report is not available because this interview ended after an integrity-policy violation. You can still review the session details and submit Interview Feedback.";
+            return RedirectToAction("Details", "Interview", new { id = sessionId });
+        }
+
         report.FeedbackForm.SessionId = sessionId;
         report.FeedbackMessage = TempData["FeedbackMessage"] as string;
         report.FeedbackValidationMessage = TempData[FeedbackTempDataKeys.InterviewValidation] as string;

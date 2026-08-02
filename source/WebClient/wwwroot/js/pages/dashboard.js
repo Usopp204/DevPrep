@@ -123,6 +123,7 @@
         Array.from(list.querySelectorAll("[data-session-id]"), (item) => item.dataset.sessionId)
     );
     let currentSessionId = list.dataset.currentSessionId || "";
+    let capacityFrame = 0;
 
     function applyActiveSession() {
         list.querySelectorAll("[data-session-id]").forEach((item) => {
@@ -168,9 +169,42 @@
         list.appendChild(link);
     }
 
+    function measureCompleteItemCapacity() {
+        const firstItem = list.querySelector(".dash-session-item");
+        if (!firstItem) return;
+
+        list.classList.remove("is-capacity-measured");
+        list.style.removeProperty("--dash-recent-list-height");
+
+        const availableHeight = list.clientHeight;
+        const itemHeight = firstItem.getBoundingClientRect().height;
+        const styles = window.getComputedStyle(list);
+        const gap = Number.parseFloat(styles.rowGap || styles.gap) || 0;
+        const itemPitch = itemHeight + gap;
+        if (availableHeight <= 0 || itemHeight <= 0 || itemPitch <= 0) return;
+
+        const capacity = Math.floor((availableHeight + gap) / itemPitch);
+        const completeHeight = capacity > 0
+            ? (capacity * itemHeight) + ((capacity - 1) * gap)
+            : 0;
+
+        list.style.setProperty("--dash-recent-list-height", `${completeHeight}px`);
+        list.classList.add("is-capacity-measured");
+    }
+
+    function scheduleCapacityCheck() {
+        if (capacityFrame) window.cancelAnimationFrame(capacityFrame);
+        capacityFrame = window.requestAnimationFrame(() => {
+            capacityFrame = 0;
+            measureCompleteItemCapacity();
+            if (hasMore && list.scrollHeight <= list.clientHeight + 1) loadMore();
+        });
+    }
+
     async function loadMore() {
         if (loading || !hasMore) return;
         loading = true;
+        let pageLoaded = false;
         setState("Loading more sessions...", "loading");
 
         try {
@@ -188,10 +222,12 @@
             list.dataset.nextPage = String(nextPage);
             list.dataset.hasMore = hasMore ? "true" : "false";
             setState(hasMore ? "" : "All recent sessions loaded.", hasMore ? "" : "done");
+            pageLoaded = true;
         } catch (error) {
             setState("Could not load more sessions.", "error");
         } finally {
             loading = false;
+            if (pageLoaded) scheduleCapacityCheck();
         }
     }
 
@@ -203,6 +239,10 @@
     const activeStateObserver = new MutationObserver(applyActiveSession);
     activeStateObserver.observe(list, { childList: true, subtree: true });
     applyActiveSession();
+    scheduleCapacityCheck();
+
+    window.addEventListener("resize", scheduleCapacityCheck, { passive: true });
+    if (document.fonts?.ready) document.fonts.ready.then(scheduleCapacityCheck);
 
     list.addEventListener("scroll", () => {
         const nearBottom = list.scrollTop + list.clientHeight >= list.scrollHeight - 24;
