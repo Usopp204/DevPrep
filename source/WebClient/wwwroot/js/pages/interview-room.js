@@ -40,6 +40,15 @@
     let idleTier = 0; // 0 = none shown, 1 = reminder shown, 2 = warning+countdown shown
     const TIER2_LEAD_SECONDS = 20;
 
+    // Safety bound (NOT a UX feature) against a stuck MediaRecorder: while recording, tickIdle()
+    // freezes idleSeconds instead of advancing it (see tickIdle below), but if "recording" never
+    // ends (mic error, stream dies without firing onstop, user never clicks stop), that freeze
+    // would be unbounded and auto-advance could never fire again. Once this many consecutive
+    // seconds of recording-freeze have elapsed, tickIdle stops freezing and resumes counting even
+    // though mediaRecorder.state is still "recording".
+    const RECORDING_FREEZE_CAP_SECONDS = 180;
+    let recordingFreezeSeconds = 0;
+
     // Reentrancy guard for autoAdvance(): unlike sendAnswer/skipQuestion (locked by disabling the
     // button that triggers them), autoAdvance is fired by tickIdle() on a recurring 1s timer, which
     // keeps calling it every tick until idleSeconds resets — and that reset only happens once THIS
@@ -73,6 +82,18 @@
 
     const startedAtMs = Date.now();
     let ended = !isActive;
+
+    function buildReportUrl() {
+        const query = new URLSearchParams({
+            sessionId: root.dataset.sessionId,
+            durationActualSec: Math.max(0, Math.round((Date.now() - startedAtMs) / 1000)).toString()
+        });
+        return `${reportUrl}?${query.toString()}`;
+    }
+
+    function isTerminalStatus(status) {
+        return status === "Completed" || status === "Cancelled" || status === "Expired";
+    }
 
     const chatEl = document.getElementById("chat-messages");
     const inputEl = document.getElementById("answer-input");
@@ -362,7 +383,7 @@
             {
                 element: "#cancel-interview-btn",                popover: {
                     title: "Cancel the Interview",
-                    description: "Cancelling ends the session without an evaluation report or interview feedback."
+                    description: "Cancelling ends the session immediately. Submitted answers may still be evaluated, and Interview Feedback remains available."
                 }
             }
         ];
@@ -483,6 +504,18 @@
 
     function tickIdle() {
         if (ended || !currentQuestionId) return;
+
+        if (mediaRecorder && mediaRecorder.state === "recording") {
+            if (recordingFreezeSeconds < RECORDING_FREEZE_CAP_SECONDS) {
+                recordingFreezeSeconds += 1;
+                return; // frozen: recording counts as answering, not idling
+            }
+            // Cap reached — a recorder stuck at "recording" must not freeze idle tracking forever.
+            // Fall through and resume counting until it actually stops.
+        } else {
+            recordingFreezeSeconds = 0;
+        }
+
         idleSeconds += 1;
 
         if (idleSeconds >= idleHardSeconds) {
@@ -588,11 +621,16 @@
             }
         }, 1000);
 
-        // Rolling reset on any real interaction — keydown/mousemove/click/focus all count.
-        ["keydown", "mousemove", "click"].forEach((evt) =>
-            document.addEventListener(evt, resetIdle, { passive: true })
+        // Rolling reset scoped to real answering activity, not just "touching the computer".
+        // keydown covers typing; input covers paste/IME composition/mobile input (neither reliably
+        // fires keydown); click is narrowed to the controls involved in answering, not the whole
+        // document. mousemove and window focus no longer count — see tickIdle for the recording
+        // freeze that covers voice answers instead.
+        document.addEventListener("keydown", resetIdle, { passive: true });
+        inputEl?.addEventListener("input", resetIdle, { passive: true });
+        [inputEl, micBtn, hintBtn, sendBtn].forEach((el) =>
+            el?.addEventListener("click", resetIdle, { passive: true })
         );
-        window.addEventListener("focus", resetIdle);
     }
 
     function disableLifecycleControls() {
@@ -623,8 +661,8 @@
         if (!cancelInterviewDialog || typeof cancelInterviewDialog.showModal !== "function") {
             // Kept in sync with #cancel-interview-description in Room.cshtml — this is the
             // fallback for browsers without <dialog> support, same warning either way.
-            const warning = "Your current interview will be cancelled. " +
-                "You will not receive an evaluation report, and you will not be able to submit interview feedback. " +
+            const warning = "Cancelling ends this session immediately. " +
+                "Any answers already submitted may still be evaluated, and you can still submit Interview Feedback. " +
                 "Credit already spent on this interview will not be refunded.";
             if (window.confirm(`Cancel this interview?\n\n${warning}`)) cancelInterview();
             return;
@@ -688,10 +726,7 @@
         } else {
             await new Promise((resolve) => setTimeout(resolve, 2500));
         }
-        const elapsedSeconds = Math.round((Date.now() - startedAtMs) / 1000);
-        window.location.href = completed
-            ? `${reportUrl}?sessionId=${root.dataset.sessionId}&durationActualSec=${elapsedSeconds}`
-            : detailsUrl;
+        window.location.href = isTerminalStatus(completion.status) ? buildReportUrl() : detailsUrl;
     }
 
     async function cancelInterview() {
@@ -1096,6 +1131,7 @@
 
             // Fill the box; the user reviews/edits and presses Send (existing message flow).
             inputEl.value = data.text || "";
+            resetIdle(); // programmatic .value assignment fires no "input" event — reset explicitly
             autoResizeInput();
             inputEl.focus();
         } catch (err) {

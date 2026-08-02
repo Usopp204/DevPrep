@@ -14,10 +14,7 @@ public class SystemFeedbackListItemDto
     public byte? UsabilityRating { get; set; }
     public byte? FeatureQualityRating { get; set; }
     public string Status { get; set; } = null!;
-    public string ModerationStatus { get; set; } = null!;
     public bool IsVisible { get; set; }
-    public DateTime? ModeratedAt { get; set; }
-    public Guid? ModeratedBy { get; set; }
     public int ReplyCount { get; set; }
     public bool IsDeleted { get; set; }
     public DateTime CreatedAt { get; set; }

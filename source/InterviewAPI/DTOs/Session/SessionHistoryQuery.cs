@@ -8,6 +8,7 @@ public class SessionHistoryQuery
     public DateOnly? DateFrom { get; set; }
     public DateOnly? DateTo { get; set; }
     public string? Position { get; set; }
+    public string? QuestionType { get; set; }
     public string? Keyword { get; set; }
 }
 
@@ -34,6 +35,7 @@ public static class SessionHistoryQueryNormalizer
             DateFrom = query.DateFrom,
             DateTo = query.DateTo,
             Position = NormalizeText(query.Position),
+            QuestionType = NormalizeText(query.QuestionType),
             Keyword = NormalizeText(query.Keyword)
         };
     }

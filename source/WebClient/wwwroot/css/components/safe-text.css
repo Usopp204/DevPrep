@@ -31,6 +31,10 @@
     cursor: pointer;
 }
 
+.feedback-expand-toggle[hidden] {
+    display: none;
+}
+
 .feedback-expand-toggle:hover {
     color: #FFFFFF;
 }

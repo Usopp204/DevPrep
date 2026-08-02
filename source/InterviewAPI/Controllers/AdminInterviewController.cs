@@ -23,6 +23,22 @@ public class AdminInterviewController : ControllerBase
         _service = service;
     }
 
+    [HttpGet("statistics/dashboard")]
+    public async Task<IActionResult> GetDashboardStatistics(
+        [FromQuery] DateOnly? from,
+        [FromQuery] DateOnly? to,
+        CancellationToken cancellationToken)
+    {
+        if (!from.HasValue || !to.HasValue || from.Value > to.Value)
+            return BadRequest(ApiResponse<object>.Fail("The From date must be on or before the To date."));
+
+        var inclusiveDays = to.Value.DayNumber - from.Value.DayNumber + 1;
+        if (inclusiveDays > 366)
+            return BadRequest(ApiResponse<object>.Fail("The selected date range must contain no more than 366 days."));
+
+        var result = await _service.GetDashboardStatisticsAsync(from.Value, to.Value, cancellationToken);
+        return Ok(ApiResponse<InterviewDashboardStatisticsDto>.Ok(result));
+    }
     /// <summary>View + Search phiên phỏng vấn. Tất cả tham số lọc đều tuỳ chọn. Sắp xếp mới nhất trước.</summary>
     [HttpGet]
     public async Task<IActionResult> GetList([FromQuery] InterviewQuery query, CancellationToken cancellationToken)

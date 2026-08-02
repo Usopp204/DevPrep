@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using StatisticsAPI.Clients;
 using StatisticsAPI.Data;
@@ -9,134 +10,140 @@ namespace StatisticsAPI.Services;
 
 public interface IStatisticsCollector
 {
-    /// <summary>Tổng hợp lại số liệu từ các service → cập nhật MetricCounters + StatisticsSnapshots.</summary>
-    Task<RebuildResultDto> RunAsync(CancellationToken ct = default);
+    Task<RebuildResultDto> RunAsync(bool waitForAvailability, CancellationToken cancellationToken = default);
 }
 
-/// <summary>
-/// "Rollup job": kéo số liệu từ User/Interview/Feedback/Payment (qua HTTP) rồi ghi vào read-model DevPrep_Statistics.
-/// Best-effort: nhóm nào lỗi thì bỏ qua + ghi warning, không kéo sập cả lần chạy.
-/// Backfill snapshot theo ngày (incremental): chỉ tính ngày còn THIẾU + LUÔN tính lại ngày hôm nay.
-/// </summary>
 public sealed class StatisticsCollector(
     StatisticsDbContext db,
     ISourceMetricsClient source,
-    IStatisticsQueryService queryService,
-    IConfiguration configuration,
+    StatisticsCollectionGate collectionGate,
     ILogger<StatisticsCollector> logger) : IStatisticsCollector
 {
-    public async Task<RebuildResultDto> RunAsync(CancellationToken ct = default)
+    public async Task<RebuildResultDto> RunAsync(
+        bool waitForAvailability,
+        CancellationToken cancellationToken = default)
     {
-        var warnings = new List<string>();
-        var now = VietnamTime.Now;
-        var today = VietnamTime.Today;
-        var monthStart = new DateTime(now.Year, now.Month, 1);
-        var backfillDays = Math.Clamp(configuration.GetValue("Statistics:BackfillDays", 30), 1, 365);
+        using var lease = await collectionGate.EnterAsync(waitForAvailability, cancellationToken);
+        if (lease is null)
+        {
+            return new RebuildResultDto
+            {
+                Busy = true,
+                FinishedAt = VietnamTime.Now,
+                Warnings = ["A statistics collection is already in progress."]
+            };
+        }
 
-        // Lấy doanh thu theo ngày "all-time" 1 lần: vừa ra tổng (counter) vừa map theo ngày (snapshot).
-        RevenueDailyData revenue = new(0m, 0, new());
+        var generationTime = VietnamTime.Now;
+        var to = DateOnly.FromDateTime(generationTime);
+        var from = to.AddDays(-365);
+
         try
         {
-            revenue = await source.GetRevenueDailyAsync(new DateOnly(2000, 1, 1), DateOnly.FromDateTime(today), ct);
-        }
-        catch (Exception ex) { warnings.Add("Payment revenue-daily: " + ex.Message); logger.LogWarning(ex, "revenue-daily failed"); }
+            var candidatesTask = source.GetCandidateStatisticsAsync(from, to, cancellationToken);
+            var interviewsTask = source.GetInterviewDashboardStatisticsAsync(from, to, cancellationToken);
+            var revenueTask = source.GetRevenueDailyAsync(from, to, cancellationToken);
+            var feedbackTask = source.GetFeedbackDashboardStatisticsAsync(from, to, cancellationToken);
+            await Task.WhenAll(candidatesTask, interviewsTask, revenueTask, feedbackTask);
 
-        // ---------- 1) MetricCounters (con số tổng) ----------
-        var counters = await db.MetricCounters.ToDictionaryAsync(c => c.MetricKey, ct);
-        var countersWritten = 0;
+            var candidates = await candidatesTask;
+            var interviews = await interviewsTask;
+            var revenue = await revenueTask;
+            var feedback = await feedbackTask;
 
-        void SetCounter(string key, decimal value)
-        {
-            if (counters.TryGetValue(key, out var c)) { c.MetricValue = value; c.UpdatedAt = now; }
-            else { var n = new MetricCounter { MetricKey = key, MetricValue = value, UpdatedAt = now }; db.MetricCounters.Add(n); counters[key] = n; }
-            countersWritten++;
-        }
+            var candidatesByDay = candidates.Days.ToDictionary(day => day.Date, day => checked((int)day.Count));
+            var interviewsByDay = interviews.Days.ToDictionary(day => day.Date, day => checked((int)day.Count));
+            var revenueByDay = revenue.Days.ToDictionary(day => day.Date);
+            var feedbackByDay = feedback.Days.ToDictionary(day => day.Date, day => checked((int)day.TotalFeedbacks));
 
-        await Safe(warnings, "TotalUsers", async () => SetCounter(MetricKeys.TotalUsers, await source.GetUserCountAsync(null, null, null, ct)));
-        await Safe(warnings, "ActiveUsers", async () => SetCounter(MetricKeys.ActiveUsers, await source.GetUserCountAsync(null, null, "Active", ct)));
-        await Safe(warnings, "NewUsersThisMonth", async () => SetCounter(MetricKeys.NewUsersThisMonth, await source.GetUserCountAsync(monthStart, now, null, ct)));
-        await Safe(warnings, "TotalSessions", async () => SetCounter(MetricKeys.TotalSessions, await source.GetInterviewCountAsync(null, null, null, includeDeleted: true, ct)));
-        await Safe(warnings, "CompletedSessions", async () => SetCounter(MetricKeys.CompletedSessions, await source.GetInterviewCountAsync(null, null, "Completed", includeDeleted: true, ct)));
-        await Safe(warnings, "RevenueThisMonth", async () => SetCounter(MetricKeys.RevenueThisMonth, await source.GetRevenueReportTotalAsync("month", ct)));
-        await Safe(warnings, "TotalFeedbacks", async () =>
-        {
-            var ai = await source.GetFeedbackCountAsync("ai", null, null, ct);
-            var sys = await source.GetFeedbackCountAsync("system", null, null, ct);
-            SetCounter(MetricKeys.TotalFeedbacks, ai + sys);
-        });
-        // Tổng doanh thu + số đơn all-time lấy thẳng từ revenue-daily đã gọi ở trên.
-        SetCounter(MetricKeys.TotalRevenue, revenue.TotalRevenue);
-        SetCounter(MetricKeys.PaidOrders, revenue.TotalOrders);
-
-        // ---------- 2) StatisticsSnapshots (theo ngày) ----------
-        var windowStart = DateOnly.FromDateTime(today).AddDays(-(backfillDays - 1));
-        var todayD = DateOnly.FromDateTime(today);
-
-        var existing = await db.StatisticsSnapshots
-            .Where(s => s.SnapshotDate >= windowStart && s.SnapshotDate <= todayD)
-            .ToDictionaryAsync(s => s.SnapshotDate, ct);
-
-        var snapshotsWritten = 0;
-        for (var d = windowStart; d <= todayD; d = d.AddDays(1))
-        {
-            var isToday = d == todayD;
-            var hasRow = existing.TryGetValue(d, out var row);
-            // Incremental: ngày cũ đã có -> bỏ qua; chỉ tính ngày thiếu + luôn cập nhật hôm nay.
-            if (hasRow && !isToday) continue;
-
+            await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
             try
             {
-                var dayStart = d.ToDateTime(TimeOnly.MinValue);          // 00:00:00
-                var dayEnd = d.ToDateTime(new TimeOnly(23, 59, 59));     // 23:59:59
+                var counters = await db.MetricCounters.ToDictionaryAsync(counter => counter.MetricKey, cancellationToken);
 
-                var newUsers = await source.GetUserCountAsync(dayStart, dayEnd, null, ct);
-                var sessions = await source.GetInterviewCountAsync(dayStart, dayEnd, null, includeDeleted: true, ct);
-                var completed = await source.GetInterviewCountAsync(dayStart, dayEnd, "Completed", includeDeleted: true, ct);
-                var fbAi = await source.GetFeedbackCountAsync("ai", dayStart, dayEnd, ct);
-                var fbSys = await source.GetFeedbackCountAsync("system", dayStart, dayEnd, ct);
-                var (rev, ord) = revenue.ByDay.TryGetValue(d, out var rv) ? rv : (0m, 0);
-
-                if (!hasRow)
+                void SetCounter(string key, decimal value)
                 {
-                    row = new StatisticsSnapshot { SnapshotId = Guid.NewGuid(), SnapshotDate = d, CreatedAt = now };
-                    db.StatisticsSnapshots.Add(row);
+                    if (!counters.TryGetValue(key, out var counter))
+                    {
+                        counter = new MetricCounter { MetricKey = key };
+                        counters.Add(key, counter);
+                        db.MetricCounters.Add(counter);
+                    }
+
+                    counter.MetricValue = value;
+                    counter.UpdatedAt = generationTime;
                 }
-                row!.NewUsers = (int)newUsers;
-                row.ActiveUsers = 0; // chưa có nguồn tái dựng "active theo ngày" lịch sử -> để 0 (nâng cấp sau).
-                row.InterviewSessions = (int)sessions;
-                row.CompletedSessions = (int)completed;
-                row.NewFeedbacks = (int)(fbAi + fbSys);
-                row.Revenue = rev;
-                row.PaidOrders = ord;
-                snapshotsWritten++;
+
+                SetCounter(MetricKeys.DashboardTotalCandidates, candidates.TotalCandidates);
+                SetCounter(MetricKeys.DashboardTotalInterviewSessions, interviews.TotalInterviewSessions);
+                SetCounter(MetricKeys.DashboardCompletedInterviewSessions, interviews.CompletedInterviewSessions);
+                SetCounter(MetricKeys.DashboardTotalFeedbacks, feedback.AllTimeTotalFeedbacks);
+                SetCounter(MetricKeys.DashboardGeneration, 1m);
+                SetCounter(MetricKeys.DashboardWindowFrom, DateKey(from));
+                SetCounter(MetricKeys.DashboardWindowTo, DateKey(to));
+
+                var existing = await db.StatisticsSnapshots
+                    .Where(snapshot => snapshot.SnapshotDate >= from && snapshot.SnapshotDate <= to)
+                    .ToDictionaryAsync(snapshot => snapshot.SnapshotDate, cancellationToken);
+
+                for (var date = from; date <= to; date = date.AddDays(1))
+                {
+                    if (!existing.TryGetValue(date, out var snapshot))
+                    {
+                        snapshot = new StatisticsSnapshot
+                        {
+                            SnapshotId = Guid.NewGuid(),
+                            SnapshotDate = date,
+                            CreatedAt = generationTime
+                        };
+                        db.StatisticsSnapshots.Add(snapshot);
+                    }
+
+                    var revenueDay = revenueByDay[date];
+                    snapshot.NewUsers = candidatesByDay[date];
+                    snapshot.InterviewSessions = interviewsByDay[date];
+                    snapshot.Revenue = revenueDay.Revenue;
+                    snapshot.PaidOrders = checked((int)revenueDay.Orders);
+                    snapshot.NewFeedbacks = feedbackByDay[date];
+                }
+
+                await db.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
             }
-            catch (Exception ex)
+            catch
             {
-                warnings.Add($"Snapshot {d:yyyy-MM-dd}: {ex.Message}");
-                logger.LogWarning(ex, "snapshot {Date} failed", d);
+                await transaction.RollbackAsync(CancellationToken.None);
+                throw;
             }
+
+            logger.LogInformation(
+                "Dashboard statistics generation committed at {GenerationTime}: {SnapshotCount} daily rows from all four required sources.",
+                generationTime,
+                366);
+
+            return new RebuildResultDto
+            {
+                Ok = true,
+                SnapshotsWritten = 366,
+                CountersWritten = 7,
+                FinishedAt = generationTime
+            };
         }
-
-        await db.SaveChangesAsync(ct);
-
-        var overview = await queryService.GetOverviewAsync(ct);
-        logger.LogInformation("Statistics rollup done: {Counters} counters, {Snapshots} snapshots, {Warnings} warnings",
-            countersWritten, snapshotsWritten, warnings.Count);
-
-        return new RebuildResultDto
+        catch (OperationCanceledException)
         {
-            Ok = warnings.Count == 0,
-            CountersWritten = countersWritten,
-            SnapshotsWritten = snapshotsWritten,
-            FinishedAt = now,
-            Overview = overview,
-            Warnings = warnings
-        };
+            throw;
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(exception, "Dashboard statistics generation failed; the prior generation was preserved.");
+            return new RebuildResultDto
+            {
+                FinishedAt = generationTime,
+                Warnings = ["Dashboard statistics could not be refreshed. The previous generation was preserved."]
+            };
+        }
     }
 
-    private static async Task Safe(List<string> warnings, string label, Func<Task> action)
-    {
-        try { await action(); }
-        catch (Exception ex) { warnings.Add($"{label}: {ex.Message}"); }
-    }
+    private static decimal DateKey(DateOnly date) =>
+        decimal.Parse(date.ToString("yyyyMMdd", CultureInfo.InvariantCulture), CultureInfo.InvariantCulture);
 }

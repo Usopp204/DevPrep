@@ -52,6 +52,7 @@
 
             <!-- Login Form -->
             <form asp-controller="Auth" asp-action="Login" method="post" class="login-form" novalidate>
+                <input asp-for="ReturnUrl" type="hidden" />
                 <!-- Email -->
                 <div class="login-field">
                     <label class="login-label" asp-for="Email">Email Address</label>

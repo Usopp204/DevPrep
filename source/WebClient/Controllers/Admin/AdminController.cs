@@ -1,14 +1,17 @@
 using System.Text;
 using System.Text.Json;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WebClient.Models.Feedback;
-using WebClient.Services.Admin;
+using WebClient.Models.Dashboard;
+using WebClient.Services.Dashboard;
 using WebClient.Services.Feedback;
 
 namespace WebClient.Controllers.Admin;
 
+[Authorize(Roles = "Admin")]
 public class AdminController(
-    IAdminDashboardService dashboardService,
+    IManagementDashboardService dashboardService,
     IFeedbackService feedbackService) : Controller
 {
     // Claim role trong JWT do AuthAPI phát (chuẩn ClaimTypes.Role).
@@ -16,36 +19,39 @@ public class AdminController(
 
     public async Task<IActionResult> Index()
     {
-        // Chỉ tài khoản Admin mới vào được khu Admin (Manager KHÔNG được vào).
-        if (!IsAdminRole())
+        var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(7));
+        var from = new DateOnly(today.Year, today.Month, 1);
+        var result = await dashboardService.GetDashboardAsync(from, today, HttpContext.RequestAborted);
+        var model = new ManagementDashboardViewModel
         {
-            TempData["Error"] = "You must sign in with an Admin account to access the dashboard.";
-            return RedirectToAction("Login", "Auth");
-        }
-
-        // Số liệu thật (best-effort: nguồn nào lỗi thì card hiện "—").
-        var model = await dashboardService.GetStatsAsync(HttpContext.RequestAborted);
+            Dashboard = result.Data ?? ManagementDashboardData.Unavailable(from, today),
+            DashboardDataUrl = Url.Action(nameof(DashboardData), "Admin") ?? "/Admin/DashboardData"
+        };
         return View(model);
     }
 
-    // AJAX same-origin cho chart doanh thu theo khoảng ngày (from/to yyyy-MM-dd).
     [HttpGet]
-    public async Task<IActionResult> RevenueSeries(DateTime? from, DateTime? to)
+    public async Task<IActionResult> DashboardData(DateOnly? from, DateOnly? to)
     {
-        if (!IsAdminRole()) return Unauthorized(new { success = false, message = "Admin only." });
+        var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(7));
+        if (!DashboardDateRange.TryResolve(from, to, today, out var rangeFrom, out var rangeTo, out var error))
+            return BadRequest(new { success = false, message = error });
 
-        var nowVn = DateTime.UtcNow.AddHours(7).Date;
-        var f = (from ?? new DateTime(nowVn.Year, nowVn.Month, 1)).Date;
-        var t = (to ?? nowVn).Date;
+        var result = await dashboardService.GetDashboardAsync(rangeFrom, rangeTo, HttpContext.RequestAborted);
+        if (!result.Success || result.Data is null)
+        {
+            var status = result.StatusCode is 400 or 401 or 403
+                ? result.StatusCode
+                : StatusCodes.Status502BadGateway;
+            return StatusCode(status, new
+            {
+                success = false,
+                message = result.Error ?? "Could not load dashboard statistics."
+            });
+        }
 
-        var result = await dashboardService.GetRevenueDailyAsync(f, t, HttpContext.RequestAborted);
-        if (result is null)
-            return StatusCode(502, new { success = false, message = "Cannot reach PaymentAPI. Make sure the gateway and PaymentAPI are running." });
-
-        return Json(new { success = true, data = result });
+        return Json(new { success = true, data = result.Data });
     }
-
-    // Trang quản lý AI / Interview Feedback. Guard UI: chỉ Admin/Manager; backend cũng tự chặn quyền.
     public IActionResult AiFeedback()
     {
         if (!IsAdminRole())
@@ -109,12 +115,17 @@ public class AdminController(
     public async Task<IActionResult> ReportedFeedback(
         int page = 1,
         string feedbackType = "All",
-        string status = FeedbackReportRules.PendingStatus,
+        string status = "All",
         string reasonCode = "All",
         string keyword = "",
         Guid? reportId = null,
         CancellationToken cancellationToken = default)
     {
+        feedbackType = string.IsNullOrWhiteSpace(feedbackType) ? "All" : feedbackType;
+        status = string.IsNullOrWhiteSpace(status) ? "All" : status;
+        reasonCode = string.IsNullOrWhiteSpace(reasonCode) ? "All" : reasonCode;
+        keyword = keyword?.Trim() ?? string.Empty;
+
         if (!IsAdminRole())
         {
             TempData["Error"] = "You must sign in with an Admin account to access the dashboard.";
@@ -140,7 +151,7 @@ public class AdminController(
         ResolveFeedbackReportRequest request,
         int page = 1,
         string feedbackType = "All",
-        string status = FeedbackReportRules.PendingStatus,
+        string status = "All",
         string reasonCode = "All",
         string keyword = "",
         CancellationToken cancellationToken = default) =>
@@ -160,7 +171,7 @@ public class AdminController(
         ResolveFeedbackReportRequest request,
         int page = 1,
         string feedbackType = "All",
-        string status = FeedbackReportRules.PendingStatus,
+        string status = "All",
         string reasonCode = "All",
         string keyword = "",
         CancellationToken cancellationToken = default) =>

@@ -1,21 +1,37 @@
 namespace StatisticsAPI.Services;
 
-/// <summary>
-/// Chạy rollup định kỳ: 1 lần lúc khởi động (chờ vài giây cho các service khác lên) + lặp lại mỗi N giờ.
-/// Best-effort — service khác chưa chạy thì lần đó ghi warning; admin có thể bấm POST /rebuild để chạy tay.
-/// </summary>
 public sealed class StatisticsRollupHostedService(
     IServiceScopeFactory scopeFactory,
     IConfiguration configuration,
     ILogger<StatisticsRollupHostedService> logger) : BackgroundService
 {
+    private const int RequiredRefreshIntervalMinutes = 15;
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var startupDelaySeconds = Math.Clamp(configuration.GetValue("Statistics:StartupDelaySeconds", 20), 0, 600);
-        var intervalHours = Math.Clamp(configuration.GetValue("Statistics:RefreshIntervalHours", 6), 1, 168);
+        var startupDelaySeconds = Math.Clamp(
+            configuration.GetValue("Statistics:StartupDelaySeconds", 20),
+            0,
+            600);
+        var configuredRefreshInterval = configuration.GetValue(
+            "Statistics:RefreshIntervalMinutes",
+            RequiredRefreshIntervalMinutes);
+        if (configuredRefreshInterval != RequiredRefreshIntervalMinutes)
+        {
+            logger.LogWarning(
+                "Statistics refresh interval {ConfiguredMinutes} was ignored; the approved interval is {RequiredMinutes} minutes.",
+                configuredRefreshInterval,
+                RequiredRefreshIntervalMinutes);
+        }
 
-        try { await Task.Delay(TimeSpan.FromSeconds(startupDelaySeconds), stoppingToken); }
-        catch (OperationCanceledException) { return; }
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(startupDelaySeconds), stoppingToken);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -23,18 +39,30 @@ public sealed class StatisticsRollupHostedService(
             {
                 using var scope = scopeFactory.CreateScope();
                 var collector = scope.ServiceProvider.GetRequiredService<IStatisticsCollector>();
-                var result = await collector.RunAsync(stoppingToken);
-                logger.LogInformation("Scheduled rollup: {Snapshots} snapshots, {Counters} counters, {Warnings} warnings",
-                    result.SnapshotsWritten, result.CountersWritten, result.Warnings.Count);
+                var result = await collector.RunAsync(waitForAvailability: true, stoppingToken);
+                logger.LogInformation(
+                    "Scheduled dashboard rollup: {Snapshots} snapshots, {Counters} counters, success={Success}.",
+                    result.SnapshotsWritten,
+                    result.CountersWritten,
+                    result.Ok);
             }
-            catch (OperationCanceledException) { break; }
-            catch (Exception ex)
+            catch (OperationCanceledException)
             {
-                logger.LogError(ex, "Scheduled statistics rollup failed");
+                break;
+            }
+            catch (Exception exception)
+            {
+                logger.LogError(exception, "Scheduled dashboard statistics rollup failed.");
             }
 
-            try { await Task.Delay(TimeSpan.FromHours(intervalHours), stoppingToken); }
-            catch (OperationCanceledException) { break; }
+            try
+            {
+                await Task.Delay(TimeSpan.FromMinutes(RequiredRefreshIntervalMinutes), stoppingToken);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
         }
     }
 }

@@ -54,10 +54,13 @@ body.nw-page {
     margin-bottom: 40px;
 }
 .nw-search { position: relative; flex: 1 1 260px; min-width: 220px; }
-.nw-search .material-symbols-outlined {
+.nw-search-btn {
     position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
-    color: var(--nw-muted); font-size: 20px;
+    background: none; border: none; padding: 0; margin: 0; line-height: 0;
+    color: var(--nw-muted); cursor: pointer; z-index: 1;
 }
+.nw-search-btn .material-symbols-outlined { font-size: 20px; }
+.nw-search-btn:hover { color: var(--nw-primary); }
 .nw-search input {
     width: 100%;
     background: var(--nw-surface);
@@ -71,6 +74,7 @@ body.nw-page {
 .nw-search input:focus { border-color: var(--nw-accent); box-shadow: 0 0 0 2px rgba(79, 70, 229, .35); }
 .nw-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .nw-chip {
+    display: inline-block;
     background: var(--nw-surface);
     color: var(--nw-muted);
     border: 1px solid var(--nw-border);
@@ -80,10 +84,19 @@ body.nw-page {
     font-weight: 600;
     letter-spacing: .03em;
     cursor: pointer;
+    text-decoration: none;
     transition: color .15s, background .15s, border-color .15s;
 }
-.nw-chip:hover { color: var(--nw-primary); }
+.nw-chip:hover { color: var(--nw-primary); text-decoration: none; }
 .nw-chip.active { background: var(--nw-accent); color: #fff; border-color: var(--nw-accent); }
+.nw-clear-filters {
+    color: var(--nw-cyan);
+    font-size: .78rem;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+}
+.nw-clear-filters:hover { text-decoration: underline; }
 
 /* ---- Featured card ---- */
 .nw-featured {

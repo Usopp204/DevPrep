@@ -368,6 +368,148 @@
     background: rgba(127, 29, 29, 0.97);
 }
 
+.feedback-owner-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-top: 20px;
+    margin-left: auto;
+}
+
+.review-card-footer .feedback-owner-actions {
+    margin-top: 0;
+}
+
+.feedback-owner-action {
+    min-width: 88px;
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 0 14px;
+    border: 1px solid rgba(196, 192, 255, 0.28);
+    border-radius: 10px;
+    color: #E4E2FF;
+    background: rgba(108, 99, 255, 0.12);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 750;
+    line-height: 1;
+    cursor: pointer;
+    transition: color 0.18s ease, border-color 0.18s ease, background-color 0.18s ease, transform 0.18s ease;
+}
+
+.feedback-owner-action .material-symbols-outlined {
+    font-size: 18px;
+}
+
+.feedback-owner-action-edit:hover {
+    color: #FFFFFF;
+    border-color: rgba(196, 192, 255, 0.56);
+    background: rgba(108, 99, 255, 0.24);
+    transform: translateY(-1px);
+}
+
+.feedback-owner-action-delete {
+    color: #FFB4AB;
+    border-color: rgba(239, 68, 68, 0.38);
+    background: rgba(239, 68, 68, 0.10);
+}
+
+.feedback-owner-action-delete:hover {
+    color: #FFFFFF;
+    border-color: rgba(248, 113, 113, 0.66);
+    background: rgba(220, 38, 38, 0.26);
+    transform: translateY(-1px);
+}
+
+.feedback-owner-action:focus-visible,
+.feedback-report-close:focus-visible,
+.feedback-report-cancel:focus-visible,
+.feedback-report-submit:focus-visible,
+.feedback-report-dialog .feedback-comment-input:focus-visible,
+.feedback-report-dialog input[type="text"]:focus-visible,
+.feedback-report-dialog input[type="search"]:focus-visible {
+    outline: 2px solid #C4C0FF;
+    outline-offset: 3px;
+}
+
+.feedback-owner-action:disabled,
+.feedback-report-submit:disabled,
+.feedback-report-cancel:disabled {
+    cursor: not-allowed;
+    opacity: 0.58;
+    transform: none;
+}
+
+.feedback-dialog-label {
+    display: block;
+    margin-top: 8px;
+    color: #E4E4E7;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.feedback-dialog-label span {
+    color: #A1A1AA;
+    font-weight: 500;
+}
+
+.feedback-report-dialog .feedback-comment-input,
+.feedback-report-dialog input[type="text"],
+.feedback-report-dialog input[type="search"] {
+    width: 100%;
+    max-width: 100%;
+    min-height: 46px;
+    padding: 12px 14px;
+    border: 1px solid rgba(196, 192, 255, 0.24);
+    border-radius: 11px;
+    color: #F4F4F5;
+    background: rgba(10, 10, 15, 0.82);
+    font: inherit;
+    caret-color: #C4C0FF;
+}
+
+.feedback-report-dialog textarea.feedback-comment-input {
+    min-height: 112px;
+    resize: vertical;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.feedback-report-dialog .feedback-comment-input::placeholder,
+.feedback-report-dialog input[type="text"]::placeholder,
+.feedback-report-dialog input[type="search"]::placeholder {
+    color: #71717A;
+    opacity: 1;
+}
+
+.feedback-report-dialog .feedback-comment-input:focus,
+.feedback-report-dialog input[type="text"]:focus,
+.feedback-report-dialog input[type="search"]:focus {
+    border-color: rgba(196, 192, 255, 0.62);
+    box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.18);
+}
+
+.feedback-report-close:hover,
+.feedback-report-cancel:hover {
+    color: #FFFFFF;
+    border-color: rgba(196, 192, 255, 0.38);
+    background: rgba(108, 99, 255, 0.16);
+}
+
+.feedback-report-submit:hover {
+    filter: brightness(1.08);
+    transform: translateY(-1px);
+}
+
+.feedback-report-submit-danger {
+    border: 1px solid rgba(248, 113, 113, 0.54);
+    background: linear-gradient(135deg, #B91C1C, #DC2626);
+    box-shadow: 0 12px 30px rgba(185, 28, 28, 0.30);
+}
 @media (max-width: 640px) {
     .feedback-report-modal {
         align-items: end;

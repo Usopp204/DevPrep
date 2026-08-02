@@ -72,7 +72,7 @@ public class FeedbackReportDetailsDto : FeedbackReportListItemDto
     public byte? UiUxRating { get; set; }
     public byte? UsabilityRating { get; set; }
     public byte? FeatureQualityRating { get; set; }
-    public string? FeedbackModerationStatus { get; set; }
+
     public DateTime? ReviewedAt { get; set; }
     public Guid? ReviewedBy { get; set; }
     public string? ResolutionNote { get; set; }

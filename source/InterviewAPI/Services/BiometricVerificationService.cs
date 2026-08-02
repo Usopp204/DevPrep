@@ -396,6 +396,10 @@ public class BiometricVerificationService : IBiometricVerificationService
 
         return new InSessionVerifyResponse
         {
+            Status = shouldEndSession ? "Cancelled" : session.Status,
+            TerminationReason = shouldEndSession ? SessionCapabilityPolicy.IntegrityViolation : session.TerminationReason,
+            CanGeneratePerformanceReport = false,
+            CanSubmitInterviewFeedback = shouldEndSession,
             Passed = !isStrike && !noFaceDetected && !qualityWarningDetected,
             NoFaceDetected = noFaceDetected,
             WarningType = warningType,
@@ -567,6 +571,10 @@ public class BiometricVerificationService : IBiometricVerificationService
 
         return new VoiceAnswerVerifyResponse
         {
+            Status = shouldEndSession ? "Cancelled" : "InProgress",
+            TerminationReason = shouldEndSession ? SessionCapabilityPolicy.IntegrityViolation : null,
+            CanGeneratePerformanceReport = false,
+            CanSubmitInterviewFeedback = shouldEndSession,
             Text = text,
             VoiceChecked = true,
             VoiceMatched = !mismatch,
@@ -591,6 +599,7 @@ public class BiometricVerificationService : IBiometricVerificationService
         if (session is null) return;
 
         session.Status = "Cancelled";
+        session.TerminationReason = SessionCapabilityPolicy.IntegrityViolation;
         session.EndedAt = VietnamTime.Now;
         session.UpdatedAt = VietnamTime.Now;
 

@@ -14,10 +14,7 @@ public class AiFeedbackListItemDto
     public byte? FeedbackUsefulnessRating { get; set; }
     public string? Content { get; set; }
     public bool? IsHelpful { get; set; }
-    public string ModerationStatus { get; set; } = null!;
     public bool IsVisible { get; set; }
-    public DateTime? ModeratedAt { get; set; }
-    public Guid? ModeratedBy { get; set; }
     public bool IsDeleted { get; set; }
     public DateTime CreatedAt { get; set; }
 }

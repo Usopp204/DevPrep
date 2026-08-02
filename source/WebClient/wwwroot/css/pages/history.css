@@ -193,7 +193,7 @@ body.history-page {
     margin-bottom: 22px;
     padding: 18px;
     display: grid;
-    grid-template-columns: 160px minmax(220px, 1fr) minmax(260px, 1fr) 112px;
+    grid-template-columns: 140px minmax(180px, 1fr) 150px minmax(220px, 1fr) 112px;
     gap: 12px;
     border-radius: 16px;
     border: 1px solid rgba(196, 192, 255, 0.14);
@@ -260,7 +260,7 @@ body.history-page {
 .history-table-head,
 .history-row {
     display: grid;
-    grid-template-columns: minmax(340px, 1.24fr) 86px 108px 96px 96px minmax(185px, 0.78fr) 100px;
+    grid-template-columns: minmax(240px, 1.15fr) 112px 76px 106px 86px 86px minmax(170px, 0.8fr) 92px;
     column-gap: 12px;
     align-items: center;
 }
@@ -282,7 +282,7 @@ body.history-page {
             text-align: left;
         }
 
-        .history-table-head span:nth-child(6) {
+        .history-table-head span:nth-child(7) {
             text-align: left;
             justify-self: start;
         }
@@ -1199,12 +1199,150 @@ body.history-page {
         transform: translateY(-1px);
     }
 
+.detail-coach-summary {
+    display: grid;
+    gap: 12px;
+    margin: 28px 0;
+}
+
+.detail-coach-summary > h3 {
+    margin: 0;
+    color: var(--iv-text);
+    font-size: 16px;
+}
+
+.detail-coach-summary .fb-card ul {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding-left: 20px;
+    color: var(--iv-muted);
+}
+
+.chat-answer-reason {
+    color: var(--iv-faint);
+    font-family: var(--iv-font-mono);
+    font-size: 11px;
+}
+
+.transcript-expand-toggle {
+    margin: 6px 0 0;
+}
+
+.transcript-evaluation {
+    width: min(820px, calc(100% - 52px));
+    margin: -12px auto 34px;
+    border: 1px solid rgba(196, 192, 255, 0.16);
+    border-radius: 14px;
+    background: rgba(17, 17, 24, 0.72);
+}
+
+.transcript-evaluation > summary {
+    min-height: 48px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    color: var(--iv-text);
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.transcript-evaluation > summary:focus-visible {
+    outline: 2px solid var(--iv-primary);
+    outline-offset: 3px;
+    border-radius: 12px;
+}
+
+.transcript-evaluation-body {
+    display: grid;
+    gap: 12px;
+    padding: 0 16px 16px;
+}
+.detail-question-status {
+    flex: 0 0 auto;
+    padding: 4px 8px;
+    border: 1px solid rgba(196, 192, 255, 0.18);
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.detail-question-status.evaluated {
+    color: #86EFAC;
+    border-color: rgba(34, 197, 94, 0.28);
+    background: rgba(34, 197, 94, 0.10);
+}
+
+.detail-question-status.pending {
+    color: #FCD34D;
+    border-color: rgba(245, 158, 11, 0.28);
+    background: rgba(245, 158, 11, 0.10);
+}
+
+.detail-question-status.no-answer {
+    color: var(--iv-muted);
+    background: rgba(113, 113, 122, 0.10);
+}
+
+.detail-criteria-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin: 0;
+}
+
+.detail-criteria-grid > div {
+    min-width: 0;
+    padding: 10px;
+    border-radius: 10px;
+    background: rgba(10, 10, 15, 0.50);
+}
+
+.detail-criteria-grid dt {
+    color: var(--iv-faint);
+    font-size: 10px;
+}
+
+.detail-criteria-grid dd {
+    margin: 4px 0 0;
+    color: var(--iv-text);
+    font-weight: 800;
+}
+
+.detail-question-copy {
+    min-width: 0;
+}
+
+.detail-question-copy strong {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--iv-primary);
+    font-size: 11px;
+}
+
+.detail-question-copy p {
+    margin: 0;
+    color: var(--iv-muted);
+    line-height: 1.6;
+}
+
+.history-pagination {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.history-pagination .devprep-pagination {
+    justify-content: flex-end;
+}
+
 /* Responsive */
 
 @media (max-width: 1180px) {
     .history-table-head,
     .history-row {
-        grid-template-columns: minmax(300px, 1fr) 76px 96px 82px 82px minmax(150px, 0.7fr) 100px;
+        grid-template-columns: minmax(220px, 1fr) 100px 70px 96px 76px 76px minmax(145px, 0.7fr) 92px;
     }
 
     .detail-panel {

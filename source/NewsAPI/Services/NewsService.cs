@@ -17,13 +17,29 @@ public class NewsService : INewsService
         _repository = repository;
     }
 
-    public async Task<PagedResult<NewsListItemDto>> GetListAsync(int page, int pageSize)
+    public async Task<PagedResult<NewsListItemDto>> GetListAsync(NewsQueryDto q)
     {
-        if (page < 1) page = 1;
-        pageSize = Math.Clamp(pageSize, 1, MaxPageSize);
+        var page = q.Page < 1 ? 1 : q.Page;
+        var pageSize = Math.Clamp(q.PageSize, 1, MaxPageSize);
         var skip = (page - 1) * pageSize;
 
         var query = _repository.QueryPublished();
+
+        if (!string.IsNullOrWhiteSpace(q.Keyword))
+        {
+            var kw = q.Keyword.Trim();
+            // Collate CI_AI: khớp không phân biệt hoa/thường lẫn dấu tiếng Việt (giống AdminNewsService).
+            const string collation = "SQL_Latin1_General_CP1_CI_AI";
+            query = query.Where(n =>
+                EF.Functions.Collate(n.Title, collation).Contains(EF.Functions.Collate(kw, collation)) ||
+                (n.Summary != null && EF.Functions.Collate(n.Summary, collation).Contains(EF.Functions.Collate(kw, collation))));
+        }
+
+        if (q.CategoryId.HasValue)
+        {
+            query = query.Where(n => n.CategoryId == q.CategoryId.Value);
+        }
+
         var total = await query.CountAsync();
 
         // Mới nhất trước: ưu tiên PublishedAt, thiếu thì dùng CreatedAt.
@@ -53,6 +69,20 @@ public class NewsService : INewsService
             TotalItems = total,
             TotalPages = (int)Math.Ceiling(total / (double)pageSize)
         };
+    }
+
+    // Chỉ trả danh mục đang có ít nhất 1 bài đã xuất bản — không dùng CategoryId của trang hiện
+    // tại như trước (client-side cũ), mà quét trên TOÀN BỘ tin đã xuất bản, độc lập với Keyword/CategoryId
+    // đang lọc, để chip lọc luôn đủ lựa chọn dù đang search hay đang đứng ở danh mục khác.
+    public async Task<List<NewsCategoryDto>> GetCategoriesAsync()
+    {
+        return await _repository.QueryPublished()
+            .Where(n => n.CategoryId != null)
+            .Select(n => new { CategoryId = n.CategoryId!.Value, Name = n.Category!.Name })
+            .Distinct()
+            .OrderBy(c => c.Name)
+            .Select(c => new NewsCategoryDto { CategoryId = c.CategoryId, Name = c.Name })
+            .ToListAsync();
     }
 
     public async Task<NewsDetailDto?> GetDetailAsync(Guid id)

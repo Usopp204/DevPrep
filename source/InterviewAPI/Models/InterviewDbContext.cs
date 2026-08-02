@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 
@@ -54,6 +54,7 @@ public partial class InterviewDbContext : DbContext
             entity.Property(e => e.Level).HasDefaultValue("Junior");
             entity.Property(e => e.QuestionType).HasDefaultValue("Mixed");
             entity.Property(e => e.Status).HasDefaultValue("Configured");
+            entity.Property(e => e.TerminationReason).HasMaxLength(32);
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(dateadd(hour,(7),sysutcdatetime()))");
         });
 

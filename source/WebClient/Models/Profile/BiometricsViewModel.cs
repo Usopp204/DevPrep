@@ -17,7 +17,9 @@ public class BiometricEnrollModel
     public string Modality { get; set; } = string.Empty;
     public int Dim { get; set; }
     public double? Quality { get; set; }
-    public bool BonusAwarded { get; set; }
+
+    // One of: Awarded, AlreadyAwarded, IdentityAlreadyClaimed, NotAwarded, NotYetEligible.
+    public string BonusStatus { get; set; } = string.Empty;
 }
 
 // View model for Profile/Identity (biometric enrollment page).

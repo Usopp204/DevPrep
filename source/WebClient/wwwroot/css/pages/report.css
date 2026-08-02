@@ -24,23 +24,16 @@ body.report-page {
 .report-main {
     max-width: 860px;
     margin: 0 auto;
-    padding: 24px var(--spacing-margin-desktop) 128px;
+    padding: 96px var(--spacing-margin-desktop) 64px;
 }
 
 .report-topbar {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 16px;
     margin-bottom: 24px;
-}
-
-.report-brand {
-    font-family: var(--font-headline);
-    font-weight: 700;
-    color: var(--color-primary);
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    flex-wrap: wrap;
 }
 
 /* ---- Hero ---- */
@@ -276,6 +269,10 @@ body.report-page {
     border-left-color: var(--color-success);
 }
 
+.report-q-block.improve {
+    border-left-color: var(--color-warning);
+}
+
 .report-q-block .label {
     display: block;
     font-family: var(--font-headline);
@@ -290,9 +287,38 @@ body.report-page {
     color: var(--color-success);
 }
 
+.report-q-block.improve .label {
+    color: var(--color-warning);
+}
+
 .report-q-block p {
     margin: 0;
     color: var(--color-text-secondary);
+}
+
+.report-q-metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin: 0;
+}
+
+.report-q-metrics > div {
+    min-width: 0;
+    padding: 10px;
+    border-radius: var(--radius-lg);
+    background: var(--color-surface-container);
+}
+
+.report-q-metrics dt {
+    color: var(--color-text-tertiary);
+    font-size: var(--text-label-caps-size);
+}
+
+.report-q-metrics dd {
+    margin: 4px 0 0;
+    color: var(--color-text-primary);
+    font-weight: 700;
 }
 
 .report-q-none {
@@ -405,12 +431,6 @@ body.report-page {
     color: var(--color-text-secondary);
     max-width: 440px;
     margin: 0;
-}
-
-.report-empty-state .report-empty-reason {
-    font-family: var(--font-mono);
-    font-size: 13px;
-    color: var(--color-text-tertiary);
 }
 
 .report-empty-state .btn-primary-solid {
@@ -585,6 +605,7 @@ body.report-page {
     align-items: center;
     justify-content: center;
     gap: 8px;
+    min-height: 40px;
     padding: 10px 18px;
     border: 1px solid transparent;
     border-radius: var(--radius-lg);
@@ -680,39 +701,15 @@ body.report-page {
     background: var(--color-surface-container);
 }
 
-.coming-soon-note {
-    font-family: var(--font-mono);
-    font-size: 12px;
-    color: var(--color-text-tertiary);
-}
-/* ---- Bottom bar ---- */
-.report-bottom {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    padding: 16px;
-    background: rgba(10, 10, 15, 0.8);
-    backdrop-filter: blur(12px);
-    border-top: 1px solid var(--color-border);
-    z-index: 50;
-}
-
-.report-bottom-inner {
-    max-width: 860px;
-    margin: 0 auto;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 16px;
-}
-
 .btn-ghost {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
+    min-height: 40px;
     padding: 8px 16px;
     border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border);
     color: var(--color-text-secondary);
     text-decoration: none;
     font-family: var(--font-mono);
@@ -722,37 +719,21 @@ body.report-page {
 .btn-ghost:hover {
     color: var(--color-text-primary);
     background: var(--color-surface-container);
+    border-color: var(--color-primary);
 }
 
-.report-bottom-actions {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.btn-outline {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 16px;
-    border-radius: var(--radius-lg);
-    background: transparent;
-    border: 1px solid var(--color-border);
-    color: var(--color-text-primary);
-    font-family: var(--font-mono);
-    font-size: var(--text-mono-label-size);
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-.btn-outline:hover {
-    background: var(--color-surface-container);
+.btn-ghost:focus-visible,
+.btn-primary-solid:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 3px;
 }
 
 .btn-primary-solid {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
+    min-height: 40px;
     padding: 10px 24px;
     border-radius: var(--radius-lg);
     background: linear-gradient(135deg, #6C63FF 0%, #8B5CF6 100%);

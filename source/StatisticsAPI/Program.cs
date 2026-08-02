@@ -58,6 +58,7 @@ builder.Services.AddHttpClient("gateway", c =>
 
 // ── DI ────────────────────────────────────────────────────────────────────────
 builder.Services.AddSingleton<IServiceTokenFactory, ServiceTokenFactory>();
+builder.Services.AddSingleton<StatisticsCollectionGate>();
 builder.Services.AddScoped<ISourceMetricsClient, SourceMetricsClient>();
 builder.Services.AddScoped<IStatisticsQueryService, StatisticsQueryService>();
 builder.Services.AddScoped<IStatisticsCollector, StatisticsCollector>();

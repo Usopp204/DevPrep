@@ -1,10 +1,12 @@
-﻿using UserAPI.DTOs;
+using UserAPI.DTOs;
 
 namespace UserAPI.Services.Interfaces;
 
 public interface IAdminUserService
 {
     Task<PagedResult<AdminUserListItemDto>> GetUsersAsync(AdminUserQueryDto query);
+
+    Task<CandidateStatisticsDto> GetCandidateStatisticsAsync(DateOnly from, DateOnly to, string authorizationHeader, CancellationToken cancellationToken);
 
     Task<AdminUserDetailDto?> GetUserDetailAsync(Guid id);
 

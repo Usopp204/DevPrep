@@ -9,10 +9,12 @@ namespace PaymentAPI.Services;
 public class InternalCreditService
 {
     private readonly PaymentDbContext _db;
+    private readonly ILogger<InternalCreditService> _logger;
 
-    public InternalCreditService(PaymentDbContext db)
+    public InternalCreditService(PaymentDbContext db, ILogger<InternalCreditService> logger)
     {
         _db = db;
+        _logger = logger;
     }
 
     public async Task<InternalCreditDeductionResponse> DeductCreditAsync(
@@ -147,7 +149,7 @@ public class InternalCreditService
     // guarded both by an existence check and a unique filtered index on CreditLedger
     // (UX_Ledger_UserBonus) to close the check-then-insert race under concurrent calls.
     public async Task<InternalCreditAwardResponse> AwardCreditAsync(
-        InternalCreditAwardRequest request, CancellationToken ct)
+        InternalCreditAwardRequest request, CancellationToken ct, int retryCount = 0)
     {
         using var transaction = await _db.Database.BeginTransactionAsync(ct);
 
@@ -156,14 +158,69 @@ public class InternalCreditService
             var wallet = await _db.CreditWallets.FirstOrDefaultAsync(
                 w => w.UserId == request.UserId, ct);
 
+            // Wallets were previously only ever created via a completed VNPay top-up (see
+            // VnPayService.cs's IPN callback). A user who enrolls biometrics before ever
+            // buying credits has no wallet row at all, so the bonus could never be awarded.
+            // Create a zero-balance wallet here instead of rejecting the award.
+            var walletJustCreated = false;
             if (wallet is null)
-                return new InternalCreditAwardResponse
+            {
+                wallet = new CreditWallet
                 {
-                    Success = false,
-                    Awarded = false,
-                    Message = "User wallet not found.",
-                    BalanceAfter = 0
+                    WalletId = Guid.NewGuid(),
+                    UserId = request.UserId,
+                    Balance = 0,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
                 };
+                _db.CreditWallets.Add(wallet);
+
+                try
+                {
+                    await _db.SaveChangesAsync(ct);
+                }
+                catch (DbUpdateException ex) when (IsUniqueBonusViolation(ex))
+                {
+                    // Lost a race against a concurrent AwardCreditAsync call that created the
+                    // SAME user's wallet first. This only fires once
+                    // Sql/002_add_credit_wallets_userid_unique_index.sql has actually been
+                    // applied — without that index there is nothing to violate, so duplicate
+                    // wallet rows are still possible until it's run. Unlike the ledger-bonus
+                    // race handled below, losing this race does NOT mean the bonus was already
+                    // awarded — it only means someone else's wallet insert won, so retry the
+                    // whole call: it will re-read the wallet the winner just created and award
+                    // normally instead of failing.
+                    await transaction.RollbackAsync(ct);
+                    _db.Entry(wallet).State = EntityState.Detached;
+
+                    // Hard cap on the retry: recovering here assumes the wallet row that just
+                    // collided with ours is actually found when we re-read it, which holds today
+                    // (nothing in PaymentAPI deletes CreditWallets rows) but is not guaranteed by
+                    // any structural constraint — it's an assumption about this codebase's current
+                    // behavior, not an enforced invariant. If that assumption is ever broken,
+                    // retrying unconditionally would recurse forever and crash the process. Cap it
+                    // at one retry and fail with a normal error response instead.
+                    if (retryCount >= 1)
+                    {
+                        _logger.LogWarning(
+                            "AwardCreditAsync hit the wallet-creation race retry limit for " +
+                            "userId={UserId} — the wallet row expected after a unique-index " +
+                            "violation was not found on retry.",
+                            request.UserId);
+                        return new InternalCreditAwardResponse
+                        {
+                            Success = false,
+                            Awarded = false,
+                            Message = "Could not process the award due to a concurrent wallet update. Please try again.",
+                            BalanceAfter = 0
+                        };
+                    }
+
+                    return await AwardCreditAsync(request, ct, retryCount + 1);
+                }
+
+                walletJustCreated = true;
+            }
 
             // Fast-path check — avoids a pointless insert attempt on the common repeat call. The
             // unique filtered index below is the guard that actually matters under concurrency;
@@ -184,7 +241,12 @@ public class InternalCreditService
 
             wallet.Balance += request.Amount;
             wallet.UpdatedAt = DateTime.UtcNow;
-            _db.CreditWallets.Update(wallet);
+            // Skip Update() when the wallet was just Add()-ed above: calling Update() on an
+            // entity already tracked as Added flips it to Modified, which would generate an
+            // UPDATE matching zero rows instead of the pending INSERT — silently losing the
+            // new wallet row while still reporting success.
+            if (!walletJustCreated)
+                _db.CreditWallets.Update(wallet);
 
             var ledger = new CreditLedgerEntry
             {

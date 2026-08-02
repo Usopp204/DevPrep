@@ -45,6 +45,10 @@ public class InSessionVerifyResultModel
     public bool NoFaceJustBecameStrike { get; set; }
     public bool ShouldEndSession { get; set; }
     public string Message { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public string? TerminationReason { get; set; }
+    public bool CanGeneratePerformanceReport { get; set; }
+    public bool CanSubmitInterviewFeedback { get; set; }
 }
 
 public class InSessionCheckDueModel
@@ -56,6 +60,10 @@ public class InSessionCheckDueModel
     public DateTime? ExpiresAt { get; set; }
     public bool ShouldEndSession { get; set; }
     public string? Message { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public string? TerminationReason { get; set; }
+    public bool CanGeneratePerformanceReport { get; set; }
+    public bool CanSubmitInterviewFeedback { get; set; }
 }
 
 // View model for the Interview/Verify page (biometric entry gate before the Room).

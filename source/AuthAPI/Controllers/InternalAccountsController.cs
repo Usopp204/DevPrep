@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using AuthAPI.Models;
 using AuthAPI.Helpers;
@@ -20,14 +21,69 @@ public class InternalAccountsController : ControllerBase
     // =========================================================
     // 1. LẤY DANH SÁCH ACCOUNTS
     // =========================================================
+    [HttpGet("statistics/candidates")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> GetCandidateStatistics(
+        [FromQuery] DateTime? fromUtc,
+        [FromQuery] DateTime? toExclusiveUtc,
+        CancellationToken cancellationToken)
+    {
+        if (!fromUtc.HasValue || !toExclusiveUtc.HasValue || fromUtc.Value >= toExclusiveUtc.Value)
+            return BadRequest(new { message = "A valid candidate statistics range is required." });
+
+        var vietnamFrom = fromUtc.Value.AddHours(7);
+        var vietnamToExclusive = toExclusiveUtc.Value.AddHours(7);
+        if (vietnamFrom.TimeOfDay != TimeSpan.Zero || vietnamToExclusive.TimeOfDay != TimeSpan.Zero)
+            return BadRequest(new { message = "Candidate statistics boundaries must be Vietnam calendar days." });
+
+        var from = DateOnly.FromDateTime(vietnamFrom);
+        var to = DateOnly.FromDateTime(vietnamToExclusive.AddDays(-1));
+        var inclusiveDays = to.DayNumber - from.DayNumber + 1;
+        if (inclusiveDays is < 1 or > 366)
+            return BadRequest(new { message = "The selected date range must contain no more than 366 days." });
+
+        var candidates = _context.Accounts.AsNoTracking()
+            .Where(account => account.Role.ToUpper() == "USER");
+
+        var totalCandidates = await candidates.LongCountAsync(cancellationToken);
+        var grouped = await candidates
+            .Where(account => account.CreatedAt >= fromUtc.Value && account.CreatedAt < toExclusiveUtc.Value)
+            .GroupBy(account => account.CreatedAt.AddHours(7).Date)
+            .Select(group => new { Date = group.Key, Count = group.LongCount() })
+            .ToListAsync(cancellationToken);
+
+        var byDate = grouped.ToDictionary(
+            item => DateOnly.FromDateTime(item.Date),
+            item => item.Count);
+
+        var days = new List<CandidateStatisticsDayDto>(inclusiveDays);
+        for (var date = from; date <= to; date = date.AddDays(1))
+        {
+            days.Add(new CandidateStatisticsDayDto
+            {
+                Date = date,
+                Count = byDate.GetValueOrDefault(date)
+            });
+        }
+
+        return Ok(new CandidateStatisticsDto
+        {
+            From = from,
+            To = to,
+            TotalCandidates = totalCandidates,
+            Days = days
+        });
+    }
     [HttpGet]
     public async Task<IActionResult> GetAccounts(
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 10,
-        [FromQuery] string? keyword = null,
-        [FromQuery] string? role = null,
-        [FromQuery] string? status = null,
-        [FromQuery] string? accountIds = null)
+    [FromQuery] int page = 1,
+    [FromQuery] int pageSize = 10,
+    [FromQuery] string? keyword = null,
+    [FromQuery] string? role = null,
+    [FromQuery] string? status = null,
+    [FromQuery] string? accountIds = null,
+    [FromQuery] DateTime? createdFrom = null,
+    [FromQuery] DateTime? createdTo = null)
     {
         var query = _context.Accounts.AsQueryable();
 
@@ -39,6 +95,20 @@ public class InternalAccountsController : ControllerBase
         if (!string.IsNullOrWhiteSpace(status))
         {
             query = query.Where(a => a.Status == status);
+        }
+
+        if (createdFrom.HasValue)
+        {
+            var fromDate = createdFrom.Value.Date;
+
+            query = query.Where(a => a.CreatedAt >= fromDate);
+        }
+
+        if (createdTo.HasValue)
+        {
+            var toDateExclusive = createdTo.Value.Date.AddDays(1);
+
+            query = query.Where(a => a.CreatedAt < toDateExclusive);
         }
 
         if (!string.IsNullOrWhiteSpace(keyword))
@@ -292,4 +362,17 @@ public class InternalAccountsController : ControllerBase
             BlockedCount = blockedCount
         });
     }
+}
+public sealed class CandidateStatisticsDto
+{
+    public DateOnly From { get; set; }
+    public DateOnly To { get; set; }
+    public long TotalCandidates { get; set; }
+    public List<CandidateStatisticsDayDto> Days { get; set; } = new();
+}
+
+public sealed class CandidateStatisticsDayDto
+{
+    public DateOnly Date { get; set; }
+    public long Count { get; set; }
 }

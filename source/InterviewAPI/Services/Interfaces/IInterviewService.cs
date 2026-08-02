@@ -11,6 +11,8 @@ public interface IInterviewService
     /// <summary>Danh sách phiên phỏng vấn (kèm lọc/tìm kiếm), sắp xếp CreatedAt giảm dần.</summary>
     Task<PagedResult<InterviewListItemDto>> GetListAsync(InterviewQuery query, CancellationToken cancellationToken = default);
 
+    Task<InterviewDashboardStatisticsDto> GetDashboardStatisticsAsync(DateOnly from, DateOnly to, CancellationToken cancellationToken = default);
+
     Task<PagedResult<ManagerInterviewSessionListItemDto>> GetManagerSessionListAsync(InterviewQuery query, CancellationToken cancellationToken = default);
 
     /// <summary>Chi tiết phiên phỏng vấn kèm đoạn chat (câu hỏi AI + câu trả lời). Null nếu không tồn tại/đã xoá.</summary>

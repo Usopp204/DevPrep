@@ -5,7 +5,7 @@ using FeedbackAPI.Models;
 using FeedbackAPI.Repositories.Interfaces;
 using FeedbackAPI.Services.Interfaces;
 using FeedbackAPI.Validation;
-using Microsoft.Data.SqlClient;
+
 using Microsoft.EntityFrameworkCore;
 
 namespace FeedbackAPI.Services;
@@ -14,8 +14,8 @@ public class AiFeedbackService : IAiFeedbackService
 {
     private const int MaxAdminPageSize = 100;
     private const int MaxPublicPageSize = 50;
+    private const string ApprovedModerationStatus = "Approved";
 
-    private const string Approved = "Approved";
 
     private readonly IAiFeedbackRepository _repository;
     private readonly IUserApiClient _userApiClient;
@@ -72,10 +72,10 @@ public class AiFeedbackService : IAiFeedbackService
             FeedbackUsefulnessRating = f.FeedbackUsefulnessRating,
             Content = f.Content,
             IsHelpful = f.IsHelpful,
-            ModerationStatus = f.ModerationStatus,
+
             IsVisible = f.IsVisible,
-            ModeratedAt = f.ModeratedAt,
-            ModeratedBy = f.ModeratedBy,
+
+
             IsDeleted = f.IsDeleted,
             CreatedAt = f.CreatedAt
         }).ToListAsync();
@@ -84,7 +84,10 @@ public class AiFeedbackService : IAiFeedbackService
         return ToPaged(items, page, pageSize, total);
     }
 
-    public async Task<PagedResult<PublicAiFeedbackDto>> GetPublicReviewsAsync(PublicFeedbackQuery query, CancellationToken ct = default)
+    public async Task<PagedResult<PublicAiFeedbackDto>> GetPublicReviewsAsync(
+        PublicFeedbackQuery query,
+        Guid? viewerUserId,
+        CancellationToken ct = default)
     {
         var page = query.Page < 1 ? 1 : query.Page;
         var pageSize = Math.Clamp(query.PageSize, 1, MaxPublicPageSize);
@@ -108,7 +111,8 @@ public class AiFeedbackService : IAiFeedbackService
                     ScoringFairnessRating = f.ScoringFairnessRating,
                     FeedbackUsefulnessRating = f.FeedbackUsefulnessRating,
                     Comment = f.Content,
-                    CreatedAt = f.CreatedAt
+                    CreatedAt = f.CreatedAt,
+                    IsOwner = viewerUserId.HasValue && f.UserId == viewerUserId.Value
                 }
             })
             .ToListAsync(ct);
@@ -136,7 +140,7 @@ public class AiFeedbackService : IAiFeedbackService
             ScoringFairnessRating = feedback.ScoringFairnessRating,
             FeedbackUsefulnessRating = feedback.FeedbackUsefulnessRating,
             Comment = feedback.Content,
-            ModerationStatus = feedback.ModerationStatus,
+
             IsVisible = feedback.IsVisible,
             CreatedAt = feedback.CreatedAt
         };
@@ -152,8 +156,9 @@ public class AiFeedbackService : IAiFeedbackService
         var comment = FeedbackInput.NormalizeOptionalComment(request.Comment, InterviewFeedbackRules.MaxCommentLength);
 
         var eligibility = await _interviewApiClient.GetSessionFeedbackEligibilityAsync(request.SessionId, bearerToken, ct);
-        if (!eligibility.Eligible || eligibility.Status != "Completed")
+        if (!eligibility.CanSubmitInterviewFeedback)
             throw new FeedbackEligibilityException("Interview session is not eligible for feedback.");
+
 
         if (await _repository.ActiveExistsAsync(userId, request.SessionId, ct))
             throw new DuplicateFeedbackException();
@@ -169,28 +174,14 @@ public class AiFeedbackService : IAiFeedbackService
             ScoringFairnessRating = (byte)request.ScoringFairnessRating,
             FeedbackUsefulnessRating = (byte)request.FeedbackUsefulnessRating,
             Content = comment,
-            ModerationStatus = Approved,
             IsVisible = true,
-            ModeratedAt = null,
-            ModeratedBy = null,
+            ModerationStatus = ApprovedModerationStatus,
             IsDeleted = false,
             CreatedAt = VietnamTime.Now
         };
 
-        await _repository.AddAsync(feedback, ct);
-        try
-        {
-            await _repository.SaveChangesAsync(ct);
-        }
-        catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
-        {
-            if (await _repository.ActiveExistsAsync(userId, request.SessionId, ct))
-            {
-                throw new DuplicateFeedbackException();
-            }
-
-            throw;
-        }
+        if (!await _repository.TryAddActiveAsync(feedback, ct))
+            throw new DuplicateFeedbackException();
 
         return new CreatedInterviewFeedbackDto
         {
@@ -202,10 +193,46 @@ public class AiFeedbackService : IAiFeedbackService
             ScoringFairnessRating = feedback.ScoringFairnessRating!.Value,
             FeedbackUsefulnessRating = feedback.FeedbackUsefulnessRating!.Value,
             Comment = feedback.Content,
-            ModerationStatus = feedback.ModerationStatus,
+
             IsVisible = feedback.IsVisible,
             CreatedAt = feedback.CreatedAt
         };
+    }
+
+    public async Task EditAsync(Guid feedbackId, Guid userId, UpdateInterviewFeedbackRequest request, CancellationToken ct = default)
+    {
+        var feedback = await _repository.GetOwnedActiveByIdAsync(feedbackId, userId, tracking: true, ct);
+        if (feedback is null) throw new FeedbackNotFoundException("Interview feedback not found.");
+
+        ValidateRating(request.OverallRating, nameof(request.OverallRating));
+        ValidateRating(request.QuestionQualityRating, nameof(request.QuestionQualityRating));
+        ValidateRating(request.AiAccuracyRating, nameof(request.AiAccuracyRating));
+        ValidateRating(request.ScoringFairnessRating, nameof(request.ScoringFairnessRating));
+        ValidateRating(request.FeedbackUsefulnessRating, nameof(request.FeedbackUsefulnessRating));
+
+        feedback.Rating = (byte)request.OverallRating;
+        feedback.QuestionQualityRating = (byte)request.QuestionQualityRating;
+        feedback.AiAccuracyRating = (byte)request.AiAccuracyRating;
+        feedback.ScoringFairnessRating = (byte)request.ScoringFairnessRating;
+        feedback.FeedbackUsefulnessRating = (byte)request.FeedbackUsefulnessRating;
+        feedback.Content = FeedbackInput.NormalizeOptionalComment(request.Comment, InterviewFeedbackRules.MaxCommentLength);
+        feedback.IsVisible = true;
+        feedback.ModerationStatus = ApprovedModerationStatus;
+
+        await _repository.SaveChangesAsync(ct);
+    }
+
+    public async Task CandidateDeleteAsync(Guid feedbackId, Guid userId, CancellationToken ct = default)
+    {
+        var feedback = await _repository.GetOwnedActiveByIdAsync(feedbackId, userId, tracking: true, ct);
+        if (feedback is null) throw new FeedbackNotFoundException("Interview feedback not found.");
+
+        feedback.IsDeleted = true;
+        feedback.IsVisible = false;
+        feedback.DeletedAt = VietnamTime.Now;
+        await _repository.ResolvePendingReportsAsync(feedback.InterviewFeedbackId, ct);
+
+        await _repository.SaveChangesAsync(ct);
     }
 
     public async Task<bool> SoftDeleteAsync(Guid id)
@@ -255,18 +282,6 @@ public class AiFeedbackService : IAiFeedbackService
         if (rating < 1 || rating > 5) throw new FeedbackValidationException($"{field} must be between 1 and 5.");
     }
 
-    private static bool IsUniqueConstraintViolation(DbUpdateException exception)
-    {
-        for (Exception? current = exception; current is not null; current = current.InnerException)
-        {
-            if (current is SqlException sqlException && sqlException.Number is 2601 or 2627)
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
 
     private static PagedResult<T> ToPaged<T>(IReadOnlyList<T> items, int page, int pageSize, int total) => new()
     {
@@ -279,12 +294,9 @@ public class AiFeedbackService : IAiFeedbackService
 
     public async Task<bool> RestoreAsync(Guid id)
     {
-        var feedback = await _repository.GetByIdAsync(id, tracking: true);
-        if (feedback is null || !feedback.IsDeleted) return false;
-
-        feedback.IsDeleted = false;
-        feedback.DeletedAt = null;
-        await _repository.SaveChangesAsync();
-        return true;
+        var outcome = await _repository.RestoreAsync(id);
+        if (outcome == FeedbackRestoreOutcome.Conflict)
+            throw new FeedbackEligibilityException("Cannot restore: an active interview feedback already exists for this session.");
+        return outcome == FeedbackRestoreOutcome.Restored;
     }
 }

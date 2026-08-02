@@ -33,8 +33,9 @@ public interface ISessionRepository
         Guid userId,
         SessionHistoryQuery query,
         CancellationToken ct);
+    Task<IReadOnlyList<string>> GetHistoryQuestionTypeOptionsAsync(Guid userId, CancellationToken ct);
     Task<InterviewSession?> GetChatLogAsync(Guid userId, Guid sessionId, CancellationToken ct);
-    Task<int> CountFeedbackEligibleSessionsAsync(Guid userId, CancellationToken ct);
+    Task<int> CountSystemFeedbackQualifyingSessionsAsync(Guid userId, CancellationToken ct);
     Task<InterviewSession?> GetFeedbackEligibilitySessionAsync(Guid userId, Guid sessionId, CancellationToken ct);
     Task<InterviewRoom?> GetRoomBySessionAsync(Guid sessionId, CancellationToken ct);
     Task UpdateRoomAsync(InterviewRoom room, CancellationToken ct);

@@ -1,4 +1,4 @@
-﻿@using WebClient.Models.Feedback
+@using WebClient.Models.Feedback
 @model ReportedFeedbackPageViewModel
 @{
     Layout = null;
@@ -30,12 +30,6 @@
                 <span>Monitor community reports and resolution history. Report actions are available only to administrators.</span>
             </div>
         </header>
-
-        <nav class="feedback-management-tabs" aria-label="Feedback management sections">
-            <a asp-controller="Manager" asp-action="AiFeedback">AI Feedback</a>
-            <a asp-controller="Manager" asp-action="Feedback">System Feedback</a>
-            <a class="active" asp-controller="Manager" asp-action="ReportedFeedback" aria-current="page">Reported Feedback</a>
-        </nav>
 
         @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
         {

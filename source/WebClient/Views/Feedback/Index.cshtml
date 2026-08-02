@@ -5,6 +5,23 @@
     Layout = null;
     var isSystem = string.Equals(Model.ActiveSection, "System", StringComparison.OrdinalIgnoreCase);
     var title = isSystem ? "System Feedback" : "AI Feedback";
+    var canManageOwnedSystemFeedback = isSystem
+        && Model.IsAuthenticatedUser
+        && Model.MySystemFeedback is not null
+        && Model.SystemReviews.Items.Any(item => item.IsOwner);
+    var canManageOwnedAiFeedback = !isSystem
+        && Model.IsAuthenticatedUser
+        && Model.AiReviews.Items.Any(item => item.IsOwner);
+    var hasSystemReportAction = isSystem
+        && Model.IsAuthenticatedUser
+        && Model.SystemReviews.Items.Any(item => item.CanReport);
+    var hasSystemReportedState = isSystem
+        && Model.IsAuthenticatedUser
+        && Model.SystemReviews.Items.Any(item => item.HasReported);
+    var needsFeedbackActionStyles = canManageOwnedSystemFeedback
+        || canManageOwnedAiFeedback
+        || hasSystemReportAction
+        || hasSystemReportedState;
     string Iso(DateTime value) => value.ToString("O");
     var currentPage = isSystem ? Math.Max(1, Model.SystemReviews.Page) : Math.Max(1, Model.AiReviews.Page);
     var totalPages = isSystem ? Math.Max(1, Model.SystemReviews.TotalPages) : Math.Max(1, Model.AiReviews.TotalPages);
@@ -25,7 +42,10 @@
     <link rel="stylesheet" href="~/css/home.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/pages/feedback.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/components/safe-text.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/css/components/feedback-report.css" asp-append-version="true" />
+    @if (needsFeedbackActionStyles)
+    {
+        <link rel="stylesheet" href="~/css/components/feedback-report.css" asp-append-version="true" />
+    }
     <link rel="stylesheet" href="~/css/components/star-rating.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/components/pagination.css" asp-append-version="true" />
 </head>
@@ -38,22 +58,11 @@
     @await Html.PartialAsync("_Navbar")
 
     <main class="feedback-shell">
-        <aside class="feedback-nav glass-card">
-            <a class="@(isSystem ? "active" : "")" asp-controller="Feedback" asp-action="System">
-                <span class="material-symbols-outlined">rate_review</span>
-                <span>System Feedback</span>
-            </a>
-            <a class="@(!isSystem ? "active" : "")" asp-controller="Feedback" asp-action="Ai">
-                <span class="material-symbols-outlined">smart_toy</span>
-                <span>AI Feedback</span>
-            </a>
-        </aside>
-
         <section class="feedback-content">
             <header class="feedback-header">
                 <p>@(isSystem ? "Platform experience" : "Interview experience")</p>
                 <h1>@title</h1>
-                <span>@(isSystem ? "Public reviews from candidates using DevPrep." : "Published interview feedback about AI questions, scoring, and coaching quality.")</span>
+                <span>@(isSystem ? "Public feedback from candidates using DevPrep." : "Published interview feedback about AI questions, scoring, and coaching quality.")</span>
             </header>
 
             @if (!string.IsNullOrEmpty(Model.SuccessMessage))
@@ -75,6 +84,10 @@
                         {
                             <p>Log in as a candidate user to submit system feedback.</p>
                             <a class="feedback-primary-link" asp-controller="Auth" asp-action="Login">Login to submit</a>
+                        }
+                        else if (Model.MySystemFeedback is not null)
+                        {
+                            <p>Your active System Feedback is shown below. Use Edit or Delete to manage it.</p>
                         }
                         else if (Model.Eligibility?.QualifyingSessionCount < 1)
                         {
@@ -99,6 +112,7 @@
                                         Name = field.Name,
                                         Label = field.Label,
                                         Value = Model.FeedbackFormWasSubmitted ? field.Value : 5,
+                                        InstancePrefix = "public-system-submit",
                                         Editable = true,
                                         Required = true
                                     })
@@ -130,7 +144,7 @@
                         {
                             <div class="feedback-empty glass-card">
                                 <span class="material-symbols-outlined">rate_review</span>
-                                <h2>No public system reviews yet</h2>
+                                <h2>No Public System Feedback Yet</h2>
                                 <p>Published system feedback will appear here after users submit it.</p>
                             </div>
                         }
@@ -160,14 +174,27 @@
                                     </div>
                                     <div class="review-card-footer">
                                         <time class="review-date" datetime="@Iso(review.CreatedAt)">@review.CreatedAt.ToString("MMM d, yyyy")</time>
-                                        @if (review.HasReported)
+                                        @if (Model.IsAuthenticatedUser && review.IsOwner)
+                                        {
+                                            <div class="feedback-owner-actions">
+                                                <button type="button" class="feedback-owner-action feedback-owner-action-edit" data-edit-system-trigger data-feedback-id="@review.FeedbackId" data-overall="@review.OverallRating" data-uiux="@review.UiUxRating" data-usability="@review.UsabilityRating" data-feature="@review.FeatureQualityRating" data-comment="@review.Comment" aria-label="Edit system feedback">
+                                                    <span class="material-symbols-outlined" aria-hidden="true">edit</span>
+                                                    <span>Edit</span>
+                                                </button>
+                                                <button type="button" class="feedback-owner-action feedback-owner-action-delete" data-delete-system-trigger data-feedback-id="@review.FeedbackId" aria-label="Delete system feedback">
+                                                    <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+                                                    <span>Delete</span>
+                                                </button>
+                                            </div>
+                                        }
+                                        else if (Model.IsAuthenticatedUser && review.HasReported)
                                         {
                                             <button type="button" class="feedback-report-action is-reported" disabled aria-label="Feedback already reported">
                                                 <span class="material-symbols-outlined" aria-hidden="true">flag</span>
                                                 <span>Reported</span>
                                             </button>
                                         }
-                                        else if (review.CanReport)
+                                        else if (Model.IsAuthenticatedUser && review.CanReport)
                                         {
                                             <button type="button"
                                                     class="feedback-report-action"
@@ -197,7 +224,7 @@
                     {
                         <div class="feedback-empty glass-card">
                             <span class="material-symbols-outlined">smart_toy</span>
-                            <h2>No public AI reviews yet</h2>
+                            <h2>No Public AI Feedback Yet</h2>
                             <p>Published interview feedback will appear here after candidates submit it.</p>
                         </div>
                     }
@@ -228,27 +255,32 @@
                                 </div>
                                 <div class="review-card-footer">
                                     <time class="review-date" datetime="@Iso(review.CreatedAt)">@review.CreatedAt.ToString("MMM d, yyyy")</time>
-                                    @if (review.HasReported)
+                                    @if (Model.IsAuthenticatedUser && review.IsOwner)
                                     {
-                                        <button type="button" class="feedback-report-action is-reported" disabled aria-label="Feedback already reported">
-                                            <span class="material-symbols-outlined" aria-hidden="true">flag</span>
-                                            <span>Reported</span>
-                                        </button>
-                                    }
-                                    else if (review.CanReport)
-                                    {
-                                        <button type="button"
-                                                class="feedback-report-action"
-                                                data-report-trigger
-                                                data-feedback-id="@review.FeedbackId"
-                                                data-feedback-type="@FeedbackReportRules.InterviewType"
-                                                data-feedback-author="@review.AuthorDisplayName"
-                                                data-feedback-type-label="AI Feedback"
-                                                data-preview-id="ai-review-@review.FeedbackId.ToString("N")"
-                                                aria-label="Report this AI feedback">
-                                            <span class="material-symbols-outlined" aria-hidden="true">flag</span>
-                                            <span>Report</span>
-                                        </button>
+                                        <div class="feedback-owner-actions">
+                                            <button type="button"
+                                                    class="feedback-owner-action feedback-owner-action-edit"
+                                                    data-edit-interview-trigger
+                                                    data-feedback-id="@review.FeedbackId"
+                                                    data-overall="@review.OverallRating"
+                                                    data-question="@review.QuestionQualityRating"
+                                                    data-ai="@review.AiAccuracyRating"
+                                                    data-scoring="@review.ScoringFairnessRating"
+                                                    data-usefulness="@review.FeedbackUsefulnessRating"
+                                                    data-comment="@review.Comment"
+                                                    aria-label="Edit AI feedback">
+                                                <span class="material-symbols-outlined" aria-hidden="true">edit</span>
+                                                <span>Edit</span>
+                                            </button>
+                                            <button type="button"
+                                                    class="feedback-owner-action feedback-owner-action-delete"
+                                                    data-delete-interview-trigger
+                                                    data-feedback-id="@review.FeedbackId"
+                                                    aria-label="Delete AI feedback">
+                                                <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+                                                <span>Delete</span>
+                                            </button>
+                                        </div>
                                     }
                                 </div>
                             </article>
@@ -268,6 +300,8 @@
         </section>
     </main>
 
+    @if (hasSystemReportAction)
+    {
     <div class="feedback-report-toast" data-report-toast role="status" aria-live="polite" hidden></div>
 
     <div class="feedback-report-modal" data-report-modal hidden>
@@ -347,10 +381,162 @@
             </form>
         </section>
     </div>
+    }
 
+    @if (canManageOwnedSystemFeedback)
+    {
+    <div class="feedback-report-modal" data-edit-system-modal data-open-on-load="@Model.EditFormWasSubmitted.ToString().ToLowerInvariant()" hidden>
+        <div class="feedback-report-backdrop" data-edit-system-close></div>
+        <section class="feedback-report-dialog" role="dialog" aria-modal="true" aria-labelledby="edit-system-title">
+            <header class="feedback-report-dialog-header">
+                <div>
+                    <p>System Feedback</p>
+                    <h2 id="edit-system-title">Edit feedback</h2>
+                </div>
+                <button type="button" class="feedback-report-close" data-edit-system-close aria-label="Close dialog">
+                    <span class="material-symbols-outlined" aria-hidden="true">close</span>
+                </button>
+            </header>
+            <form method="post" asp-controller="Feedback" asp-action="EditSystem" class="feedback-form">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="feedbackId" value="@(Model.EditingFeedbackId ?? Model.MySystemFeedback?.FeedbackId)" />
+                <input type="hidden" name="returnUrl" value="@(Context.Request.Path + Context.Request.QueryString)" />
+                <input type="hidden" name="page" value="@Model.Page" />
+                @foreach (var field in new[]
+                {
+                    new { Name = "OverallRating", Label = "Overall", Value = Model.EditFormWasSubmitted ? Model.EditSystemForm.OverallRating : 5 },
+                    new { Name = "UiUxRating", Label = "UI/UX", Value = Model.EditFormWasSubmitted ? Model.EditSystemForm.UiUxRating : 5 },
+                    new { Name = "UsabilityRating", Label = "Usability", Value = Model.EditFormWasSubmitted ? Model.EditSystemForm.UsabilityRating : 5 },
+                    new { Name = "FeatureQualityRating", Label = "Feature quality", Value = Model.EditFormWasSubmitted ? Model.EditSystemForm.FeatureQualityRating : 5 }
+                })
+                {
+                    @await Html.PartialAsync("_StarRating", new WebClient.Models.Shared.StarRatingViewModel
+                    {
+                        Name = field.Name,
+                        Label = field.Label,
+                        Value = field.Value,
+                        InstancePrefix = "public-system-edit",
+                        Editable = true,
+                        Required = true
+                    })
+                }
+                <label class="feedback-dialog-label" for="edit-system-comment">Comment <span>(optional)</span></label>
+                <textarea id="edit-system-comment" class="feedback-comment-input" name="Comment" rows="4" maxlength="@SystemFeedbackRules.MaxCommentLength">@(Model.EditFormWasSubmitted ? Model.EditSystemForm.Comment : null)</textarea>
+                <span class="feedback-field-error" role="alert">@Model.FeedbackValidationMessage</span>
+                <div class="feedback-report-actions">
+                    <button type="button" class="feedback-report-cancel" data-edit-system-close>Cancel</button>
+                    <button type="submit" class="feedback-report-submit">Save Changes</button>
+                </div>
+            </form>
+        </section>
+    </div>
+
+    <div class="feedback-report-modal" data-delete-system-modal hidden>
+        <div class="feedback-report-backdrop" data-delete-system-close></div>
+        <section class="feedback-report-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-system-title">
+            <header class="feedback-report-dialog-header">
+                <div>
+                    <p>Confirmation</p>
+                    <h2 id="delete-system-title">Delete system feedback?</h2>
+                </div>
+                <button type="button" class="feedback-report-close" data-delete-system-close aria-label="Close dialog">
+                    <span class="material-symbols-outlined" aria-hidden="true">close</span>
+                </button>
+            </header>
+            <p class="feedback-report-description">Are you sure you want to delete your system feedback? This action will remove your published feedback from the community.</p>
+            <form method="post" asp-controller="Feedback" asp-action="DeleteSystem">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="feedbackId" value="@Model.MySystemFeedback?.FeedbackId" />
+                <input type="hidden" name="returnUrl" value="@(Context.Request.Path + Context.Request.QueryString)" />
+                <input type="hidden" name="page" value="@Model.Page" />
+                <div class="feedback-report-actions">
+                    <button type="button" class="feedback-report-cancel" data-delete-system-close>Cancel</button>
+                    <button type="submit" class="feedback-report-submit feedback-report-submit-danger">Delete</button>
+                </div>
+            </form>
+        </section>
+    </div>
+    }
+
+    @if (canManageOwnedAiFeedback)
+    {
+    <div class="feedback-report-modal" data-edit-interview-modal data-open-on-load="@Model.EditFormWasSubmitted.ToString().ToLowerInvariant()" hidden>
+        <div class="feedback-report-backdrop" data-edit-interview-close></div>
+        <section class="feedback-report-dialog" role="dialog" aria-modal="true" aria-labelledby="edit-public-ai-title">
+            <header class="feedback-report-dialog-header">
+                <div>
+                    <p>AI Feedback</p>
+                    <h2 id="edit-public-ai-title">Edit feedback</h2>
+                </div>
+                <button type="button" class="feedback-report-close" data-edit-interview-close aria-label="Close dialog">
+                    <span class="material-symbols-outlined" aria-hidden="true">close</span>
+                </button>
+            </header>
+            <form method="post" asp-controller="Feedback" asp-action="EditAi" class="feedback-form">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="feedbackId" value="@Model.EditingFeedbackId" />
+                <input type="hidden" name="page" value="@Model.Page" />
+                @foreach (var field in new[]
+                {
+                    new { Name = "OverallRating", Label = "Overall rating", Value = Model.EditFormWasSubmitted ? Model.EditInterviewForm.OverallRating : 5 },
+                    new { Name = "QuestionQualityRating", Label = "Question quality", Value = Model.EditFormWasSubmitted ? Model.EditInterviewForm.QuestionQualityRating : 5 },
+                    new { Name = "AiAccuracyRating", Label = "AI accuracy", Value = Model.EditFormWasSubmitted ? Model.EditInterviewForm.AiAccuracyRating : 5 },
+                    new { Name = "ScoringFairnessRating", Label = "Scoring fairness", Value = Model.EditFormWasSubmitted ? Model.EditInterviewForm.ScoringFairnessRating : 5 },
+                    new { Name = "FeedbackUsefulnessRating", Label = "Feedback usefulness", Value = Model.EditFormWasSubmitted ? Model.EditInterviewForm.FeedbackUsefulnessRating : 5 }
+                })
+                {
+                    @await Html.PartialAsync("_StarRating", new WebClient.Models.Shared.StarRatingViewModel
+                    {
+                        Name = field.Name,
+                        Label = field.Label,
+                        Value = field.Value,
+                        InstancePrefix = "public-ai-edit",
+                        Editable = true,
+                        Required = true
+                    })
+                }
+                <label class="feedback-dialog-label" for="edit-public-ai-comment">Comment <span>(optional)</span></label>
+                <textarea id="edit-public-ai-comment" class="feedback-comment-input" name="Comment" rows="4" maxlength="@InterviewFeedbackRules.MaxCommentLength">@(Model.EditFormWasSubmitted ? Model.EditInterviewForm.Comment : null)</textarea>
+                <span class="feedback-field-error" role="alert">@Model.FeedbackValidationMessage</span>
+                <div class="feedback-report-actions">
+                    <button type="button" class="feedback-report-cancel" data-edit-interview-close>Cancel</button>
+                    <button type="submit" class="feedback-report-submit">Save Changes</button>
+                </div>
+            </form>
+        </section>
+    </div>
+
+    <div class="feedback-report-modal" data-delete-interview-modal hidden>
+        <div class="feedback-report-backdrop" data-delete-interview-close></div>
+        <section class="feedback-report-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-public-ai-title">
+            <header class="feedback-report-dialog-header">
+                <div>
+                    <p>Confirmation</p>
+                    <h2 id="delete-public-ai-title">Delete AI feedback?</h2>
+                </div>
+                <button type="button" class="feedback-report-close" data-delete-interview-close aria-label="Close dialog">
+                    <span class="material-symbols-outlined" aria-hidden="true">close</span>
+                </button>
+            </header>
+            <p class="feedback-report-description">Are you sure you want to delete your AI feedback? It will no longer appear publicly.</p>
+            <form method="post" asp-controller="Feedback" asp-action="DeleteAi">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="feedbackId" />
+                <input type="hidden" name="page" value="@Model.Page" />
+                <div class="feedback-report-actions">
+                    <button type="button" class="feedback-report-cancel" data-delete-interview-close>Cancel</button>
+                    <button type="submit" class="feedback-report-submit feedback-report-submit-danger">Delete</button>
+                </div>
+            </form>
+        </section>
+    </div>
+    }
     @await Html.PartialAsync("_Footer")
     <script src="~/js/components/feedback-content.js" asp-append-version="true"></script>
     <script src="~/js/components/star-rating.js" asp-append-version="true"></script>
-    <script src="~/js/components/feedback-report.js" asp-append-version="true"></script>
+    @if (hasSystemReportAction)
+    {
+        <script src="~/js/components/feedback-report.js" asp-append-version="true"></script>
+    }
 </body>
 </html>

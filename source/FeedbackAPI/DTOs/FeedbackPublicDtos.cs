@@ -22,6 +22,7 @@ public class PublicSystemFeedbackDto
     public DateTime CreatedAt { get; set; }
     public bool CanReport { get; set; }
     public bool HasReported { get; set; }
+    public bool IsOwner { get; set; }
 }
 
 public class PublicAiFeedbackDto
@@ -35,10 +36,21 @@ public class PublicAiFeedbackDto
     public byte? FeedbackUsefulnessRating { get; set; }
     public string? Comment { get; set; }
     public DateTime CreatedAt { get; set; }
-    public bool CanReport { get; set; }
-    public bool HasReported { get; set; }
+    public bool IsOwner { get; set; }
 }
 
+public class MySystemFeedbackDto
+{
+    public Guid FeedbackId { get; set; }
+    public byte OverallRating { get; set; }
+    public byte UiUxRating { get; set; }
+    public byte UsabilityRating { get; set; }
+    public byte FeatureQualityRating { get; set; }
+    public string? Comment { get; set; }
+    public bool IsVisible { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}
 
 public class MyInterviewFeedbackDto
 {
@@ -50,7 +62,7 @@ public class MyInterviewFeedbackDto
     public byte? ScoringFairnessRating { get; set; }
     public byte? FeedbackUsefulnessRating { get; set; }
     public string? Comment { get; set; }
-    public string ModerationStatus { get; set; } = string.Empty;
+
     public bool IsVisible { get; set; }
     public DateTime CreatedAt { get; set; }
 }
@@ -77,6 +89,7 @@ public class SystemFeedbackSubmissionStatusDto
     public bool HasSubmittedSystemFeedback { get; set; }
     public int FeedbackCount { get; set; }
     public DateTime? LastSubmittedAt { get; set; }
+    public Guid? ActiveFeedbackId { get; set; }
 }
 
 public class SubmitInterviewFeedbackRequest
@@ -103,6 +116,27 @@ public class SubmitInterviewFeedbackRequest
     public string? Comment { get; set; }
 }
 
+public class UpdateSystemFeedbackRequest
+{
+    [Range(1, 5)] public int OverallRating { get; set; }
+    [Range(1, 5)] public int UiUxRating { get; set; }
+    [Range(1, 5)] public int UsabilityRating { get; set; }
+    [Range(1, 5)] public int FeatureQualityRating { get; set; }
+    [StringLength(SystemFeedbackRules.MaxCommentLength, ErrorMessage = "Comment cannot exceed 4000 characters.")]
+    public string? Comment { get; set; }
+}
+
+public class UpdateInterviewFeedbackRequest
+{
+    [Range(1, 5)] public int OverallRating { get; set; }
+    [Range(1, 5)] public int QuestionQualityRating { get; set; }
+    [Range(1, 5)] public int AiAccuracyRating { get; set; }
+    [Range(1, 5)] public int ScoringFairnessRating { get; set; }
+    [Range(1, 5)] public int FeedbackUsefulnessRating { get; set; }
+    [StringLength(InterviewFeedbackRules.MaxCommentLength, ErrorMessage = "Comment cannot exceed 1000 characters.")]
+    public string? Comment { get; set; }
+}
+
 public class CreatedSystemFeedbackDto
 {
     public Guid FeedbackId { get; set; }
@@ -111,7 +145,7 @@ public class CreatedSystemFeedbackDto
     public byte UsabilityRating { get; set; }
     public byte FeatureQualityRating { get; set; }
     public string? Comment { get; set; }
-    public string ModerationStatus { get; set; } = string.Empty;
+
     public bool IsVisible { get; set; }
     public DateTime CreatedAt { get; set; }
 }
@@ -126,24 +160,7 @@ public class CreatedInterviewFeedbackDto
     public byte ScoringFairnessRating { get; set; }
     public byte FeedbackUsefulnessRating { get; set; }
     public string? Comment { get; set; }
-    public string ModerationStatus { get; set; } = string.Empty;
+
     public bool IsVisible { get; set; }
     public DateTime CreatedAt { get; set; }
-}
-
-public class ModerationRequest
-{
-    [Required]
-    public string ModerationStatus { get; set; } = string.Empty;
-
-    public bool IsVisible { get; set; }
-}
-
-public class ModerationResponse
-{
-    public Guid FeedbackId { get; set; }
-    public string ModerationStatus { get; set; } = string.Empty;
-    public bool IsVisible { get; set; }
-    public DateTime? ModeratedAt { get; set; }
-    public Guid? ModeratedBy { get; set; }
 }

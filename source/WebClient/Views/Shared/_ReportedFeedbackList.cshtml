@@ -36,7 +36,7 @@
     <label>
         <span>Reason</span>
         <select name="reasonCode">
-            <option value="All" selected="@(Model.ReasonCode == "All")">All reasons</option>
+            <option value="All" selected="@(Model.ReasonCode == "All")">All</option>
             @foreach (var reason in FeedbackReportRules.Reasons)
             {
                 <option value="@reason.Key" selected="@(Model.ReasonCode == reason.Key)">@reason.Value</option>

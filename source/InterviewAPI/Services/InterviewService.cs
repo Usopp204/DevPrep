@@ -26,6 +26,46 @@ public class InterviewService : IInterviewService
         _userClient = userClient;
     }
 
+    public async Task<InterviewDashboardStatisticsDto> GetDashboardStatisticsAsync(
+        DateOnly from,
+        DateOnly to,
+        CancellationToken cancellationToken = default)
+    {
+        var rangeFrom = from.ToDateTime(TimeOnly.MinValue);
+        var rangeToExclusive = to.AddDays(1).ToDateTime(TimeOnly.MinValue);
+        var sessions = _repository.QueryIncludingDeleted();
+
+        var totalInterviewSessions = await sessions.LongCountAsync(cancellationToken);
+        var completedInterviewSessions = await sessions
+            .LongCountAsync(session => session.Status == "Completed", cancellationToken);
+        var grouped = await sessions
+            .Where(session => session.CreatedAt >= rangeFrom && session.CreatedAt < rangeToExclusive)
+            .GroupBy(session => session.CreatedAt.Date)
+            .Select(group => new { Date = group.Key, Count = group.LongCount() })
+            .ToListAsync(cancellationToken);
+
+        var byDate = grouped.ToDictionary(
+            item => DateOnly.FromDateTime(item.Date),
+            item => item.Count);
+        var days = new List<InterviewDashboardStatisticsDayDto>(to.DayNumber - from.DayNumber + 1);
+        for (var date = from; date <= to; date = date.AddDays(1))
+        {
+            days.Add(new InterviewDashboardStatisticsDayDto
+            {
+                Date = date,
+                Count = byDate.GetValueOrDefault(date)
+            });
+        }
+
+        return new InterviewDashboardStatisticsDto
+        {
+            From = from,
+            To = to,
+            TotalInterviewSessions = totalInterviewSessions,
+            CompletedInterviewSessions = completedInterviewSessions,
+            Days = days
+        };
+    }
     public async Task<PagedResult<InterviewListItemDto>> GetListAsync(InterviewQuery query, CancellationToken cancellationToken = default)
     {
         var page = query.Page < 1 ? 1 : query.Page;

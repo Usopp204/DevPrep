@@ -6,10 +6,6 @@ using StatisticsAPI.Services;
 
 namespace StatisticsAPI.Controllers;
 
-/// <summary>
-/// Đọc read-model thống kê cho Admin Dashboard. Đọc thẳng DevPrep_Statistics (KHÔNG fan-out sang service khác).
-/// Route full-path (gateway đã bỏ PathRemovePrefix cho /api/admin/statistics).
-/// </summary>
 [ApiController]
 [Route("api/admin/statistics")]
 [Authorize(Roles = "Admin,Manager")]
@@ -17,31 +13,64 @@ public class AdminStatisticsController(
     IStatisticsQueryService queryService,
     IStatisticsCollector collector) : ControllerBase
 {
-    /// <summary>Các con số tổng hiện tại (stat card).</summary>
-    [HttpGet("overview")]
-    public async Task<IActionResult> Overview(CancellationToken ct)
+    [HttpGet("dashboard")]
+    public async Task<IActionResult> Dashboard(
+        [FromQuery] DateOnly? from,
+        [FromQuery] DateOnly? to,
+        CancellationToken cancellationToken)
     {
-        var data = await queryService.GetOverviewAsync(ct);
+        var today = DateOnly.FromDateTime(VietnamTime.Today);
+        if (!DashboardDateRange.TryResolve(from, to, today, out var range, out var error))
+            return BadRequest(ApiResponse<object>.Fail(error!));
+
+        var data = await queryService.GetDashboardAsync(range.From, range.To, cancellationToken);
+        return Ok(ApiResponse<ManagementDashboardDto>.Ok(data));
+    }
+
+    [HttpGet("overview")]
+    public async Task<IActionResult> Overview(CancellationToken cancellationToken)
+    {
+        var data = await queryService.GetOverviewAsync(cancellationToken);
         return Ok(ApiResponse<StatisticsOverviewDto>.Ok(data));
     }
 
-    /// <summary>Chuỗi số liệu theo ngày trong [from..to] (yyyy-MM-dd) — vẽ chart. Mặc định 30 ngày gần nhất.</summary>
     [HttpGet("timeseries")]
-    public async Task<IActionResult> TimeSeries([FromQuery] DateOnly? from, [FromQuery] DateOnly? to, CancellationToken ct)
+    public async Task<IActionResult> TimeSeries(
+        [FromQuery] DateOnly? from,
+        [FromQuery] DateOnly? to,
+        CancellationToken cancellationToken)
     {
-        var toD = to ?? DateOnly.FromDateTime(VietnamTime.Today);
-        var fromD = from ?? toD.AddDays(-29);
-        var data = await queryService.GetTimeSeriesAsync(fromD, toD, ct);
+        var toDate = to ?? DateOnly.FromDateTime(VietnamTime.Today);
+        var fromDate = from ?? toDate.AddDays(-29);
+        var data = await queryService.GetTimeSeriesAsync(fromDate, toDate, cancellationToken);
         return Ok(ApiResponse<TimeSeriesResult>.Ok(data));
     }
 
-    /// <summary>Tổng hợp lại ngay (kéo số liệu từ các service). Chỉ Admin. Cần các service kia đang chạy.</summary>
     [HttpPost("rebuild")]
     [Authorize(Roles = "Admin")]
-    public async Task<IActionResult> Rebuild(CancellationToken ct)
+    public async Task<IActionResult> Rebuild(CancellationToken cancellationToken)
     {
-        var result = await collector.RunAsync(ct);
-        return Ok(ApiResponse<RebuildResultDto>.Ok(result,
-            result.Warnings.Count == 0 ? "Rebuilt OK." : $"Rebuilt with {result.Warnings.Count} warning(s)."));
+        var result = await collector.RunAsync(waitForAvailability: false, cancellationToken);
+        if (result.Busy)
+        {
+            return Conflict(new ApiResponse<RebuildResultDto>
+            {
+                Success = false,
+                Message = "A statistics collection is already in progress.",
+                Data = result
+            });
+        }
+
+        if (!result.Ok)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new ApiResponse<RebuildResultDto>
+            {
+                Success = false,
+                Message = "Dashboard statistics could not be refreshed. The previous generation was preserved.",
+                Data = result
+            });
+        }
+
+        return Ok(ApiResponse<RebuildResultDto>.Ok(result, "Dashboard statistics rebuilt successfully."));
     }
 }

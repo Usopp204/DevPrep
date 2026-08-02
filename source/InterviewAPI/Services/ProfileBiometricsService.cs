@@ -13,6 +13,14 @@ public class ProfileBiometricsService : IProfileBiometricsService
     public const string ModalityFace = "Face";
     public const string ModalityVoice = "Voice";
 
+    // Outcomes of the one-time biometric enrollment bonus, surfaced to the client so a denied
+    // bonus is no longer invisible outside InterviewAPI's own logs.
+    public const string BonusStatusAwarded = "Awarded";
+    public const string BonusStatusAlreadyAwarded = "AlreadyAwarded";
+    public const string BonusStatusIdentityAlreadyClaimed = "IdentityAlreadyClaimed";
+    public const string BonusStatusNotAwarded = "NotAwarded";
+    public const string BonusStatusNotYetEligible = "NotYetEligible";
+
     private readonly IProfileBiometricsRepository _repository;
     private readonly IAiServiceClient _aiServiceClient;
     private readonly IPaymentApiClient _paymentApiClient;
@@ -73,14 +81,14 @@ public class ProfileBiometricsService : IProfileBiometricsService
             await _repository.SaveChangesAsync(ct);
         }
 
-        var bonusAwarded = await TryAwardEnrollmentBonusAsync(userId, modality, ct);
+        var bonusStatus = await TryAwardEnrollmentBonusAsync(userId, modality, ct);
 
         return new BiometricEnrollResponse
         {
             Modality = modality,
             Dim = result.Dim,
             Quality = result.Quality,
-            BonusAwarded = bonusAwarded,
+            BonusStatus = bonusStatus,
         };
     }
 
@@ -114,19 +122,19 @@ public class ProfileBiometricsService : IProfileBiometricsService
     // safe/intended: PaymentAPI's own idempotency guard (see AwardCreditAsync) is what actually
     // prevents awarding more than once, this check is just to skip the pointless call most of
     // the time (e.g. every re-enrollment after the first time both exist).
-    private async Task<bool> TryAwardEnrollmentBonusAsync(Guid userId, string justEnrolledModality, CancellationToken ct)
+    private async Task<string> TryAwardEnrollmentBonusAsync(Guid userId, string justEnrolledModality, CancellationToken ct)
     {
         var otherModality = justEnrolledModality == ModalityFace ? ModalityVoice : ModalityFace;
         var other = await _repository.GetAsync(userId, otherModality, ct);
         if (other is null)
-            return false; // still missing the other modality — not eligible yet.
+            return BonusStatusNotYetEligible; // still missing the other modality — not eligible yet.
 
         if (!await IsCanonicalBonusAccountAsync(userId, ct))
         {
             _logger.LogInformation(
                 "Biometric enrollment bonus skipped because this identity belongs to an earlier account. userId={UserId}",
                 userId);
-            return false;
+            return BonusStatusIdentityAlreadyClaimed;
         }
 
         // Enroll is the primary action here — a PaymentAPI hiccup must never fail enrollment,
@@ -142,17 +150,18 @@ public class ProfileBiometricsService : IProfileBiometricsService
                 _logger.LogWarning(
                     "Biometric enrollment bonus award failed: userId={UserId}, reason={Reason}",
                     userId, award.Message);
+                return BonusStatusNotAwarded;
             }
 
             // award.Success is also true for the idempotent no-op (user already had the bonus) —
             // only award.Awarded means THIS call is what granted it, which is what the caller
             // needs to decide whether to show a "you got a bonus!" notification.
-            return award.Awarded;
+            return award.Awarded ? BonusStatusAwarded : BonusStatusAlreadyAwarded;
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Biometric enrollment bonus award threw: userId={UserId}", userId);
-            return false;
+            return BonusStatusNotAwarded;
         }
     }
 
@@ -164,8 +173,13 @@ public class ProfileBiometricsService : IProfileBiometricsService
             return false;
 
         var currentEmbedding = EmbeddingCodec.ToFloats(current.Embedding);
+        // Deliberately stricter than the re-enrollment thresholds: those tolerate the SAME person
+        // across lighting/pose, this decides whether two DIFFERENT accounts are the same real
+        // person — a loose threshold here produces false positives that silently deny a
+        // legitimate user their bonus. Value is provisional pending Milestone 3 biometric
+        // calibration (see ai-service/biometrics/calibrate.py).
         var threshold = _configuration.GetValue(
-            "Biometrics:BonusIdentityMatchThreshold", 0.35);
+            "Biometrics:BonusDedupMatchThreshold", 0.5);
 
         var canonicalAccount = faceTemplates
             .Where(template =>

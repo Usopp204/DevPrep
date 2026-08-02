@@ -8,9 +8,12 @@
     var navIsAdmin = string.Equals(navRole, "Admin", StringComparison.OrdinalIgnoreCase)
                   || string.Equals(navRole, "Manager", StringComparison.OrdinalIgnoreCase);
     var activeController = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
-    bool IsActive(string controller) => string.Equals(activeController, controller, StringComparison.OrdinalIgnoreCase);
-    string NavClass(string controller) => IsActive(controller) ? "active" : string.Empty;
-    string? AriaCurrent(string controller) => IsActive(controller) ? "page" : null;
+    var activeAction = ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty;
+    bool IsActive(string controller, string? action = null) =>
+        string.Equals(activeController, controller, StringComparison.OrdinalIgnoreCase)
+        && (action is null || string.Equals(activeAction, action, StringComparison.OrdinalIgnoreCase));
+    string NavClass(string controller, string? action = null) => IsActive(controller, action) ? "active" : string.Empty;
+    string? AriaCurrent(string controller, string? action = null) => IsActive(controller, action) ? "page" : null;
 }
 <nav class="hm-navbar" id="hm-navbar">
     <div class="hm-navbar-inner">
@@ -24,7 +27,8 @@
                 <a asp-controller="Auth" asp-action="Login">Interview</a>
                 <a class="@NavClass("Payment")" aria-current="@AriaCurrent("Payment")" asp-controller="Payment" asp-action="Index">Payment</a>
                 <a class="@NavClass("News")" aria-current="@AriaCurrent("News")" asp-controller="News" asp-action="Index">News</a>
-                <a class="@NavClass("Feedback")" aria-current="@AriaCurrent("Feedback")" asp-controller="Feedback" asp-action="System">Feedback</a>
+                <a class="@NavClass("Feedback", "System")" aria-current="@AriaCurrent("Feedback", "System")" asp-controller="Feedback" asp-action="System">System Feedback</a>
+                <a class="@NavClass("Feedback", "Ai")" aria-current="@AriaCurrent("Feedback", "Ai")" asp-controller="Feedback" asp-action="Ai">AI Feedback</a>
             }
             else if (navIsAdmin)
             {
@@ -36,7 +40,8 @@
                 <a class="@NavClass("Interview")" aria-current="@AriaCurrent("Interview")" asp-controller="Interview" asp-action="Index">Interview</a>
                 <a class="@NavClass("Payment")" aria-current="@AriaCurrent("Payment")" asp-controller="Payment" asp-action="Index">Payment</a>
                 <a class="@NavClass("News")" aria-current="@AriaCurrent("News")" asp-controller="News" asp-action="Index">News</a>
-                <a class="@NavClass("Feedback")" aria-current="@AriaCurrent("Feedback")" asp-controller="Feedback" asp-action="System">Feedback</a>
+                <a class="@NavClass("Feedback", "System")" aria-current="@AriaCurrent("Feedback", "System")" asp-controller="Feedback" asp-action="System">System Feedback</a>
+                <a class="@NavClass("Feedback", "Ai")" aria-current="@AriaCurrent("Feedback", "Ai")" asp-controller="Feedback" asp-action="Ai">AI Feedback</a>
             }
         </div>
 

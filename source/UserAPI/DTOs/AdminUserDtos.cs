@@ -1,4 +1,4 @@
-﻿namespace UserAPI.DTOs;
+namespace UserAPI.DTOs;
 
 public class AdminUserQueryDto
 {
@@ -144,4 +144,17 @@ public class AdminAutoBlockedUserDto
     public string? Email { get; set; }
 
     public DateTime? LastActivityAt { get; set; }
+}
+public sealed class CandidateStatisticsDto
+{
+    public DateOnly From { get; set; }
+    public DateOnly To { get; set; }
+    public long TotalCandidates { get; set; }
+    public List<CandidateStatisticsDayDto> Days { get; set; } = new();
+}
+
+public sealed class CandidateStatisticsDayDto
+{
+    public DateOnly Date { get; set; }
+    public long Count { get; set; }
 }

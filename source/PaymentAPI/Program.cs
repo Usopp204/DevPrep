@@ -483,39 +483,58 @@ app.MapGet("/admin/payments/revenue-report", async (
 }).RequireAuthorization("AdminArea");
 
 // --- Admin: GET /admin/payments/revenue-daily ---
-// Doanh thu theo TỪNG NGÀY trong khoảng [from..to] (yyyy-MM-dd, inclusive) — phục vụ chart dashboard.
-// Cùng quy ước với revenue-report: chỉ tính Orders Status='Paid', mốc thời gian theo PaidAt (giờ VN).
+// Vietnam-naive PaidAt calendar days, inclusive [from..to]. Returns an explicit row for every day.
 app.MapGet("/admin/payments/revenue-daily", async (
     PaymentDbContext db,
-    DateTime? from = null, DateTime? to = null) =>
+    DateOnly? from = null,
+    DateOnly? to = null) =>
 {
-    var now = DateTime.UtcNow.AddHours(7); // giờ Việt Nam, khớp quy ước chung của codebase
-    var rangeFrom = (from ?? now.Date.AddDays(-29)).Date;   // mặc định: 30 ngày gần nhất
-    var rangeToInclusive = (to ?? now.Date).Date;
-    if (rangeToInclusive < rangeFrom)
-        (rangeFrom, rangeToInclusive) = (rangeToInclusive, rangeFrom);
-    var rangeTo = rangeToInclusive.AddDays(1);              // exclusive
+    var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(7));
+    var rangeFrom = from ?? new DateOnly(today.Year, today.Month, 1);
+    var rangeToInclusive = to ?? today;
 
-    var days = await db.Orders.AsNoTracking()
-        .Where(o => o.Status == "Paid" && o.PaidAt >= rangeFrom && o.PaidAt < rangeTo)
-        .GroupBy(o => o.PaidAt!.Value.Date)
-        .Select(g => new
+    if (rangeFrom > rangeToInclusive)
+        return Results.BadRequest(new { message = "The From date must be on or before the To date." });
+
+    var inclusiveDays = rangeToInclusive.DayNumber - rangeFrom.DayNumber + 1;
+    if (inclusiveDays > 366)
+        return Results.BadRequest(new { message = "The selected date range must contain no more than 366 days." });
+
+    var rangeStart = rangeFrom.ToDateTime(TimeOnly.MinValue);
+    var rangeToExclusive = rangeToInclusive.AddDays(1).ToDateTime(TimeOnly.MinValue);
+    var grouped = await db.Orders.AsNoTracking()
+        .Where(order =>
+            order.Status == "Paid" &&
+            order.PaymentMethod.ToUpper() == "VNPAY" &&
+            order.Currency.ToUpper() == "VND" &&
+            order.PaidAt.HasValue &&
+            order.PaidAt.Value >= rangeStart &&
+            order.PaidAt.Value < rangeToExclusive)
+        .GroupBy(order => order.PaidAt!.Value.Date)
+        .Select(group => new
         {
-            Date = g.Key,
-            Revenue = g.Sum(x => x.Amount),
-            Orders = g.Count(),
-            Credits = g.Sum(x => x.Credits)
+            Date = group.Key,
+            Revenue = group.Sum(order => order.Amount),
+            Orders = group.Count()
         })
-        .OrderBy(d => d.Date)
         .ToListAsync();
+
+    var byDate = grouped.ToDictionary(
+        item => DateOnly.FromDateTime(item.Date),
+        item => (item.Revenue, item.Orders));
+    var days = new List<DashboardRevenueDay>(inclusiveDays);
+    for (var date = rangeFrom; date <= rangeToInclusive; date = date.AddDays(1))
+    {
+        var value = byDate.GetValueOrDefault(date);
+        days.Add(new DashboardRevenueDay(date, value.Revenue, value.Orders));
+    }
 
     return Results.Ok(new
     {
         From = rangeFrom,
         To = rangeToInclusive,
-        TotalRevenue = days.Sum(d => d.Revenue),
-        TotalOrders = days.Sum(d => d.Orders),
-        TotalCredits = days.Sum(d => d.Credits),
+        TotalRevenue = days.Sum(day => day.Revenue),
+        TotalOrders = days.Sum(day => day.Orders),
         Days = days
     });
 }).RequireAuthorization("AdminArea");
@@ -661,6 +680,8 @@ app.MapGet("/transactions", async (HttpContext ctx, IOrderRepository orderRepo, 
 app.MapControllers();
 
 app.Run();
+
+record DashboardRevenueDay(DateOnly Date, decimal Revenue, int Orders);
 
 record VnpayOrderRequest(Guid PackageId);
 
