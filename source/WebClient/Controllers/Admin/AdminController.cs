@@ -8,7 +8,6 @@ using WebClient.Services.Feedback;
 namespace WebClient.Controllers.Admin;
 
 public class AdminController(
-    IAdminService adminService,
     IAdminDashboardService dashboardService,
     IFeedbackService feedbackService) : Controller
 {

@@ -27,6 +27,7 @@ public class PaymentDbContext : DbContext
             entity.Property(e => e.Currency).HasDefaultValue("VND");
             entity.Property(e => e.IsActive).HasDefaultValue(true);
             entity.Property(e => e.SortOrder).HasDefaultValue(0);
+            entity.Property(e => e.Price).HasPrecision(18, 2);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(sysutcdatetime())");
         });
@@ -35,6 +36,7 @@ public class PaymentDbContext : DbContext
         {
             entity.HasKey(e => e.OrderId);
             entity.Property(e => e.OrderId).HasDefaultValueSql("(newsequentialid())");
+            entity.Property(e => e.Amount).HasPrecision(18, 2);
             entity.Property(e => e.Currency).HasDefaultValue("VND");
             entity.Property(e => e.PaymentMethod).HasDefaultValue("VNPay");
             entity.Property(e => e.Status).HasDefaultValue("Pending");
@@ -55,6 +57,7 @@ public class PaymentDbContext : DbContext
         {
             entity.HasKey(e => e.TransactionId);
             entity.Property(e => e.TransactionId).HasDefaultValueSql("(newsequentialid())");
+            entity.Property(e => e.Amount).HasPrecision(18, 2);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
         });
 
