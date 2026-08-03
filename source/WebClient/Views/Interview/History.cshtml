@@ -133,7 +133,7 @@
                                 <span>Created @WebClient.Helpers.TimeFormat.RelativeTime(session.CreatedAt)</span>
                                 @if (session.EndedAt is not null)
                                 {
-                                    <span>Ended @session.EndedAt.Value.ToString("MMM d, yyyy HH:mm")</span>
+                                    <span>Ended @session.EndedAt.Value.ToString("MMM d, yyyy HH:mm", DisplayCulture.Neutral)</span>
                                 }
                             </div>
                             <div class="history-actions history-cell-center">

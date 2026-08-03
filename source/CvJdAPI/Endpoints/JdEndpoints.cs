@@ -136,8 +136,22 @@ public static class JdEndpoints
                 .OrderByDescending(j => j.CreatedAt).FirstOrDefaultAsync();
             if (jd is null) return Results.NotFound(new { error = "No JD found" });
 
+            // Same reason as DELETE /cv/me: MatchingScores references JobDescriptions with NO ACTION,
+            // and DocumentDbContext declares no relationship between the two, so EF cannot order the
+            // deletes on its own. Each delete gets its own SaveChanges, wrapped in one transaction.
+            var matches = await db.MatchingScores.Where(m => m.JdId == jd.JdId).ToListAsync();
+
+            await using var tx = await db.Database.BeginTransactionAsync();
+
+            if (matches.Count > 0)
+            {
+                db.MatchingScores.RemoveRange(matches);
+                await db.SaveChangesAsync();
+            }
+
             db.JobDescriptions.Remove(jd);
             await db.SaveChangesAsync();
+            await tx.CommitAsync();
             return Results.Ok(new { success = true });
         }).WithName("DeleteMyJd").WithOpenApi();
     }

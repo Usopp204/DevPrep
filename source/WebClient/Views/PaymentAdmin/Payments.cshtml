@@ -284,7 +284,7 @@
                     </div>
                     <div>
                         <div class="revenue-stat-label">Total Revenue</div>
-                        <div class="revenue-stat-value" style="color:var(--success);">@Model.Revenue?.TotalRevenue.ToString("N0") VND</div>
+                        <div class="revenue-stat-value" style="color:var(--success);">@Model.Revenue?.TotalRevenue.ToString("N0", DisplayCulture.Money) VND</div>
                     </div>
                     <div>
                         <div class="revenue-stat-label">Total Credits</div>
@@ -321,7 +321,7 @@
                         <span class="ad-stat-label">Total Amount</span>
                         <span class="material-symbols-outlined" style="color:var(--ad-primary);opacity:.6;font-variation-settings:'FILL' 1;">payments</span>
                     </div>
-                    <div><div class="ad-stat-value">@Model.TotalAmount.ToString("N0")</div></div>
+                    <div><div class="ad-stat-value">@Model.TotalAmount.ToString("N0", DisplayCulture.Money)</div></div>
                 </div>
             </div>
             <div class="col">
@@ -330,7 +330,7 @@
                         <span class="ad-stat-label">Paid Amount</span>
                         <span class="material-symbols-outlined" style="color:var(--ad-success);opacity:.6;font-variation-settings:'FILL' 1;">account_balance_wallet</span>
                     </div>
-                    <div><div class="ad-stat-value" style="color:var(--ad-success);">@Model.PaidAmount.ToString("N0")</div></div>
+                    <div><div class="ad-stat-value" style="color:var(--ad-success);">@Model.PaidAmount.ToString("N0", DisplayCulture.Money)</div></div>
                 </div>
             </div>
         </div>
@@ -392,7 +392,7 @@
                                     </td>
                                     <td style="text-align:right;"><strong>@o.Credits</strong></td>
                                     <td style="text-align:right;">
-                                        <span class="mono">@o.Amount.ToString("N0")</span>
+                                        <span class="mono">@o.Amount.ToString("N0", DisplayCulture.Money)</span>
                                         <span class="muted" style="font-size:11px;"> @o.Currency</span>
                                     </td>
                                     <td class="muted">@o.PaymentMethod</td>

@@ -121,7 +121,7 @@
                             <td data-label="Report details">
                                 <p class="report-content-preview safe-long-text">@(string.IsNullOrWhiteSpace(report.Details) ? "No additional details." : report.Details)</p>
                             </td>
-                            <td data-label="Date"><time datetime="@report.CreatedAt.ToString("O")">@report.CreatedAt.ToString("MMM d, yyyy")</time></td>
+                            <td data-label="Date"><time datetime="@report.CreatedAt.ToString("O")">@report.CreatedAt.ToString("MMM d, yyyy", DisplayCulture.Neutral)</time></td>
                             <td data-label="Reports"><span class="report-count">@report.RelatedReportCount</span></td>
                             <td data-label="Actions" class="reported-feedback-actions-cell">
                                 <div class="reported-feedback-row-actions">

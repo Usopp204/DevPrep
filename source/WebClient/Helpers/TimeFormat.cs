@@ -18,6 +18,6 @@ public static class TimeFormat
         if (delta.TotalHours < 24) return $"{(int)delta.TotalHours}h ago";
         if (delta.TotalHours < 48) return "Yesterday";
         if (delta.TotalDays < 7) return $"{(int)delta.TotalDays}d ago";
-        return timestamp.ToString("MMM d");
+        return timestamp.ToString("MMM d", DisplayCulture.Neutral);
     }
 }

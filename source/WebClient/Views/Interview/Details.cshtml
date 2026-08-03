@@ -65,7 +65,7 @@
                 <span class="chip"><span class="material-symbols-outlined" style="font-size:14px">timer</span>@(session?.DurationMinutes.ToString() ?? "-") min</span>
                 @if (session?.EndedAt is not null)
                 {
-                    <span class="chip"><span class="material-symbols-outlined" style="font-size:14px">event</span>@session.EndedAt.Value.ToString("MMM d, yyyy HH:mm")</span>
+                    <span class="chip"><span class="material-symbols-outlined" style="font-size:14px">event</span>@session.EndedAt.Value.ToString("MMM d, yyyy HH:mm", DisplayCulture.Neutral)</span>
                 }
             </div>
         </div>
@@ -395,11 +395,18 @@
                                 <span>Scoring fairness @await Html.PartialAsync("_StarRating", new WebClient.Models.Shared.StarRatingViewModel { Label = "Scoring fairness", Value = fb.ScoringFairnessRating, Compact = true })</span>
                                 <span>Feedback usefulness @await Html.PartialAsync("_StarRating", new WebClient.Models.Shared.StarRatingViewModel { Label = "Feedback usefulness", Value = fb.FeedbackUsefulnessRating, Compact = true })</span>
                             </div>
+                            @if (fb.IsHelpful is not null)
+                            {
+                                <p class="report-feedback-helpful">
+                                    <span class="material-symbols-outlined" aria-hidden="true">@(fb.IsHelpful == true ? "thumb_up" : "thumb_down")</span>
+                                    <span>You marked this session as @(fb.IsHelpful == true ? "helpful" : "not helpful").</span>
+                                </p>
+                            }
                             @if (!string.IsNullOrWhiteSpace(fb.Comment))
                             {
                                 <blockquote class="feedback-comment-box safe-long-text">@fb.Comment</blockquote>
                             }
-                            <small>Submitted @fb.CreatedAt.ToString("MMM d, yyyy HH:mm")</small>
+                            <small>Submitted @fb.CreatedAt.ToString("MMM d, yyyy HH:mm", DisplayCulture.Neutral)</small>
                             <div class="feedback-owner-actions">
                                 <button type="button" class="feedback-owner-action feedback-owner-action-edit" data-edit-interview-trigger data-feedback-id="@fb.FeedbackId" data-overall="@fb.OverallRating" data-question="@fb.QuestionQualityRating" data-ai="@fb.AiAccuracyRating" data-scoring="@fb.ScoringFairnessRating" data-usefulness="@fb.FeedbackUsefulnessRating" data-comment="@fb.Comment" aria-label="Edit interview feedback">
                                     <span class="material-symbols-outlined" aria-hidden="true">edit</span>
@@ -438,6 +445,22 @@
                                     Required = true
                                 })
                             }
+
+                            @* Same optional thumbs up/down as the evaluation report, so feedback sent
+                               from either entry point fills InterviewFeedback.IsHelpful the same way. *@
+                            <fieldset class="report-helpful-field">
+                                <legend>Was this session helpful? <span>(optional)</span></legend>
+                                <div class="report-helpful-options">
+                                    <label class="report-helpful-option">
+                                        <input type="radio" name="IsHelpful" value="true" checked="@(Model.FeedbackForm.IsHelpful == true)" />
+                                        <span><span class="material-symbols-outlined" aria-hidden="true">thumb_up</span> Helpful</span>
+                                    </label>
+                                    <label class="report-helpful-option">
+                                        <input type="radio" name="IsHelpful" value="false" checked="@(Model.FeedbackForm.IsHelpful == false)" />
+                                        <span><span class="material-symbols-outlined" aria-hidden="true">thumb_down</span> Not helpful</span>
+                                    </label>
+                                </div>
+                            </fieldset>
 
                             <label class="feedback-textarea-label" for="details-interview-comment">Comment <span>(optional)</span></label>
                             <textarea id="details-interview-comment"

@@ -85,7 +85,7 @@
                             </td>
                             <td>
                                 <time datetime="@item.CreatedAt.ToString("O")">
-                                    @item.CreatedAt.ToString("MMM dd, yyyy")
+                                    @item.CreatedAt.ToString("MMM dd, yyyy", DisplayCulture.Neutral)
                                 </time>
                             </td>
                         </tr>

@@ -4,6 +4,14 @@ using WebClient.Models.Shared;
 
 namespace WebClient.Models.Feedback;
 
+/// <summary>Administrator answer published under a review. Mirrors FeedbackAPI's DTO.</summary>
+public class PublicFeedbackReplyDto
+{
+    public Guid ReplyId { get; set; }
+    public string ReplyContent { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+}
+
 public class PublicSystemFeedbackDto
 {
     public Guid FeedbackId { get; set; }
@@ -18,6 +26,7 @@ public class PublicSystemFeedbackDto
     public bool CanReport { get; set; }
     public bool HasReported { get; set; }
     public bool IsOwner { get; set; }
+    public List<PublicFeedbackReplyDto> Replies { get; set; } = [];
 }
 
 public class PublicAiFeedbackDto
@@ -57,6 +66,7 @@ public class MyInterviewFeedbackDto
     public byte? AiAccuracyRating { get; set; }
     public byte? ScoringFairnessRating { get; set; }
     public byte? FeedbackUsefulnessRating { get; set; }
+    public bool? IsHelpful { get; set; }
     public string? Comment { get; set; }
     public bool IsVisible { get; set; }
     public DateTime CreatedAt { get; set; }
@@ -98,6 +108,9 @@ public class SubmitInterviewFeedbackRequest
 
     [Range(1, 5, ErrorMessage = "Choose a rating from 1 to 5.")]
     public int FeedbackUsefulnessRating { get; set; }
+
+    /// <summary>Optional thumbs up/down on the session. Null when the candidate skips it.</summary>
+    public bool? IsHelpful { get; set; }
 
     [StringLength(InterviewFeedbackRules.MaxCommentLength, ErrorMessage = "Comment cannot exceed 1000 characters.")]
     public string? Comment { get; set; }

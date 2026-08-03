@@ -547,3 +547,91 @@
         max-width: none;
     }
 }
+
+/* Optional thumbs up/down on a finished session. Lives in the shared component sheet because the
+   same control renders on the evaluation report and on the interview details page, which pull in
+   different page stylesheets. Two pills rather than stars, so it never reads as a sixth rating. */
+.report-helpful-field {
+    padding: 0;
+    margin: 0 0 18px;
+    border: 0;
+}
+
+.report-helpful-field legend {
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #F4F4F5;
+}
+
+.report-helpful-field legend span {
+    color: #A1A1AA;
+    font-weight: 400;
+}
+
+.report-helpful-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.report-helpful-option {
+    position: relative;
+    cursor: pointer;
+}
+
+.report-helpful-option input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+}
+
+.report-helpful-option > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 16px;
+    border: 1px solid rgba(196, 192, 255, 0.20);
+    border-radius: 11px;
+    color: #A1A1AA;
+    background: rgba(18, 17, 31, 0.72);
+    font-size: 14px;
+    transition: color 0.18s ease, border-color 0.18s ease, background-color 0.18s ease;
+}
+
+.report-helpful-option .material-symbols-outlined {
+    font-size: 20px;
+}
+
+.report-helpful-option:hover > span {
+    color: #F4F4F5;
+    border-color: rgba(196, 192, 255, 0.40);
+}
+
+.report-helpful-option input:checked + span {
+    color: #FFFFFF;
+    border-color: rgba(108, 99, 255, 0.75);
+    background: rgba(108, 99, 255, 0.16);
+}
+
+.report-helpful-option:has(input:focus-visible) > span {
+    outline: 2px solid #6C63FF;
+    outline-offset: 3px;
+}
+
+.report-feedback-helpful {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    color: #A1A1AA;
+    font-size: 14px;
+}
+
+.report-feedback-helpful .material-symbols-outlined {
+    font-size: 20px;
+}

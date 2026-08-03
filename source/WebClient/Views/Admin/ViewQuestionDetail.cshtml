@@ -221,14 +221,14 @@
 
                             <span class="text-light-gray" style="font-size: 0.85rem; font-weight: 500;">
                                 <i class="fa-regular fa-calendar-days me-1 text-muted"></i>
-                                Created: @Model.CreatedAt.ToString("MMM dd, yyyy")
+                                Created: @Model.CreatedAt.ToString("MMM dd, yyyy", DisplayCulture.Neutral)
                             </span>
 
                             @if (isSoftDeleted && Model.DeletedAt.HasValue)
                             {
                                 <span class="text-light-gray" style="font-size: 0.85rem; font-weight: 500;">
                                     <i class="fa-regular fa-trash-can me-1 text-danger"></i>
-                                    Deleted: @Model.DeletedAt.Value.ToString("MMM dd, yyyy")
+                                    Deleted: @Model.DeletedAt.Value.ToString("MMM dd, yyyy", DisplayCulture.Neutral)
                                 </span>
                             }
                         </div>

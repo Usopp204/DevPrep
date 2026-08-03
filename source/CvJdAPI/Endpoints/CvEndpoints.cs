@@ -118,8 +118,27 @@ public static class CvEndpoints
                 .OrderByDescending(c => c.UploadedAt).FirstOrDefaultAsync();
             if (cv is null) return Results.NotFound(new { error = "No CV found" });
 
+            // MatchingScores references Cvs with NO ACTION, so every match this CV took part in has
+            // to be gone before the CV row is removed. CvProfiles is ON DELETE CASCADE and clears
+            // itself.
+            //
+            // The two deletes need SEPARATE SaveChanges calls. DocumentDbContext declares no
+            // relationship between MatchingScore and Cv - only HasKey - so EF has no dependency
+            // graph to order them by, and batching both into one SaveChanges emits the DELETE on
+            // Cvs first, which the foreign key rejects. A transaction keeps the pair atomic.
+            var matches = await db.MatchingScores.Where(m => m.CvId == cv.CvId).ToListAsync();
+
+            await using var tx = await db.Database.BeginTransactionAsync();
+
+            if (matches.Count > 0)
+            {
+                db.MatchingScores.RemoveRange(matches);
+                await db.SaveChangesAsync();
+            }
+
             db.Cvs.Remove(cv);
             await db.SaveChangesAsync();
+            await tx.CommitAsync();
 
             try
             {

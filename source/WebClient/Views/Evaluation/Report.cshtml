@@ -276,7 +276,7 @@
                         <div class="report-feedback-submitted-head">
                             <div>
                                 <strong>Your submitted feedback</strong>
-                                <span>Submitted @submitted.CreatedAt.ToLocalTime().ToString("MMM d, yyyy")</span>
+                                <span>Submitted @submitted.CreatedAt.ToLocalTime().ToString("MMM d, yyyy", DisplayCulture.Neutral)</span>
                             </div>
                         </div>
                         <div class="report-feedback-scores">
@@ -300,6 +300,13 @@
                                 </div>
                             }
                         </div>
+                        @if (submitted.IsHelpful is not null)
+                        {
+                            <p class="report-feedback-helpful">
+                                <span class="material-symbols-outlined" aria-hidden="true">@(submitted.IsHelpful == true ? "thumb_up" : "thumb_down")</span>
+                                <span>You marked this session as @(submitted.IsHelpful == true ? "helpful" : "not helpful").</span>
+                            </p>
+                        }
                         @if (!string.IsNullOrWhiteSpace(submitted.Comment))
                         {
                             <blockquote class="report-feedback-comment safe-long-text">@submitted.Comment</blockquote>
@@ -345,6 +352,23 @@
                                 CssClass = "report-star-rating"
                             })
                         }
+
+                        @* Thumbs up/down kept separate from the 1-5 ratings: it is the single flag the
+                           administration and manager feedback lists filter on. Optional, so a candidate
+                           who skips it stores NULL rather than a misleading "not helpful". *@
+                        <fieldset class="report-helpful-field">
+                            <legend>Was this session helpful? <span>(optional)</span></legend>
+                            <div class="report-helpful-options">
+                                <label class="report-helpful-option">
+                                    <input type="radio" name="IsHelpful" value="true" checked="@(Model.FeedbackForm.IsHelpful == true)" />
+                                    <span><span class="material-symbols-outlined" aria-hidden="true">thumb_up</span> Helpful</span>
+                                </label>
+                                <label class="report-helpful-option">
+                                    <input type="radio" name="IsHelpful" value="false" checked="@(Model.FeedbackForm.IsHelpful == false)" />
+                                    <span><span class="material-symbols-outlined" aria-hidden="true">thumb_down</span> Not helpful</span>
+                                </label>
+                            </div>
+                        </fieldset>
 
                         <label class="report-feedback-label" for="report-feedback-comment">Comment <span>(optional)</span></label>
                         <textarea class="report-feedback-textarea feedback-comment-input @(string.IsNullOrWhiteSpace(Model.FeedbackValidationMessage) ? null : "is-invalid")"

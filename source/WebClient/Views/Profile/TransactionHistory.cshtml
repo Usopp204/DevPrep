@@ -482,14 +482,14 @@
                                         <div class="order-method">@tx.PaymentMethod</div>
                                     </td>
                                     <td class="col-hide">
-                                        <div class="tx-date">@txDate.ToString("dd MMM yyyy")</div>
+                                        <div class="tx-date">@txDate.ToString("dd MMM yyyy", DisplayCulture.Neutral)</div>
                                         <div class="tx-time">@txDate.ToString("HH:mm")</div>
                                     </td>
                                     <td>
                                         <div class="tx-desc">@tx.Credits Credits Package</div>
                                     </td>
                                     <td class="td-right">
-                                        <div class="tx-amount">@tx.Amount.ToString("N0")</div>
+                                        <div class="tx-amount">@tx.Amount.ToString("N0", DisplayCulture.Money)</div>
                                         <div class="tx-currency">@tx.Currency</div>
                                     </td>
                                     <td style="text-align:center;">

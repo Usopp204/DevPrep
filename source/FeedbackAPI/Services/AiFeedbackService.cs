@@ -139,6 +139,7 @@ public class AiFeedbackService : IAiFeedbackService
             AiAccuracyRating = feedback.AiAccuracyRating,
             ScoringFairnessRating = feedback.ScoringFairnessRating,
             FeedbackUsefulnessRating = feedback.FeedbackUsefulnessRating,
+            IsHelpful = feedback.IsHelpful,
             Comment = feedback.Content,
 
             IsVisible = feedback.IsVisible,
@@ -173,6 +174,7 @@ public class AiFeedbackService : IAiFeedbackService
             AiAccuracyRating = (byte)request.AiAccuracyRating,
             ScoringFairnessRating = (byte)request.ScoringFairnessRating,
             FeedbackUsefulnessRating = (byte)request.FeedbackUsefulnessRating,
+            IsHelpful = request.IsHelpful,
             Content = comment,
             IsVisible = true,
             ModerationStatus = ApprovedModerationStatus,

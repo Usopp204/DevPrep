@@ -172,8 +172,19 @@
                                         <span>Usability @await Html.PartialAsync("_StarRating", new WebClient.Models.Shared.StarRatingViewModel { Label = "Usability", Value = review.UsabilityRating, Compact = true, ShowNumericValue = false })</span>
                                         <span>Features @await Html.PartialAsync("_StarRating", new WebClient.Models.Shared.StarRatingViewModel { Label = "Feature quality", Value = review.FeatureQualityRating, Compact = true, ShowNumericValue = false })</span>
                                     </div>
+                                    @foreach (var reply in review.Replies)
+                                    {
+                                        <div class="review-reply">
+                                            <div class="review-reply-head">
+                                                <span class="material-symbols-outlined" aria-hidden="true">support_agent</span>
+                                                <strong>DevPrep Team</strong>
+                                                <time class="review-reply-date" datetime="@Iso(reply.CreatedAt)">@reply.CreatedAt.ToString("MMM d, yyyy", DisplayCulture.Neutral)</time>
+                                            </div>
+                                            <p class="review-reply-body safe-long-text">@reply.ReplyContent</p>
+                                        </div>
+                                    }
                                     <div class="review-card-footer">
-                                        <time class="review-date" datetime="@Iso(review.CreatedAt)">@review.CreatedAt.ToString("MMM d, yyyy")</time>
+                                        <time class="review-date" datetime="@Iso(review.CreatedAt)">@review.CreatedAt.ToString("MMM d, yyyy", DisplayCulture.Neutral)</time>
                                         @if (Model.IsAuthenticatedUser && review.IsOwner)
                                         {
                                             <div class="feedback-owner-actions">
@@ -254,7 +265,7 @@
                                     <span>Usefulness @await Html.PartialAsync("_StarRating", new WebClient.Models.Shared.StarRatingViewModel { Label = "Feedback usefulness", Value = review.FeedbackUsefulnessRating, Compact = true, ShowNumericValue = false })</span>
                                 </div>
                                 <div class="review-card-footer">
-                                    <time class="review-date" datetime="@Iso(review.CreatedAt)">@review.CreatedAt.ToString("MMM d, yyyy")</time>
+                                    <time class="review-date" datetime="@Iso(review.CreatedAt)">@review.CreatedAt.ToString("MMM d, yyyy", DisplayCulture.Neutral)</time>
                                     @if (Model.IsAuthenticatedUser && review.IsOwner)
                                     {
                                         <div class="feedback-owner-actions">

@@ -21,7 +21,7 @@
     <main class="ad-main">
         <header class="mb-4">
             <h1 class="ad-page-title">System Overview</h1>
-            <p class="ad-page-date">@nowVn.ToString("MMMM dd, yyyy")</p>
+            <p class="ad-page-date">@nowVn.ToString("MMMM dd, yyyy", DisplayCulture.Neutral)</p>
         </header>
         @await Html.PartialAsync("_ManagementDashboard", Model)
     </main>

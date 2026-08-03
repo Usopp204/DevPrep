@@ -5,8 +5,8 @@
     var dashboard = Model.Dashboard;
     var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(7));
     var minimumDate = today.AddDays(-365);
-    string Number(long? value) => value.HasValue ? value.Value.ToString("N0") : unavailable;
-    string Vnd(decimal? value) => value.HasValue ? value.Value.ToString("N0") + " VND" : unavailable;
+    string Number(long? value) => value.HasValue ? value.Value.ToString("N0", DisplayCulture.Neutral) : unavailable;
+    string Vnd(decimal? value) => value.HasValue ? value.Value.ToString("N0", DisplayCulture.Money) + " VND" : unavailable;
     var initialJson = JsonSerializer.Serialize(dashboard, new JsonSerializerOptions(JsonSerializerDefaults.Web));
 }
 <div data-management-dashboard data-dashboard-url="@Model.DashboardDataUrl">
@@ -62,7 +62,7 @@
         <ul class="visually-hidden" data-bucket-list aria-label="Revenue Trend data">
             @foreach (var bucket in dashboard.RevenueBuckets)
             {
-                <li>@bucket.StartDate.ToString("dd/MM/yyyy") to @bucket.EndDate.ToString("dd/MM/yyyy"): @Vnd(bucket.Revenue), @bucket.Orders.ToString("N0") paid VNPay orders</li>
+                <li>@bucket.StartDate.ToString("dd/MM/yyyy", DisplayCulture.Neutral) to @bucket.EndDate.ToString("dd/MM/yyyy", DisplayCulture.Neutral): @Vnd(bucket.Revenue), @bucket.Orders.ToString("N0", DisplayCulture.Neutral) paid VNPay orders</li>
             }
         </ul>
     </section>

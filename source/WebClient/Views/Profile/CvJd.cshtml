@@ -20,6 +20,26 @@
         #cvStrengths .exp-card.matched { border: 1px solid rgba(16,185,129,.35); }
         .pf-btn-danger { background: rgba(239,68,68,.10); border-color: rgba(239,68,68,.3); color: #f87171; }
         .pf-btn-danger:hover { background: rgba(239,68,68,.18); color: #fca5a5; }
+
+        /* In-page confirmation dialog. Replaces window.confirm(), which renders as a bare
+           browser chrome box that cannot be styled and looks nothing like the rest of the app. */
+        .cvjd-confirm { position: fixed; inset: 0; z-index: 1080; display: none; align-items: center; justify-content: center; padding: 20px; }
+        .cvjd-confirm.is-open { display: flex; }
+        .cvjd-confirm-backdrop { position: absolute; inset: 0; background: rgba(6,6,12,.72); backdrop-filter: blur(3px); }
+        .cvjd-confirm-box {
+            position: relative; width: 100%; max-width: 430px; padding: 26px;
+            border: 1px solid rgba(196,192,255,.16); border-radius: 16px;
+            background: #14141d; box-shadow: 0 24px 70px rgba(0,0,0,.5); color: #e4e4e7;
+        }
+        .cvjd-confirm-box h3 { margin: 0 0 10px; font-size: 19px; font-weight: 700; color: #fff; }
+        .cvjd-confirm-box p { margin: 0 0 22px; font-size: 14px; line-height: 1.6; color: #a1a1aa; }
+        .cvjd-confirm-actions { display: flex; gap: 10px; justify-content: flex-end; }
+        .cvjd-confirm-actions button { min-height: 40px; padding: 0 18px; border-radius: 10px; font: inherit; font-weight: 600; cursor: pointer; }
+        .cvjd-cancel { border: 1px solid rgba(196,192,255,.2); background: transparent; color: #d4d4d8; }
+        .cvjd-cancel:hover { background: rgba(255,255,255,.05); color: #fff; }
+        .cvjd-ok { border: 0; background: #dc2626; color: #fff; }
+        .cvjd-ok:hover { background: #ef4444; }
+        .cvjd-confirm-actions button:focus-visible { outline: 2px solid #6c63ff; outline-offset: 2px; }
     </style>
 </head>
 <body class="pf-page">
@@ -290,6 +310,18 @@
     </main>
 </div>
 
+<div class="cvjd-confirm" id="cvjdConfirm" role="dialog" aria-modal="true" aria-labelledby="cvjdConfirmTitle" hidden>
+    <div class="cvjd-confirm-backdrop" data-cvjd-dismiss></div>
+    <div class="cvjd-confirm-box">
+        <h3 id="cvjdConfirmTitle"></h3>
+        <p id="cvjdConfirmBody"></p>
+        <div class="cvjd-confirm-actions">
+            <button type="button" class="cvjd-cancel" data-cvjd-dismiss>Cancel</button>
+            <button type="button" class="cvjd-ok" id="cvjdConfirmOk">Delete</button>
+        </div>
+    </div>
+</div>
+
 <script>
 (function(){
 const $ = id => document.getElementById(id);
@@ -303,6 +335,38 @@ async function safeJson(resp) {
 }
 function setStatus(id, msg, type) {
     const el = $(id); el.className = 'sb ' + type; el.textContent = msg;
+}
+
+// In-page replacement for window.confirm(). Resolves true only when the user presses Delete;
+// backdrop, Cancel and Escape all resolve false. Restores focus to whatever opened it.
+function askConfirm(title, body, okLabel) {
+    return new Promise(resolve => {
+        const modal = $('cvjdConfirm'), ok = $('cvjdConfirmOk');
+        const opener = document.activeElement;
+        $('cvjdConfirmTitle').textContent = title;
+        $('cvjdConfirmBody').textContent = body;
+        ok.textContent = okLabel || 'Delete';
+
+        function close(answer) {
+            modal.classList.remove('is-open');
+            modal.hidden = true;
+            ok.removeEventListener('click', onOk);
+            modal.removeEventListener('click', onDismiss);
+            document.removeEventListener('keydown', onKey);
+            if (opener && opener.focus) opener.focus();
+            resolve(answer);
+        }
+        function onOk() { close(true); }
+        function onDismiss(e) { if (e.target.hasAttribute('data-cvjd-dismiss')) close(false); }
+        function onKey(e) { if (e.key === 'Escape') close(false); }
+
+        ok.addEventListener('click', onOk);
+        modal.addEventListener('click', onDismiss);
+        document.addEventListener('keydown', onKey);
+        modal.hidden = false;
+        modal.classList.add('is-open');
+        ok.focus();
+    });
 }
 
 // ── Drag & drop: CV ──
@@ -477,7 +541,10 @@ $('btnSaveCv').addEventListener('click', async () => {
 
 // ── Delete CV ──
 $('btnDeleteCv').addEventListener('click', async () => {
-    if(!confirm('Delete your current CV? You will need to upload a new one to use CV & JD matching again.')) return;
+    const okDelete = await askConfirm(
+        'Delete this CV?',
+        'Your current CV and its match results will be removed. You will need to upload a new one before you can use CV & JD matching again.');
+    if(!okDelete) return;
     $('btnDeleteCv').disabled = true;
     try {
         const resp = await fetch('/CvJd/DeleteCv', { method:'DELETE' });
@@ -568,7 +635,10 @@ window.cancelJdEdit = function() {
 
 // ── Delete JD ──
 $('btnDeleteJd').addEventListener('click', async () => {
-    if(!confirm('Delete your current Job Description? This also clears it from the Interview setup page.')) return;
+    const okDelete = await askConfirm(
+        'Delete this Job Description?',
+        'The saved job description and its match results will be removed, and it will no longer appear on the Interview setup page.');
+    if(!okDelete) return;
     $('btnDeleteJd').disabled = true;
     try {
         const resp = await fetch('/CvJd/DeleteJd', { method:'DELETE' });

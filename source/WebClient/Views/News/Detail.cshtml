@@ -39,7 +39,7 @@
                     <span class="nw-detail-badge">@Model.Category</span>
                     <h1 class="nw-detail-title">@Model.Title</h1>
                     <div class="nw-detail-meta">
-                        <span>@Model.DisplayDate.ToString("MMM dd, yyyy")</span>
+                        <span>@Model.DisplayDate.ToString("MMM dd, yyyy", DisplayCulture.Neutral)</span>
                         <span class="dot"></span>
                         <span>@Model.ReadMinutes min read</span>
                         <span class="dot"></span>

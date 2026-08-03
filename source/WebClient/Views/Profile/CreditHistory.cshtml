@@ -268,7 +268,7 @@
                                 var neg = e.CreditChange < 0;
                                 <tr>
                                     <td>
-                                        <div class="cr-date">@e.CreatedAt.ToString("dd MMM yyyy")</div>
+                                        <div class="cr-date">@e.CreatedAt.ToString("dd MMM yyyy", DisplayCulture.Neutral)</div>
                                         <div class="cr-time">@e.CreatedAt.ToString("HH:mm")</div>
                                     </td>
                                     <td>

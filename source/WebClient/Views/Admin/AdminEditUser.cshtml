@@ -179,7 +179,7 @@
 
                         <div class="col-12 col-md-6">
                             <label class="form-label">Credit Balance</label>
-                            <input class="form-control" value="@Model.CurrentCreditBalance.ToString("N0")" disabled />
+                            <input class="form-control" value="@Model.CurrentCreditBalance.ToString("N0", DisplayCulture.Neutral)" disabled />
                         </div>
 
                         <div class="col-12 col-md-6">

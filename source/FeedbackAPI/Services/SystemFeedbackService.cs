@@ -126,7 +126,18 @@ public class SystemFeedbackService : ISystemFeedbackService
                     FeatureQualityRating = f.FeatureQualityRating,
                     Comment = f.Content,
                     Category = f.Category,
-                    CreatedAt = f.CreatedAt
+                    CreatedAt = f.CreatedAt,
+                    // Administrator answers are part of the public review: without them a reply
+                    // is written but nobody outside the admin area can ever read it.
+                    Replies = f.FeedbackReplies
+                        .OrderBy(r => r.CreatedAt)
+                        .Select(r => new PublicFeedbackReplyDto
+                        {
+                            ReplyId = r.ReplyId,
+                            ReplyContent = r.ReplyContent,
+                            CreatedAt = r.CreatedAt
+                        })
+                        .ToList()
                 }
             })
             .ToListAsync(ct);

@@ -69,10 +69,10 @@
                             <span class="pp-tag">@pkg.Name</span>
                             <div class="pp-credits">@pkg.TotalCredits credits</div>
                             <div class="pp-price-row">
-                                <span class="pp-price">@pkg.Price.ToString("N0")</span>
+                                <span class="pp-price">@pkg.Price.ToString("N0", DisplayCulture.Money)</span>
                                 <span class="pp-price-unit">@pkg.Currency</span>
                             </div>
-                            <p class="pp-per-credit">@pricePerCredit.ToString("N2") @pkg.Currency / credit</p>
+                            <p class="pp-per-credit">@pricePerCredit.ToString("N2", DisplayCulture.Money) @pkg.Currency / credit</p>
 
                             @if (!string.IsNullOrEmpty(pkg.Description))
                             {

@@ -145,7 +145,7 @@
             const map = { InProgress: 'bg-secondary/15 border-secondary/40 text-secondary', Completed: 'bg-success/10 border-success/30 text-success', Configured: 'bg-warning/10 border-warning/30 text-warning', Initialized: 'bg-warning/10 border-warning/30 text-warning', Expired: 'bg-tertiary-container/15 border-tertiary/30 text-tertiary', Cancelled: 'bg-error/10 border-error/30 text-error' };
             return `<span class="px-xs py-1 rounded-full border text-[10px] font-bold uppercase ${map[s] || 'bg-surface-container-highest border-border-subtle text-on-surface-variant'}">${escapeHtml(s || '')}</span>`;
         }
-        function fmtDateTime(d) { if (!d) return '-'; const x = new Date(d); return x.toLocaleString(); }
+        function fmtDateTime(d) { if (!d) return '-'; const x = new Date(d); return x.toLocaleString('en-GB'); }
         function msToSec(ms) { if (!ms && ms !== 0) return '-'; return (ms / 1000).toFixed(1) + 's'; }
         function actualDuration(a, b) { if (!a || !b) return '-'; const ms = new Date(b) - new Date(a); if (ms < 0) return '-'; const min = Math.floor(ms / 60000), sec = Math.floor((ms % 60000) / 1000); return `${min}m ${sec}s`; }
         function cleanText(value) {

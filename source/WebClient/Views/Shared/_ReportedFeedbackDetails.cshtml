@@ -62,9 +62,9 @@
 
                 <dl class="report-detail-metadata">
                     <div><dt>Reporter ID</dt><dd>@report.ReporterUserId</dd></div>
-                    <div><dt>Reported at</dt><dd>@report.CreatedAt.ToString("MMM d, yyyy HH:mm")</dd></div>
+                    <div><dt>Reported at</dt><dd>@report.CreatedAt.ToString("MMM d, yyyy HH:mm", DisplayCulture.Neutral)</dd></div>
 
-                    <div><dt>Reviewed at</dt><dd>@(report.ReviewedAt?.ToString("MMM d, yyyy HH:mm") ?? "Not reviewed")</dd></div>
+                    <div><dt>Reviewed at</dt><dd>@(report.ReviewedAt?.ToString("MMM d, yyyy HH:mm", DisplayCulture.Neutral) ?? "Not reviewed")</dd></div>
                     <div><dt>Reviewed by</dt><dd>@(report.ReviewedBy?.ToString() ?? "-")</dd></div>
                     <div><dt>Resolution note</dt><dd class="safe-long-text">@(string.IsNullOrWhiteSpace(report.ResolutionNote) ? "-" : report.ResolutionNote)</dd></div>
                 </dl>
@@ -80,7 +80,7 @@
                                     <span class="report-badge report-status-@related.Status.ToLowerInvariant()">@related.Status</span>
                                 </header>
                                 <p class="safe-long-text">@(string.IsNullOrWhiteSpace(related.Details) ? "No additional details." : related.Details)</p>
-                                <small>@related.CreatedAt.ToString("MMM d, yyyy HH:mm") - Reporter @related.ReporterUserId</small>
+                                <small>@related.CreatedAt.ToString("MMM d, yyyy HH:mm", DisplayCulture.Neutral) - Reporter @related.ReporterUserId</small>
                             </article>
                         }
                     </div>

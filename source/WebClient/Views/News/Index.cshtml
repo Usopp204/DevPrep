@@ -79,7 +79,7 @@
                             <h2 class="nw-featured-title">@featured.Title</h2>
                             <p class="nw-featured-summary">@featured.Summary</p>
                             <div class="nw-meta">
-                                <span>@featured.DisplayDate.ToString("MMM dd, yyyy")</span>
+                                <span>@featured.DisplayDate.ToString("MMM dd, yyyy", DisplayCulture.Neutral)</span>
                                 <span class="dot"></span>
                                 <span><span class="material-symbols-outlined">visibility</span> @featured.ViewCount views</span>
                             </div>
@@ -105,7 +105,7 @@
                                 <h3 class="nw-card-title">@item.Title</h3>
                                 <p class="nw-card-summary">@item.Summary</p>
                                 <div class="nw-meta">
-                                    <span>@item.DisplayDate.ToString("MMM dd, yyyy")</span>
+                                    <span>@item.DisplayDate.ToString("MMM dd, yyyy", DisplayCulture.Neutral)</span>
                                     <span class="dot"></span>
                                     <span><span class="material-symbols-outlined">visibility</span> @item.ViewCount</span>
                                 </div>
