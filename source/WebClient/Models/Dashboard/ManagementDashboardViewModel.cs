@@ -9,7 +9,6 @@ public sealed class ManagementDashboardViewModel
 public sealed class ManagementDashboardData
 {
     public bool Available { get; set; }
-    public bool Stale { get; set; }
     public DateTime? LastUpdated { get; set; }
     public long? TotalCandidates { get; set; }
     public long? NewCandidatesThisMonth { get; set; }

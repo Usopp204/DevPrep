@@ -1,5 +1,0 @@
-@StatisticsAPI_HostAddress = http://localhost:7011
-
-GET {{StatisticsAPI_HostAddress}}/health/
-Accept: application/json
-

@@ -23,7 +23,6 @@ Each backend service reads `GLOBAL_` values plus its own prefix:
 | PaymentAPI | `PAYMENT_` |
 | NewsAPI | `NEWS_` |
 | NotificationAPI | `NOTIFICATION_` |
-| StatisticsAPI | `STATISTICS_` |
 
 Each business service must read its own `*_API_PORT` and `*_DB_CONNECTION_STRING`.
 

@@ -18,39 +18,6 @@ public class AdminUsersController : ControllerBase
         _service = service;
     }
 
-    [HttpGet("statistics/candidates")]
-    [ProducesResponseType(typeof(ApiResponse<CandidateStatisticsDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> GetCandidateStatistics(
-        [FromQuery] DateOnly? from,
-        [FromQuery] DateOnly? to,
-        CancellationToken cancellationToken)
-    {
-        if (!from.HasValue || !to.HasValue || from.Value > to.Value)
-            return BadRequest(ApiResponse<object>.Fail("The From date must be on or before the To date."));
-
-        var inclusiveDays = to.Value.DayNumber - from.Value.DayNumber + 1;
-        if (inclusiveDays > 366)
-            return BadRequest(ApiResponse<object>.Fail("The selected date range must contain no more than 366 days."));
-
-        try
-        {
-            var data = await _service.GetCandidateStatisticsAsync(
-                from.Value,
-                to.Value,
-                Request.Headers.Authorization.ToString(),
-                cancellationToken);
-            return Ok(ApiResponse<CandidateStatisticsDto>.Ok(data));
-        }
-        catch (HttpRequestException)
-        {
-            return StatusCode(
-                StatusCodes.Status502BadGateway,
-                ApiResponse<object>.Fail("Candidate statistics are temporarily unavailable."));
-        }
-    }
     [HttpGet]
     [ProducesResponseType(typeof(ApiResponse<PagedResult<AdminUserListItemDto>>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]

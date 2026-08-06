@@ -22,7 +22,7 @@ public class InternalAccountsController : ControllerBase
     // 1. LẤY DANH SÁCH ACCOUNTS
     // =========================================================
     [HttpGet("statistics/candidates")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Manager")]
     public async Task<IActionResult> GetCandidateStatistics(
         [FromQuery] DateTime? fromUtc,
         [FromQuery] DateTime? toExclusiveUtc,
