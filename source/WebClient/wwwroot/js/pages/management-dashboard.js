@@ -13,7 +13,6 @@
     const bucketList = root.querySelector("[data-bucket-list]");
     const summary = root.querySelector("[data-revenue-summary]");
     const unavailableNotice = root.querySelector("[data-dashboard-unavailable]");
-    const staleNotice = root.querySelector("[data-dashboard-stale]");
     const errorNotice = root.querySelector("[data-dashboard-error]");
     const initialNode = root.querySelector("[data-dashboard-initial]");
     if (!form || !fromInput || !toInput || !applyButton || !chart || !bucketList || !summary || !initialNode) return;
@@ -216,7 +215,6 @@
     function render(data) {
         const available = data?.available === true;
         unavailableNotice.classList.toggle("d-none", available);
-        staleNotice.classList.toggle("d-none", !available || data.stale !== true);
 
         setText("totalCandidates", available ? data.totalCandidates : null);
         setText("newCandidatesThisMonth", available ? data.newCandidatesThisMonth : null);

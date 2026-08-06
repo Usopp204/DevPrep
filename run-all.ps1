@@ -17,7 +17,7 @@
 #   - SQL Server running with all required databases (DevPrep_Auth,
 #     DevPrep_User, DevPrep_Payment, DevPrep_Question, DevPrep_Interview,
 #     DevPrep_Evaluation, DevPrep_Feedback, DevPrep_News, DevPrep_Notification,
-#     DevPrep_Statistics; DevPrep_CvJd auto-creates if missing).
+#     DevPrep_CvJd auto-creates if missing).
 #     Connection details come from .env (already standardized by the team).
 #   - ai-service venv installed (.venv) with dependencies
 #     (pip install -r requirements.txt).
@@ -83,7 +83,7 @@ dotnet '$dllPath' --urls http://localhost:$Port
 }
 
 # --- Backend microservices ---
-# Staggered by 4s each: launching all 11 at once overwhelmed SQL Server at
+# Staggered by 4s each: launching all 10 at once overwhelmed SQL Server at
 # startup (SqlException 233 in NotificationAPI's seed query).
 Start-DotNetService -Name "AuthAPI"         -Project "AuthAPI/AuthAPI.csproj"                 -Port 7001
 Start-Sleep -Seconds 4
@@ -104,8 +104,6 @@ Start-Sleep -Seconds 4
 Start-DotNetService -Name "NewsAPI"         -Project "NewsAPI/NewsAPI.csproj"                 -Port 7009
 Start-Sleep -Seconds 4
 Start-DotNetService -Name "NotificationAPI" -Project "NotificationAPI/NotificationAPI.csproj" -Port 7010
-Start-Sleep -Seconds 4
-Start-DotNetService -Name "StatisticsAPI"   -Project "StatisticsAPI/StatisticsAPI.csproj"     -Port 7011
 
 Start-Sleep -Seconds 2
 

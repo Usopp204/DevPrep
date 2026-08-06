@@ -15,9 +15,6 @@
     <div class="alert alert-warning @(dashboard.Available ? "d-none" : "")" data-dashboard-unavailable role="status">
         Dashboard statistics are unavailable.
     </div>
-    <div class="alert alert-warning @(!dashboard.Available || !dashboard.Stale ? "d-none" : "")" data-dashboard-stale role="status">
-        Dashboard statistics are stale.
-    </div>
     <div class="alert alert-danger d-none" data-dashboard-error role="alert"></div>
 
     <section class="ad-kpi-grid row row-cols-1 row-cols-md-2 row-cols-xl-4 g-4 mb-4" aria-label="System statistics">

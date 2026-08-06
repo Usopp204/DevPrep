@@ -2,13 +2,13 @@
 
 ## Purpose
 
-The backend is an ASP.NET Core .NET 8 Pure Microservices backend composed of one YARP API Gateway and 11 business microservices.
+The backend is an ASP.NET Core .NET 8 Pure Microservices backend composed of one YARP API Gateway and 10 business microservices.
 
 The current backend is scaffold/stabilization level. Service projects, ports, gateway routes, and local `DbContext` placeholders are in place. Business entities, migrations, authentication enforcement, and real business endpoints are intentionally not implemented yet.
 
 ## Solution Projects
 
-`source/DevPrep.sln` contains 12 API/Gateway projects plus `WebClient`:
+`source/DevPrep.sln` contains 11 API/Gateway projects plus `WebClient`:
 
 1. `ApiGateway`
 2. `AuthAPI`
@@ -21,8 +21,7 @@ The current backend is scaffold/stabilization level. Service projects, ports, ga
 9. `PaymentAPI`
 10. `NewsAPI`
 11. `NotificationAPI`
-12. `StatisticsAPI`
-13. `WebClient`
+12. `WebClient`
 
 Admin and Manager are implemented as roles and route namespaces. Manager access is read-only through `/api/admin/manager/*` routes where needed.
 
@@ -67,7 +66,6 @@ Each downstream service exposes a scaffold health endpoint at `/health` on its o
 | Payment | `http://localhost:7008/health` |
 | News | `http://localhost:7009/health` |
 | Notification | `http://localhost:7010/health` |
-| Statistics | `http://localhost:7011/health` |
 
 ## Gateway Routes
 
@@ -83,7 +81,6 @@ Each downstream service exposes a scaffold health endpoint at `/health` on its o
 | `/api/payment/*` | PaymentAPI |
 | `/api/news/*` | NewsAPI |
 | `/api/notifications/*` | NotificationAPI |
-| `/api/statistics/*` | StatisticsAPI |
 
 Admin and Manager namespaces route to domain services. For example, `/api/admin/questions/*` and `/api/admin/manager/questions/*` route to QuestionAPI.
 
@@ -103,7 +100,6 @@ source/
 |-- PaymentAPI/
 |-- NewsAPI/
 |-- NotificationAPI/
-|-- StatisticsAPI/
 `-- WebClient/
 ```
 

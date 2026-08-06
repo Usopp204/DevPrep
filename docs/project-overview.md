@@ -18,7 +18,7 @@ The intended product supports interview preparation flows such as account/profil
 
 ## Current Source Architecture
 
-Source uses Pure Microservices for APIs and an ASP.NET Core MVC WebClient. The solution contains one gateway, 11 business services, and WebClient:
+Source uses Pure Microservices for APIs and an ASP.NET Core MVC WebClient. The solution contains one gateway, 10 business services, and WebClient:
 
 - `ApiGateway`
 - `AuthAPI`
@@ -31,7 +31,6 @@ Source uses Pure Microservices for APIs and an ASP.NET Core MVC WebClient. The s
 - `PaymentAPI`
 - `NewsAPI`
 - `NotificationAPI`
-- `StatisticsAPI`
 - `WebClient`
 
 Admin and Manager are implemented as roles and route namespaces. Manager access is read-only through `/api/admin/manager/*` routes where needed.
@@ -50,7 +49,7 @@ Admin and Manager are implemented as roles and route namespaces. Manager access 
 | Credits, plans, payment records | PaymentAPI |
 | News/articles | NewsAPI |
 | Email templates, logs, notifications | NotificationAPI |
-| Metrics and dashboard statistics | StatisticsAPI |
+| Metrics and dashboard statistics | WebClient live aggregation through User/Auth, Interview, Payment, and Feedback domain APIs |
 
 ## Current Implementation Status
 

@@ -16,7 +16,7 @@ DevPrep/
 
 ## Backend Architecture
 
-Source uses Pure Microservices for APIs. `source/DevPrep.sln` contains 12 API/Gateway projects plus `WebClient`:
+Source uses Pure Microservices for APIs. `source/DevPrep.sln` contains 11 API/Gateway projects plus `WebClient`:
 
 1. `ApiGateway`
 2. `AuthAPI`
@@ -29,8 +29,7 @@ Source uses Pure Microservices for APIs. `source/DevPrep.sln` contains 12 API/Ga
 9. `PaymentAPI`
 10. `NewsAPI`
 11. `NotificationAPI`
-12. `StatisticsAPI`
-13. `WebClient`
+12. `WebClient`
 
 Admin and Manager are implemented as roles and route namespaces. Manager access is read-only through `/api/admin/manager/*` routes where needed.
 
@@ -50,9 +49,8 @@ WebClient calls go through `ApiGateway`; browser clients must not call downstrea
 | `/api/payment/*` | `PaymentAPI` |
 | `/api/news/*` | `NewsAPI` |
 | `/api/notifications/*` | `NotificationAPI` |
-| `/api/statistics/*` | `StatisticsAPI` |
 
-Admin routes such as `/api/admin/questions/*`, `/api/admin/feedbacks/*`, `/api/admin/news/*`, `/api/admin/payments/*`, and `/api/admin/statistics/*` are routed to the appropriate domain service. Manager routes such as `/api/admin/manager/questions/*` follow the same domain-service routing model.
+Admin routes such as `/api/admin/questions/*`, `/api/admin/feedbacks/*`, `/api/admin/news/*`, `/api/admin/payments/*` are routed to the appropriate domain service. Manager routes such as `/api/admin/manager/questions/*` follow the same domain-service routing model.
 
 The AI service is internal-only. Do not document or expose public WebClient-facing AI gateway endpoints.
 

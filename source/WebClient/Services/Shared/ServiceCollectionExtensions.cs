@@ -57,6 +57,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<IAdminService, AdminService>();
         services.AddScoped<IManagerService, ManagerService>();
+        services.AddScoped<IManagementDashboardSourceClient, ManagementDashboardSourceClient>();
         services.AddScoped<IManagementDashboardService, ManagementDashboardService>();
         services.AddScoped<IManagerQuestionService, ManagerQuestionService>();
         services.AddScoped<IManagerTechStackService, ManagerTechStackService>();
