@@ -8,7 +8,6 @@ public class Cv
     public string FileUrl { get; set; } = string.Empty;
     public string FileType { get; set; } = "pdf";
     public int? FileSizeKb { get; set; }
-    public string? RawText { get; set; }
     public bool IsCurrent { get; set; } = true;
     public string ParseStatus { get; set; } = "Pending";
     public string? ParsedJson { get; set; }
