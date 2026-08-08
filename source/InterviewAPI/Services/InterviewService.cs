@@ -35,16 +35,34 @@ public class InterviewService : IInterviewService
         var rangeToExclusive = to.AddDays(1).ToDateTime(TimeOnly.MinValue);
         var sessions = _repository.QueryIncludingDeleted();
 
-        var totalInterviewSessions = await sessions.LongCountAsync(cancellationToken);
-        var completedInterviewSessions = await sessions
-            .LongCountAsync(session => session.Status == "Completed", cancellationToken);
-        var grouped = await sessions
+        var totalInterviewSessionsAsOf = await sessions.LongCountAsync(
+            session => session.CreatedAt < rangeToExclusive,
+            cancellationToken);
+        var completedInterviewSessionsAsOf = await sessions.LongCountAsync(
+            session =>
+                session.Status == "Completed" &&
+                session.EndedAt.HasValue &&
+                session.EndedAt.Value < rangeToExclusive,
+            cancellationToken);
+        var createdByDate = await sessions
             .Where(session => session.CreatedAt >= rangeFrom && session.CreatedAt < rangeToExclusive)
             .GroupBy(session => session.CreatedAt.Date)
             .Select(group => new { Date = group.Key, Count = group.LongCount() })
             .ToListAsync(cancellationToken);
+        var completedByDate = await sessions
+            .Where(session =>
+                session.Status == "Completed" &&
+                session.EndedAt.HasValue &&
+                session.EndedAt.Value >= rangeFrom &&
+                session.EndedAt.Value < rangeToExclusive)
+            .GroupBy(session => session.EndedAt!.Value.Date)
+            .Select(group => new { Date = group.Key, Count = group.LongCount() })
+            .ToListAsync(cancellationToken);
 
-        var byDate = grouped.ToDictionary(
+        var createdCounts = createdByDate.ToDictionary(
+            item => DateOnly.FromDateTime(item.Date),
+            item => item.Count);
+        var completedCounts = completedByDate.ToDictionary(
             item => DateOnly.FromDateTime(item.Date),
             item => item.Count);
         var days = new List<InterviewDashboardStatisticsDayDto>(to.DayNumber - from.DayNumber + 1);
@@ -53,7 +71,8 @@ public class InterviewService : IInterviewService
             days.Add(new InterviewDashboardStatisticsDayDto
             {
                 Date = date,
-                Count = byDate.GetValueOrDefault(date)
+                CreatedCount = createdCounts.GetValueOrDefault(date),
+                CompletedCount = completedCounts.GetValueOrDefault(date)
             });
         }
 
@@ -61,8 +80,8 @@ public class InterviewService : IInterviewService
         {
             From = from,
             To = to,
-            TotalInterviewSessions = totalInterviewSessions,
-            CompletedInterviewSessions = completedInterviewSessions,
+            TotalInterviewSessionsAsOf = totalInterviewSessionsAsOf,
+            CompletedInterviewSessionsAsOf = completedInterviewSessionsAsOf,
             Days = days
         };
     }
