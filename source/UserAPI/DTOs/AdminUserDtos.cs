@@ -149,7 +149,7 @@ public sealed class CandidateStatisticsDto
 {
     public DateOnly From { get; set; }
     public DateOnly To { get; set; }
-    public long TotalCandidates { get; set; }
+    public long TotalCandidatesAsOf { get; set; }
     public List<CandidateStatisticsDayDto> Days { get; set; } = new();
 }
 

@@ -41,15 +41,22 @@ public class InternalAccountsController : ControllerBase
         var inclusiveDays = to.DayNumber - from.DayNumber + 1;
         if (inclusiveDays is < 1 or > 366)
             return BadRequest(new { message = "The selected date range must contain no more than 366 days." });
-
         var candidates = _context.Accounts.AsNoTracking()
             .Where(account => account.Role.ToUpper() == "USER");
 
-        var totalCandidates = await candidates.LongCountAsync(cancellationToken);
+        var totalCandidatesAsOf = await candidates.LongCountAsync(
+            account => account.CreatedAt < vietnamToExclusive,
+            cancellationToken);
         var grouped = await candidates
-            .Where(account => account.CreatedAt >= fromUtc.Value && account.CreatedAt < toExclusiveUtc.Value)
-            .GroupBy(account => account.CreatedAt.AddHours(7).Date)
-            .Select(group => new { Date = group.Key, Count = group.LongCount() })
+            .Where(account =>
+                account.CreatedAt >= vietnamFrom &&
+                account.CreatedAt < vietnamToExclusive)
+            .GroupBy(account => account.CreatedAt.Date)
+            .Select(group => new
+            {
+                Date = group.Key,
+                Count = group.LongCount()
+            })
             .ToListAsync(cancellationToken);
 
         var byDate = grouped.ToDictionary(
@@ -70,7 +77,7 @@ public class InternalAccountsController : ControllerBase
         {
             From = from,
             To = to,
-            TotalCandidates = totalCandidates,
+            TotalCandidatesAsOf = totalCandidatesAsOf,
             Days = days
         });
     }
@@ -168,7 +175,8 @@ public class InternalAccountsController : ControllerBase
     {
         var account = await _context.Accounts
             .Where(a => a.AccountId == id)
-            .Select(a => new {
+            .Select(a => new
+            {
                 a.AccountId,
                 a.Email,
                 a.Role,
@@ -367,7 +375,7 @@ public sealed class CandidateStatisticsDto
 {
     public DateOnly From { get; set; }
     public DateOnly To { get; set; }
-    public long TotalCandidates { get; set; }
+    public long TotalCandidatesAsOf { get; set; }
     public List<CandidateStatisticsDayDto> Days { get; set; } = new();
 }
 

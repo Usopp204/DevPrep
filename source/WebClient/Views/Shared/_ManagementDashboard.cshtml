@@ -12,26 +12,10 @@
 <div data-management-dashboard data-dashboard-url="@Model.DashboardDataUrl">
     <script type="application/json" data-dashboard-initial>@Html.Raw(initialJson)</script>
 
-    <div class="alert alert-warning @(dashboard.Available ? "d-none" : "")" data-dashboard-unavailable role="status">
-        Dashboard statistics are unavailable.
-    </div>
-    <div class="alert alert-danger d-none" data-dashboard-error role="alert"></div>
-
-    <section class="ad-kpi-grid row row-cols-1 row-cols-md-2 row-cols-xl-4 g-4 mb-4" aria-label="System statistics">
-        <div class="col"><div class="glass-card ad-stat"><div class="ad-stat-top"><span class="ad-stat-label">Total Candidates</span><span class="material-symbols-outlined" aria-hidden="true">group</span></div><div><div class="ad-stat-value" data-field="totalCandidates">@Number(dashboard.TotalCandidates)</div><div class="ad-stat-label ad-stat-caption">All time</div></div></div></div>
-        <div class="col"><div class="glass-card ad-stat"><div class="ad-stat-top"><span class="ad-stat-label">New Candidates This Month</span><span class="material-symbols-outlined" aria-hidden="true">person_add</span></div><div><div class="ad-stat-value" data-field="newCandidatesThisMonth">@Number(dashboard.NewCandidatesThisMonth)</div><div class="ad-stat-label ad-stat-caption">This month</div></div></div></div>
-        <div class="col"><div class="glass-card ad-stat"><div class="ad-stat-top"><span class="ad-stat-label">Total Interview Sessions</span><span class="material-symbols-outlined" aria-hidden="true">forum</span></div><div><div class="ad-stat-value" data-field="totalInterviewSessions">@Number(dashboard.TotalInterviewSessions)</div><div class="ad-stat-label ad-stat-caption">All time</div></div></div></div>
-        <div class="col"><div class="glass-card ad-stat"><div class="ad-stat-top"><span class="ad-stat-label">Interview Sessions This Month</span><span class="material-symbols-outlined" aria-hidden="true">calendar_month</span></div><div><div class="ad-stat-value" data-field="interviewSessionsThisMonth">@Number(dashboard.InterviewSessionsThisMonth)</div><div class="ad-stat-label ad-stat-caption">This month</div></div></div></div>
-        <div class="col"><div class="glass-card ad-stat"><div class="ad-stat-top"><span class="ad-stat-label">Completed Interview Sessions</span><span class="material-symbols-outlined" aria-hidden="true">task_alt</span></div><div><div class="ad-stat-value" data-field="completedInterviewSessions">@Number(dashboard.CompletedInterviewSessions)</div><div class="ad-stat-label ad-stat-caption">All time</div></div></div></div>
-        <div class="col"><div class="glass-card ad-stat"><div class="ad-stat-top"><span class="ad-stat-label">Gross VNPay Revenue This Month</span><span class="material-symbols-outlined" aria-hidden="true">payments</span></div><div><div class="ad-stat-value ad-stat-revenue" data-field="grossVnpayRevenueThisMonth">@Vnd(dashboard.GrossVnpayRevenueThisMonth)</div><div class="ad-stat-label ad-stat-caption">This month</div></div></div></div>
-        <div class="col"><div class="glass-card ad-stat"><div class="ad-stat-top"><span class="ad-stat-label">Total Feedbacks</span><span class="material-symbols-outlined" aria-hidden="true">reviews</span></div><div><div class="ad-stat-value" data-field="totalFeedbacks">@Number(dashboard.TotalFeedbacks)</div><div class="ad-stat-label ad-stat-caption">All time</div></div></div></div>
-        <div class="col"><div class="glass-card ad-stat"><div class="ad-stat-top"><span class="ad-stat-label">Feedbacks This Month</span><span class="material-symbols-outlined" aria-hidden="true">rate_review</span></div><div><div class="ad-stat-value" data-field="feedbacksThisMonth">@Number(dashboard.FeedbacksThisMonth)</div><div class="ad-stat-label ad-stat-caption">This month</div></div></div></div>
-    </section>
-
-    <section class="glass-card ad-section" aria-labelledby="revenue-trend-title">
+    <section class="glass-card ad-dashboard-filter mb-4" aria-labelledby="dashboard-filter-title">
         <div class="ad-dashboard-heading">
             <div>
-                <h2 class="ad-section-title" id="revenue-trend-title">Revenue Trend</h2>
+                <h2 class="ad-section-title" id="dashboard-filter-title">Management Dashboard</h2>
                 <p class="ad-last-updated mb-0">Last updated: <span data-last-updated>@(dashboard.LastUpdated.HasValue ? dashboard.LastUpdated.Value.ToString("yyyy-MM-dd HH:mm") + " ICT" : unavailable)</span></p>
             </div>
             <form class="ad-range" data-dashboard-form>
@@ -42,25 +26,69 @@
                 <button type="submit" class="ad-apply" data-apply-button>Apply</button>
             </form>
         </div>
-
-        <div class="ad-rev-summary" data-revenue-summary aria-live="polite">
-            @if (dashboard.Available)
-            {
-                <text>Selected range: @Vnd(dashboard.SelectedRangeGrossVnpayRevenue) · @Number(dashboard.SelectedRangePaidVnpayOrders) paid VNPay orders · @dashboard.Granularity granularity · @dashboard.From.ToString("yyyy-MM-dd") to @dashboard.To.ToString("yyyy-MM-dd")</text>
-            }
+        <div class="ad-presets" aria-label="Date range presets">
+            <button type="button" data-dashboard-preset="this-month">This month</button>
+            <button type="button" data-dashboard-preset="last-month">Last month</button>
+            <button type="button" data-dashboard-preset="last-30-days">Last 30 days</button>
         </div>
+    </section>
 
-        <div class="ad-chart" data-revenue-chart role="img" aria-label="Revenue Trend for the selected date range">
+    <div class="alert alert-warning @(dashboard.Available ? "d-none" : "")" data-dashboard-unavailable role="status">
+        Dashboard statistics are unavailable.
+    </div>
+    <div class="alert alert-danger d-none" data-dashboard-error role="alert"></div>
+
+    <section aria-labelledby="snapshot-title">
+        <div class="ad-group-heading">
+            <div>
+                <h2 class="ad-section-title" id="snapshot-title">System Snapshot</h2>
+                <p>As of <span data-snapshot-to>@dashboard.To.ToString("yyyy-MM-dd")</span></p>
+            </div>
+        </div>
+        <div class="ad-kpi-grid row row-cols-1 row-cols-md-2 row-cols-xl-4 g-4 mb-4">
+            <div class="col"><div class="glass-card ad-stat"><div class="ad-stat-top"><span class="ad-stat-label">Total Candidates</span><span class="material-symbols-outlined" aria-hidden="true">group</span></div><div><div class="ad-stat-value" data-field="totalCandidatesAsOf">@Number(dashboard.TotalCandidatesAsOf)</div><div class="ad-stat-label ad-stat-caption">+<span data-field="newCandidates">@Number(dashboard.NewCandidates)</span> in selected period</div></div></div></div>
+            <div class="col"><div class="glass-card ad-stat" title="Includes deleted history"><div class="ad-stat-top"><span class="ad-stat-label">Total Interview Sessions</span><span class="material-symbols-outlined" aria-hidden="true">forum</span></div><div><div class="ad-stat-value" data-field="totalInterviewSessionsAsOf">@Number(dashboard.TotalInterviewSessionsAsOf)</div><div class="ad-stat-label ad-stat-caption">Completed <span data-field="completedInterviewSessionsAsOf">@Number(dashboard.CompletedInterviewSessionsAsOf)</span> · +<span data-field="interviewSessionsCreated">@Number(dashboard.InterviewSessionsCreated)</span> created</div><div class="ad-stat-hint">Includes deleted history</div></div></div></div>
+            <div class="col"><div class="glass-card ad-stat"><div class="ad-stat-top"><span class="ad-stat-label">Total Feedbacks</span><span class="material-symbols-outlined" aria-hidden="true">reviews</span></div><div><div class="ad-stat-value" data-field="totalFeedbacksAsOf">@Number(dashboard.TotalFeedbacksAsOf)</div><div class="ad-stat-label ad-stat-caption">System <span data-field="totalSystemFeedbacksAsOf">@Number(dashboard.TotalSystemFeedbacksAsOf)</span> · Interview <span data-field="totalInterviewFeedbacksAsOf">@Number(dashboard.TotalInterviewFeedbacksAsOf)</span></div></div></div></div>
+            <div class="col"><div class="glass-card ad-stat"><div class="ad-stat-top"><span class="ad-stat-label">Gross VNPay Revenue To Date</span><span class="material-symbols-outlined" aria-hidden="true">account_balance_wallet</span></div><div><div class="ad-stat-value ad-stat-revenue" data-field="grossVnpayRevenueAsOf">@Vnd(dashboard.GrossVnpayRevenueAsOf)</div><div class="ad-stat-label ad-stat-caption"><span data-field="paidVnpayOrdersAsOf">@Number(dashboard.PaidVnpayOrdersAsOf)</span> paid VNPay orders</div></div></div></div>
+        </div>
+    </section>
+
+    <section aria-labelledby="activity-title">
+        <div class="ad-group-heading">
+            <div>
+                <h2 class="ad-section-title" id="activity-title">Selected Period Activity</h2>
+                <p><span data-period-from>@dashboard.From.ToString("yyyy-MM-dd")</span> through <span data-period-to>@dashboard.To.ToString("yyyy-MM-dd")</span></p>
+            </div>
+        </div>
+        <div class="ad-kpi-grid row row-cols-1 row-cols-md-2 row-cols-xl-4 g-4 mb-4">
+            <div class="col"><div class="glass-card ad-stat"><div class="ad-stat-top"><span class="ad-stat-label">New Candidates</span><span class="material-symbols-outlined" aria-hidden="true">person_add</span></div><div><div class="ad-stat-value" data-field="newCandidates">@Number(dashboard.NewCandidates)</div><div class="ad-stat-label ad-stat-caption">Created in selected period</div></div></div></div>
+            <div class="col"><div class="glass-card ad-stat"><div class="ad-stat-top"><span class="ad-stat-label">Interview Activity</span><span class="material-symbols-outlined" aria-hidden="true">calendar_month</span></div><div><div class="ad-stat-value" data-field="interviewSessionsCreated">@Number(dashboard.InterviewSessionsCreated)</div><div class="ad-stat-label ad-stat-caption">Created · Completed <span data-field="interviewSessionsCompleted">@Number(dashboard.InterviewSessionsCompleted)</span></div></div></div></div>
+            <div class="col"><div class="glass-card ad-stat"><div class="ad-stat-top"><span class="ad-stat-label">New Feedbacks</span><span class="material-symbols-outlined" aria-hidden="true">rate_review</span></div><div><div class="ad-stat-value" data-field="newFeedbacks">@Number(dashboard.NewFeedbacks)</div><div class="ad-stat-label ad-stat-caption">System <span data-field="newSystemFeedbacks">@Number(dashboard.NewSystemFeedbacks)</span> · Interview <span data-field="newInterviewFeedbacks">@Number(dashboard.NewInterviewFeedbacks)</span></div></div></div></div>
+            <div class="col"><div class="glass-card ad-stat"><div class="ad-stat-top"><span class="ad-stat-label">Period Revenue</span><span class="material-symbols-outlined" aria-hidden="true">payments</span></div><div><div class="ad-stat-value ad-stat-revenue" data-field="periodGrossVnpayRevenue">@Vnd(dashboard.PeriodGrossVnpayRevenue)</div><div class="ad-stat-label ad-stat-caption"><span data-field="periodPaidVnpayOrders">@Number(dashboard.PeriodPaidVnpayOrders)</span> paid VNPay orders</div></div></div></div>
+        </div>
+    </section>
+
+    <section class="glass-card ad-section" aria-labelledby="dashboard-trend-title">
+        <div class="ad-trend-heading">
+            <div>
+                <h2 class="ad-section-title" id="dashboard-trend-title">Selected Period Trends</h2>
+                <p class="ad-trend-range mb-0"><span data-trend-from>@dashboard.From.ToString("yyyy-MM-dd")</span> through <span data-trend-to>@dashboard.To.ToString("yyyy-MM-dd")</span> · <span data-granularity>@dashboard.Granularity</span></p>
+            </div>
+            <div class="ad-trend-tabs" role="tablist" aria-label="Trend metric">
+                <button type="button" role="tab" aria-selected="true" data-trend-tab="revenue">Revenue</button>
+                <button type="button" role="tab" aria-selected="false" data-trend-tab="candidates">Candidates</button>
+                <button type="button" role="tab" aria-selected="false" data-trend-tab="interviews">Interviews</button>
+                <button type="button" role="tab" aria-selected="false" data-trend-tab="feedbacks">Feedbacks</button>
+            </div>
+        </div>
+        <div class="ad-trend-summary" data-trend-summary aria-live="polite"></div>
+        <div class="ad-trend-legend" data-trend-legend aria-label="Chart legend"></div>
+        <div class="ad-chart" data-dashboard-chart role="img" aria-label="Revenue trend for the selected date range">
             @if (!dashboard.Available)
             {
                 <div class="ad-chart-note">Dashboard statistics are unavailable.</div>
             }
         </div>
-        <ul class="visually-hidden" data-bucket-list aria-label="Revenue Trend data">
-            @foreach (var bucket in dashboard.RevenueBuckets)
-            {
-                <li>@bucket.StartDate.ToString("dd/MM/yyyy", DisplayCulture.Neutral) to @bucket.EndDate.ToString("dd/MM/yyyy", DisplayCulture.Neutral): @Vnd(bucket.Revenue), @bucket.Orders.ToString("N0", DisplayCulture.Neutral) paid VNPay orders</li>
-            }
-        </ul>
+        <ul class="visually-hidden" data-bucket-list aria-label="Trend data"></ul>
     </section>
 </div>

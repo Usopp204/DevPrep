@@ -1,58 +1,67 @@
 namespace WebClient.Models.Dashboard;
 
-public sealed class DashboardCountDay
+public sealed class ManagementCountDay
 {
-    public DateOnly Date { get; set; }
-    public long Count { get; set; }
+    public required DateOnly Date { get; set; }
+    public required long Count { get; set; }
 }
 
-public sealed class CandidateDashboardSource
+public sealed class CandidateStatisticsSourceData
 {
-    public DateOnly From { get; set; }
-    public DateOnly To { get; set; }
-    public long TotalCandidates { get; set; }
-    public List<DashboardCountDay> Days { get; set; } = new();
+    public required DateOnly From { get; set; }
+    public required DateOnly To { get; set; }
+    public required long TotalCandidatesAsOf { get; set; }
+    public required List<ManagementCountDay> Days { get; set; } = new();
 }
 
-public sealed class InterviewDashboardSource
+public sealed class ManagementInterviewDay
 {
-    public DateOnly From { get; set; }
-    public DateOnly To { get; set; }
-    public long TotalInterviewSessions { get; set; }
-    public long CompletedInterviewSessions { get; set; }
-    public List<DashboardCountDay> Days { get; set; } = new();
+    public required DateOnly Date { get; set; }
+    public required long CreatedCount { get; set; }
+    public required long CompletedCount { get; set; }
 }
 
-public sealed class DashboardRevenueDay
+public sealed class InterviewDashboardSourceData
 {
-    public DateOnly Date { get; set; }
-    public decimal Revenue { get; set; }
-    public long Orders { get; set; }
+    public required DateOnly From { get; set; }
+    public required DateOnly To { get; set; }
+    public required long TotalInterviewSessionsAsOf { get; set; }
+    public required long CompletedInterviewSessionsAsOf { get; set; }
+    public required List<ManagementInterviewDay> Days { get; set; } = new();
 }
 
-public sealed class RevenueDashboardSource
+public sealed class ManagementRevenueDay
 {
-    public DateOnly From { get; set; }
-    public DateOnly To { get; set; }
-    public decimal TotalRevenue { get; set; }
-    public long TotalOrders { get; set; }
-    public List<DashboardRevenueDay> Days { get; set; } = new();
+    public required DateOnly Date { get; set; }
+    public required decimal Revenue { get; set; }
+    public required long Orders { get; set; }
 }
 
-public sealed class DashboardFeedbackDay
+public sealed class RevenueDailySourceData
 {
-    public DateOnly Date { get; set; }
-    public long SystemFeedbacks { get; set; }
-    public long InterviewFeedbacks { get; set; }
-    public long TotalFeedbacks { get; set; }
+    public required DateOnly From { get; set; }
+    public required DateOnly To { get; set; }
+    public required decimal TotalRevenueAsOf { get; set; }
+    public required long TotalOrdersAsOf { get; set; }
+    public required decimal PeriodRevenue { get; set; }
+    public required long PeriodOrders { get; set; }
+    public required List<ManagementRevenueDay> Days { get; set; } = new();
 }
 
-public sealed class FeedbackDashboardSource
+public sealed class ManagementFeedbackDay
 {
-    public DateOnly From { get; set; }
-    public DateOnly To { get; set; }
-    public long AllTimeSystemFeedbacks { get; set; }
-    public long AllTimeInterviewFeedbacks { get; set; }
-    public long AllTimeTotalFeedbacks { get; set; }
-    public List<DashboardFeedbackDay> Days { get; set; } = new();
+    public required DateOnly Date { get; set; }
+    public required long SystemFeedbacks { get; set; }
+    public required long InterviewFeedbacks { get; set; }
+    public required long TotalFeedbacks { get; set; }
+}
+
+public sealed class FeedbackDashboardSourceData
+{
+    public required DateOnly From { get; set; }
+    public required DateOnly To { get; set; }
+    public required long TotalSystemFeedbacksAsOf { get; set; }
+    public required long TotalInterviewFeedbacksAsOf { get; set; }
+    public required long TotalFeedbacksAsOf { get; set; }
+    public required List<ManagementFeedbackDay> Days { get; set; } = new();
 }

@@ -503,20 +503,28 @@ app.MapGet("/admin/payments/revenue-daily", async (
 
     var rangeStart = rangeFrom.ToDateTime(TimeOnly.MinValue);
     var rangeToExclusive = rangeToInclusive.AddDays(1).ToDateTime(TimeOnly.MinValue);
-    var grouped = await db.Orders.AsNoTracking()
+    var paidVnpayOrders = db.Orders.AsNoTracking()
         .Where(order =>
             order.Status == "Paid" &&
             order.PaymentMethod.ToUpper() == "VNPAY" &&
             order.Currency.ToUpper() == "VND" &&
-            order.PaidAt.HasValue &&
-            order.PaidAt.Value >= rangeStart &&
+            order.PaidAt.HasValue);
+
+    var totalRevenueAsOf = await paidVnpayOrders
+        .Where(order => order.PaidAt!.Value < rangeToExclusive)
+        .SumAsync(order => (decimal?)order.Amount) ?? 0m;
+    var totalOrdersAsOf = await paidVnpayOrders
+        .LongCountAsync(order => order.PaidAt!.Value < rangeToExclusive);
+    var grouped = await paidVnpayOrders
+        .Where(order =>
+            order.PaidAt!.Value >= rangeStart &&
             order.PaidAt.Value < rangeToExclusive)
         .GroupBy(order => order.PaidAt!.Value.Date)
         .Select(group => new
         {
             Date = group.Key,
             Revenue = group.Sum(order => order.Amount),
-            Orders = group.Count()
+            Orders = group.LongCount()
         })
         .ToListAsync();
 
@@ -534,8 +542,10 @@ app.MapGet("/admin/payments/revenue-daily", async (
     {
         From = rangeFrom,
         To = rangeToInclusive,
-        TotalRevenue = days.Sum(day => day.Revenue),
-        TotalOrders = days.Sum(day => day.Orders),
+        TotalRevenueAsOf = totalRevenueAsOf,
+        TotalOrdersAsOf = totalOrdersAsOf,
+        PeriodRevenue = days.Sum(day => day.Revenue),
+        PeriodOrders = days.Sum(day => day.Orders),
         Days = days
     });
 }).RequireAuthorization("AdminArea");
@@ -670,7 +680,7 @@ app.MapControllers();
 
 app.Run();
 
-record DashboardRevenueDay(DateOnly Date, decimal Revenue, int Orders);
+record DashboardRevenueDay(DateOnly Date, decimal Revenue, long Orders);
 
 record VnpayOrderRequest(Guid PackageId);
 

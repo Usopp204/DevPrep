@@ -10,20 +10,27 @@ public sealed class ManagementDashboardData
 {
     public bool Available { get; set; }
     public DateTime? LastUpdated { get; set; }
-    public long? TotalCandidates { get; set; }
-    public long? NewCandidatesThisMonth { get; set; }
-    public long? TotalInterviewSessions { get; set; }
-    public long? InterviewSessionsThisMonth { get; set; }
-    public long? CompletedInterviewSessions { get; set; }
-    public decimal? GrossVnpayRevenueThisMonth { get; set; }
-    public long? TotalFeedbacks { get; set; }
-    public long? FeedbacksThisMonth { get; set; }
     public DateOnly From { get; set; }
     public DateOnly To { get; set; }
     public string Granularity { get; set; } = "Daily";
-    public decimal? SelectedRangeGrossVnpayRevenue { get; set; }
-    public long? SelectedRangePaidVnpayOrders { get; set; }
-    public List<ManagementRevenueBucket> RevenueBuckets { get; set; } = new();
+
+    public long? TotalCandidatesAsOf { get; set; }
+    public long? NewCandidates { get; set; }
+    public long? TotalInterviewSessionsAsOf { get; set; }
+    public long? CompletedInterviewSessionsAsOf { get; set; }
+    public long? InterviewSessionsCreated { get; set; }
+    public long? InterviewSessionsCompleted { get; set; }
+    public long? TotalSystemFeedbacksAsOf { get; set; }
+    public long? TotalInterviewFeedbacksAsOf { get; set; }
+    public long? TotalFeedbacksAsOf { get; set; }
+    public long? NewSystemFeedbacks { get; set; }
+    public long? NewInterviewFeedbacks { get; set; }
+    public long? NewFeedbacks { get; set; }
+    public decimal? GrossVnpayRevenueAsOf { get; set; }
+    public long? PaidVnpayOrdersAsOf { get; set; }
+    public decimal? PeriodGrossVnpayRevenue { get; set; }
+    public long? PeriodPaidVnpayOrders { get; set; }
+    public List<ManagementDashboardBucket> Buckets { get; set; } = new();
 
     public static ManagementDashboardData Unavailable(DateOnly from, DateOnly to) => new()
     {
@@ -33,13 +40,19 @@ public sealed class ManagementDashboardData
     };
 }
 
-public sealed class ManagementRevenueBucket
+public sealed class ManagementDashboardBucket
 {
     public DateOnly StartDate { get; set; }
     public DateOnly EndDate { get; set; }
     public string Label { get; set; } = string.Empty;
-    public decimal Revenue { get; set; }
-    public long Orders { get; set; }
+    public long NewCandidates { get; set; }
+    public long InterviewSessionsCreated { get; set; }
+    public long InterviewSessionsCompleted { get; set; }
+    public decimal GrossVnpayRevenue { get; set; }
+    public long PaidVnpayOrders { get; set; }
+    public long SystemFeedbacks { get; set; }
+    public long InterviewFeedbacks { get; set; }
+    public long TotalFeedbacks { get; set; }
 }
 
 public static class DashboardDateRange

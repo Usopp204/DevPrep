@@ -19,8 +19,12 @@ public sealed class FeedbackStatisticsService(
         var systemFeedbacks = systemFeedbackRepository.QueryIncludingDeleted();
         var interviewFeedbacks = aiFeedbackRepository.QueryIncludingDeleted();
 
-        var allTimeSystemFeedbacks = await systemFeedbacks.LongCountAsync(cancellationToken);
-        var allTimeInterviewFeedbacks = await interviewFeedbacks.LongCountAsync(cancellationToken);
+        var totalSystemFeedbacksAsOf = await systemFeedbacks.LongCountAsync(
+            feedback => feedback.CreatedAt < rangeToExclusive,
+            cancellationToken);
+        var totalInterviewFeedbacksAsOf = await interviewFeedbacks.LongCountAsync(
+            feedback => feedback.CreatedAt < rangeToExclusive,
+            cancellationToken);
         var systemByDate = await systemFeedbacks
             .Where(feedback => feedback.CreatedAt >= rangeFrom && feedback.CreatedAt < rangeToExclusive)
             .GroupBy(feedback => feedback.CreatedAt.Date)
@@ -56,9 +60,9 @@ public sealed class FeedbackStatisticsService(
         {
             From = from,
             To = to,
-            AllTimeSystemFeedbacks = allTimeSystemFeedbacks,
-            AllTimeInterviewFeedbacks = allTimeInterviewFeedbacks,
-            AllTimeTotalFeedbacks = checked(allTimeSystemFeedbacks + allTimeInterviewFeedbacks),
+            TotalSystemFeedbacksAsOf = totalSystemFeedbacksAsOf,
+            TotalInterviewFeedbacksAsOf = totalInterviewFeedbacksAsOf,
+            TotalFeedbacksAsOf = checked(totalSystemFeedbacksAsOf + totalInterviewFeedbacksAsOf),
             Days = days
         };
     }

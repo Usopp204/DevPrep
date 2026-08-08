@@ -1,10 +1,36 @@
-.ad-dashboard-heading {
+.ad-dashboard-filter {
+    padding: 1.5rem;
+}
+
+.ad-dashboard-heading,
+.ad-trend-heading,
+.ad-group-heading {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
     gap: 1.5rem;
-    margin-bottom: 1rem;
     flex-wrap: wrap;
+}
+
+.ad-dashboard-heading {
+    margin-bottom: .875rem;
+}
+
+.ad-group-heading {
+    margin-bottom: .75rem;
+}
+
+.ad-group-heading p,
+.ad-trend-range,
+.ad-last-updated,
+.ad-trend-summary {
+    color: #c8c5d0;
+    font-size: .875rem;
+}
+
+.ad-group-heading p,
+.ad-last-updated {
+    margin: .35rem 0 0;
 }
 
 .ad-range {
@@ -33,13 +59,6 @@
     color-scheme: dark;
 }
 
-.ad-range input[type="date"]:focus-visible,
-.ad-range .ad-apply:focus-visible,
-.ad-chart-bar .bar:focus-visible {
-    outline: 2px solid #a5b4fc;
-    outline-offset: 2px;
-}
-
 .ad-range .ad-apply {
     background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
     color: #fff;
@@ -51,28 +70,89 @@
     cursor: pointer;
 }
 
-.ad-range .ad-apply:hover {
+.ad-range .ad-apply:hover,
+.ad-presets button:hover,
+.ad-trend-tabs button:hover {
     opacity: .9;
 }
 
-.ad-range .ad-apply:disabled {
+.ad-range .ad-apply:disabled,
+.ad-presets button:disabled {
     cursor: wait;
     opacity: .6;
 }
 
-.ad-last-updated,
-.ad-rev-summary {
-    color: #c8c5d0;
-    font-size: .875rem;
+.ad-presets {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    flex-wrap: wrap;
 }
 
-.ad-last-updated {
-    margin-top: .35rem;
+.ad-presets button,
+.ad-trend-tabs button {
+    appearance: none;
+    border: 1px solid rgba(255, 255, 255, .14);
+    background: rgba(26, 31, 48, .65);
+    color: #d6d2dc;
+    border-radius: 999px;
+    padding: .35rem .75rem;
+    font-family: inherit;
+    font-size: .78rem;
+    font-weight: 600;
+    cursor: pointer;
 }
 
-.ad-rev-summary {
-    min-height: 1.5rem;
+.ad-trend-heading {
     margin-bottom: .75rem;
+}
+
+.ad-trend-tabs {
+    display: flex;
+    gap: .375rem;
+    flex-wrap: wrap;
+}
+
+.ad-trend-tabs button[aria-selected="true"] {
+    border-color: rgba(165, 180, 252, .65);
+    background: rgba(79, 70, 229, .35);
+    color: #fff;
+}
+
+.ad-range input[type="date"]:focus-visible,
+.ad-range .ad-apply:focus-visible,
+.ad-presets button:focus-visible,
+.ad-trend-tabs button:focus-visible,
+.ad-chart-bucket .bar:focus-visible {
+    outline: 2px solid #a5b4fc;
+    outline-offset: 2px;
+}
+
+.ad-trend-summary {
+    min-height: 1.5rem;
+    margin-bottom: .375rem;
+}
+
+.ad-trend-legend {
+    display: flex;
+    min-height: 1.5rem;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: .75rem;
+    color: #aaa6b2;
+    font-size: .78rem;
+}
+
+.ad-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: .375rem;
+}
+
+.ad-legend-swatch {
+    width: .75rem;
+    height: .75rem;
+    border-radius: .2rem;
 }
 
 .ad-chart {
@@ -96,7 +176,7 @@
     background-size: 100% 25%;
 }
 
-.ad-chart-bar {
+.ad-chart-bucket {
     display: grid;
     grid-template-rows: minmax(0, 1fr) 2rem;
     align-items: end;
@@ -109,39 +189,71 @@
     display: flex;
     align-items: flex-end;
     justify-content: center;
+    gap: clamp(1px, .2vw, .25rem);
     min-width: 0;
     height: 100%;
 }
 
-.ad-chart-bar .bar {
+.ad-chart-bucket .bar {
     width: 100%;
     min-width: 0;
     min-height: 0;
     padding: 0;
     border: 0;
     border-radius: .375rem .375rem 0 0;
-    background: linear-gradient(180deg, #818cf8, #4f46e5);
     opacity: .9;
     cursor: help;
 }
 
-.ad-chart-bar .bar:hover,
-.ad-chart-bar .bar:focus-visible {
+.ad-chart-bucket .bar:hover,
+.ad-chart-bucket .bar:focus-visible {
     opacity: 1;
+}
+
+.ad-chart-bucket .bar.is-zero {
+    height: 2px !important;
+    opacity: .45;
+}
+
+.ad-chart-bucket .bar.is-revenue,
+.ad-legend-swatch.is-revenue {
+    background: linear-gradient(180deg, #818cf8, #4f46e5);
+}
+
+.ad-chart-bucket .bar.is-candidates,
+.ad-legend-swatch.is-candidates {
+    background: linear-gradient(180deg, #5eead4, #0f766e);
+}
+
+.ad-chart-bucket .bar.is-interviews-created,
+.ad-legend-swatch.is-interviews-created {
+    background: linear-gradient(180deg, #93c5fd, #2563eb);
+}
+
+.ad-chart-bucket .bar.is-interviews-completed,
+.ad-legend-swatch.is-interviews-completed {
+    background: linear-gradient(180deg, #c4b5fd, #7c3aed);
+}
+
+.ad-chart-bucket .bar.is-feedback-system,
+.ad-legend-swatch.is-feedback-system {
+    background: linear-gradient(180deg, #f9a8d4, #db2777);
+}
+
+.ad-chart-bucket .bar.is-feedback-interview,
+.ad-legend-swatch.is-feedback-interview {
+    background: linear-gradient(180deg, #fcd34d, #d97706);
 }
 
 .ad-chart-tick {
     align-self: center;
     justify-self: center;
     width: max-content;
-    max-width: none;
-    overflow: visible;
     color: #aaa6b2;
     font-family: 'JetBrains Mono', monospace;
     font-size: .68rem;
     line-height: 1rem;
     text-align: center;
-    text-overflow: clip;
     white-space: nowrap;
 }
 
@@ -159,15 +271,8 @@
     text-align: right;
 }
 
-.ad-chart-tick > span {
-    display: block;
-}
-
-.ad-chart-tick .ad-chart-tick-separator {
-    display: none;
-}
-
-.ad-chart-note {
+.ad-chart-note,
+.ad-chart-empty {
     position: absolute;
     inset: 0;
     display: flex;
@@ -182,9 +287,20 @@
     color: #ffb4ab;
 }
 
+.ad-chart-empty {
+    pointer-events: none;
+}
+
 .ad-stat-caption {
     margin-top: .5rem;
     text-transform: none;
+}
+
+.ad-stat-hint {
+    margin-top: .25rem;
+    color: #8f8a99;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .68rem;
 }
 
 [data-management-dashboard],
@@ -217,22 +333,6 @@
     white-space: normal;
 }
 
-.ad-chart-empty {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #aaa6b2;
-    font-size: .875rem;
-    pointer-events: none;
-}
-
-.ad-chart-bar .bar.is-zero {
-    height: 2px !important;
-    background: rgba(129, 140, 248, .45);
-}
-
 .ad-stat-revenue {
     color: #c3c0ff;
     font-size: 1.5rem;
@@ -240,7 +340,8 @@
 }
 
 @media (max-width: 640px) {
-    .ad-section {
+    .ad-section,
+    .ad-dashboard-filter {
         padding: 1.25rem;
     }
 
@@ -250,15 +351,25 @@
     }
 
     .ad-range input,
-    .ad-range button {
+    .ad-range .ad-apply {
         width: 100%;
+    }
+
+    .ad-presets,
+    .ad-trend-tabs {
+        width: 100%;
+    }
+
+    .ad-presets button,
+    .ad-trend-tabs button {
+        flex: 1 1 auto;
     }
 
     .ad-chart {
         height: 15rem;
     }
 
-    .ad-chart-bar span {
+    .ad-chart-tick {
         font-size: .6rem;
     }
 }
