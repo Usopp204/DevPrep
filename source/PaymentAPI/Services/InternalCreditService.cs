@@ -2,18 +2,31 @@ using Microsoft.Data.SqlClient;
 using PaymentAPI.Data;
 using PaymentAPI.DTOs;
 using PaymentAPI.Models;
+using PaymentAPI.Repositories;
 using Microsoft.EntityFrameworkCore;
 
 namespace PaymentAPI.Services;
 
+/// <summary>
+/// Credit của user được suy ra từ CreditLedger: số dư = SUM(CreditChange). Bảng CreditWallets
+/// đã bị bỏ, không còn dòng số dư riêng để khoá nữa.
+///
+/// Vì vậy mọi thao tác đọc-rồi-ghi ở đây mở transaction rồi đọc số dư qua
+/// ILedgerRepository.GetBalanceForUpdateAsync — nó giữ khoá (UPDLOCK, HOLDLOCK) trên dải
+/// WHERE UserId = @u tới hết transaction, nên lời gọi song song thứ hai phải đợi và sẽ đọc
+/// được số dư mới. Đọc thuần bằng LINQ sẽ không chặn được gì, vì SUM không giữ lại khoá nào.
+/// </summary>
 public class InternalCreditService
 {
     private readonly PaymentDbContext _db;
+    private readonly ILedgerRepository _ledger;
     private readonly ILogger<InternalCreditService> _logger;
 
-    public InternalCreditService(PaymentDbContext db, ILogger<InternalCreditService> logger)
+    public InternalCreditService(PaymentDbContext db, ILedgerRepository ledger,
+                                 ILogger<InternalCreditService> logger)
     {
         _db = db;
+        _ledger = ledger;
         _logger = logger;
     }
 
@@ -24,43 +37,30 @@ public class InternalCreditService
 
         try
         {
-            var wallet = await _db.CreditWallets.FirstOrDefaultAsync(
-                w => w.UserId == request.UserId, ct);
+            var balance = await _ledger.GetBalanceForUpdateAsync(request.UserId, ct);
 
-            if (wallet is null)
+            if (balance < request.Amount)
                 return new InternalCreditDeductionResponse
                 {
                     Success = false,
-                    Message = "User wallet not found.",
-                    BalanceAfter = 0
+                    Message = $"Insufficient credits. Required: {request.Amount}, Available: {balance}.",
+                    BalanceAfter = balance
                 };
 
-            if (wallet.Balance < request.Amount)
-                return new InternalCreditDeductionResponse
-                {
-                    Success = false,
-                    Message = $"Insufficient credits. Required: {request.Amount}, Available: {wallet.Balance}.",
-                    BalanceAfter = wallet.Balance
-                };
+            var balanceAfter = balance - request.Amount;
 
-            // Deduct credit
-            wallet.Balance -= request.Amount;
-            wallet.UpdatedAt = DateTime.UtcNow;
-            _db.CreditWallets.Update(wallet);
-
-            // Record ledger entry
-            var ledger = new CreditLedgerEntry
+            // Giờ Việt Nam, khớp quy ước chung của codebase.
+            _db.CreditLedgerEntries.Add(new CreditLedgerEntry
             {
                 LedgerId = Guid.NewGuid(),
                 UserId = request.UserId,
                 EntryType = "Usage",
                 CreditChange = -request.Amount,
-                BalanceAfter = wallet.Balance,
+                BalanceAfter = balanceAfter,
                 ReferenceId = request.ReferenceId,
                 Description = request.Description,
-                CreatedAt = DateTime.UtcNow
-            };
-            _db.CreditLedgerEntries.Add(ledger);
+                CreatedAt = DateTime.UtcNow.AddHours(7)
+            });
 
             await _db.SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);
@@ -68,7 +68,7 @@ public class InternalCreditService
             return new InternalCreditDeductionResponse
             {
                 Success = true,
-                BalanceAfter = wallet.Balance,
+                BalanceAfter = balanceAfter,
                 AmountDeducted = request.Amount,
                 Message = "Credit deducted successfully."
             };
@@ -92,35 +92,19 @@ public class InternalCreditService
 
         try
         {
-            var wallet = await _db.CreditWallets.FirstOrDefaultAsync(
-                w => w.UserId == request.UserId, ct);
+            var balanceAfter = await _ledger.GetBalanceForUpdateAsync(request.UserId, ct) + request.Amount;
 
-            if (wallet is null)
-                return new InternalCreditDeductionResponse
-                {
-                    Success = false,
-                    Message = "User wallet not found.",
-                    BalanceAfter = 0
-                };
-
-            // Refund credit
-            wallet.Balance += request.Amount;
-            wallet.UpdatedAt = DateTime.UtcNow;
-            _db.CreditWallets.Update(wallet);
-
-            // Record ledger entry
-            var ledger = new CreditLedgerEntry
+            _db.CreditLedgerEntries.Add(new CreditLedgerEntry
             {
                 LedgerId = Guid.NewGuid(),
                 UserId = request.UserId,
                 EntryType = "Refund",
                 CreditChange = request.Amount,
-                BalanceAfter = wallet.Balance,
+                BalanceAfter = balanceAfter,
                 ReferenceId = request.ReferenceId,
                 Description = request.Description,
-                CreatedAt = DateTime.UtcNow
-            };
-            _db.CreditLedgerEntries.Add(ledger);
+                CreatedAt = DateTime.UtcNow.AddHours(7)
+            });
 
             await _db.SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);
@@ -128,7 +112,7 @@ public class InternalCreditService
             return new InternalCreditDeductionResponse
             {
                 Success = true,
-                BalanceAfter = wallet.Balance,
+                BalanceAfter = balanceAfter,
                 AmountDeducted = request.Amount,
                 Message = "Credit refunded successfully."
             };
@@ -149,78 +133,13 @@ public class InternalCreditService
     // guarded both by an existence check and a unique filtered index on CreditLedger
     // (UX_Ledger_UserBonus) to close the check-then-insert race under concurrent calls.
     public async Task<InternalCreditAwardResponse> AwardCreditAsync(
-        InternalCreditAwardRequest request, CancellationToken ct, int retryCount = 0)
+        InternalCreditAwardRequest request, CancellationToken ct)
     {
         using var transaction = await _db.Database.BeginTransactionAsync(ct);
 
         try
         {
-            var wallet = await _db.CreditWallets.FirstOrDefaultAsync(
-                w => w.UserId == request.UserId, ct);
-
-            // Wallets were previously only ever created via a completed VNPay top-up (see
-            // VnPayService.cs's IPN callback). A user who enrolls biometrics before ever
-            // buying credits has no wallet row at all, so the bonus could never be awarded.
-            // Create a zero-balance wallet here instead of rejecting the award.
-            var walletJustCreated = false;
-            if (wallet is null)
-            {
-                wallet = new CreditWallet
-                {
-                    WalletId = Guid.NewGuid(),
-                    UserId = request.UserId,
-                    Balance = 0,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                };
-                _db.CreditWallets.Add(wallet);
-
-                try
-                {
-                    await _db.SaveChangesAsync(ct);
-                }
-                catch (DbUpdateException ex) when (IsUniqueBonusViolation(ex))
-                {
-                    // Lost a race against a concurrent AwardCreditAsync call that created the
-                    // SAME user's wallet first. This only fires once
-                    // Sql/002_add_credit_wallets_userid_unique_index.sql has actually been
-                    // applied — without that index there is nothing to violate, so duplicate
-                    // wallet rows are still possible until it's run. Unlike the ledger-bonus
-                    // race handled below, losing this race does NOT mean the bonus was already
-                    // awarded — it only means someone else's wallet insert won, so retry the
-                    // whole call: it will re-read the wallet the winner just created and award
-                    // normally instead of failing.
-                    await transaction.RollbackAsync(ct);
-                    _db.Entry(wallet).State = EntityState.Detached;
-
-                    // Hard cap on the retry: recovering here assumes the wallet row that just
-                    // collided with ours is actually found when we re-read it, which holds today
-                    // (nothing in PaymentAPI deletes CreditWallets rows) but is not guaranteed by
-                    // any structural constraint — it's an assumption about this codebase's current
-                    // behavior, not an enforced invariant. If that assumption is ever broken,
-                    // retrying unconditionally would recurse forever and crash the process. Cap it
-                    // at one retry and fail with a normal error response instead.
-                    if (retryCount >= 1)
-                    {
-                        _logger.LogWarning(
-                            "AwardCreditAsync hit the wallet-creation race retry limit for " +
-                            "userId={UserId} — the wallet row expected after a unique-index " +
-                            "violation was not found on retry.",
-                            request.UserId);
-                        return new InternalCreditAwardResponse
-                        {
-                            Success = false,
-                            Awarded = false,
-                            Message = "Could not process the award due to a concurrent wallet update. Please try again.",
-                            BalanceAfter = 0
-                        };
-                    }
-
-                    return await AwardCreditAsync(request, ct, retryCount + 1);
-                }
-
-                walletJustCreated = true;
-            }
+            var balance = await _ledger.GetBalanceForUpdateAsync(request.UserId, ct);
 
             // Fast-path check — avoids a pointless insert attempt on the common repeat call. The
             // unique filtered index below is the guard that actually matters under concurrency;
@@ -234,32 +153,24 @@ public class InternalCreditService
                 {
                     Success = true,
                     Awarded = false,
-                    BalanceAfter = wallet.Balance,
+                    BalanceAfter = balance,
                     Message = "Bonus already awarded previously."
                 };
             }
 
-            wallet.Balance += request.Amount;
-            wallet.UpdatedAt = DateTime.UtcNow;
-            // Skip Update() when the wallet was just Add()-ed above: calling Update() on an
-            // entity already tracked as Added flips it to Modified, which would generate an
-            // UPDATE matching zero rows instead of the pending INSERT — silently losing the
-            // new wallet row while still reporting success.
-            if (!walletJustCreated)
-                _db.CreditWallets.Update(wallet);
+            var balanceAfter = balance + request.Amount;
 
-            var ledger = new CreditLedgerEntry
+            _db.CreditLedgerEntries.Add(new CreditLedgerEntry
             {
                 LedgerId = Guid.NewGuid(),
                 UserId = request.UserId,
                 EntryType = "Bonus",
                 CreditChange = request.Amount,
-                BalanceAfter = wallet.Balance,
+                BalanceAfter = balanceAfter,
                 ReferenceId = request.ReferenceId,
                 Description = request.Description,
-                CreatedAt = DateTime.UtcNow
-            };
-            _db.CreditLedgerEntries.Add(ledger);
+                CreatedAt = DateTime.UtcNow.AddHours(7)
+            });
 
             try
             {
@@ -271,13 +182,16 @@ public class InternalCreditService
                 // index caught it server-side. Same outcome as the fast-path check above:
                 // already awarded, not an error.
                 await transaction.RollbackAsync(ct);
-                var current = await _db.CreditWallets.AsNoTracking()
-                    .FirstOrDefaultAsync(w => w.UserId == request.UserId, ct);
+                _logger.LogInformation(
+                    "AwardCreditAsync: bonus đã được cộng bởi một lời gọi song song, userId={UserId}.",
+                    request.UserId);
+                // Đọc thuần: transaction đã rollback nên không còn gì để khoá, và ở đây chỉ cần
+                // một con số để trả về cho người gọi.
                 return new InternalCreditAwardResponse
                 {
                     Success = true,
                     Awarded = false,
-                    BalanceAfter = current?.Balance ?? wallet.Balance,
+                    BalanceAfter = await _ledger.GetBalanceByUserAsync(request.UserId),
                     Message = "Bonus already awarded previously."
                 };
             }
@@ -288,7 +202,7 @@ public class InternalCreditService
             {
                 Success = true,
                 Awarded = true,
-                BalanceAfter = wallet.Balance,
+                BalanceAfter = balanceAfter,
                 Message = "Credit bonus awarded successfully."
             };
         }

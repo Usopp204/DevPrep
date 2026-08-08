@@ -208,10 +208,11 @@ public class ManagerUsersController : ControllerBase
                 return NotFound(ApiResponse<object>.Fail("Candidate profile not found."));
             }
 
-            // 2. Get Credit Balance (from CreditWallets)
+            // 2. Get Credit Balance — bảng CreditWallets đã bị bỏ, số dư nay suy ra từ sổ cái
+            // (khớp với PaymentAPI: ILedgerRepository.GetBalanceByUserAsync).
             var balanceQuery = @"
-                SELECT Balance 
-                FROM DevPrep_Payment.dbo.CreditWallets 
+                SELECT SUM(CreditChange)
+                FROM DevPrep_Payment.dbo.CreditLedger
                 WHERE UserId = @UserId";
 
             using (var cmd = new SqlCommand(balanceQuery, conn))

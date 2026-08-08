@@ -65,7 +65,6 @@ builder.Services.AddAuthorization(options =>
 // ── Repositories ──────────────────────────────────────────────────────────────
 builder.Services.AddScoped<ICreditPackageRepository, CreditPackageRepository>();
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
-builder.Services.AddScoped<IWalletRepository, WalletRepository>();
 builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
 builder.Services.AddScoped<ILedgerRepository, LedgerRepository>();
 
@@ -187,20 +186,22 @@ app.MapGet("/vnpay/ipn", async (HttpRequest req, IVnPayService vnPay) =>
 });
 
 // --- GET /credits/balance ---
-app.MapGet("/credits/balance", async (HttpContext ctx, IWalletRepository walletRepo, IOrderRepository orderRepo) =>
+app.MapGet("/credits/balance", async (HttpContext ctx, ILedgerRepository ledgerRepo, IOrderRepository orderRepo) =>
 {
     var userIdStr = ctx.Request.Headers["X-User-Id"].FirstOrDefault();
     if (!Guid.TryParse(userIdStr, out var userId))
         return Results.BadRequest("Missing or invalid X-User-Id header.");
 
-    var wallet         = await walletRepo.GetByUserIdAsync(userId);
+    // Chỉ đọc nên không cần transaction: số dư = tổng biến động trên sổ cái.
+    var balance        = await ledgerRepo.GetBalanceByUserAsync(userId);
+    var lastChangedAt  = await ledgerRepo.GetLastChangedAtByUserAsync(userId);
     var totalPurchased = await orderRepo.GetTotalCreditsByUserAsync(userId);
 
     return Results.Ok(new
     {
-        Balance        = wallet?.Balance ?? 0,
+        Balance        = balance,
         TotalPurchased = totalPurchased,
-        LastUpdatedAt  = wallet?.UpdatedAt
+        LastUpdatedAt  = lastChangedAt
     });
 });
 
@@ -561,8 +562,8 @@ app.MapGet("/admin/payments/{id:guid}", async (Guid id, IOrderRepository orderRe
 // --- Admin: POST /admin/credits/add ---
 // Cộng credit cho account theo EMAIL (admin nhập tay). Ghi ledger EntryType='Refund'
 // (yêu cầu nghiệp vụ: cộng tay hiển thị trong Credit History của user như một dòng Refund).
-// Wallet chưa có thì tự tạo (giống luồng mua VNPay).
-app.MapPost("/admin/credits/add", async (AdminCreditAdjustRequest req, IAuthAccountClient authClient, PaymentDbContext db, CancellationToken ct) =>
+// Số dư suy ra từ sổ cái nên chỉ cần thêm một dòng, không phải tạo/sửa ví.
+app.MapPost("/admin/credits/add", async (AdminCreditAdjustRequest req, IAuthAccountClient authClient, PaymentDbContext db, ILedgerRepository ledgerRepo, CancellationToken ct) =>
 {
     if (string.IsNullOrWhiteSpace(req.Email))
         return Results.BadRequest(new { Success = false, Message = "Email is required." });
@@ -579,20 +580,8 @@ app.MapPost("/admin/credits/add", async (AdminCreditAdjustRequest req, IAuthAcco
     try
     {
         var now = DateTime.UtcNow.AddHours(7);
-        var wallet = await db.CreditWallets.FirstOrDefaultAsync(w => w.UserId == account.AccountId, ct);
-        int newBalance;
-        if (wallet is null)
-        {
-            newBalance = req.Amount;
-            wallet = new CreditWallet { WalletId = Guid.NewGuid(), UserId = account.AccountId, Balance = newBalance, CreatedAt = now, UpdatedAt = now };
-            db.CreditWallets.Add(wallet);
-        }
-        else
-        {
-            newBalance = wallet.Balance + req.Amount;
-            wallet.Balance = newBalance;
-            wallet.UpdatedAt = now;
-        }
+        // Đọc có khoá (UPDLOCK, HOLDLOCK) — xem ILedgerRepository.GetBalanceForUpdateAsync.
+        var newBalance = await ledgerRepo.GetBalanceForUpdateAsync(account.AccountId, ct) + req.Amount;
 
         db.CreditLedgerEntries.Add(new CreditLedgerEntry
         {
@@ -615,11 +604,11 @@ app.MapPost("/admin/credits/add", async (AdminCreditAdjustRequest req, IAuthAcco
         await transaction.RollbackAsync(ct);
         return Results.Json(new { Success = false, Message = $"Error: {ex.Message}" }, statusCode: 500);
     }
-});
+}).RequireAuthorization("AdminArea");
 
 // --- Admin: POST /admin/credits/deduct ---
 // Trừ credit theo EMAIL. Ghi ledger EntryType='Usage' (CreditChange âm). Chặn trừ quá số dư.
-app.MapPost("/admin/credits/deduct", async (AdminCreditAdjustRequest req, IAuthAccountClient authClient, PaymentDbContext db, CancellationToken ct) =>
+app.MapPost("/admin/credits/deduct", async (AdminCreditAdjustRequest req, IAuthAccountClient authClient, PaymentDbContext db, ILedgerRepository ledgerRepo, CancellationToken ct) =>
 {
     if (string.IsNullOrWhiteSpace(req.Email))
         return Results.BadRequest(new { Success = false, Message = "Email is required." });
@@ -636,14 +625,14 @@ app.MapPost("/admin/credits/deduct", async (AdminCreditAdjustRequest req, IAuthA
     try
     {
         var now = DateTime.UtcNow.AddHours(7);
-        var wallet = await db.CreditWallets.FirstOrDefaultAsync(w => w.UserId == account.AccountId, ct);
-        if (wallet is null)
-            return Results.BadRequest(new { Success = false, Message = "This account has no credit wallet yet." });
-        if (wallet.Balance < req.Amount)
-            return Results.BadRequest(new { Success = false, Message = $"Insufficient credits. Available: {wallet.Balance}, requested: {req.Amount}." });
+        // Đọc có khoá: nếu không, hai lời gọi song song cùng vượt qua phép kiểm tra số dư
+        // rồi cùng trừ, làm số dư âm.
+        var balance = await ledgerRepo.GetBalanceForUpdateAsync(account.AccountId, ct);
 
-        wallet.Balance -= req.Amount;
-        wallet.UpdatedAt = now;
+        if (balance < req.Amount)
+            return Results.BadRequest(new { Success = false, Message = $"Insufficient credits. Available: {balance}, requested: {req.Amount}." });
+
+        var balanceAfter = balance - req.Amount;
 
         db.CreditLedgerEntries.Add(new CreditLedgerEntry
         {
@@ -651,7 +640,7 @@ app.MapPost("/admin/credits/deduct", async (AdminCreditAdjustRequest req, IAuthA
             UserId = account.AccountId,
             EntryType = "Usage",
             CreditChange = -req.Amount,
-            BalanceAfter = wallet.Balance,
+            BalanceAfter = balanceAfter,
             ReferenceId = null,
             Description = string.IsNullOrWhiteSpace(req.Description) ? "Admin credit deduction" : req.Description.Trim(),
             CreatedAt = now
@@ -659,14 +648,14 @@ app.MapPost("/admin/credits/deduct", async (AdminCreditAdjustRequest req, IAuthA
 
         await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
-        return Results.Ok(new { Success = true, account.Email, AccountId = account.AccountId, BalanceAfter = wallet.Balance });
+        return Results.Ok(new { Success = true, account.Email, AccountId = account.AccountId, BalanceAfter = balanceAfter });
     }
     catch (Exception ex)
     {
         await transaction.RollbackAsync(ct);
         return Results.Json(new { Success = false, Message = $"Error: {ex.Message}" }, statusCode: 500);
     }
-});
+}).RequireAuthorization("AdminArea");
 
 // --- GET /transactions ---
 app.MapGet("/transactions", async (HttpContext ctx, IOrderRepository orderRepo, int page = 1, int pageSize = 10) =>
