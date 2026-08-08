@@ -328,7 +328,7 @@ public class AdminUserService : IAdminUserService
         // Chặn đứng hành vi Admin tự khóa tài khoản của chính mình
         if (accountId == adminAccountId)
         {
-            throw new InvalidOperationException(" Bạn không thể tự khóa tài khoản của chính mình!");
+            throw new InvalidOperationException("You cannot block your own account.");
         }
 
         dto.Status = dto.Status?.Trim() ?? string.Empty;
@@ -358,7 +358,7 @@ public class AdminUserService : IAdminUserService
         // Chặn đứng hành vi Admin tự thay đổi phân quyền (Role) của chính mình
         if (accountId == adminAccountId)
         {
-            throw new InvalidOperationException(" Bạn không thể tự thay đổi vai trò (role) của chính mình!");
+            throw new InvalidOperationException(" You cannot change your own role.");
         }
 
         dto.Role = dto.Role?.Trim() ?? string.Empty;

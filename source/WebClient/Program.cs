@@ -34,6 +34,8 @@ app.UseSession();
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.UseMiddleware<WebClient.Middlewares.AccountValidationMiddleware>();
+
 // Tài khoản bị block giữa phiên -> tự đăng xuất + đá về Login (check status qua AuthAPI, cache 30s).
 app.UseMiddleware<WebClient.Middlewares.BlockedAccountMiddleware>();
 
