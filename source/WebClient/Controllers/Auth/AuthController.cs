@@ -15,13 +15,19 @@ public class AuthController(
 {
     // ============================ Login ============================
     [HttpGet]
-    public IActionResult Login(string? blocked = null, string? returnUrl = null)
+    public IActionResult Login(string? blocked = null, string? roleChanged = null, string?  returnUrl = null)
     {
         // ?blocked=1: BlockedAccountMiddleware vừa đăng xuất cưỡng bức vì tài khoản bị khoá giữa phiên.
         if (blocked == "1")
         {
             ModelState.AddModelError(string.Empty, "Your account has been blocked. Please contact support.");
         }
+
+        else if (roleChanged == "1")
+        {
+            ModelState.AddModelError(string.Empty, "Your role has changed. Please sign in again.");
+        }
+
         return View(new LoginViewModel
         {
             ReturnUrl = Url.IsLocalUrl(returnUrl) ? returnUrl : null
