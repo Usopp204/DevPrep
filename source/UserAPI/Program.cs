@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text;
 using DevPrep.Contracts;
 using DotNetEnv;
@@ -18,7 +19,12 @@ try { Env.TraversePath().Load(); } catch { }
 var builder = WebApplication.CreateBuilder(args);
 
 var servicePort = builder.Configuration.GetValue<int>("USER_API_PORT", 7002);
-builder.WebHost.UseUrls($"http://0.0.0.0:{servicePort}");
+// Chỉ lắng nghe trên máy cục bộ. Service này nằm sau ApiGateway, không có lý do gì để lộ ra
+// toàn mạng LAN — bind 0.0.0.0 nghĩa là bất kỳ máy nào cùng mạng đều gọi thẳng được, bỏ qua
+// mọi kiểm soát ở gateway. Vẫn cho phép override qua SERVICE_BIND_HOST để chạy trong container
+// (Docker bắt buộc bind 0.0.0.0 thì mới publish port ra ngoài được).
+var bindHost = builder.Configuration.GetValue<string>("SERVICE_BIND_HOST", "localhost");
+builder.WebHost.UseUrls($"http://{bindHost}:{servicePort}");
 
 // DbContext: CHỈ đọc từ .env (key USER_DB_CONNECTION_STRING, DotNetEnv nạp ở trên).
 var connectionString = builder.Configuration.GetValue<string>("USER_DB_CONNECTION_STRING")
@@ -48,9 +54,25 @@ builder.Services.AddHttpClient("InterviewServiceClient", client =>
     client.BaseAddress = new Uri("http://localhost:7005/");
 });
 
+// Khoá nội bộ, dùng cho hai chiều:
+//  - GỬI ĐI: PaymentAPI chặn /api/internal/* bằng header này. Thiếu khoá thì lời gọi
+//    last-activity nhận 401 và trang quản lý người dùng mất cột hoạt động gần nhất
+//    (AdminUserService bắt lỗi best-effort nên sẽ hỏng âm thầm, không báo gì).
+//  - NHẬN VỀ: chính UserAPI cũng dùng để bảo vệ /internal/* của mình (phía dưới).
+// BẮT BUỘC phải có — fail-closed, thiếu khoá thì từ chối khởi động.
+var internalApiKey = builder.Configuration.GetValue<string>("INTERNAL_API_KEY", string.Empty);
+if (string.IsNullOrWhiteSpace(internalApiKey))
+{
+    throw new InvalidOperationException(
+        "INTERNAL_API_KEY is missing. UserAPI refuses to start without it: " +
+        "/internal/profiles/* (lookup, search, delete) would be reachable without authentication.");
+}
+
 builder.Services.AddHttpClient("PaymentServiceClient", client =>
 {
     client.BaseAddress = new Uri("http://localhost:7008/");
+    if (!string.IsNullOrEmpty(internalApiKey))
+        client.DefaultRequestHeaders.Add("X-Internal-Api-Key", internalApiKey);
 });
 
 
@@ -118,9 +140,6 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 });
-
-// Khoá nội bộ: chỉ service nào gửi kèm header X-Internal-Api-Key đúng mới gọi được /internal/*.
-var internalApiKey = builder.Configuration.GetValue<string>("INTERNAL_API_KEY", string.Empty);
 
 var app = builder.Build();
 
@@ -201,10 +220,17 @@ app.MapPost("/internal/profiles/delete",
 
 app.Run();
 
-// So khớp header X-Internal-Api-Key với khoá cấu hình. Chưa cấu hình khoá -> cho qua (tiện chạy dev).
-static bool IsInternalCallAuthorized(HttpRequest request, string? configuredKey)
+// So khớp header X-Internal-Api-Key với khoá cấu hình.
+//
+// Bản trước có nhánh "chưa cấu hình khoá -> cho qua" cho tiện chạy dev. Nhánh đó là bẫy: deploy
+// mà quên set biến môi trường thì /internal/* mở toang và không có dấu hiệu gì báo. Ở service này
+// hậu quả là ai cũng tra cứu được họ tên người dùng theo danh sách định danh, hoặc xoá hồ sơ.
+// Nay khoá là bắt buộc (kiểm lúc khởi động).
+static bool IsInternalCallAuthorized(HttpRequest request, string configuredKey)
 {
-    if (string.IsNullOrEmpty(configuredKey)) return true;
-    return request.Headers.TryGetValue("X-Internal-Api-Key", out var provided)
-        && string.Equals(provided.ToString(), configuredKey, StringComparison.Ordinal);
+    var provided = request.Headers["X-Internal-Api-Key"].ToString();
+    // So sánh thời gian cố định: không rò rỉ độ dài khớp qua thời gian phản hồi.
+    return CryptographicOperations.FixedTimeEquals(
+        Encoding.UTF8.GetBytes(provided),
+        Encoding.UTF8.GetBytes(configuredKey));
 }

@@ -16,14 +16,22 @@ try { Env.TraversePath().Load(); } catch { }
 var builder = WebApplication.CreateBuilder(args);
 
 var servicePort = builder.Configuration.GetValue<int>("NEWS_API_PORT", 7009);
-builder.WebHost.UseUrls($"http://0.0.0.0:{servicePort}");
+// Chỉ lắng nghe trên máy cục bộ. Service này nằm sau ApiGateway, không có lý do gì để lộ ra
+// toàn mạng LAN — bind 0.0.0.0 nghĩa là bất kỳ máy nào cùng mạng đều gọi thẳng được, bỏ qua
+// mọi kiểm soát ở gateway. Vẫn cho phép override qua SERVICE_BIND_HOST để chạy trong container
+// (Docker bắt buộc bind 0.0.0.0 thì mới publish port ra ngoài được).
+var bindHost = builder.Configuration.GetValue<string>("SERVICE_BIND_HOST", "localhost");
+builder.WebHost.UseUrls($"http://{bindHost}:{servicePort}");
 
 // CHỈ đọc từ .env (key NEWS_DB_CONNECTION_STRING, DotNetEnv nạp ở trên).
 var connectionString = builder.Configuration.GetValue<string>("NEWS_DB_CONNECTION_STRING")
     ?? throw new InvalidOperationException("NEWS_DB_CONNECTION_STRING is missing in .env.");
 builder.Services.AddDbContext<NewsDbContext>(options => options.UseSqlServer(connectionString));
 
-var jwtKey = builder.Configuration["Jwt:Key"] ?? "dev-only-change-me-please-use-a-long-random-secret-key-32+chars";
+// Không đặt khoá mặc định ở đây. Giá trị mặc định ngầm nguy hiểm hơn là thiếu cấu hình: service
+// vẫn khởi động, vẫn nhận token, nhưng lại verify bằng một khoá ai đọc mã nguồn cũng biết.
+var jwtKey = builder.Configuration["Jwt:Key"]
+    ?? throw new InvalidOperationException("Jwt:Key is missing in configuration (set Jwt__Key in .env).");
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "DevPrep.AuthAPI";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "DevPrep.Client";
 

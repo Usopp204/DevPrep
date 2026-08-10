@@ -19,7 +19,12 @@ try { Env.TraversePath().Load(); } catch { }
 var builder = WebApplication.CreateBuilder(args);
 
 var servicePort = builder.Configuration.GetValue<int>("FEEDBACK_API_PORT", 7007);
-builder.WebHost.UseUrls($"http://0.0.0.0:{servicePort}");
+// Chỉ lắng nghe trên máy cục bộ. Service này nằm sau ApiGateway, không có lý do gì để lộ ra
+// toàn mạng LAN — bind 0.0.0.0 nghĩa là bất kỳ máy nào cùng mạng đều gọi thẳng được, bỏ qua
+// mọi kiểm soát ở gateway. Vẫn cho phép override qua SERVICE_BIND_HOST để chạy trong container
+// (Docker bắt buộc bind 0.0.0.0 thì mới publish port ra ngoài được).
+var bindHost = builder.Configuration.GetValue<string>("SERVICE_BIND_HOST", "localhost");
+builder.WebHost.UseUrls($"http://{bindHost}:{servicePort}");
 
 // DbContext: CHỈ đọc từ .env (key FEEDBACK_DB_CONNECTION_STRING, DotNetEnv nạp ở trên).
 var connectionString = builder.Configuration.GetValue<string>("FEEDBACK_DB_CONNECTION_STRING")
