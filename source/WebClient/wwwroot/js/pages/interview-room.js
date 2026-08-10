@@ -83,6 +83,14 @@
     const startedAtMs = Date.now();
     let ended = !isActive;
 
+    // Set exactly once, at the top of handleForcedCheatingEnd, when a strike forces the session
+    // to end. Distinct from `ended` (which several legitimate paths — complete/cancel — also set)
+    // so every outbound session request can unambiguously answer "was THIS specific session killed
+    // by a cheating strike" and swallow a late response instead of rendering it. A request already
+    // in flight when a strike lands has no other way to notice: its own promise resolves/rejects
+    // after the fact with no idea the session is gone.
+    let sessionTerminated = false;
+
     function buildReportUrl() {
         const query = new URLSearchParams({
             sessionId: root.dataset.sessionId,
@@ -234,10 +242,11 @@
                 updatePauseQuotaUI();
             }
             // Reached 0: the server is the actual source of truth for ending an expired pause
-            // (SessionService.AutoResumeIfPauseExpiredAsync — it self-heals on the next
-            // Resume/Timer call even if this tab was closed the whole time). This call just makes
-            // an open tab react immediately instead of waiting for the next poll. Stop the tick
-            // first so a slow response can't be raced by a second call next second.
+            // (SessionService.AutoResumeIfPauseExpiredAsync — it self-heals on the next request
+            // that touches the session, i.e. Resume on reload or the active-session lookup, even
+            // if this tab was closed the whole time). This call just makes an open tab react
+            // immediately instead of waiting for that next request. Stop the tick first so a slow
+            // response can't be raced by a second call next second.
             if (pausedSecondsRemaining <= 0) {
                 stopPauseQuotaTick();
                 resumeInterview();
@@ -274,26 +283,29 @@
     }
 
     async function pauseInterview() {
-        if (paused || ended || !pauseUrl) return;
+        if (paused || ended || sessionTerminated || !pauseUrl) return;
         if (pauseBtn) pauseBtn.disabled = true;
         try {
             const data = await postProxy(pauseUrl);
+            if (sessionTerminated) return; // ended mid-flight — the response is stale, drop it
             pauseCount = data.pauseCount;
             pausesRemaining = data.pausesRemaining;
             pausedSecondsRemaining = data.pausedSecondsRemaining;
             setStatusDisplay("Paused");
             setPausedUI(true);
         } catch (err) {
+            if (sessionTerminated) return;
             appendBubble("AI", `Could not pause: ${err.message}.`);
             updatePauseQuotaUI();
         }
     }
 
     async function resumeInterview() {
-        if (!paused || !unpauseUrl) return;
+        if (!paused || sessionTerminated || !unpauseUrl) return;
         if (resumeBtn) resumeBtn.disabled = true;
         try {
             const data = await postProxy(unpauseUrl);
+            if (sessionTerminated) return; // ended mid-flight — the response is stale, drop it
             remainingSeconds = data.remainingSeconds;
             pauseCount = data.pauseCount;
             pausesRemaining = data.pausesRemaining;
@@ -302,6 +314,7 @@
             setStatusDisplay("InProgress");
             setPausedUI(false);
         } catch (err) {
+            if (sessionTerminated) return;
             appendBubble("AI", `Could not resume: ${err.message}.`);
         } finally {
             if (resumeBtn) resumeBtn.disabled = false;
@@ -681,9 +694,230 @@
     cancelInterviewDialog?.addEventListener("click", function dismissFromBackdrop(event) {
         if (event.target === cancelInterviewDialog) closeCancelConfirmation();
     });
-    window.addEventListener("pagehide", cleanupTransientUi);
+    // ---- Tab-switch / paste monitoring ----------------------------------------------------
+    // Phase 1 is RECORD ONLY on the server (Modality="Tab" is not in the strike whitelist), so
+    // nothing here can warn harshly or end the interview — the sidebar notice is the whole UI.
+    //
+    // A blur -> focus round trip is ONE event: measurement starts when focus leaves and the report
+    // is sent on return, carrying the measured duration. The type is decided from
+    // document.visibilityState at departure — "TabHidden" when the tab itself went to the
+    // background, "WindowBlur" when the tab stayed visible but another window took focus. If the
+    // user never comes back, pagehide flushes the pending measurement with sendBeacon.
+    //
+    // Deliberately timer-free: duration is derived from two Date.now() readings, so there is no
+    // interval to leak across a bfcache freeze.
+    const tabEventUrl = root.dataset.tabEventUrl;
+    const TAB_GUARD_SUPPRESS_MS = 3000;
+
+    // Real testing produced 4 paste events within 8 seconds — re-pasting/adjusting a code snippet
+    // is a realistic pattern, and now that Paste can end the session (Phase 4), sending every one
+    // of those individually would burn through the strike cap in seconds for one paste action.
+    // Suppress a Paste report if the previous one was sent less than this long ago. Deliberately a
+    // plain timestamp check, not a timer/queue: a burst is simply dropped down to one report, not
+    // batched or delayed. Tab/WindowBlur do not need this — the begin/end pairing already
+    // coalesces those into one event per departure.
+    const PASTE_COALESCE_MS = 5000;
+
+    let tabGuardSuppressedUntil = 0;
+    let awayStartedAt = null;
+    let awayWasHidden = false;
+    let lastPasteSentAt = 0;
+
+    // Browser permission prompts (microphone, camera) steal focus, and on some platforms hide the
+    // tab outright — without this they would every single time be recorded as the candidate
+    // leaving the interview. Call this IMMEDIATELY BEFORE anything that can raise a prompt; every
+    // getUserMedia call site in this file does. This is the main noise control for the feature.
+    function suppressTabGuard(ms) {
+        const until = Date.now() + (ms || TAB_GUARD_SUPPRESS_MS);
+        tabGuardSuppressedUntil = Math.max(tabGuardSuppressedUntil, until);
+        // Drop any measurement already running: a blur that lands next to a prompt belongs to the
+        // prompt, not to the candidate.
+        awayStartedAt = null;
+        awayWasHidden = false;
+    }
+
+    // Only monitor a live, running interview. A Paused or already-ended session is not
+    // "InProgress" server-side and would be refused with 409 anyway.
+    function tabGuardActive() {
+        return !!tabEventUrl && isActive && !ended && !paused;
+    }
+
+    function newIncidentId() {
+        if (window.crypto && typeof window.crypto.randomUUID === "function") {
+            return window.crypto.randomUUID();
+        }
+        // crypto.randomUUID needs a secure context; this keeps reporting alive on a plain-http
+        // host (e.g. testing over a LAN IP) instead of throwing inside the event handler.
+        return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+            const r = (Math.random() * 16) | 0;
+            return (c === "x" ? r : ((r & 0x3) | 0x8)).toString(16);
+        });
+    }
+
+    function buildTabEventBody(eventType, durationMs) {
+        return JSON.stringify({
+            incidentId: newIncidentId(),
+            eventType: eventType,
+            durationMs: Math.max(0, Math.round(durationMs))
+        });
+    }
+
+    // Calm and factual on purpose: Phase 1 carries no penalty, so the copy must not read like an
+    // accusation. Reuses the existing sidebar notice — no new modal. Tone matches the other
+    // integrity strings in this file ("Attention needed", "We couldn't see your face...").
+    function tabEventNotice(eventType) {
+        if (eventType === "Paste") {
+            return "We noticed content was pasted into your answer.";
+        }
+        if (eventType === "WindowBlur") {
+            return "The interview window lost focus for a moment — please stay on this screen.";
+        }
+        return "We noticed you switched away from the interview tab — please stay on this screen.";
+    }
+
+    async function sendTabEvent(eventType, durationMs) {
+        if (!tabGuardActive() || sessionTerminated) return;
+        try {
+            const response = await fetch(tabEventUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: buildTabEventBody(eventType, durationMs)
+            });
+            const data = await response.json().catch(() => null);
+            // A strike from a different source (Face, Camera, Voice) could have ended the session
+            // while this request was in flight — this response is stale either way, drop it.
+            if (sessionTerminated) return;
+            // Only speak up when the server actually wrote a row. A below-threshold flicker, a
+            // duplicate, or monitoring being switched off server-side all come back with
+            // recorded=false and must stay silent.
+            if (!response.ok || !data || !data.recorded) return;
+
+            // data.tabCount is non-null ONLY for a freshly-recorded Tab/WindowBlur event (see
+            // TabEventResultModel) — Paste never reaches the NoFace-style accumulation path and
+            // is always its own full strike (handled below). This mirrors the Face flow's split
+            // on data.warningType === "NoFace" vs. a real strike.
+            if (data.tabCount != null) {
+                if (!data.tabJustBecameStrike) {
+                    // Gentle heads-up only — not a strike yet, same tier as the calm NoFace
+                    // progress notice. The server does not bake progress text into data.message
+                    // for Tab the way it does for NoFace, so the "(X/Y)" is built here.
+                    setCheatingWarning(
+                        `${tabEventNotice(eventType)} (${data.tabCount}/${data.tabStrikeThreshold})`,
+                        "notice",
+                        7000);
+                    return;
+                }
+
+                // This event just completed a fresh group of TabStrikeThreshold and converted
+                // into a real strike. data.message is already the server's "Repeated tab-switch
+                // detections..." text (or the termination message) — same shape as the Face
+                // flow's NoFace-just-became-strike case, which also uses data.message as the base
+                // instead of a client-built string.
+                const tabStrikeText = `${data.message} (${data.strikeCount}/${data.maxStrikes} warnings)`;
+                setCheatingWarning(tabStrikeText, "warning");
+
+                if (!data.shouldEndSession) {
+                    showCheatingBanner(tabStrikeText, data.strikeCount === data.maxStrikes - 1);
+                }
+
+                if (data.shouldEndSession) {
+                    await handleForcedCheatingEnd(data.message);
+                }
+                return;
+            }
+
+            // Otherwise this is a Paste event: every recorded Paste is its own full strike
+            // (Phase 4), so data.strikeCount is always set here. Reuses tabEventNotice for the
+            // base text (the server's own message for this path is just "Tab event recorded.",
+            // not user-facing copy) and otherwise mirrors captureAndVerifyInSession's real-strike
+            // branch exactly: same "(X/Y warnings)" suffix, same OK-only popup with the same
+            // final-warning threshold, same forced-end handling — no parallel UI.
+            const strikeText = `${tabEventNotice(eventType)} (${data.strikeCount}/${data.maxStrikes} warnings)`;
+            setCheatingWarning(strikeText, "warning");
+
+            if (!data.shouldEndSession) {
+                showCheatingBanner(strikeText, data.strikeCount === data.maxStrikes - 1);
+            }
+
+            if (data.shouldEndSession) {
+                await handleForcedCheatingEnd(data.message);
+            }
+        } catch {
+            // Monitoring must never interrupt the interview: a failed report is simply dropped.
+        }
+    }
+
+    function beginAway(hidden) {
+        if (!tabGuardActive()) return;
+        if (Date.now() < tabGuardSuppressedUntil) return;
+        if (awayStartedAt !== null) {
+            // One departure often fires blur AND visibilitychange. Keep the original start time,
+            // but upgrade the classification if the tab really did go to the background.
+            if (hidden) awayWasHidden = true;
+            return;
+        }
+        awayStartedAt = Date.now();
+        awayWasHidden = hidden;
+    }
+
+    function endAway() {
+        if (awayStartedAt === null) return;
+        const durationMs = Date.now() - awayStartedAt;
+        const eventType = awayWasHidden ? "TabHidden" : "WindowBlur";
+        awayStartedAt = null;
+        awayWasHidden = false;
+        // Returning from a permission prompt is not a return from a real departure.
+        if (Date.now() < tabGuardSuppressedUntil) return;
+        sendTabEvent(eventType, durationMs);
+    }
+
+    // Last chance to report a departure the user never came back from. sendBeacon survives the
+    // page going away, which fetch() does not. Clears the pending measurement either way so a
+    // bfcache restore cannot later flush the same one twice.
+    function flushPendingTabEvent() {
+        if (awayStartedAt === null) return;
+        const durationMs = Date.now() - awayStartedAt;
+        const eventType = awayWasHidden ? "TabHidden" : "WindowBlur";
+        awayStartedAt = null;
+        awayWasHidden = false;
+        if (!tabGuardActive() || !navigator.sendBeacon) return;
+        navigator.sendBeacon(
+            tabEventUrl,
+            new Blob([buildTabEventBody(eventType, durationMs)], { type: "application/json" }));
+    }
+
+    document.addEventListener("visibilitychange", function () {
+        if (document.visibilityState === "hidden") beginAway(true);
+        else endAway();
+    });
+    window.addEventListener("blur", function () {
+        beginAway(document.visibilityState === "hidden");
+    });
+    window.addEventListener("focus", endAway);
+    inputEl?.addEventListener("paste", function () {
+        const now = Date.now();
+        if (now - lastPasteSentAt < PASTE_COALESCE_MS) return;
+        lastPasteSentAt = now;
+        // Instantaneous by nature: durationMs=0 is the correct value, and the server exempts
+        // "Paste" from the minimum-away threshold precisely so it still gets recorded.
+        sendTabEvent("Paste", 0);
+    });
+
+    window.addEventListener("pagehide", function handlePageHide() {
+        cleanupTransientUi();
+        flushPendingTabEvent();
+    });
     window.addEventListener("pageshow", function cleanupRestoredPage(event) {
-        if (event.persisted) cleanupTransientUi();
+        if (!event.persisted) return;
+        cleanupTransientUi();
+        // Restored from bfcache. This path fires WITHOUT a visibilitychange or focus pair, so
+        // there is no return to report; pagehide already flushed and cleared the measurement.
+        // Reset explicitly anyway so a start time from before the freeze can never resurface as a
+        // bogus multi-minute event, and suppress briefly because the restore itself hands focus
+        // back to the page.
+        awayStartedAt = null;
+        awayWasHidden = false;
+        suppressTabGuard(TAB_GUARD_SUPPRESS_MS);
     });
 
     async function completeInterview() {
@@ -841,7 +1075,7 @@
 
     async function sendAnswer() {
         const content = inputEl.value.trim();
-        if (!content || !currentQuestionId || ended) return;
+        if (!content || !currentQuestionId || ended || sessionTerminated) return;
 
         // Content filter (client mirror — server re-checks in SendMessageAsync). Runs BEFORE
         // the input is cleared / buttons locked / bubble appended, so a rejected answer stays
@@ -868,6 +1102,10 @@
                 sessionQuestionId: currentQuestionId,
                 content
             });
+            // A strike from a different source could have ended the session while this request
+            // was in flight (e.g. an in-session check fired right after Send) — this response is
+            // stale either way, drop it silently rather than resurrecting the input/next question.
+            if (sessionTerminated) return;
 
             syncAnsweredFrom(data);
             updateProgressDisplay();
@@ -880,11 +1118,14 @@
             applyNextQuestion(data.nextQuestion);
             if (skipBtn) skipBtn.disabled = false;
         } catch (err) {
+            // Expected, not a failure: the session was already force-ended by a strike (possibly
+            // by a different in-flight request) before this one's 409 came back.
+            if (sessionTerminated) return;
             if (err.code === "session_time_expired") {
                 await handleSessionExpired();
                 return;
             }
-            appendBubble("AI", `Error: ${err.message}. Please try again.`);
+            appendBubble("AI", `Error: ${err.message} Please try again.`);
             inputEl.disabled = false;
             sendBtn.disabled = false;
             if (skipBtn) skipBtn.disabled = false;
@@ -925,7 +1166,7 @@
     }
 
     async function skipQuestion() {
-        if (!currentQuestionId || ended) return;
+        if (!currentQuestionId || ended || sessionTerminated) return;
 
         inputEl.disabled = true;
         sendBtn.disabled = true;
@@ -943,6 +1184,9 @@
                 content: "",
                 reason: "Skipped"
             });
+            // A strike from a different source could have ended the session while this request
+            // was in flight — this response is stale either way, drop it silently.
+            if (sessionTerminated) return;
 
             syncAnsweredFrom(data);
             updateProgressDisplay();
@@ -955,6 +1199,9 @@
             applyNextQuestion(data.nextQuestion);
             if (skipBtn) skipBtn.disabled = false;
         } catch (err) {
+            // Expected, not a failure: the session was already force-ended by a strike before
+            // this request's 409 came back.
+            if (sessionTerminated) return;
             inputEl.disabled = false;
             sendBtn.disabled = false;
             if (err.code === "session_time_expired") {
@@ -968,7 +1215,7 @@
                 note.textContent = "Skip did not go through — please wait before trying again.";
                 startSkipCooldown(err.retryAfterSeconds || 10);
             } else {
-                appendBubble("AI", `Error: ${err.message}. Please try again.`);
+                appendBubble("AI", `Error: ${err.message} Please try again.`);
                 if (skipBtn) skipBtn.disabled = false;
             }
         }
@@ -978,7 +1225,7 @@
     // interaction. Submits the same empty answer as Skip, tagged reason "TimedOut" so the server
     // (and later, transcript/report views) can tell an inactivity timeout apart from a manual Skip.
     async function autoAdvance() {
-        if (!currentQuestionId || ended || autoAdvanceInFlight) return;
+        if (!currentQuestionId || ended || sessionTerminated || autoAdvanceInFlight) return;
         autoAdvanceInFlight = true;
         idleTier = 0;
         hideIdleBanner();
@@ -999,6 +1246,9 @@
                 content: "",
                 reason: "TimedOut"
             });
+            // A strike from a different source could have ended the session while this request
+            // was in flight — this response is stale either way, drop it silently.
+            if (sessionTerminated) return;
 
             syncAnsweredFrom(data);
             updateProgressDisplay();
@@ -1011,11 +1261,14 @@
             applyNextQuestion(data.nextQuestion);
             if (skipBtn) skipBtn.disabled = false;
         } catch (err) {
+            // Expected, not a failure: the session was already force-ended by a strike before
+            // this request's 409 came back.
+            if (sessionTerminated) return;
             if (err.code === "session_time_expired") {
                 await handleSessionExpired();
                 return;
             }
-            appendBubble("AI", `Error: ${err.message}. Please try again.`);
+            appendBubble("AI", `Error: ${err.message} Please try again.`);
             inputEl.disabled = false;
             sendBtn.disabled = false;
             if (skipBtn) skipBtn.disabled = false;
@@ -1040,11 +1293,14 @@
     // disabled after use, or on a 409 "already used", and only re-enables on the NEXT question
     // (applyNextQuestion). This client-side disable is UX only, not the security boundary.
     async function askHint() {
-        if (!currentQuestionText || !currentQuestionId || ended || !hintUrl) return;
+        if (!currentQuestionText || !currentQuestionId || ended || sessionTerminated || !hintUrl) return;
 
         if (hintBtn) hintBtn.disabled = true;
         try {
             const data = await postProxy(hintUrl, { sessionId, sessionQuestionId: currentQuestionId });
+            // A strike from a different source could have ended the session while this request
+            // was in flight — this response is stale either way, drop it silently.
+            if (sessionTerminated) return;
             const hintText = data.hint || "";
             appendBubble("AI", "💡 " + hintText);
             // Text first, audio second: the user reads immediately without waiting on TTS. Not
@@ -1055,6 +1311,9 @@
             speak(hintText);
             // Leave disabled: this question's one hint is now spent.
         } catch (err) {
+            // Expected, not a failure: the session was already force-ended by a strike before
+            // this request's error came back.
+            if (sessionTerminated) return;
             if (err.status === 409) {
                 appendBubble("AI", "You've already used your hint for this question.");
                 // Leave disabled: matches the server's one-hint-per-question state.
@@ -1080,6 +1339,9 @@
             return;
         }
         try {
+            // Before the mic permission prompt: it takes focus (and can hide the tab), which the
+            // tab guard would otherwise record as leaving the interview.
+            suppressTabGuard(TAB_GUARD_SUPPRESS_MS);
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             recordedChunks = [];
             mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
@@ -1101,7 +1363,7 @@
     }
 
     async function transcribe(blob) {
-        if (!sttUrl) return;
+        if (!sttUrl || sessionTerminated) return;
         const previousPlaceholder = inputEl.placeholder;
         inputEl.placeholder = "Transcribing…";
         try {
@@ -1112,6 +1374,9 @@
             form.append("audio", blob, "answer.webm");
             const response = await fetch(sttUrl, { method: "POST", body: form });
             const data = await response.json().catch(() => null);
+            // A strike from a different source could have ended the session while this recording
+            // was being transcribed — this response is stale either way, drop it silently.
+            if (sessionTerminated) return;
             if (!response.ok || !data) {
                 appendBubble("AI", `Transcription failed${data && data.error ? ": " + data.error : ""}.`);
                 return;
@@ -1135,6 +1400,7 @@
             autoResizeInput();
             inputEl.focus();
         } catch (err) {
+            if (sessionTerminated) return;
             appendBubble("AI", `Transcription error: ${err.message}.`);
         } finally {
             inputEl.placeholder = previousPlaceholder;
@@ -1177,12 +1443,15 @@
     }
 
     async function reportCameraViolation(reason) {
-        if (!cameraViolationUrl || ended) return;
+        if (!cameraViolationUrl || ended || sessionTerminated) return;
         try {
             const data = await postProxy(cameraViolationUrl, {
                 incidentId: createIncidentId(),
                 reason
             });
+            // A strike from a different source could have ended the session while this request
+            // was in flight — this response is stale either way, drop it silently.
+            if (sessionTerminated) return;
             if (data.duplicate) return;
 
             const strikeText = `${data.message} (${data.strikeCount}/${data.maxStrikes} warnings)`;
@@ -1194,6 +1463,7 @@
 
             await handleForcedCheatingEnd(data.message);
         } catch (error) {
+            if (sessionTerminated) return;
             setCheatingWarning(`Camera incident could not be reported: ${error.message}`, "warning");
         }
     }
@@ -1209,6 +1479,10 @@
     }
 
     async function connectCamera() {
+        // Same reasoning as startRecording: suppress before the camera prompt. Every camera path
+        // (initial startCamera, and each scheduleCameraRecovery retry) funnels through here, so
+        // this one call covers them all.
+        suppressTabGuard(TAB_GUARD_SUPPRESS_MS);
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
         cameraStream = stream;
         // Camera is back — the next disconnect is a NEW episode and may report again.
@@ -1272,8 +1546,11 @@
     //
     // The first question is deliberately NOT checked: the entry gate verified this same face
     // seconds earlier, so re-checking immediately costs an ai-service call for no new signal.
-    // Rapid skipping is absorbed server-side (Biometrics:InSessionMinIntervalSeconds) rather
-    // than here — a client-side interval could be bypassed, and this protects a shared resource.
+    // Rapid skipping is absorbed server-side rather than here — a client-side interval could be
+    // bypassed, and this protects a shared resource. The server issues at most one pending
+    // checkId per question and consumes it on first use, so skipping fast cannot buy extra
+    // ai-service calls; an unused checkId simply expires (Biometrics:InSessionCheckTtlSeconds,
+    // 20 seconds by default).
     const cheatingWarningEl = document.getElementById("cheating-warning");
     const integrityStatusIconEl = document.getElementById("integrity-status-icon");
     const integrityStatusTitleEl = document.getElementById("integrity-status-title");
@@ -1404,7 +1681,21 @@
     }
 
     async function handleForcedCheatingEnd(message) {
+        // Set FIRST, before anything else: every outbound session request (send/skip/hint/pause/
+        // resume/in-session verify/tab event/STT) checks this and either refuses to start or
+        // swallows a response that was already in flight when the strike landed — otherwise a
+        // late 409 renders as a stray "Session is not in progress." chat bubble right under this
+        // function's own termination message (see report).
+        sessionTerminated = true;
         ended = true;
+        // Stop the question timer — reusing the exact same guard cancelInterview()/completeInterview()
+        // rely on (the interval checks `ended`), plus an explicit clear so it can't tick even once
+        // more while the termination modal is up.
+        if (countdownHandle) {
+            clearInterval(countdownHandle);
+            countdownHandle = null;
+        }
+        stopPauseQuotaTick();
         if (cameraRecoveryTimer) {
             clearTimeout(cameraRecoveryTimer);
             cameraRecoveryTimer = null;
@@ -1415,6 +1706,10 @@
         }
         clearDraft();
         disableLifecycleControls();
+        // Same status-badge update the normal end-of-session path uses (completeInterview/
+        // cancelInterview both call setStatusDisplay with the server's real status) — a
+        // cheating-forced end always lands on "Cancelled" server-side (EndSessionForCheatingAsync).
+        setStatusDisplay("Cancelled");
         appendBubble("AI", message);
         await showCheatingTerminationModal(message);
         window.location.href = "/Interview";
@@ -1460,7 +1755,7 @@
     }
 
     async function captureAndVerifyInSession() {
-        if (ended || paused || !verifyInSessionUrl) return;
+        if (ended || paused || sessionTerminated || !verifyInSessionUrl) return;
         if (!verificationCheckId || !cameraStream || !cameraVideo || inSessionCheckInFlight) return;
         if (verificationCheckExpiresAt && Date.parse(verificationCheckExpiresAt) <= Date.now()) return;
         inSessionCheckInFlight = true;
@@ -1488,6 +1783,9 @@
             // manually for FormData; the browser adds the multipart boundary itself.
             const response = await fetch(verifyInSessionUrl, { method: "POST", body: form });
             const data = await response.json().catch(() => null);
+            // A strike from a different source could have ended the session while this request
+            // was in flight — this response is stale either way, drop it silently.
+            if (sessionTerminated) return;
             if (!response.ok || !data) {
                 const errorMessage = data?.error || data?.message
                     || `Verification request failed (${response.status}).`;
@@ -1534,6 +1832,7 @@
                 await handleForcedCheatingEnd(data.message);
             }
         } catch (error) {
+            if (sessionTerminated) return;
             if (isVerificationTokenError(error?.message)) {
                 setCheatingWarning(null);
                 return;
@@ -1552,7 +1851,7 @@
     let verificationSchedulePollInFlight = false;
 
     async function pollVerificationSchedule() {
-        if (ended || paused || !inSessionCheckUrl || !currentQuestionId
+        if (ended || paused || sessionTerminated || !inSessionCheckUrl || !currentQuestionId
             || verificationSchedulePollInFlight || inSessionCheckInFlight) return;
 
         if (verificationCheckId
@@ -1570,6 +1869,9 @@
             const response = await fetch(
                 `${inSessionCheckUrl}${separator}sessionQuestionId=${encodeURIComponent(currentQuestionId)}`);
             const data = await response.json().catch(() => null);
+            // A strike from a different source could have ended the session while this request
+            // was in flight — this response is stale either way, drop it silently.
+            if (sessionTerminated) return;
             if (!response.ok || !data) {
                 const errorMessage = data?.error || data?.message
                     || `Monitoring request failed (${response.status}).`;
@@ -1587,6 +1889,7 @@
             verificationCheckExpiresAt = data.expiresAt || null;
             captureAndVerifyInSession();
         } catch (error) {
+            if (sessionTerminated) return;
             setCheatingWarning(
                 error?.message || "Integrity monitoring is temporarily unavailable.",
                 "warning");

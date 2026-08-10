@@ -1,4 +1,5 @@
 using InterviewAPI.DTOs.Biometrics;
+using InterviewAPI.DTOs.Session;
 
 namespace InterviewAPI.Services.Interfaces;
 
@@ -33,4 +34,11 @@ public interface IBiometricVerificationService
     // enrolled voice template. No challenge phrase or voice-liveness rule is applied.
     Task<VoiceAnswerVerifyResponse> VerifyVoiceAnswerAsync(
         Guid userId, Guid sessionId, Guid checkId, IFormFile audio, CancellationToken ct);
+
+    // Records one client-reported tab-switch / focus-loss / paste event as an audit row
+    // (Modality="Tab"). Phase 1 is record-only — these rows carry no strike weight. Expected
+    // failure cases come back as TabEventResponse.Outcome instead of exceptions so the controller
+    // can map them to distinct HTTP statuses; see the implementation.
+    Task<TabEventResponse> RecordTabEventAsync(
+        Guid userId, Guid sessionId, RecordTabEventRequest req, CancellationToken ct);
 }

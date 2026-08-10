@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using WebClient.Models.Interview;
 using WebClient.Services.Interview;
 
 namespace WebClient.Controllers.Interview;
@@ -111,6 +112,29 @@ public class VerificationController(IVerificationService verificationService) : 
         if (!success || result is null)
         {
             return BadRequest(new { error = error ?? "In-session check failed." });
+        }
+
+        return Json(result);
+    }
+
+    // One tab-switch / focus-loss / paste report from the Room. Same-origin proxy so the browser
+    // never handles a bearer token — identical shape to VerifyInSession above, just JSON instead
+    // of multipart. Also the target of the pagehide navigator.sendBeacon, whose response the
+    // browser discards; the endpoint stays a plain 200/400 either way.
+    [HttpPost]
+    public async Task<IActionResult> RecordTabEvent(
+        Guid sessionId, [FromBody] TabEventRequestModel request, CancellationToken cancellationToken)
+    {
+        if (sessionId == Guid.Empty || request is null || string.IsNullOrWhiteSpace(request.EventType))
+        {
+            return BadRequest(new { error = "A tab event is required." });
+        }
+
+        var (success, result, error) = await verificationService.RecordTabEventAsync(
+            sessionId, request.IncidentId, request.EventType, request.DurationMs, cancellationToken);
+        if (!success || result is null)
+        {
+            return BadRequest(new { error = error ?? "Could not record the tab event." });
         }
 
         return Json(result);
