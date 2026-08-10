@@ -6,6 +6,8 @@ using NotificationAPI.Repositories;
 using NotificationAPI.Repositories.Interfaces;
 using NotificationAPI.Services;
 using NotificationAPI.Services.Interfaces;
+using System.Security.Cryptography;
+using System.Text;
 
 try { Env.TraversePath().Load(".env.example"); } catch { }
 try { Env.TraversePath().Load(); } catch { }
@@ -13,7 +15,12 @@ try { Env.TraversePath().Load(); } catch { }
 var builder = WebApplication.CreateBuilder(args);
 
 var servicePort = builder.Configuration.GetValue<int>("NOTIFICATION_API_PORT", 7010);
-builder.WebHost.UseUrls($"http://0.0.0.0:{servicePort}");
+// Chỉ lắng nghe trên máy cục bộ. Service này nằm sau ApiGateway, không có lý do gì để lộ ra
+// toàn mạng LAN — bind 0.0.0.0 nghĩa là bất kỳ máy nào cùng mạng đều gọi thẳng được, bỏ qua
+// mọi kiểm soát ở gateway. Vẫn cho phép override qua SERVICE_BIND_HOST để chạy trong container
+// (Docker bắt buộc bind 0.0.0.0 thì mới publish port ra ngoài được).
+var bindHost = builder.Configuration.GetValue<string>("SERVICE_BIND_HOST", "localhost");
+builder.WebHost.UseUrls($"http://{bindHost}:{servicePort}");
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -38,7 +45,15 @@ builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 
 // Khoá nội bộ: chỉ service nào gửi kèm header X-Internal-Api-Key đúng mới gọi được /internal/*.
+// BẮT BUỘC phải có — fail-closed, thiếu khoá thì từ chối khởi động thay vì để endpoint gửi email
+// mở cho bất kỳ ai gọi.
 var internalApiKey = builder.Configuration.GetValue<string>("INTERNAL_API_KEY", string.Empty);
+if (string.IsNullOrWhiteSpace(internalApiKey))
+{
+    throw new InvalidOperationException(
+        "INTERNAL_API_KEY is missing. NotificationAPI refuses to start without it: " +
+        "/internal/notifications/* (send email) would be reachable without authentication.");
+}
 
 var app = builder.Build();
 
@@ -182,12 +197,18 @@ static string? ValidateAnnouncement(AnnouncementRequest req)
     return null;
 }
 
-// So khớp header X-Internal-Api-Key với khoá cấu hình. Chưa cấu hình khoá -> cho qua (tiện chạy dev).
-static bool IsInternalCallAuthorized(HttpRequest request, string? configuredKey)
+// So khớp header X-Internal-Api-Key với khoá cấu hình.
+//
+// Bản trước có nhánh "chưa cấu hình khoá -> cho qua" cho tiện chạy dev. Nhánh đó là bẫy: deploy
+// mà quên set biến môi trường thì /internal/* mở toang và không có dấu hiệu gì báo. Ở service này
+// hậu quả là ai cũng bắt hệ thống gửi email tuỳ ý. Nay khoá là bắt buộc (kiểm lúc khởi động).
+static bool IsInternalCallAuthorized(HttpRequest request, string configuredKey)
 {
-    if (string.IsNullOrEmpty(configuredKey)) return true;
-    return request.Headers.TryGetValue("X-Internal-Api-Key", out var provided)
-        && string.Equals(provided.ToString(), configuredKey, StringComparison.Ordinal);
+    var provided = request.Headers["X-Internal-Api-Key"].ToString();
+    // So sánh thời gian cố định: không rò rỉ độ dài khớp qua thời gian phản hồi.
+    return CryptographicOperations.FixedTimeEquals(
+        Encoding.UTF8.GetBytes(provided),
+        Encoding.UTF8.GetBytes(configuredKey));
 }
 
 static async Task SeedEmailTemplatesAsync(WebApplication app)

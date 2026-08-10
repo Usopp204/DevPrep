@@ -8,6 +8,7 @@ using DotNetEnv;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using System.Security.Cryptography;
 using System.Text;
 
 // Nạp biến môi trường từ file .env ở thư mục backend (RabbitMQ, SMTP...).
@@ -47,7 +48,15 @@ builder.Services.AddHttpContextAccessor();
 //   - NotificationAPI: gửi email OTP / đặt lại mật khẩu.
 //   - UserAPI: tạo hồ sơ khi có tài khoản mới.
 // BaseAddress + header khoá nội bộ (X-Internal-Api-Key) cấu hình một lần ở đây.
+// Khoá là BẮT BUỘC: nó vừa dùng để gọi đi, vừa để chặn /internal/* khi nhận vào. Fail-closed —
+// thiếu khoá thì service từ chối khởi động, thay vì chạy tiếp với /internal/* không được bảo vệ.
 var internalApiKey = builder.Configuration.GetValue<string>("INTERNAL_API_KEY", string.Empty);
+if (string.IsNullOrWhiteSpace(internalApiKey))
+{
+    throw new InvalidOperationException(
+        "INTERNAL_API_KEY is missing. AuthAPI refuses to start without it: " +
+        "/internal/* (account lookup, email search) would be reachable without authentication.");
+}
 var notificationBaseUrl = builder.Configuration.GetValue<string>("NOTIFICATION_API_BASEURL", "http://localhost:7010");
 var userBaseUrl = builder.Configuration.GetValue<string>("USER_API_BASEURL", "http://localhost:7002");
 
@@ -73,6 +82,22 @@ builder.Services.AddHttpClient<IUserApiClient, UserApiClient>(client =>
 // JWT Authentication: xác thực access token cho các endpoint cần [Authorize] sau này.
 var jwtKey = builder.Configuration["Jwt:Key"]
     ?? throw new InvalidOperationException("Jwt:Key is missing in configuration.");
+
+// AuthAPI là nơi DUY NHẤT ký token, nên chặn khoá yếu ở đây là chặn được tận gốc: không có token
+// yếu nào ra đời thì các service khác không phải lo verify phải nó. Hai thứ bị từ chối:
+//   - các giá trị mẫu từng nằm trong appsettings/.env.example (ai clone repo cũng biết);
+//   - khoá ngắn hơn 32 ký tự — HS256 dùng khoá ngắn thì dò lại được bằng brute-force.
+var weakJwtKeys = new[]
+{
+    "dev-only-change-me-please-use-a-long-random-secret-key-32+chars",
+    "change-me-32-chars-min-random-secret-here"
+};
+if (weakJwtKeys.Contains(jwtKey) || jwtKey.Length < 32)
+{
+    throw new InvalidOperationException(
+        "Jwt:Key is a placeholder or too short. AuthAPI refuses to start: tokens signed with a " +
+        "publicly known key can be forged by anyone. Set a random Jwt__Key (32+ chars) in .env.");
+}
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "DevPrep.AuthAPI";
 var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "DevPrep.Client";
 
@@ -160,8 +185,19 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+// AuthAPI trước đây là service duy nhất KHÔNG có /health, nên docker-compose không có cách nào
+// biết nó đã sẵn sàng để cho các service phụ thuộc khởi động theo. Giữ đúng hình dạng phản hồi
+// như 9 service kia để công cụ giám sát đọc thống nhất.
+app.MapGet("/health", () => Results.Ok(new
+{
+    service = "Auth",
+    status = "ok"
+}))
+.WithName("GetHealth")
+.WithOpenApi();
+
 // ── Internal endpoint: resolve email theo danh sách AccountId (InterviewAPI/admin gọi) ──
-// Bảo vệ bằng header X-Internal-Api-Key (khoá rỗng = bỏ qua kiểm tra, tiện chạy dev).
+// Bảo vệ bằng header X-Internal-Api-Key (bắt buộc — xem IsInternalCallAuthorized ở cuối file).
 app.MapPost("/internal/accounts/lookup",
     async (AuthAPI.DTOs.AccountLookupRequest body, HttpRequest request, IAccountRepository accounts) =>
     {
@@ -189,10 +225,17 @@ app.MapPost("/internal/accounts/search-by-email",
 
 app.Run();
 
-// So khớp header X-Internal-Api-Key với khoá cấu hình. Chưa cấu hình khoá -> cho qua (tiện chạy dev).
-static bool IsInternalCallAuthorized(HttpRequest request, string? configuredKey)
+// So khớp header X-Internal-Api-Key với khoá cấu hình.
+//
+// Bản trước có nhánh "chưa cấu hình khoá -> cho qua" cho tiện chạy dev. Nhánh đó là bẫy: deploy
+// mà quên set biến môi trường thì toàn bộ /internal/* mở toang, và không có dấu hiệu gì báo —
+// service vẫn khởi động bình thường, vẫn trả 200. Nay khoá là bắt buộc (kiểm lúc khởi động,
+// xem chỗ đọc INTERNAL_API_KEY ở đầu file), nên ở đây chỉ còn một đường: khớp thì cho qua.
+static bool IsInternalCallAuthorized(HttpRequest request, string configuredKey)
 {
-    if (string.IsNullOrEmpty(configuredKey)) return true;
-    return request.Headers.TryGetValue("X-Internal-Api-Key", out var provided)
-        && string.Equals(provided.ToString(), configuredKey, StringComparison.Ordinal);
+    var provided = request.Headers["X-Internal-Api-Key"].ToString();
+    // So sánh thời gian cố định: không rò rỉ độ dài khớp qua thời gian phản hồi.
+    return CryptographicOperations.FixedTimeEquals(
+        Encoding.UTF8.GetBytes(provided),
+        Encoding.UTF8.GetBytes(configuredKey));
 }
