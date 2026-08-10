@@ -117,21 +117,21 @@ public class SessionService : ISessionService
         return session.TotalPausedSeconds + ongoing;
     }
 
-    // Self-healing check for an ongoing pause that has outlived the quota — called at the top of
-    // every read path a client can hit while paused (ResumeSessionAsync on page load/F5,
-    // GetTimerAsync on the poll loop) so the server, not the client tab, is what actually ends an
-    // expired pause. Covers the case a client-side timer can't: the user closed the tab mid-pause
-    // and only comes back after the quota would have run out — nothing client-side ran in the
-    // meantime, so this is the only place that can catch it, on the next request that touches the
-    // session.
+    // Self-healing check for an ongoing pause that has outlived the quota. There is no polling
+    // loop: this runs at the top of the read paths a client can hit while paused —
+    // ResumeSessionAsync (page load/F5), GetActiveSessionAsync (the Room's active-session lookup)
+    // and GetTimerAsync — so the server, not the client tab, is what actually ends an expired
+    // pause. Covers the case a client-side timer can't: the user closed the tab mid-pause and only
+    // comes back after the quota would have run out — nothing client-side ran in the meantime, so
+    // this is the only place that can catch it, on the next request that touches the session.
     //
-    // Race safety: two overlapping callers (e.g. two GetTimerAsync polls) can both observe the
-    // same expired session before either writes. TryAutoResumeExpiredPauseAsync is an atomic
-    // conditional UPDATE keyed on the exact PausedAt this caller read, so only the first one to
-    // reach the database actually applies the resume; the loser's UPDATE affects zero rows. Either
-    // way, the resumed state below is written back onto the caller's in-memory `session` — neither
-    // ResumeSessionAsync nor GetTimerAsync calls SaveChangesAsync afterwards, so this mutation can
-    // never be persisted a second time.
+    // Race safety: two overlapping callers (e.g. a reload racing an active-session lookup) can
+    // both observe the same expired session before either writes. TryAutoResumeExpiredPauseAsync
+    // is an atomic conditional UPDATE keyed on the exact PausedAt this caller read, so only the
+    // first one to reach the database actually applies the resume; the loser's UPDATE affects zero
+    // rows. Either way, the resumed state below is written back onto the caller's in-memory
+    // `session` — no caller calls SaveChangesAsync afterwards, so this mutation can never be
+    // persisted a second time.
     private async Task AutoResumeIfPauseExpiredAsync(InterviewSession session, CancellationToken ct)
     {
         if (session.Status != "Paused" || session.PausedAt is null)
@@ -267,7 +267,7 @@ public class SessionService : ISessionService
                 CanSubmitInterviewFeedback = capabilities.CanSubmitInterviewFeedback,
                 ShouldEndSession = session.Status == "Cancelled",
                 Message = session.Status == "Cancelled"
-                    ? "Maximum cheating warnings reached. This interview has been ended."
+                    ? "Integrity warning limit reached. This interview has been ended."
                     : null
             };
         }
@@ -335,11 +335,14 @@ public class SessionService : ISessionService
         var events = await _verificationEventRepository.ListBySessionAsync(
             session.SessionId, "InSession", ct);
         var threshold = _configuration.GetValue("Biometrics:NoFaceStrikeThreshold", 3);
+        var tabThreshold = _configuration.GetValue("Biometrics:TabStrikeThreshold", 3);
         var maxStrikes = _configuration.GetValue("Biometrics:InSessionMaxStrikes", 3);
         var strictness = _configuration.GetValue("Biometrics:InSessionStrictness", "Strict");
-        var strikes = CheatingStrikeHelper.ComputeEffectiveStrikeCount(events, threshold);
-        if (!string.Equals(strictness, "Strict", StringComparison.OrdinalIgnoreCase)
-            || strikes < maxStrikes)
+        var strikes = CheatingStrikeHelper.ComputeEffectiveStrikeCount(events, threshold, tabThreshold);
+        // recorded is always true here (the method already returned above if nothing was marked
+        // missed) — passed through explicitly so this reads as "a strike just happened", the same
+        // shape as every other ShouldEndSession call site.
+        if (!CheatingStrikeHelper.ShouldEndSession(recorded, strictness, strikes, maxStrikes))
             return;
 
         session.Status = "Cancelled";
@@ -1290,6 +1293,7 @@ public class SessionService : ISessionService
         var maxStrikes = _configuration.GetValue("Biometrics:InSessionMaxStrikes", 3);
         var strictness = _configuration.GetValue("Biometrics:InSessionStrictness", "Strict");
         var noFaceStrikeThreshold = _configuration.GetValue("Biometrics:NoFaceStrikeThreshold", 3);
+        var tabStrikeThreshold = _configuration.GetValue("Biometrics:TabStrikeThreshold", 3);
 
         _logger.LogInformation(
             "ReportCameraViolation: session {SessionId}, incidentId={IncidentId}, reason={Reason}",
@@ -1319,11 +1323,10 @@ public class SessionService : ISessionService
 
         var events = await _verificationEventRepository.ListBySessionAsync(sessionId, "InSession", ct);
         var effectiveStrikeCount = CheatingStrikeHelper.ComputeEffectiveStrikeCount(
-            events, noFaceStrikeThreshold);
+            events, noFaceStrikeThreshold, tabStrikeThreshold);
         var displayStrikeCount = Math.Min(effectiveStrikeCount, maxStrikes);
-        var shouldEndSession = inserted
-            && string.Equals(strictness, "Strict", StringComparison.OrdinalIgnoreCase)
-            && effectiveStrikeCount >= maxStrikes;
+        var shouldEndSession = CheatingStrikeHelper.ShouldEndSession(
+            inserted, strictness, effectiveStrikeCount, maxStrikes);
 
         var message = req.Reason == "PermissionDenied"
             ? "Camera access was not restored within the allowed time."
@@ -1348,7 +1351,7 @@ public class SessionService : ISessionService
                 await _repo.SaveChangesAsync(ct);
             }
 
-            message = $"Maximum cheating warnings reached ({displayStrikeCount}/{maxStrikes}). " +
+            message = $"Integrity warning limit reached ({displayStrikeCount}/{maxStrikes}). " +
                       "This interview has been ended.";
         }
 

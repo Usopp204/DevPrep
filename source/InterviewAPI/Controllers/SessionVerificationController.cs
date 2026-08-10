@@ -2,6 +2,7 @@ using System.Security.Claims;
 using InterviewAPI.Clients;
 using InterviewAPI.DTOs;
 using InterviewAPI.DTOs.Biometrics;
+using InterviewAPI.DTOs.Session;
 using InterviewAPI.Services;
 using InterviewAPI.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -148,8 +149,11 @@ public class SessionVerificationController : ControllerBase
     }
 
     // POST api/interview/sessions/{sessionId}/verify/in-session — one background cheating check
-    // (single frame, no challenge/liveness), called by the Room once per new question and
-    // rate-limited server-side (Biometrics:InSessionMinIntervalSeconds). Flag-only by default
+    // (single frame, no challenge/liveness), called by the Room once per new question. There is
+    // no time-based rate limit: the throttle is that GetInSessionCheckAsync issues at most one
+    // pending checkId per SessionQuestion and TryConsumeQuestionCheckAsync makes it one-time-use,
+    // with the checkId expiring after Biometrics:InSessionCheckTtlSeconds (appsettings.json: 20;
+    // the code default is the same 20 seconds). Flag-only by default
     // (Biometrics:InSessionStrictness); only ends the session when Strictness="Strict" and the
     // strike cap is reached.
     [HttpPost("in-session")]
@@ -200,6 +204,43 @@ public class SessionVerificationController : ControllerBase
         {
             return BadRequest(ApiResponse<object>.Fail(ex.Message));
         }
+    }
+
+    // POST api/interview/sessions/{sessionId}/verify/tab-event — the Room reports that the
+    // candidate left the interview tab / window, or pasted into the answer box. Phase 1 is
+    // RECORD ONLY: the audit row carries Modality="Tab", which the strike math ignores entirely,
+    // so this endpoint can never warn the candidate or end a session.
+    //
+    // Unlike the other actions here it does not use the try/catch mapping — the service reports
+    // its expected outcomes as data (TabEventResponse.Outcome) precisely so each one can get its
+    // own status code:
+    //   204 monitoring disabled (Biometrics:Enabled or Biometrics:TabSwitchEnabled off)
+    //   403 the session belongs to someone else (or does not exist)
+    //   409 the session is not InProgress
+    //   400 unknown EventType, or a missing IncidentId
+    //   200 recorded, ignored as too short (Recorded=false), or already reported (Duplicated=true)
+    [HttpPost("tab-event")]
+    public async Task<IActionResult> RecordTabEvent(
+        Guid sessionId, [FromBody] RecordTabEventRequest request, CancellationToken cancellationToken)
+    {
+        if (request is null)
+            return BadRequest(ApiResponse<object>.Fail("A tab event payload is required."));
+
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var result = await _service.RecordTabEventAsync(userId, sessionId, request, cancellationToken);
+
+        return result.Outcome switch
+        {
+            BiometricVerificationService.TabOutcomeDisabled => NoContent(),
+            BiometricVerificationService.TabOutcomeNotOwner =>
+                StatusCode(StatusCodes.Status403Forbidden, ApiResponse<object>.Fail(result.Message)),
+            BiometricVerificationService.TabOutcomeNotInProgress =>
+                Conflict(ApiResponse<object>.Fail(result.Message)),
+            BiometricVerificationService.TabOutcomeInvalidEventType or
+            BiometricVerificationService.TabOutcomeInvalidIncidentId =>
+                BadRequest(ApiResponse<object>.Fail(result.Message)),
+            _ => Ok(ApiResponse<TabEventResponse>.Ok(result, result.Message)),
+        };
     }
 
     private static string? NormalizeModality(string? modality) =>
