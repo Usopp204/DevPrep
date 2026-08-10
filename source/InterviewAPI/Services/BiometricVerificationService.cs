@@ -2,6 +2,7 @@ using System.Text.Json;
 using InterviewAPI.Clients;
 using InterviewAPI.DTOs.AiService;
 using InterviewAPI.DTOs.Biometrics;
+using InterviewAPI.DTOs.Session;
 using InterviewAPI.Helpers;
 using InterviewAPI.Models;
 using InterviewAPI.Repositories.Interfaces;
@@ -11,6 +12,38 @@ namespace InterviewAPI.Services;
 
 public class BiometricVerificationService : IBiometricVerificationService
 {
+    // Audit modality for tab-switch / window-blur events. Intentionally absent from
+    // CheatingStrikeHelper's DIRECT-strike whitelist — a single tab switch is not, on its own,
+    // treated as evidence of cheating the way a Paste or a face mismatch is. It still accumulates
+    // the same way NoFace does though: every Biometrics:TabStrikeThreshold of them converts into
+    // one effective strike (see BuildTabStrikeResultAsync), so it is not a permanent free pass.
+    public const string ModalityTab = "Tab";
+
+    // Audit modality for paste-into-answer events. Unlike ModalityTab, this IS in
+    // CheatingStrikeHelper's direct-strike whitelist (Phase 3): a paste is direct evidence of
+    // copied content, so every single one is its own full strike, sharing the same pool as
+    // Face/Voice/Camera/Check mismatches.
+    public const string ModalityPaste = "Paste";
+
+    // Accepted RecordTabEventRequest.EventType values (case-sensitive, like every other
+    // plain-string domain value in this service).
+    public static readonly string[] TabEventTypes = { "TabHidden", "WindowBlur", "Paste" };
+
+    // Subset of TabEventTypes that carries a real "time away" measurement and is therefore
+    // subject to Biometrics:TabSwitchMinAwayMs. "Paste" is deliberately excluded: it is an
+    // instantaneous event, so its DurationMs is always 0 and must not be read as "too short".
+    public static readonly string[] DurationBearingTabEventTypes = { "TabHidden", "WindowBlur" };
+
+    // RecordTabEventAsync outcomes — the controller maps each to its HTTP status.
+    public const string TabOutcomeRecorded = "Recorded";
+    public const string TabOutcomeDuplicate = "Duplicate";
+    public const string TabOutcomeBelowThreshold = "BelowThreshold";
+    public const string TabOutcomeDisabled = "Disabled";
+    public const string TabOutcomeNotOwner = "NotOwner";
+    public const string TabOutcomeNotInProgress = "NotInProgress";
+    public const string TabOutcomeInvalidEventType = "InvalidEventType";
+    public const string TabOutcomeInvalidIncidentId = "InvalidIncidentId";
+
     // Curated Vietnamese challenge phrases (matches the Deepgram Vietnamese STT).
     // Random pick per challenge; a replayed recording won't match a fresh phrase.
     private static readonly string[] ChallengePhrases =
@@ -256,10 +289,12 @@ public class BiometricVerificationService : IBiometricVerificationService
     // the strike cap is hit: "Flag" only ever records/reports, "Strict" ends the session on the
     // strike that reaches the cap.
     //
-    // The Room calls this once per NEW QUESTION, so the rate-limit below is what actually
-    // protects ai-service: skipping questions rapidly would otherwise fire a burst of calls,
-    // and each one occupies ai-service for ~130-350ms (single uvicorn worker, no thread pool —
-    // a burst stalls every other ai-service consumer, not just this check).
+    // The Room calls this once per NEW QUESTION. What actually protects ai-service is the
+    // one-time-use check token: SessionService.GetInSessionCheckAsync issues at most one pending
+    // checkId per SessionQuestion and TryConsumeQuestionCheckAsync below consumes it, so skipping
+    // questions rapidly cannot fire a burst of calls. That matters because each call occupies
+    // ai-service for ~130-350ms (single uvicorn worker, no thread pool — a burst would stall every
+    // other ai-service consumer, not just this check).
     // TODO: ai-service runs --workers 1 with synchronous handlers; consider a thread pool or
     // more workers before raising the check frequency any further.
     public async Task<InSessionVerifyResponse> VerifyInSessionAsync(
@@ -283,11 +318,8 @@ public class BiometricVerificationService : IBiometricVerificationService
         var maxStrikes = _configuration.GetValue("Biometrics:InSessionMaxStrikes", 3);
         var strictness = _configuration.GetValue("Biometrics:InSessionStrictness", "Strict");
         var noFaceStrikeThreshold = _configuration.GetValue("Biometrics:NoFaceStrikeThreshold", 3);
+        var tabStrikeThreshold = _configuration.GetValue("Biometrics:TabStrikeThreshold", 3);
 
-        // Rate limit (server-side on purpose — the client mirrors nothing here, this IS the
-        // guard): too soon after the previous check, no-op. Returns a neutral "passed" result
-        // rather than an error so a rapid-skip burst is silently absorbed instead of surfacing
-        // scary warnings; nothing is recorded and no strike is counted for a skipped check.
         var embedding = await GetStoredEmbeddingAsync(userId, ProfileBiometricsService.ModalityFace, ct);
 
         bool isStrike;
@@ -357,16 +389,15 @@ public class BiometricVerificationService : IBiometricVerificationService
         var events = await _eventRepository.ListBySessionAsync(sessionId, "InSession", ct);
         var noFaceCount = events.Count(e => e.Modality == ProfileBiometricsService.ModalityFace && e.Decision == "NoFace");
         var effectiveStrikeCount = CheatingStrikeHelper.ComputeEffectiveStrikeCount(
-            events, noFaceStrikeThreshold);
+            events, noFaceStrikeThreshold, tabStrikeThreshold);
 
         // This NoFace event just completed a fresh group of noFaceStrikeThreshold — it converts
         // into a strike right now, with the same weight as a Flag.
         var noFaceJustBecameStrike = noFaceDetected && noFaceCount % noFaceStrikeThreshold == 0;
         var strikeJustHappened = isStrike || noFaceJustBecameStrike;
 
-        var shouldEndSession = strikeJustHappened
-            && string.Equals(strictness, "Strict", StringComparison.OrdinalIgnoreCase)
-            && effectiveStrikeCount >= maxStrikes;
+        var shouldEndSession = CheatingStrikeHelper.ShouldEndSession(
+            strikeJustHappened, strictness, effectiveStrikeCount, maxStrikes);
 
         // Always clamp what's shown — the real effectiveStrikeCount keeps growing past maxStrikes
         // under Strictness="Flag" (nothing ever ends the session to stop it), but the UI must
@@ -380,7 +411,7 @@ public class BiometricVerificationService : IBiometricVerificationService
             // Baked-in count on purpose: this exact message is also shown standalone as the
             // final chat bubble (see interview-room.js), which does not go through the client's
             // generic "(X/Y)" strike-count suffix the way the other strike messages below do.
-            message = $"Maximum cheating warnings reached ({displayStrikeCount}/{maxStrikes}). This interview has been ended.";
+            message = $"Integrity warning limit reached ({displayStrikeCount}/{maxStrikes}). This interview has been ended.";
         }
         else if (noFaceJustBecameStrike)
         {
@@ -550,15 +581,15 @@ public class BiometricVerificationService : IBiometricVerificationService
         CancellationToken ct)
     {
         var noFaceStrikeThreshold = _configuration.GetValue("Biometrics:NoFaceStrikeThreshold", 3);
+        var tabStrikeThreshold = _configuration.GetValue("Biometrics:TabStrikeThreshold", 3);
         var strictness = _configuration.GetValue("Biometrics:InSessionStrictness", "Strict");
         var events = await _eventRepository.ListBySessionAsync(sessionId, "InSession", ct);
         var effectiveStrikeCount = CheatingStrikeHelper.ComputeEffectiveStrikeCount(
-            events, noFaceStrikeThreshold);
+            events, noFaceStrikeThreshold, tabStrikeThreshold);
         var displayStrikeCount = Math.Min(effectiveStrikeCount, maxStrikes);
         var mismatch = verificationEvent.Decision == "Flag";
-        var shouldEndSession = mismatch
-            && string.Equals(strictness, "Strict", StringComparison.OrdinalIgnoreCase)
-            && effectiveStrikeCount >= maxStrikes;
+        var shouldEndSession = CheatingStrikeHelper.ShouldEndSession(
+            mismatch, strictness, effectiveStrikeCount, maxStrikes);
 
         var message = mismatch
             ? "The recorded answer does not match your enrolled voice."
@@ -566,7 +597,7 @@ public class BiometricVerificationService : IBiometricVerificationService
         if (shouldEndSession)
         {
             await EndSessionForCheatingAsync(sessionId, ct);
-            message = $"Maximum cheating warnings reached ({displayStrikeCount}/{maxStrikes}). This interview has been ended.";
+            message = $"Integrity warning limit reached ({displayStrikeCount}/{maxStrikes}). This interview has been ended.";
         }
 
         return new VoiceAnswerVerifyResponse
@@ -586,6 +617,220 @@ public class BiometricVerificationService : IBiometricVerificationService
             Message = message,
         };
     }
+
+    // Tab-switch / paste monitoring. The Room reports that the candidate left the interview tab
+    // (or pasted into the answer box); this writes one audit row, Phase="InSession",
+    // Decision="Flag". The Modality depends on EventType (see below):
+    //   TabHidden / WindowBlur -> Modality="Tab"   -> NOT in CheatingStrikeHelper's direct-strike
+    //                                                 whitelist — same treatment as NoFace: N of
+    //                                                 them (Biometrics:TabStrikeThreshold) convert
+    //                                                 into ONE effective strike instead of each
+    //                                                 event counting as a full strike on its own
+    //                                                 (see BuildTabStrikeResultAsync).
+    //   Paste                  -> Modality="Paste" -> IS in the direct-strike whitelist (Phase 3):
+    //                                                 every Paste is its own full strike, shares
+    //                                                 the same pool as Face/Voice/Camera/Check
+    //                                                 (see BuildPasteStrikeResultAsync).
+    // Either way termination goes through the same CheatingStrikeHelper.ShouldEndSession the Face
+    // check uses — not a re-copy of that predicate.
+    //
+    // Returns an outcome instead of throwing for the expected cases (feature off, not the owner,
+    // session not running): every one of these has its own HTTP status in
+    // SessionVerificationController, which the catch-all exception mapping there cannot express.
+    public async Task<TabEventResponse> RecordTabEventAsync(
+        Guid userId, Guid sessionId, RecordTabEventRequest req, CancellationToken ct)
+    {
+        if (!_configuration.GetValue("Biometrics:Enabled", false))
+            return TabResult(TabOutcomeDisabled, req, "Biometric monitoring is disabled.");
+        if (!_configuration.GetValue("Biometrics:TabSwitchEnabled", false))
+            return TabResult(TabOutcomeDisabled, req, "Tab-switch monitoring is disabled.");
+
+        // Same ownership + status guards as VerifyInSessionAsync, but reported as outcomes so the
+        // controller can answer 403/409 rather than the 404/400 those exceptions map to.
+        var session = await _sessionRepository.GetByIdAsync(sessionId, ct);
+        if (session is null || session.UserId != userId)
+            return TabResult(TabOutcomeNotOwner, req, "Session not found.");
+        if (session.Status != "InProgress")
+            return TabResult(TabOutcomeNotInProgress, req, "Session is not in progress.");
+
+        // Short flicker (an alt-tab that immediately comes back, a focus bounce from a browser
+        // dialog) is not worth an audit row. Applies ONLY to the event types that actually measure
+        // time away — "Paste" is instantaneous, DurationMs=0 is the correct value for it, and
+        // filtering it out here would make the type unrecordable.
+        var minAwayMs = _configuration.GetValue("Biometrics:TabSwitchMinAwayMs", 1500);
+        if (DurationBearingTabEventTypes.Contains(req.EventType) && req.DurationMs < minAwayMs)
+            return TabResult(TabOutcomeBelowThreshold, req,
+                $"Ignored: shorter than the {minAwayMs}ms minimum.");
+
+        if (!TabEventTypes.Contains(req.EventType))
+            return TabResult(TabOutcomeInvalidEventType, req,
+                $"EventType must be one of: {string.Join(", ", TabEventTypes)}.");
+        // Without a real idempotency key the filtered unique index cannot dedupe (Guid.Empty is a
+        // value, not NULL), so a retry would silently write a second row.
+        if (req.IncidentId == Guid.Empty)
+            return TabResult(TabOutcomeInvalidIncidentId, req, "IncidentId is required.");
+
+        var modality = req.EventType == "Paste" ? ModalityPaste : ModalityTab;
+        var inserted = await _eventRepository.TryAddIncidentAsync(
+            new SessionVerificationEvent
+            {
+                SessionId = sessionId,
+                UserId = userId,
+                Phase = "InSession",
+                Modality = modality,
+                Matched = false,
+                Decision = "Flag",
+                // Exact shape the Room and any later reporting query rely on:
+                // {"EventType":"TabHidden","DurationMs":1234}
+                Detail = JsonSerializer.Serialize(new { req.EventType, req.DurationMs }),
+                IncidentId = req.IncidentId,
+                CreatedAt = VietnamTime.Now,
+            },
+            ct);
+
+        if (!inserted)
+            return TabResult(TabOutcomeDuplicate, req, "This event was already reported.");
+
+        return modality == ModalityPaste
+            ? await BuildPasteStrikeResultAsync(session, req, ct)
+            : await BuildTabStrikeResultAsync(session, req, ct);
+    }
+
+    // Evaluates the shared strike/termination predicate for a just-recorded Paste event, exactly
+    // the way VerifyInSessionAsync does for a Face strike — same helper, same maxStrikes/
+    // strictness config keys, same EndSessionForCheatingAsync call. Only reached once per Paste
+    // event that actually wrote a new row (RecordTabEventAsync already filtered out duplicates
+    // before calling this).
+    private async Task<TabEventResponse> BuildPasteStrikeResultAsync(
+        InterviewSession session, RecordTabEventRequest req, CancellationToken ct)
+    {
+        var maxStrikes = _configuration.GetValue("Biometrics:InSessionMaxStrikes", 3);
+        var strictness = _configuration.GetValue("Biometrics:InSessionStrictness", "Strict");
+        var noFaceStrikeThreshold = _configuration.GetValue("Biometrics:NoFaceStrikeThreshold", 3);
+        var tabStrikeThreshold = _configuration.GetValue("Biometrics:TabStrikeThreshold", 3);
+        var events = await _eventRepository.ListBySessionAsync(session.SessionId, "InSession", ct);
+        var effectiveStrikeCount = CheatingStrikeHelper.ComputeEffectiveStrikeCount(
+            events, noFaceStrikeThreshold, tabStrikeThreshold);
+        var displayStrikeCount = Math.Min(effectiveStrikeCount, maxStrikes);
+
+        // strikeJustHappened is always true here: TryAddIncidentAsync just wrote a new
+        // Decision="Flag" row for a whitelisted modality, so this call is unconditionally the
+        // source of a fresh strike (unlike Face, there is no non-strike outcome for Paste).
+        var shouldEndSession = CheatingStrikeHelper.ShouldEndSession(
+            strikeJustHappened: true, strictness, effectiveStrikeCount, maxStrikes);
+
+        var message = "Tab event recorded.";
+        if (shouldEndSession)
+        {
+            await EndSessionForCheatingAsync(session.SessionId, ct);
+            // Baked-in count on purpose, same reasoning as VerifyInSessionAsync — this exact
+            // message is also shown standalone as the final chat bubble.
+            message = $"Integrity warning limit reached ({displayStrikeCount}/{maxStrikes}). This interview has been ended.";
+        }
+
+        return new TabEventResponse
+        {
+            Recorded = true,
+            Duplicated = false,
+            Outcome = TabOutcomeRecorded,
+            EventType = req.EventType,
+            DurationMs = req.DurationMs,
+            Message = message,
+            StrikeCount = displayStrikeCount,
+            MaxStrikes = maxStrikes,
+            ShouldEndSession = shouldEndSession,
+            Status = shouldEndSession ? "Cancelled" : session.Status,
+            TerminationReason = shouldEndSession
+                ? SessionCapabilityPolicy.IntegrityViolation
+                : session.TerminationReason,
+            CanGeneratePerformanceReport = false,
+            CanSubmitInterviewFeedback = shouldEndSession,
+        };
+    }
+
+    // Evaluates the NoFace-style accumulation for a just-recorded Tab/WindowBlur event: on its
+    // own it is NOT a strike (Modality="Tab" stays outside CheatingStrikeHelper's direct-strike
+    // whitelist), but every TabStrikeThreshold of them accumulated converts into one effective
+    // strike — same weight as a Flag, same conversion shape as noFaceJustBecameStrike in
+    // VerifyInSessionAsync. The termination predicate is therefore only evaluated on the exact
+    // event that completes a fresh group; every other Tab/WindowBlur event returns progress info
+    // only (TabCount/TabStrikeThreshold), with the strike fields left null.
+    private async Task<TabEventResponse> BuildTabStrikeResultAsync(
+        InterviewSession session, RecordTabEventRequest req, CancellationToken ct)
+    {
+        var tabStrikeThreshold = _configuration.GetValue("Biometrics:TabStrikeThreshold", 3);
+        var events = await _eventRepository.ListBySessionAsync(session.SessionId, "InSession", ct);
+        var tabCount = events.Count(e => e.Modality == ModalityTab && e.Decision == "Flag");
+
+        // tabCount is always >= 1 here (a Tab row was just inserted above), so a zero remainder
+        // means THIS event completed a fresh group of tabStrikeThreshold — the same "just became
+        // a strike" shape as noFaceJustBecameStrike.
+        var tabGroupProgress = tabCount % tabStrikeThreshold;
+        var tabJustBecameStrike = tabGroupProgress == 0;
+
+        var response = new TabEventResponse
+        {
+            Recorded = true,
+            Duplicated = false,
+            Outcome = TabOutcomeRecorded,
+            EventType = req.EventType,
+            DurationMs = req.DurationMs,
+            Message = "Tab event recorded.",
+            TabCount = tabGroupProgress,
+            TabStrikeThreshold = tabStrikeThreshold,
+            TabJustBecameStrike = tabJustBecameStrike,
+        };
+
+        if (!tabJustBecameStrike)
+            return response;
+
+        var maxStrikes = _configuration.GetValue("Biometrics:InSessionMaxStrikes", 3);
+        var strictness = _configuration.GetValue("Biometrics:InSessionStrictness", "Strict");
+        var noFaceStrikeThreshold = _configuration.GetValue("Biometrics:NoFaceStrikeThreshold", 3);
+        var effectiveStrikeCount = CheatingStrikeHelper.ComputeEffectiveStrikeCount(
+            events, noFaceStrikeThreshold, tabStrikeThreshold);
+        var displayStrikeCount = Math.Min(effectiveStrikeCount, maxStrikes);
+        var shouldEndSession = CheatingStrikeHelper.ShouldEndSession(
+            strikeJustHappened: true, strictness, effectiveStrikeCount, maxStrikes);
+
+        response.Message = "Repeated tab-switch detections counted as a cheating warning.";
+        response.StrikeCount = displayStrikeCount;
+        response.MaxStrikes = maxStrikes;
+        response.ShouldEndSession = shouldEndSession;
+        response.Status = shouldEndSession ? "Cancelled" : session.Status;
+        response.TerminationReason = shouldEndSession
+            ? SessionCapabilityPolicy.IntegrityViolation
+            : session.TerminationReason;
+        response.CanGeneratePerformanceReport = false;
+        response.CanSubmitInterviewFeedback = shouldEndSession;
+
+        if (shouldEndSession)
+        {
+            await EndSessionForCheatingAsync(session.SessionId, ct);
+            // Same reasoning as VerifyInSessionAsync/BuildPasteStrikeResultAsync — this exact
+            // message also stands alone as the final chat bubble.
+            response.Message =
+                $"Integrity warning limit reached ({displayStrikeCount}/{maxStrikes}). This interview has been ended.";
+        }
+
+        return response;
+    }
+
+    // Used for every outcome EXCEPT a recorded Tab/WindowBlur or Paste event (those go through
+    // BuildTabStrikeResultAsync / BuildPasteStrikeResultAsync instead, which populate the strike
+    // fields). All the nullable strike/progress fields are left unset here on purpose —
+    // BelowThreshold/Duplicate/Disabled/error outcomes never wrote a row or evaluated any
+    // predicate, so "no info" (null) is the honest answer for all of them.
+    private static TabEventResponse TabResult(string outcome, RecordTabEventRequest req, string message) =>
+        new()
+        {
+            Recorded = outcome == TabOutcomeRecorded,
+            Duplicated = outcome == TabOutcomeDuplicate,
+            Outcome = outcome,
+            EventType = req.EventType,
+            DurationMs = req.DurationMs,
+            Message = message,
+        };
 
     // Ends the session for exceeding the in-session cheating strike cap (Strictness="Strict").
     // Status="Cancelled" — distinct from the normal Completed/Expired outcomes EndSessionAsync

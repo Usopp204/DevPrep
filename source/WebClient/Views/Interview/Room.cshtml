@@ -72,6 +72,7 @@
          data-camera-violation-url="@Url.Action("CameraViolation", "Interview", new { id = Model.SessionId })"
          data-verify-in-session-url="@Url.Action("VerifyInSession", "Verification", new { sessionId = Model.SessionId })"
          data-in-session-check-url="@Url.Action("InSessionCheck", "Verification", new { sessionId = Model.SessionId })"
+         data-tab-event-url="@Url.Action("RecordTabEvent", "Verification", new { sessionId = Model.SessionId })"
          data-tts-url="@Url.Action("Tts", "Interview")"
          data-stt-url="@Url.Action("Stt", "Interview")"
          data-hint-url="@Url.Action("Hint", "Interview")"

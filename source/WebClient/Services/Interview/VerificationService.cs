@@ -31,6 +31,10 @@ public interface IVerificationService
 
     Task<(bool Success, InSessionCheckDueModel? Check, string? Error)> GetInSessionCheckAsync(
         Guid sessionId, Guid sessionQuestionId, CancellationToken cancellationToken);
+
+    Task<(bool Success, TabEventResultModel? Result, string? Error)> RecordTabEventAsync(
+        Guid sessionId, Guid incidentId, string eventType, long durationMs,
+        CancellationToken cancellationToken);
 }
 
 public sealed class VerificationService(IApiClient apiClient) : IVerificationService
@@ -127,6 +131,33 @@ public sealed class VerificationService(IApiClient apiClient) : IVerificationSer
         if (!response.IsSuccessStatusCode || envelope is null || !envelope.Success || envelope.Data is null)
         {
             return (false, null, envelope?.Message ?? $"In-session check failed ({(int)response.StatusCode}).");
+        }
+
+        return (true, envelope.Data, null);
+    }
+
+    public async Task<(bool Success, TabEventResultModel? Result, string? Error)> RecordTabEventAsync(
+        Guid sessionId, Guid incidentId, string eventType, long durationMs,
+        CancellationToken cancellationToken)
+    {
+        using var response = await apiClient.HttpClient.PostAsJsonAsync(
+            $"api/interview/sessions/{sessionId}/verify/tab-event",
+            new { IncidentId = incidentId, EventType = eventType, DurationMs = durationMs },
+            JsonOptions,
+            cancellationToken);
+
+        // 204 = monitoring is switched off server-side (Biometrics:Enabled or
+        // Biometrics:TabSwitchEnabled). That is a normal no-op, not a failure: report success with
+        // a synthesized result so the Room stays quiet instead of logging an error every event.
+        if (response.StatusCode == System.Net.HttpStatusCode.NoContent)
+        {
+            return (true, new TabEventResultModel { Outcome = "Disabled", EventType = eventType }, null);
+        }
+
+        var envelope = await ReadEnvelopeAsync<TabEventResultModel>(response, cancellationToken);
+        if (!response.IsSuccessStatusCode || envelope is null || !envelope.Success || envelope.Data is null)
+        {
+            return (false, null, envelope?.Message ?? $"Could not record the tab event ({(int)response.StatusCode}).");
         }
 
         return (true, envelope.Data, null);
