@@ -53,7 +53,11 @@ builder.Services.AddScoped<IBiometricVerificationService, BiometricVerificationS
 var internalApiKey = builder.Configuration.GetValue<string>("INTERNAL_API_KEY", string.Empty);
 var authBaseUrl = builder.Configuration.GetValue<string>("AUTH_API_BASEURL", "http://localhost:7001");
 var userBaseUrl = builder.Configuration.GetValue<string>("USER_API_BASEURL", "http://localhost:7002");
-var aiServiceBaseUrl = builder.Configuration["AiService:BaseUrl"] ?? "http://localhost:8000";
+// No literal fallback: the old default was http://localhost:8000, but this service's own
+// appsettings.json says 8080 (Docker publishes ai-service as 8080:8000). A missing key used
+// to fail later as an unreachable ai-service; now it fails at startup, naming the real cause.
+var aiServiceBaseUrl = builder.Configuration["AiService:BaseUrl"]
+    ?? throw new InvalidOperationException("AiService:BaseUrl is not configured.");
 var aiServiceApiKey = builder.Configuration["AiService:InternalApiKey"] ?? string.Empty;
 var paymentBaseUrl = builder.Configuration.GetValue<string>("PAYMENT_API_BASEURL", "http://localhost:7008");
 var evaluationBaseUrl = builder.Configuration.GetValue<string>("EVALUATION_API_BASEURL", "http://localhost:7006");

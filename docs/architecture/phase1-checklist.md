@@ -269,6 +269,33 @@ ApiGateway instead takes `GLOBAL_API_GATEWAY_PORT=8080` (it already binds `0.0.0
 
 **Prerequisite from blocker B-3:** ApiGateway and WebClient must have a `/health` endpoint before their containers can ever report healthy. Land that first or their `depends_on` gates will never open.
 
+> ### H-1 — `ASPNETCORE_ENVIRONMENT` is per-service, and only the gateway gets `Production`
+> Batch C added `source/ApiGateway/appsettings.Production.json` holding the ten compose-DNS cluster addresses. It loads only under `ASPNETCORE_ENVIRONMENT=Production`.
+>
+> **Set `Production` on the `apigateway` container only. Leave every other service on `Development`.**
+>
+> Verified rationale: `ApiGateway/Program.cs` contains **zero** `IsDevelopment()` branches — no Swagger, no developer exception page — so Production costs it nothing. Every one of the other eleven services has exactly one `IsDevelopment()` branch (Swagger UI for the APIs, the dev exception page for WebClient). Putting them in Production would silently remove both, which is precisely the debugging surface Batch H needs.
+>
+> The other services don't need Production anyway: their overridable keys are flat or single-nested (`AiService__BaseUrl`, `ApiGateway__BaseUrl`, `USER_API_BASEURL`) and set cleanly as env vars with no hyphens. The gateway's nested, hyphenated cluster keys were the only awkward case, and the JSON file resolves it.
+>
+> ```yaml
+> apigateway:
+>   environment:
+>     - ASPNETCORE_ENVIRONMENT=Production     # gateway ONLY
+> interviewapi:
+>   environment:
+>     - ASPNETCORE_ENVIRONMENT=Development    # keep Swagger for debugging
+>     - AiService__BaseUrl=http://ai-service:8000
+> ```
+> Mixed environments across containers is unusual but valid, and deliberate here. Revisit before a production deployment; for the demo it is the right trade.
+
+> ### H-2 — WebClient defines its listen URL twice
+> `source/WebClient/appsettings.json:2` sets `"Urls": "http://localhost:5130"`, **in addition to** the `ApiGateway:BaseUrl` entry at `:4` that Batch C reviewed. Two different keys, two different purposes: `Urls` is where WebClient *listens*, `ApiGateway:BaseUrl` is what it *calls*.
+>
+> The container is fine — `source/WebClient/Dockerfile` sets `ASPNETCORE_URLS=http://0.0.0.0:8080`, and the environment-variable provider is registered after the JSON provider, so the env var wins and WebClient binds `0.0.0.0:8080` as intended.
+>
+> Recorded because it is genuinely non-obvious: a future reader debugging a WebClient port problem will find `"Urls": "http://localhost:5130"` in appsettings.json, assume it is authoritative, and lose time. If that binding ever *does* look wrong in a container, the cause is provider ordering, not this line.
+
 **Commits (one per service):** `chore(compose): add <Service> to the compose stack`
 
 **Verify:**

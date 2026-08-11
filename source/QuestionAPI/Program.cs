@@ -84,7 +84,10 @@ builder.Services.AddCors(options =>
 //------ SỬA LẠI ĐOẠN NÀY -------
 // Calls ai-service to keep the ChromaDB question index in sync with admin CRUD.
 // Same convention as InterviewAPI: AiService:BaseUrl (host access = :8080) + X-Internal-Api-Key.
-var aiServiceBaseUrl = builder.Configuration["AiService:BaseUrl"] ?? "http://localhost:8080";
+// No literal fallback: a missing key used to silently resolve to a hardcoded URL, which fails
+// later as an unreachable ai-service. It now fails at startup, naming the real cause.
+var aiServiceBaseUrl = builder.Configuration["AiService:BaseUrl"]
+    ?? throw new InvalidOperationException("AiService:BaseUrl is not configured.");
 var aiServiceApiKey = builder.Configuration["AiService:InternalApiKey"] ?? string.Empty;
 
 builder.Services.AddHttpClient<IQuestionIndexClient, QuestionIndexClient>(client =>

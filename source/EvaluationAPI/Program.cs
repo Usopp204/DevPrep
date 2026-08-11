@@ -37,7 +37,11 @@ builder.Services.AddScoped<IEvaluationRepository, EvaluationRepository>();
 builder.Services.AddScoped<IEvaluationService, EvaluationService>();
 
 // Gọi ai-service để chấm điểm + tổng hợp báo cáo. UseProxy=false: gọi localhost không qua proxy.
-var aiServiceBaseUrl = builder.Configuration["AiService:BaseUrl"] ?? "http://localhost:8000";
+// No literal fallback: the old default was http://localhost:8000, but this service's own
+// appsettings.json says 8080 (Docker publishes ai-service as 8080:8000). A missing key used
+// to fail later as an unreachable ai-service; now it fails at startup, naming the real cause.
+var aiServiceBaseUrl = builder.Configuration["AiService:BaseUrl"]
+    ?? throw new InvalidOperationException("AiService:BaseUrl is not configured.");
 var aiServiceApiKey = builder.Configuration["AiService:InternalApiKey"] ?? string.Empty;
 
 builder.Services.AddHttpClient<IAiServiceClient, AiServiceClient>(client =>
