@@ -29,6 +29,7 @@
     <link rel="stylesheet" href="~/css/pages/history.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/components/safe-text.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/components/pagination.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/components/feedback-report.css" asp-append-version="true" />
 }
 
     <div class="history-layout">
@@ -143,7 +144,7 @@
                                    title="View Details">
                                     <span class="material-symbols-outlined history-action-icon" aria-hidden="true">visibility</span>
                                 </a>
-                                <form method="post" asp-controller="Interview" asp-action="DeleteSession" asp-route-id="@session.SessionId" onsubmit="return confirm('Remove this session from your history?');">
+                                <form method="post" asp-controller="Interview" asp-action="DeleteSession" asp-route-id="@session.SessionId">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="page" value="@currentPage" />
                                     <input type="hidden" name="pageSize" value="@Model.PageSize" />
@@ -151,8 +152,10 @@
                                     <input type="hidden" name="position" value="@Model.Position" />
                                     <input type="hidden" name="questionType" value="@Model.QuestionType" />
                                     <input type="hidden" name="keyword" value="@Model.Keyword" />
-                                    <button type="submit"
+                                    <button type="button"
                                             class="history-action-btn history-icon-action history-delete-btn"
+                                            data-delete-session-trigger
+                                            data-session-title="@(session.Position ?? "Interview Session")"
                                             aria-label="Delete"
                                             title="Delete">
                                         <span class="material-symbols-outlined history-action-icon" aria-hidden="true">delete</span>
@@ -174,6 +177,32 @@
             }
         </main>
     </div>
+<div class="feedback-report-modal" data-delete-session-modal hidden>
+    <div class="feedback-report-backdrop" data-delete-session-close></div>
+    <section class="feedback-report-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-session-title" aria-describedby="delete-session-description">
+        <header class="feedback-report-dialog-header">
+            <div>
+                <p>Confirmation</p>
+                <h2 id="delete-session-title">Delete interview session?</h2>
+            </div>
+            <button type="button" class="feedback-report-close" data-delete-session-close aria-label="Close dialog">
+                <span class="material-symbols-outlined" aria-hidden="true">close</span>
+            </button>
+        </header>
+        <p class="feedback-report-description" id="delete-session-description">
+            Are you sure you want to remove <strong data-delete-session-name>this interview session</strong> from your history? This action cannot be undone.
+        </p>
+        <div class="feedback-report-actions">
+            <button type="button" class="feedback-report-cancel" data-delete-session-close>Cancel</button>
+            <button type="button" class="feedback-report-submit feedback-report-submit-danger" data-delete-session-confirm>
+                <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+                Delete
+            </button>
+        </div>
+    </section>
+</div>
+
 @section Scripts {
     <script src="~/js/pages/dashboard.js" asp-append-version="true"></script>
+    <script src="~/js/pages/interview-history.js" asp-append-version="true"></script>
 }
