@@ -45,7 +45,11 @@ public static class CvEndpoints
             await using (var stream = File.Create(savedPath))
                 await file.CopyToAsync(stream);
 
-            var aiUrl = config.GetValue<string>("AI_SERVICE_URL") ?? "http://localhost:8000";
+            // No literal fallback: the old default was port 8000, which Docker does not publish
+            // to the host (it maps 8080:8000), so a missing key failed as "ai-service unreachable"
+            // instead of naming the real cause. AI_SERVICE_URL now lives in appsettings.json.
+            var aiUrl = config.GetValue<string>("AI_SERVICE_URL")
+                ?? throw new InvalidOperationException("AI_SERVICE_URL is not configured.");
             string? parsedJson = null;
             try
             {

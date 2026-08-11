@@ -35,7 +35,10 @@ public static class JdEndpoints
             string? clarifiedJson = null;
             if (body.ParseMode != "normal")
             {
-                var aiUrl = config.GetValue<string>("AI_SERVICE_URL") ?? "http://localhost:8000";
+                // No literal fallback: the old default was port 8000, which Docker does not publish
+                // to the host (it maps 8080:8000). AI_SERVICE_URL now lives in appsettings.json.
+                var aiUrl = config.GetValue<string>("AI_SERVICE_URL")
+                    ?? throw new InvalidOperationException("AI_SERVICE_URL is not configured.");
                 try
                 {
                     var client = factory.CreateClient("ai");
@@ -93,7 +96,10 @@ public static class JdEndpoints
             var tmp = Path.GetTempFileName() + ext;
             await using (var fs = File.Create(tmp)) await file.CopyToAsync(fs);
 
-            var aiUrl = config.GetValue<string>("AI_SERVICE_URL") ?? "http://localhost:8000";
+            // No literal fallback: the old default was port 8000, which Docker does not publish
+            // to the host (it maps 8080:8000). AI_SERVICE_URL now lives in appsettings.json.
+            var aiUrl = config.GetValue<string>("AI_SERVICE_URL")
+                ?? throw new InvalidOperationException("AI_SERVICE_URL is not configured.");
             string? clarifiedJson = null;
             string rawText = string.Empty;
             try

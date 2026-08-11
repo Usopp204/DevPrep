@@ -306,6 +306,36 @@ ApiGateway instead takes `GLOBAL_API_GATEWAY_PORT=8080` (it already binds `0.0.0
 >
 > Recorded because it is genuinely non-obvious: a future reader debugging a WebClient port problem will find `"Urls": "http://localhost:5130"` in appsettings.json, assume it is authoritative, and lose time. If that binding ever *does* look wrong in a container, the cause is provider ordering, not this line.
 
+> ### H-3 — Avatar files are served outside the gateway and break under port lockdown
+> **Two changes needed in Batch H. No code change, and — verified below — no data migration.**
+>
+> **The problem.** `UserAPI/Services/LocalFileStorageService.cs:45` builds an **absolute** avatar URL from `FILE_PUBLIC_BASE_URL` (default `http://localhost:7002`, line 12), and `UserAPI/Program.cs:153` serves those files via `app.UseStaticFiles()` from `wwwroot/avatars/`. The browser fetches them **directly from UserAPI's port, bypassing the gateway** — verified: `grep -i "avatar\|static\|upload"` over `ApiGateway/appsettings.json` returns nothing, and `users-route` only matches `/api/users/{**catch-all}`.
+>
+> Under the mandatory port lockdown (§1.5) UserAPI publishes no host port, so `http://localhost:7002` is unreachable from the browser — and `http://userapi:8080` is compose-internal, so it is *also* unreachable from a browser. **In compose there is no valid value that points at UserAPI directly.** The URL has to go through the gateway.
+>
+> **Fix, part 1 — new gateway route (SHARED, additive).** Add to `source/ApiGateway/appsettings.json`:
+> ```json
+> "avatars-route": {
+>   "ClusterId": "users-cluster",
+>   "Match": { "Path": "/avatars/{**catch-all}" }
+> }
+> ```
+> No `PathRemovePrefix` — UserAPI serves these at `/avatars/...` and expects the path intact. Additive only; it adds a route that does not exist today and changes no existing one. The matching entry must also go into `appsettings.Production.json`? **No** — routes are inherited from `appsettings.json` and only cluster *addresses* are overridden there (see the `_comment` in that file).
+>
+> **Fix, part 2 — env var for the UserAPI container.** `FILE_PUBLIC_BASE_URL=http://localhost:7000` (the gateway's published port, i.e. what the *browser* can reach). Note this is a browser-facing URL, so it takes the host address — the same trap as VNPay's `ReturnUrl` at `.env:63`, and the opposite of every other compose URL in §1.4. `LocalFileStorageService.cs:25` already reads this key from configuration, so **no code change is required**; the const at line 12 stays as the correct local-dev default.
+>
+> ### Verified: no data migration needed
+> The concern was that existing `UserProfiles.AvatarUrl` rows hold absolute `http://localhost:7002/avatars/…` strings that config cannot retroactively fix. **That does not apply to compose**, because the compose database starts empty of user data:
+> - No code seeds `UserProfiles` — the only insert is `UserProfileRepository.cs:42`, reached at runtime via `CreateProfileIfNotExistsAsync` when an account registers.
+> - No committed SQL script contains an `INSERT` or the word `avatar`.
+> - `schema-recovery.md` §3.1 seeds only `DevPrep_Question` (tech stacks, positions), `DevPrep_Payment` (credit packages), and `DevPrep_Notification` (email templates), and explicitly excludes user rows as personal data.
+>
+> So on a fresh volume there are zero profiles and therefore zero avatar URLs; accounts are registered fresh during the demo and every upload gets the correct base URL from the env var.
+>
+> **Stale absolute URLs exist only in individual developers' local databases.** That is a local annoyance, not a demo risk, and is not worth fixing here.
+>
+> **Consequently the two heavier options were considered and rejected:** a one-time `UPDATE` over `UserProfiles.AvatarUrl` (unnecessary — no rows), and switching to relative paths composed at render time (unnecessary, and it would touch every avatar read site across teammate-owned WebClient views with a real chance of missing one). If local-dev avatars ever need fixing, a developer can re-upload or run the `UPDATE` on their own machine.
+
 **Commits (one per service):** `chore(compose): add <Service> to the compose stack`
 
 **Verify:**
