@@ -1,0 +1,13 @@
+# Force LF on files that are consumed by Linux containers.
+#
+# Without this, a Windows working copy checks these out with CRLF. A shell script
+# with CRLF line endings fails inside a Linux container with an obscure error
+# ("bad interpreter: /bin/bash^M" or "no such file or directory"), because the
+# carriage return is treated as part of the interpreter path. The same applies to
+# anything a container parses line by line.
+#
+# `text eol=lf` normalises to LF in the repository AND on checkout, on every platform.
+
+*.sh        text eol=lf
+Dockerfile  text eol=lf
+*.yml       text eol=lf
