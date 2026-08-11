@@ -43,15 +43,22 @@ builder.Services.AddHostedService<InactiveUserAutoBlockHostedService>();
 
 
 
-// Đăng ký HttpClient gọi trực tiếp không thông qua file config/JSON
+// Địa chỉ các service khác đọc từ cấu hình, dùng chung tên biến với InterviewAPI/
+// PaymentAPI/FeedbackAPI (<SERVICE>_API_BASEURL). Giá trị mặc định giữ nguyên như cũ
+// nên chạy local (run-all.ps1) không đổi; chạy trong container thì compose ghi đè
+// bằng tên service trên mạng nội bộ.
+var authBaseUrl      = builder.Configuration.GetValue<string>("AUTH_API_BASEURL",      "http://localhost:7001/");
+var interviewBaseUrl = builder.Configuration.GetValue<string>("INTERVIEW_API_BASEURL", "http://localhost:7005/");
+var paymentBaseUrl   = builder.Configuration.GetValue<string>("PAYMENT_API_BASEURL",   "http://localhost:7008/");
+
 builder.Services.AddHttpClient("AuthServiceClient", client =>
 {
-    client.BaseAddress = new Uri("http://localhost:7001/");
+    client.BaseAddress = new Uri(authBaseUrl!);
 });
 
 builder.Services.AddHttpClient("InterviewServiceClient", client =>
 {
-    client.BaseAddress = new Uri("http://localhost:7005/");
+    client.BaseAddress = new Uri(interviewBaseUrl!);
 });
 
 // Khoá nội bộ, dùng cho hai chiều:
@@ -70,7 +77,7 @@ if (string.IsNullOrWhiteSpace(internalApiKey))
 
 builder.Services.AddHttpClient("PaymentServiceClient", client =>
 {
-    client.BaseAddress = new Uri("http://localhost:7008/");
+    client.BaseAddress = new Uri(paymentBaseUrl!);
     if (!string.IsNullOrEmpty(internalApiKey))
         client.DefaultRequestHeaders.Add("X-Internal-Api-Key", internalApiKey);
 });

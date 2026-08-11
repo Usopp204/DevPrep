@@ -172,11 +172,21 @@ Rows 1–11 and 15–21 of plan §1.4. One commit per service.
 ### Batch D — UserAPI hardcoded peer URLs → configuration
 **Branch:** `refactor/userapi-config-urls` · **TIER 1** *(logged as courtesy — `.cs` edit in a teammate service)* · **Blocked by:** nothing
 
+> ### Corrected during execution — use the repo's existing key names
+> This batch originally specified `AuthApi:BaseUrl` / `InterviewApi:BaseUrl` / `PaymentApi:BaseUrl`. **That was wrong.** The repo already has an established convention for peer-service URLs, used by InterviewAPI (`Program.cs:54-63`), PaymentAPI (`:94`), and FeedbackAPI (`:45-46`):
+>
+> `AUTH_API_BASEURL`, `INTERVIEW_API_BASEURL`, `PAYMENT_API_BASEURL`
+>
+> Introducing a second scheme for the same concept would have forced compose to set **two different variable names for the same URL** — `AUTH_API_BASEURL` for InterviewAPI/PaymentAPI/FeedbackAPI and `AuthApi__BaseUrl` for UserAPI — a latent Batch H bug with no detection until a route failed at runtime. The established names are used instead.
+
 | Path | Change |
 |---|---|
-| `source/UserAPI/Program.cs:49` | `new Uri("http://localhost:7001/")` → config `AuthApi:BaseUrl`, default `http://localhost:7001/` |
-| `source/UserAPI/Program.cs:54` | `http://localhost:7005/` → config `InterviewApi:BaseUrl`, same default |
-| `source/UserAPI/Program.cs:73` | `http://localhost:7008/` → config `PaymentApi:BaseUrl`, same default |
+| `source/UserAPI/Program.cs:49` | `new Uri("http://localhost:7001/")` → config `AUTH_API_BASEURL`, default `http://localhost:7001/` |
+| `source/UserAPI/Program.cs:54` | `http://localhost:7005/` → config `INTERVIEW_API_BASEURL`, same default |
+| `source/UserAPI/Program.cs:73` | `http://localhost:7008/` → config `PAYMENT_API_BASEURL`, same default |
+| `source/UserAPI/Program.cs:46` | Stale comment (*"gọi trực tiếp không thông qua file config/JSON"*) rewritten — it described the anti-pattern being removed |
+
+Trailing slashes are preserved exactly as they were, so `HttpClient.BaseAddress` relative-URL resolution is unchanged. This batch is behaviour-neutral in local dev.
 
 **Commit:** `refactor(user): read peer service URLs from configuration instead of hardcoding`
 **Verify:** `grep -n "new Uri(\"http" source/UserAPI/Program.cs` → no matches. UserAPI still starts under `run-all.ps1`; admin user list still renders.
