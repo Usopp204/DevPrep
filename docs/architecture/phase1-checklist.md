@@ -1,7 +1,12 @@
 # Phase 1 — Containerization Execution Checklist
 
 **Companion to:** `docs/architecture/microservice-remediation-plan.md` (Phase 1) and `docs/architecture/schema-recovery.md` (the §1.1 TIER 3 item).
-**Design goal:** local `run-all.ps1` / venv mode keeps working at **every** commit boundary. See §0 for how that is guaranteed and the one task that would break it if done wrong.
+**Design goal:** local development keeps working at **every** commit boundary. See §0 for how that is guaranteed and the one task that would break it if done wrong.
+
+> ### ⚠ Local dev is MANUAL PowerShell startup, not `run-all.ps1`
+> `run-all.ps1` exists in the repo but is **not the workflow in use**. Services are started by hand. Every verification step below is written for manual startup — see **§0.1** for the exact command and the three things `run-all.ps1` did silently that you must now do yourself.
+>
+> Earlier revisions of this checklist said "verify with `run-all.ps1`". Those steps were unrunnable and were being skipped, which means changes were landing unverified. They have all been rewritten.
 **Resumable:** batches are independent and ordered by dependency. Stop after any batch; the tree is always in a working state.
 
 ---
@@ -12,12 +17,58 @@
 
 | File | Used by | DB target | Committed? |
 |---|---|---|---|
-| `.env` (root) | `run-all.ps1`, `dotnet run`, venv ai-service | `localhost\MSSQLSERVER01` — **unchanged throughout Phase 1** | No (gitignored) |
+| `.env` (root) | manual startup, `dotnet run`, venv ai-service | `localhost\MSSQLSERVER01` — **unchanged throughout Phase 1** | No (gitignored) |
 | `infra/.env.docker` (**new**) | `docker compose` only | `sqlserver,1433` | No — but `infra/.env.docker.example` is |
 
 Every config change in this checklist follows the same shape: **read from an env var, default to today's literal value.** Container mode overrides via compose; local mode falls through to the default and behaves exactly as it does now.
 
-> **The single task that breaks venv mode if done wrong: Batch I.** If the root `.env` connection strings are edited to point at `sqlserver,1433` or the sa password is changed there, `run-all.ps1` stops working immediately. Batch I is written to avoid this — container values go in `infra/.env.docker`, never the root `.env`. If you find yourself editing `.env:1-11`, stop.
+> **The single task that breaks local dev if done wrong: Batch I.** If the root `.env` connection strings are edited to point at `sqlserver,1433` or the sa password is changed there, manual startup stops working immediately. Batch I is written to avoid this — container values go in `infra/.env.docker`, never the root `.env`. If you find yourself editing `.env:1-11`, stop.
+
+---
+
+## 0.1 — Manual startup: the command, and what `run-all.ps1` was doing for you
+
+### The command
+
+```powershell
+cd Q:\DevPrep\source\<Project>          # MANDATORY — see (1) below
+$env:ASPNETCORE_ENVIRONMENT = 'Development'   # MANDATORY — see (2) below
+dotnet bin\Debug\net8.0\<Project>.dll --urls http://localhost:<port>
+```
+
+Ports: ApiGateway 7000, Auth 7001, User 7002, CvJd 7003, Question 7004, Interview 7005, Evaluation 7006, Feedback 7007, Payment 7008, News 7009, Notification 7010, WebClient 5130.
+
+### The three things `run-all.ps1` did that manual startup does not
+
+**(1) `cd` into the project directory (`run-all.ps1:72`) — the most damaging one to omit.**
+ASP.NET Core's **content root is the current working directory**, not the DLL's location. `appsettings.json` is resolved from the content root. Run the DLL from the repo root and **`appsettings.json` is never loaded** — JWT keys, `AiService:BaseUrl`, `AI_SERVICE_URL`, and the YARP `ReverseProxy` section all vanish, and the service fails with confusing "not configured" errors.
+DotNetEnv's `TraversePath()` walks *up* from the working directory, so it still finds the repo-root `.env` from either location — which is why the failure looks partial and puzzling: env-var config works, `appsettings.json` config doesn't.
+
+**(2) `$env:ASPNETCORE_ENVIRONMENT = 'Development'` (`run-all.ps1:74`).**
+Running a DLL directly **ignores `launchSettings.json`** (the script says so at `:28-29`), so the environment is unset and .NET defaults to **Production**. Consequences:
+- `appsettings.Development.json` does not load.
+- Swagger disappears (all 11 services gate it behind `IsDevelopment()`).
+- **`source/ApiGateway/appsettings.Production.json` DOES load** — the file Batch C added, containing compose DNS names. **The gateway will try to route to `http://authapi:8080/`, which does not resolve on the host, and every route fails.** This is the single most likely confusing failure of manual startup, and it is a direct consequence of a Batch C change.
+
+**(3) `--urls http://localhost:<port>` (`run-all.ps1:79`).**
+Nine services compute their own URL from `SERVICE_BIND_HOST`/`<SVC>_API_PORT` and would bind correctly anyway. But **AuthAPI and WebClient have no `UseUrls()` call** — with no `--urls` and no `launchSettings.json`, they fall back to Kestrel's default **`http://localhost:5000`**, not 7001/5130. Always pass `--urls`.
+
+### Config load order at manual startup
+
+1. `Env.TraversePath().Load()` runs *before* `WebApplication.CreateBuilder`, setting process env vars from the repo-root `.env` (found by walking up from the working directory).
+2. `appsettings.json` — from the content root (= working directory).
+3. `appsettings.{ASPNETCORE_ENVIRONMENT}.json` — `Development` if you set it, otherwise `Production`.
+4. Environment variables — including everything `.env` just set. **Overrides 2 and 3.**
+5. Command-line args (`--urls`). **Highest precedence.**
+
+### WDAC: does the launch method change which sources load? **Yes.**
+
+| Launch | Content root | `launchSettings.json` | Environment | Port |
+|---|---|---|---|---|
+| `dotnet run --project …` (InterviewAPI etc.) | project dir, automatic | **read** | `Development`, automatic | from `applicationUrl`, automatic |
+| `dotnet bin\Debug\net8.0\X.dll` (EvaluationAPI, WebClient — WDAC-forced) | **your cwd** | **ignored** | **Production** unless you set it | Kestrel default unless you pass `--urls` |
+
+So the two WDAC-blocked services are exactly the ones that need all three manual steps, while `dotnet run` gives them for free. Mixing the two launch styles across services in one session is the likeliest source of "it works for Interview but not Evaluation".
 
 **No other batch in the unblocked section can break local dev.** Verified by construction: every change is either a new file (Dockerfile, `.dockerignore`, compose entry) or an env-var indirection with an identical default.
 
@@ -163,8 +214,18 @@ Rows 1–11 and 15–21 of plan §1.4. One commit per service.
 | `source/EvaluationAPI/appsettings.json:14` + `Program.cs:40` | same | `refactor(evaluation): read ai-service base URL from configuration` |
 | `source/QuestionAPI/appsettings.json:10` + `Program.cs:87` | same | `refactor(question): read ai-service base URL from configuration` |
 
-**Verify:** `run-all.ps1` still starts everything; `curl http://localhost:7000/api/news` returns as before. Then:
-`grep -rn "localhost:70" source --include="*.json" --include="*.cs" | grep -v /obj/ | grep -v /bin/` → only `.env`-driven defaults remain.
+**Verify (manual startup):** start NewsAPI and ApiGateway, each in its own PowerShell window:
+```powershell
+cd Q:\DevPrep\source\NewsAPI
+$env:ASPNETCORE_ENVIRONMENT = 'Development'
+dotnet bin\Debug\net8.0\NewsAPI.dll --urls http://localhost:7009
+
+cd Q:\DevPrep\source\ApiGateway
+$env:ASPNETCORE_ENVIRONMENT = 'Development'   # WITHOUT this the gateway loads appsettings.Production.json and routes to compose DNS names
+dotnet bin\Debug\net8.0\ApiGateway.dll --urls http://localhost:7000
+```
+Then `curl http://localhost:7000/api/news` returns as before. Also:
+`grep -rn "localhost:70" source --include="*.json" --include="*.cs" | grep -v /obj/ | grep -v /bin/` → only config defaults remain.
 **Local dev impact:** none — defaults reproduce current values exactly.
 
 ---
@@ -189,7 +250,13 @@ Rows 1–11 and 15–21 of plan §1.4. One commit per service.
 Trailing slashes are preserved exactly as they were, so `HttpClient.BaseAddress` relative-URL resolution is unchanged. This batch is behaviour-neutral in local dev.
 
 **Commit:** `refactor(user): read peer service URLs from configuration instead of hardcoding`
-**Verify:** `grep -n "new Uri(\"http" source/UserAPI/Program.cs` → no matches. UserAPI still starts under `run-all.ps1`; admin user list still renders.
+**Verify (manual startup):** `grep -n "new Uri(\"http" source/UserAPI/Program.cs` → no matches. Then:
+```powershell
+cd Q:\DevPrep\source\UserAPI
+$env:ASPNETCORE_ENVIRONMENT = 'Development'
+dotnet bin\Debug\net8.0\UserAPI.dll --urls http://localhost:7002
+```
+Expect "Now listening on: http://localhost:7002". Then start PaymentAPI (7008) the same way and load the admin user list through WebClient — the last-activity column exercises `PaymentServiceClient`, the one client that also carries the internal API key.
 **Notify after:** Usopp204 *(see §0.2 of the plan — ownership on UserAPI is split; see ownership table in `team-notifications.md`)*
 **Closes:** F-06.
 
@@ -213,6 +280,8 @@ Trailing slashes are preserved exactly as they were, so `HttpClient.BaseAddress`
 > In a container, `ASPNETCORE_ENVIRONMENT` will not be `Development`, so that file is never loaded and the four call sites fall through to their hardcoded `http://localhost:8000` literal — the exact broken value this batch exists to fix. Fixing only the Development file would make the bug *invisible in local dev and still present in the container.*
 >
 > **Fix:** add `AI_SERVICE_URL` to `appsettings.json` as well (value `http://localhost:8080` for the non-container default), and supply the compose value via env var in Batch H.
+
+> **Follow-up recorded during execution, not a task.** The four call sites now raise a clear error instead of falling back to a hardcoded URL — but because `AI_SERVICE_URL` is read *inside the endpoint handlers*, that error surfaces per-request as a 500 rather than refusing startup the way Batch C's equivalents do. Making it fail fast would mean reading the value once in `Program.cs` and passing it into `MapCvEndpoints`/`MapJdEndpoints`/`MapMatchEndpoints` — a change to how CvJdAPI's endpoints take configuration, which is teammate-owned structure and out of proportion for an infrastructure batch. Left as-is deliberately.
 
 **Commit:** `fix(cvjd): point AI_SERVICE_URL at the published ai-service port`
 **Verify:** with ai-service running in Docker, upload a CV through the app — parsing succeeds (it currently fails with connection-refused). Then confirm the non-Development path: `ASPNETCORE_ENVIRONMENT=Production dotnet run` and check the resolved URL is 8080, not 8000.
@@ -240,7 +309,17 @@ Trailing slashes are preserved exactly as they were, so `HttpClient.BaseAddress`
 | 11 × `source/*/Program.cs` (`ApiGateway:4-5`, `AuthAPI:16-17`, `UserAPI:16-17`, `CvJdAPI:6-7`, `QuestionAPI:13-14`, `InterviewAPI:16-17`, `EvaluationAPI:15-16`, `FeedbackAPI:16-17`, `PaymentAPI:17-18`, `NewsAPI:13-14`, `NotificationAPI:12-13`) | Delete `try { Env.TraversePath().Load(".env.example"); } catch { }` |
 
 **Commit:** `fix(config): stop loading .env.example at runtime`
-**Verify:** `grep -rn 'Load(".env.example")' source --include="*.cs" | grep -v /obj/` → no matches. Then full `run-all.ps1` start and one end-to-end interview.
+**Verify (manual startup):** `grep -rn 'Load(".env.example")' source --include="*.cs" | grep -v /obj/` → no matches.
+
+Then the highest-value check in Phase 1, because it exercises the whole config chain the removed load touched — start the full stack manually and run one end-to-end interview:
+```powershell
+# one window per service; ALL need the cd + ASPNETCORE_ENVIRONMENT + --urls
+# order matters only loosely: backends, then gateway, then WebClient
+# 7001 Auth, 7002 User, 7003 CvJd, 7004 Question, 7005 Interview,
+# 7006 Evaluation, 7007 Feedback, 7008 Payment, 7009 News, 7010 Notification,
+# 7000 ApiGateway, 5130 WebClient
+```
+Watch for two specific failures this batch could cause: any service reporting a missing config key at startup (a key that was silently resolving from `.env.example`), and the gateway 502-ing every route (that means `ASPNETCORE_ENVIRONMENT` was not set and `appsettings.Production.json` loaded).
 **Local dev impact:** none **after** the pre-check is handled.
 
 ---
@@ -368,7 +447,9 @@ Any `LEAK` line fails the batch — see plan §1.5, mandatory lockdown.
 | `.env.example` | Mirror the deletion |
 
 **Commit:** `chore(config): split container env from local env and drop dead Statistics connection string`
-**Verify:** `run-all.ps1` still starts everything and an interview completes end-to-end. `grep -n "MSSQLSERVER01" .env | wc -l` → still `10` (was 11; Statistics removed).
+**Verify (manual startup):** `grep -n "MSSQLSERVER01" .env | wc -l` → still `10` (was 11; Statistics removed). Then start any two services manually (per §0.1) and confirm both connect to `localhost\MSSQLSERVER01` as before — if either now tries `sqlserver,1433`, the root `.env` was edited and must be reverted.
+
+> **Batch I note — `.env` is gitignored.** The ElevenLabs addition (option (ii): add `ELEVENLABS_API_KEY`; `ELEVENLABS_VOICE_ID` and `ELEVENLABS_TTS_MODEL` already match the code defaults at `ai-service/app/core/config.py:59-60`, so they are optional) is a **local-machine edit that never reaches the repo**. Do not expect it in a diff, a PR, or a teammate's clone — anyone else wanting the ElevenLabs fallback must add the key to their own `.env`. Only `.env.example` is tracked.
 
 ---
 

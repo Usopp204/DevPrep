@@ -11,3 +11,7 @@
 *.sh        text eol=lf
 Dockerfile  text eol=lf
 *.yml       text eol=lf
+
+# SSMS emits CRLF. Batch K commits scripted schema under db/, which sqlcmd reads
+# inside a Linux container — normalise it here so the checkout is always LF.
+*.sql       text eol=lf

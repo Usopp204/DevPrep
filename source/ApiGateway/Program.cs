@@ -1,7 +1,7 @@
 ﻿using DotNetEnv;
 using Microsoft.AspNetCore.Http.Timeouts;
 
-try { Env.TraversePath().Load(".env.example"); } catch { }
+// Only the real .env: loading .env.example too let a missing key resolve to a placeholder.
 try { Env.TraversePath().Load(); } catch { }
 
 var builder = WebApplication.CreateBuilder(args);

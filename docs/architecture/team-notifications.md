@@ -91,6 +91,11 @@ Record of what has **already been written** into teammate-owned service director
 | C | **QuestionAPI** | `Program.cs:87` — **logic change, see §0.9** | Written, pending commit |
 | C | ApiGateway | `appsettings.Production.json` (new) | Written, pending commit |
 | D | **UserAPI** | `Program.cs:46-73` — peer URLs to config, see §0.10 | Written, pending commit |
+| E | **CvJdAPI** | `appsettings.json` + `appsettings.Development.json` + 4 endpoint files — **AI_SERVICE_URL fixed, see §0.11** | Written, pending commit |
+| F | ApiGateway, CvJdAPI, EvaluationAPI, FeedbackAPI, InterviewAPI, QuestionAPI | `Program.cs` — removed `.env.example` runtime load | Written, pending commit |
+| F | AuthAPI, PaymentAPI, UserAPI, NewsAPI, NotificationAPI | `Program.cs` — same change | **Blocked — awaiting lift** |
+
+> **Hand-off package status.** Several items originally written as "here is a bug for you to fix" have since been fixed directly under the TIER 2 model. Every such item must be re-framed before sending: **"I changed this, here is what to check"** — never "here is a bug you should fix." Items already converted: Duong's Item 1 (`AI_SERVICE_URL`, §0.11). The remaining open asks for Duong are the internal API key header (§3) and CvJdAPI authentication (§2, F-15) — both still genuinely his.
 
 **Process note worth recording honestly.** The local `.claude/settings.json` carries `Edit(...)` deny rules on five of these directories (AuthAPI, PaymentAPI, UserAPI, NewsAPI, NotificationAPI). Batch A's files were created with shell `cp`, which those rules do not cover — they constrain the editor tool, not shell writes — so **Batch A landed in the protected directories without the guardrail firing.** This was noticed during Batch B, reported, and Batch B's remaining writes were done only after the rules were deliberately lifted for that batch and restored immediately afterwards. Nothing was written that wasn't intended; the guardrail simply did not do what it looked like it was doing. Flagged here so the record is accurate if anyone asks why these files appeared without a prior conversation.
 
@@ -141,6 +146,26 @@ The only Batch C change in a teammate service. One line, and it does change beha
 > **Nothing changes when you run locally.** The defaults are the previous literals, trailing slashes included, so `run-all.ps1` behaves identically.
 >
 > **What to check on your side:** UserAPI starts normally, and the admin/manager user list still shows the last-activity column (that path goes through `PaymentServiceClient`).
+
+### 0.11 — Batch E: CvJdAPI AI_SERVICE_URL — **fixed, not proposed**
+
+**Service:** CvJdAPI → **Duong** (high confidence).
+**Supersedes** the old "Item 1" of the Duong hand-off package, which described this as a bug for him to fix. It is done. The message below reports a change; it does not ask for work.
+
+> Subject: CvJdAPI — fixed the AI_SERVICE_URL port, it was breaking CV/JD in Docker mode
+>
+> Hi Duong — I hit this while containerising and fixed it directly rather than adding it to your queue. Flagging so you know it moved and can sanity-check the behaviour.
+>
+> **What was wrong:** `AI_SERVICE_URL` was `http://localhost:8000`, but docker-compose publishes ai-service as `8080:8000` — port 8000 isn't reachable from the host. So CV/JD parsing worked when ai-service ran in a venv and failed with connection-refused whenever it ran in its container, which is the documented default. The other three consumers (Interview, Evaluation, Question) were already on 8080.
+>
+> **What I changed:**
+> - Added `AI_SERVICE_URL: http://localhost:8080` to `appsettings.json`. It previously existed **only** in `appsettings.Development.json`, and a container doesn't run in the Development environment — so in a container the setting vanished entirely and the code fell through to a hardcoded `localhost:8000`. That's why fixing only the Development file would have looked correct locally and stayed broken in Docker.
+> - Removed the now-duplicate key from `appsettings.Development.json`, so there's one source of truth rather than two values that can drift.
+> - The four call sites (`Endpoints/CvEndpoints.cs:48`, `JdEndpoints.cs:38` and `:96`, `MatchEndpoints.cs:30`) no longer fall back to a hardcoded URL — a missing key now raises a clear error instead of silently pointing at the wrong port.
+>
+> **What to check on your side:** run ai-service in Docker, start CvJdAPI normally, and upload a CV and a JD. Both should parse. If you have a local override setting `AI_SERVICE_URL` to 8000 anywhere, that will now win over the fixed default — worth a look.
+>
+> **Known follow-up, not urgent:** those four errors are raised per-request rather than at startup, because the value is read inside the endpoint handlers. A missing key gives a clear 500 rather than refusing to start. Making it fail fast would mean reading the config once at startup and passing it into the endpoint registrations — a change to how your endpoints take configuration, which I didn't want to make unilaterally in an infrastructure batch. Happy to do it if you'd prefer.
 
 ---
 

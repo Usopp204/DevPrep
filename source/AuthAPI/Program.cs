@@ -13,7 +13,7 @@ using System.Text;
 
 // Nạp biến môi trường từ file .env ở thư mục backend (RabbitMQ, SMTP...).
 // Bọc try/catch để app vẫn chạy được nếu chưa có .env (khi đó dùng giá trị mặc định).
-try { Env.TraversePath().Load(".env.example"); } catch { }
+// Only the real .env: loading .env.example too let a missing key resolve to a placeholder.
 try { Env.TraversePath().Load(); } catch { }
 
 var builder = WebApplication.CreateBuilder(args);

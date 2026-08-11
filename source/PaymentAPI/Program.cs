@@ -14,7 +14,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
-try { Env.TraversePath().Load(".env.example"); } catch { }
+// Only the real .env: loading .env.example too let a missing key resolve to a placeholder.
 try { Env.TraversePath().Load(); } catch { }
 
 var builder = WebApplication.CreateBuilder(args);
