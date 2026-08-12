@@ -510,7 +510,27 @@ public class SessionService : ISessionService
             "InitAsync: calling ai-service PlanQuestions for session {SessionId} (position={Position}, level={Level}, durationMin={DurationMin}).",
             session.SessionId, planRequest.Position, planRequest.Level, planRequest.DurationMin);
 
-        var plan = await _aiServiceClient.PlanQuestionsAsync(planRequest, ct);
+        // ai-service is a hard dependency here: without a question set there is no interview to
+        // start. Translate any failure into SessionInitDependencyException so the controller can
+        // answer 503 ("try again shortly") instead of letting a raw dependency error surface as a
+        // 400, which would tell the user their request was malformed when it was not.
+        AiQuestionPlanResponse? plan;
+        try
+        {
+            plan = await _aiServiceClient.PlanQuestionsAsync(planRequest, ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "InitAsync: ai-service PlanQuestions failed for session {SessionId}; session was not initialized.",
+                session.SessionId);
+            throw new SessionInitDependencyException(ex);
+        }
 
         // Log số câu hỏi ai-service trả về — nếu 0 thì response rỗng hoặc deserialize sai.
         var returnedCount = plan?.Questions?.Count ?? 0;
@@ -664,6 +684,14 @@ public class SessionService : ISessionService
                 _logger.LogError("Credit deduction failed: {Message}", deductResult.Message);
                 // Rollback status back to Initialized (race-safe: only we can update from InProgress in this flow).
                 await _repo.UpdateStatusIfAsync(userId, sessionId, "InProgress", "Initialized", ct);
+
+                // PaymentAPI never answered: its Message holds transport detail (host names, ports)
+                // that must not reach the user. The log line above already captured it.
+                if (!deductResult.ServiceAvailable)
+                    throw new CreditServiceUnavailableException();
+
+                // PaymentAPI answered and refused — e.g. "Insufficient credits". That message is
+                // written for the user and stays intact.
                 throw new InvalidOperationException($"Credit deduction failed: {deductResult.Message}");
             }
 

@@ -195,19 +195,21 @@
             <div class="stat-card stat-primary">
                 <span class="material-symbols-outlined stat-icon primary" style="font-variation-settings:'FILL' 1;">toll</span>
                 <p class="stat-label">Current Balance</p>
-                <p class="stat-value primary">@Model.Balance.Balance</p>
+                @* null = unknown (PaymentAPI did not answer), rendered as a dash. Showing 0 here
+                   next to the error banner told the user their wallet was empty when it was not. *@
+                <p class="stat-value primary">@(Model.Balance?.Balance.ToString() ?? "—")</p>
                 <p class="stat-unit">credits available</p>
             </div>
             <div class="stat-card stat-error">
                 <span class="material-symbols-outlined stat-icon error" style="font-variation-settings:'FILL' 1;">remove_circle</span>
                 <p class="stat-label">Total Used</p>
-                <p class="stat-value error">@Model.TotalUsed</p>
+                <p class="stat-value error">@(Model.TotalUsed?.ToString() ?? "—")</p>
                 <p class="stat-unit">credits spent on interviews</p>
             </div>
             <div class="stat-card stat-success">
                 <span class="material-symbols-outlined stat-icon success" style="font-variation-settings:'FILL' 1;">replay_circle_filled</span>
                 <p class="stat-label">Total Refunded</p>
-                <p class="stat-value success">@Model.TotalRefunded</p>
+                <p class="stat-value success">@(Model.TotalRefunded?.ToString() ?? "—")</p>
                 <p class="stat-unit">credits returned</p>
             </div>
         </div>

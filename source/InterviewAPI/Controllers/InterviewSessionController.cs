@@ -17,12 +17,18 @@ public class InterviewSessionController : ControllerBase
     private readonly ISessionService _service;
     private readonly IAiServiceClient _aiServiceClient;
     private readonly IPaymentApiClient _paymentApiClient;
+    private readonly ILogger<InterviewSessionController> _logger;
 
-    public InterviewSessionController(ISessionService service, IAiServiceClient aiServiceClient, IPaymentApiClient paymentApiClient)
+    public InterviewSessionController(
+        ISessionService service,
+        IAiServiceClient aiServiceClient,
+        IPaymentApiClient paymentApiClient,
+        ILogger<InterviewSessionController> logger)
     {
         _service = service;
         _aiServiceClient = aiServiceClient;
         _paymentApiClient = paymentApiClient;
+        _logger = logger;
     }
 
     /// <summary>
@@ -493,6 +499,16 @@ public class InterviewSessionController : ControllerBase
                 Response.Headers.Append("Retry-After", retryAfter.ToString());
             return StatusCode(ex.StatusCode, new { error = ex.ErrorCode, message = ex.Message });
         }
+        // PaymentAPI unreachable while charging the session. 503 with a fixed message, matching the
+        // ai-service shape in Init — the transport detail (host:port) is already in the service log
+        // and must not be echoed to the browser.
+        catch (CreditServiceUnavailableException ex)
+        {
+            _logger.LogWarning(ex, "Question generation failed: payment service unavailable for session {SessionId}.", id);
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                ApiResponse<object>.Fail("The payment service is temporarily unavailable. Please try again shortly."));
+        }
         catch (Exception ex)
         {
             return BadRequest(ApiResponse<object>.Fail(ex.Message));
@@ -592,9 +608,23 @@ public class InterviewSessionController : ControllerBase
             var result = await _service.InitAsync(userId, req, cancellationToken);
             return Ok(ApiResponse<InitResponse>.Ok(result));
         }
+        // ai-service could not plan the questions (down, timing out, or breaker open). 503 says
+        // "our side, try again shortly"; the old catch-all answered 400, which blamed the caller
+        // for a request that was perfectly valid.
+        catch (SessionInitDependencyException ex)
+        {
+            _logger.LogWarning(ex, "Session init failed: interview setup dependency unavailable.");
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                ApiResponse<object>.Fail("Interview setup is temporarily unavailable. Please try again shortly."));
+        }
         catch (Exception ex)
         {
-            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+            // Detail stays in the server log; the client gets a generic message. Returning
+            // ex.Message echoed internal exception text (and any path/connection string in it)
+            // straight to the browser.
+            _logger.LogError(ex, "Session init failed unexpectedly.");
+            return BadRequest(ApiResponse<object>.Fail("Could not start the interview session."));
         }
     }
     private bool TryGetAuthenticatedUserId(out Guid userId)
@@ -610,11 +640,23 @@ public class InterviewSessionController : ControllerBase
         {
             var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var balance = await _paymentApiClient.GetBalanceAsync(userId, cancellationToken);
-            return Ok(ApiResponse<object>.Ok(new { Balance = balance }));
+
+            // Unknown is NOT zero. Answering 200 with Balance = 0 would tell the caller the user
+            // is out of credits when the truth is that PaymentAPI did not answer.
+            if (!balance.Available)
+            {
+                _logger.LogWarning("Credit balance unavailable: {Reason}", balance.Message);
+                return StatusCode(
+                    StatusCodes.Status503ServiceUnavailable,
+                    ApiResponse<object>.Fail("Credit service is temporarily unavailable."));
+            }
+
+            return Ok(ApiResponse<object>.Ok(new { Balance = balance.Balance }));
         }
         catch (Exception ex)
         {
-            return StatusCode(500, ApiResponse<object>.Fail($"Failed to check credit balance: {ex.Message}"));
+            _logger.LogError(ex, "Credit balance check failed unexpectedly.");
+            return StatusCode(500, ApiResponse<object>.Fail("Failed to check credit balance."));
         }
     }
 }

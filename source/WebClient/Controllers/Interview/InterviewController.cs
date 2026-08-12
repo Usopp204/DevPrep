@@ -32,9 +32,11 @@ public class InterviewController(
     }
 
     // Populates the dashboard plus the user's current credit balance (shown next to each
-    // duration option — see CreditPricing/Views/Interview/Index.cshtml). Balance stays 0 if the
-    // user id can't be resolved from the auth cookie or the lookup fails; PaymentService already
-    // swallows its own errors and returns an empty CreditBalanceDto (see GetCreditBalanceAsync).
+    // duration option — see CreditPricing/Views/Interview/Index.cshtml). CreditBalance stays NULL
+    // ("unknown") if the user id can't be resolved from the auth cookie or PaymentAPI does not
+    // answer — GetCreditBalanceAsync returns null in that case rather than an empty DTO. The view
+    // renders unknown as a dash and keeps every duration selectable; Start is gated server-side by
+    // InterviewAPI, so a stale hint here can never let a user spend credits they do not have.
     private async Task<DashboardViewModel> BuildDashboardAsync(CancellationToken cancellationToken)
     {
         var dashboard = await interviewService.GetDashboardAsync(cancellationToken);
@@ -42,7 +44,7 @@ public class InterviewController(
         if (userId is not null)
         {
             var balance = await paymentService.GetCreditBalanceAsync(userId.Value, cancellationToken);
-            dashboard.CreditBalance = balance.Balance;
+            dashboard.CreditBalance = balance?.Balance;
         }
 
         // Best-effort: a failed lookup just means no banner, never breaks the dashboard.

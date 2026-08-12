@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text;
 using DotNetEnv;
 using InterviewAPI.Clients;
+using InterviewAPI.Http;
 using InterviewAPI.Models;
 using InterviewAPI.Repositories;
 using InterviewAPI.Repositories.Interfaces;
@@ -80,6 +81,15 @@ builder.Services.AddHttpClient<IUserApiClient, UserApiClient>(client =>
 })
 .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { UseProxy = false });
 
+// Circuit breakers for the two dependencies that can take a user-facing request down with them.
+// Singleton on purpose — see the class comment: a breaker that is rebuilt per request never opens.
+// The base addresses are passed in rather than re-read from configuration so the log lines name
+// the same address the HttpClient actually calls, with no second source of truth to drift.
+builder.Services.AddSingleton(sp => new ResiliencePolicies(
+    sp.GetRequiredService<ILoggerFactory>(),
+    aiServiceBaseUrl,
+    paymentBaseUrl!));
+
 builder.Services.AddHttpClient<IAiServiceClient, AiServiceClient>(client =>
 {
     client.BaseAddress = new Uri(aiServiceBaseUrl);
@@ -87,7 +97,8 @@ builder.Services.AddHttpClient<IAiServiceClient, AiServiceClient>(client =>
     if (!string.IsNullOrEmpty(aiServiceApiKey))
         client.DefaultRequestHeaders.Add("X-Internal-Api-Key", aiServiceApiKey);
 })
-.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { UseProxy = false });
+.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { UseProxy = false })
+.AddPolicyHandler((sp, _) => sp.GetRequiredService<ResiliencePolicies>().AiService);
 
 // Calls PaymentAPI to deduct/refund credits (internal API key for interview credit system).
 builder.Services.AddHttpClient<IPaymentApiClient, PaymentApiClient>(client =>
@@ -97,7 +108,8 @@ builder.Services.AddHttpClient<IPaymentApiClient, PaymentApiClient>(client =>
     if (!string.IsNullOrEmpty(internalApiKey))
         client.DefaultRequestHeaders.Add("X-Internal-Api-Key", internalApiKey);
 })
-.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { UseProxy = false });
+.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { UseProxy = false })
+.AddPolicyHandler((sp, _) => sp.GetRequiredService<ResiliencePolicies>().PaymentApi);
 
 // The hosted grading workers resolve this scoped client once per attempt.
 builder.Services.AddHttpClient<IEvaluationApiClient, EvaluationApiClient>(client =>

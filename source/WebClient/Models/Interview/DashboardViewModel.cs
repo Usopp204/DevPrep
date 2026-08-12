@@ -19,9 +19,14 @@ public class DashboardViewModel
     public InterviewSidebarViewModel Sidebar { get; set; } = new() { ActiveItem = "New" };
 
     // Current credit balance, shown next to the Duration options so the price/affordability of
-    // each is clear before Start (see WebClient.Helpers.CreditPricing). 0 if the balance lookup
-    // failed or the user could not be resolved from the auth cookie.
-    public int CreditBalance { get; set; }
+    // each is clear before Start (see WebClient.Helpers.CreditPricing).
+    //
+    // NULL means "unknown" — PaymentAPI did not answer, or the user could not be resolved from the
+    // auth cookie. It does NOT mean zero. This used to be a non-nullable int defaulting to 0, so an
+    // outage rendered as "0 credits", disabled every duration, and told the user they could not
+    // afford any interview while their wallet was actually fine. The view treats null as "don't
+    // block": the authoritative check is InterviewAPI's DeductCreditAsync at Start, not this hint.
+    public int? CreditBalance { get; set; }
 
     // Newest InProgress/Paused session, if any — drives the "resume your interview" banner.
     // Null means no active session (the normal case), not a failed lookup.

@@ -135,11 +135,16 @@
 
                 <div class="dash-field">
                     <label class="dash-label" asp-for="DurationMinutes">Duration</label>
-                    <p class="dash-hint">Your credit balance: <strong>@Model.CreditBalance</strong></p>
+                    @* Model.CreditBalance is null when PaymentAPI did not answer. Unknown is shown
+                       as a dash and never blocks a duration: the authoritative affordability check
+                       runs server-side in InterviewAPI at Start. Rendering unknown as 0 (the old
+                       behaviour) disabled every option and told the user they were out of credits
+                       during an outage. *@
+                    <p class="dash-hint">Your credit balance: <strong>@(Model.CreditBalance?.ToString() ?? "—")</strong></p>
                     <select asp-for="DurationMinutes" class="dash-input">
                         @foreach (var (minutes, cost) in WebClient.Helpers.CreditPricing.DurationToCreditCost)
                         {
-                            var affordable = Model.CreditBalance >= cost;
+                            var affordable = Model.CreditBalance is null || Model.CreditBalance >= cost;
                             <option value="@minutes" disabled="@(!affordable)">
                                 @minutes Minutes — @cost credits@(affordable ? "" : " (insufficient balance)")
                             </option>
@@ -148,7 +153,7 @@
                     @{
                         var cheapestCost = WebClient.Helpers.CreditPricing.DurationToCreditCost.Values.Min();
                     }
-                    @if (Model.CreditBalance < cheapestCost)
+                    @if (Model.CreditBalance is int knownBalance && knownBalance < cheapestCost)
                     {
                         <div class="dash-alert">
                             Not enough credit for any interview duration.
