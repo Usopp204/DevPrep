@@ -18,7 +18,7 @@
 | File | Used by | DB target | Committed? |
 |---|---|---|---|
 | `.env` (root) | manual startup, `dotnet run`, venv ai-service | `localhost\MSSQLSERVER01` — **unchanged throughout Phase 1** | No (gitignored) |
-| `infra/.env.docker` (**new**) | `docker compose` only | `sqlserver,1433` | No — but `infra/.env.docker.example` is |
+| `infra/.env.docker` (**new**) | `docker compose` only, and **only via `--env-file .env.docker`** | `sqlserver,1433` | No — but `infra/.env.docker.example` is |
 
 Every config change in this checklist follows the same shape: **read from an env var, default to today's literal value.** Container mode overrides via compose; local mode falls through to the default and behaves exactly as it does now.
 
@@ -48,7 +48,7 @@ DotNetEnv's `TraversePath()` walks *up* from the working directory, so it still 
 Running a DLL directly **ignores `launchSettings.json`** (the script says so at `:28-29`), so the environment is unset and .NET defaults to **Production**. Consequences:
 - `appsettings.Development.json` does not load.
 - Swagger disappears (all 11 services gate it behind `IsDevelopment()`).
-- **`source/ApiGateway/appsettings.Production.json` DOES load** — the file Batch C added, containing compose DNS names. **The gateway will try to route to `http://authapi:8080/`, which does not resolve on the host, and every route fails.** This is the single most likely confusing failure of manual startup, and it is a direct consequence of a Batch C change.
+- ~~The gateway loads compose DNS names and 502s every route.~~ **Fixed in Batch G.** Batch C originally put the compose cluster addresses in `appsettings.Production.json`, so an unset variable loaded them on the host and broke every gateway route — a symptom that mimics a YARP path-prefix bug. The file is now `appsettings.Compose.json`, loaded only under `ASPNETCORE_ENVIRONMENT=Compose`, so the accidental `Production` default loads nothing and the gateway falls back to `appsettings.json`. **Setting `Development` is still correct for parity, but forgetting it is no longer destructive for the gateway.**
 
 **(3) `--urls http://localhost:<port>` (`run-all.ps1:79`).**
 Nine services compute their own URL from `SERVICE_BIND_HOST`/`<SVC>_API_PORT` and would bind correctly anyway. But **AuthAPI and WebClient have no `UseUrls()` call** — with no `--urls` and no `launchSettings.json`, they fall back to Kestrel's default **`http://localhost:5000`**, not 7001/5130. Always pass `--urls`.
@@ -221,9 +221,11 @@ $env:ASPNETCORE_ENVIRONMENT = 'Development'
 dotnet bin\Debug\net8.0\NewsAPI.dll --urls http://localhost:7009
 
 cd Q:\DevPrep\source\ApiGateway
-$env:ASPNETCORE_ENVIRONMENT = 'Development'   # WITHOUT this the gateway loads appsettings.Production.json and routes to compose DNS names
+$env:ASPNETCORE_ENVIRONMENT = 'Development'   # parity with other services; the gateway no longer breaks without it (Batch G)
 dotnet bin\Debug\net8.0\ApiGateway.dll --urls http://localhost:7000
 ```
+(Since the compose overrides moved to `appsettings.Compose.json`, forgetting `ASPNETCORE_ENVIRONMENT` here is now harmless — the gateway falls back to `appsettings.json`. Setting it to `Development` is still right, to keep parity with the other services.)
+
 Then `curl http://localhost:7000/api/news` returns as before. Also:
 `grep -rn "localhost:70" source --include="*.json" --include="*.cs" | grep -v /obj/ | grep -v /bin/` → only config defaults remain.
 **Local dev impact:** none — defaults reproduce current values exactly.
@@ -319,7 +321,9 @@ Then the highest-value check in Phase 1, because it exercises the whole config c
 # 7006 Evaluation, 7007 Feedback, 7008 Payment, 7009 News, 7010 Notification,
 # 7000 ApiGateway, 5130 WebClient
 ```
-Watch for two specific failures this batch could cause: any service reporting a missing config key at startup (a key that was silently resolving from `.env.example`), and the gateway 502-ing every route (that means `ASPNETCORE_ENVIRONMENT` was not set and `appsettings.Production.json` loaded).
+Watch for one specific failure this batch could cause: any service reporting a missing config key at startup — that would be a key which had been silently resolving from `.env.example`.
+
+*(The gateway-502 failure this step used to warn about is gone: the compose overrides now live in `appsettings.Compose.json`, which an unset `ASPNETCORE_ENVIRONMENT` never loads.)*
 **Local dev impact:** none **after** the pre-check is handled.
 
 ---
@@ -358,10 +362,16 @@ ApiGateway instead takes `GLOBAL_API_GATEWAY_PORT=8080` (it already binds `0.0.0
 
 **Prerequisite from blocker B-3:** ApiGateway and WebClient must have a `/health` endpoint before their containers can ever report healthy. Land that first or their `depends_on` gates will never open.
 
-> ### H-1 — `ASPNETCORE_ENVIRONMENT` is per-service, and only the gateway gets `Production`
-> Batch C added `source/ApiGateway/appsettings.Production.json` holding the ten compose-DNS cluster addresses. It loads only under `ASPNETCORE_ENVIRONMENT=Production`.
+> ### H-1 — `ASPNETCORE_ENVIRONMENT` is per-service; the gateway gets `Compose`, never `Production`
+> Batch C added the gateway's compose-DNS cluster addresses, now in **`source/ApiGateway/appsettings.Compose.json`**. It loads only under `ASPNETCORE_ENVIRONMENT=Compose`.
 >
-> **Set `Production` on the `apigateway` container only. Leave every other service on `Development`.**
+> **The name is deliberate and must not be changed back to `Production`.** .NET defaults to `Production` when the variable is unset, which is exactly what happens when a service is started by hand. Had this file kept the `Production` name, forgetting the variable would load compose DNS names on a developer machine and 502 every route — a symptom that mimics a YARP path-prefix bug. With `Compose`, the accidental default loads nothing and the gateway falls back to `appsettings.json`'s `localhost:700x` addresses and works. The collision is removed rather than guarded, so there is no detection code that can itself misfire.
+>
+> Safe because **no service branches on the environment name**: verified, the only environment check anywhere in `source/` is `IsDevelopment()` (11 services; the gateway has none). Under an unrecognised name like `Compose`, `IsDevelopment()` is false — identical to `Production` — and nothing reads the name itself.
+>
+> Also verified: `ApiGateway.csproj` uses `Microsoft.NET.Sdk.Web`, whose implicit `appsettings.*.json` glob copies the new file to the output directory automatically. No csproj change is needed.
+>
+> **Set `Compose` on the `apigateway` container only. Leave every other service on `Development`.**
 >
 > Verified rationale: `ApiGateway/Program.cs` contains **zero** `IsDevelopment()` branches — no Swagger, no developer exception page — so Production costs it nothing. Every one of the other eleven services has exactly one `IsDevelopment()` branch (Swagger UI for the APIs, the dev exception page for WebClient). Putting them in Production would silently remove both, which is precisely the debugging surface Batch H needs.
 >
@@ -370,7 +380,7 @@ ApiGateway instead takes `GLOBAL_API_GATEWAY_PORT=8080` (it already binds `0.0.0
 > ```yaml
 > apigateway:
 >   environment:
->     - ASPNETCORE_ENVIRONMENT=Production     # gateway ONLY
+>     - ASPNETCORE_ENVIRONMENT=Compose        # gateway ONLY — see the naming note above
 > interviewapi:
 >   environment:
 >     - ASPNETCORE_ENVIRONMENT=Development    # keep Swagger for debugging
@@ -399,7 +409,7 @@ ApiGateway instead takes `GLOBAL_API_GATEWAY_PORT=8080` (it already binds `0.0.0
 >   "Match": { "Path": "/avatars/{**catch-all}" }
 > }
 > ```
-> No `PathRemovePrefix` — UserAPI serves these at `/avatars/...` and expects the path intact. Additive only; it adds a route that does not exist today and changes no existing one. The matching entry must also go into `appsettings.Production.json`? **No** — routes are inherited from `appsettings.json` and only cluster *addresses* are overridden there (see the `_comment` in that file).
+> No `PathRemovePrefix` — UserAPI serves these at `/avatars/...` and expects the path intact. Additive only; it adds a route that does not exist today and changes no existing one. It does **not** need a matching entry in `appsettings.Compose.json`: routes are inherited from `appsettings.json`, and only cluster *addresses* are overridden there (see the `_comment` in that file).
 >
 > **Fix, part 2 — env var for the UserAPI container.** `FILE_PUBLIC_BASE_URL=http://localhost:7000` (the gateway's published port, i.e. what the *browser* can reach). Note this is a browser-facing URL, so it takes the host address — the same trap as VNPay's `ReturnUrl` at `.env:63`, and the opposite of every other compose URL in §1.4. `LocalFileStorageService.cs:25` already reads this key from configuration, so **no code change is required**; the const at line 12 stays as the correct local-dev default.
 >
@@ -417,11 +427,62 @@ ApiGateway instead takes `GLOBAL_API_GATEWAY_PORT=8080` (it already binds `0.0.0
 
 **Commits (one per service):** `chore(compose): add <Service> to the compose stack`
 
+> ### H-4 — WebClient's `/health` is a middleware, not `MapGet`. Do not "simplify" it.
+> `source/WebClient/Program.cs` registers `/health` as the **first middleware in the pipeline**, before `UseHttpsRedirection()`. This looks inconsistent with the other 11 services, which use `app.MapGet("/health", ...)`. It is deliberate.
+>
+> `WebClient/Program.cs:28` calls `app.UseHttpsRedirection()`. A `MapGet` endpoint registered after it would be **307-redirected to HTTPS**, which the container does not serve. `curl -f` returns **exit code 0** on a 3xx when `-L` is not passed — so the Dockerfile's `HEALTHCHECK` would report the container **healthy without ever reaching the endpoint**.
+>
+> That is worse than a broken probe: `condition: service_healthy` in `docker-compose.yml` would be satisfied by a redirect, so the dependency gate the whole compose ordering relies on would be silently meaningless for this container. Registering the probe first also keeps it clear of `UseSession`, `UseAuthentication`, `AccountValidationMiddleware`, and `BlockedAccountMiddleware`.
+>
+> ApiGateway uses plain `MapGet` because it has no `UseHttpsRedirection` — but it *must* stay registered before `MapReverseProxy()` so the proxy's catch-all routes cannot claim `/health`.
+
+> ### ⏱ Allow for cold start before concluding anything failed
+> **`curl` returning `000` means "no response yet", not "the check failed."** A .NET container needs a few seconds after `docker compose up` returns before Kestrel is listening; probing immediately gives `000` (curl's code for *no HTTP response received*), which reads like a hard failure and sends you hunting a bug that does not exist.
+>
+> This is not hypothetical — it happened during the Batch H gateway verification. Three `000` results on the first attempt; the same commands seconds later returned `HTTP/1.1 200` and `{"service":"ApiGateway","status":"ok"}`.
+>
+> **Before treating any HTTP check in this checklist as a failure:**
+> 1. Wait for the container to report ready — `docker compose ... logs <service>` should show `Now listening on: http://0.0.0.0:8080`.
+> 2. Re-run the check.
+> 3. Use `curl -v` rather than `-s -o NUL -w "%{http_code}"` when diagnosing — `000` alone tells you nothing about *why*, whereas `-v` distinguishes connection-refused from timeout from a real HTTP error.
+>
+> The Dockerfile `HEALTHCHECK` blocks already account for this with `--start-period=20s`; the manual checks in this document have no such grace and depend on you allowing it.
+
+### Expected first-run state — tell expected-broken from actually-broken
+
+Schema is committed (`db/baseline/*.sql`) and applied by `db-init`. **All 15 services should reach healthy.**
+
+| Service | Expected | Notes |
+|---|---|---|
+| `sqlserver` | ✅ healthy (~30 s) | Fails immediately if `MSSQL_SA_PASSWORD` is empty or too weak |
+| `db-init` | ✅ **`Exited (0)`** | Not "healthy" — a one-shot container. `applied=10 skipped=0` on a fresh volume; `applied=0 skipped=10` on a re-run |
+| `ai-service` | ✅ healthy, but **slow** — see below | 15–40 min first build, then several minutes of model warm-up before `/health` passes |
+| `authapi`, `userapi`, `cvjdapi`, `questionapi`, `interviewapi`, `evaluationapi`, `feedbackapi`, `paymentapi`, `newsapi`, `notificationapi` | ✅ healthy | All ten start cleanly once `db-init` exits 0 |
+| `apigateway` | ✅ healthy | Waits for all ten backends |
+| `webclient` | ✅ healthy | Waits for `apigateway` |
+
+**`cvjdapi` and `notificationapi` no longer crash-loop.** Both touched the DB during startup (`EnsureCreated()` at `CvJdAPI/Program.cs:68`, `SeedEmailTemplatesAsync()` at `NotificationAPI/Program.cs:61`) and now find their schema present. `notificationapi` additionally **seeds its own `EmailTemplates`**, so that table is populated even though the baseline carries no rows.
+
+**Structurally healthy ≠ functionally complete.** The baselines are schema-only — **zero `INSERT` statements in all ten**. Everything starts, but these tables are empty:
+
+| Empty table | Consequence |
+|---|---|
+| `DevPrep_Question.Questions`, `.QuestionCategories`, `.Positions` | **Starting an interview fails** — nothing to plan questions from, and ai-service's RAG index seeds from `/internal/questions/export`, which returns `[]` |
+| `DevPrep_Payment.CreditPackages` | Buy Credits page renders empty; credits cannot be purchased |
+
+Neither breaks a container. Both break the demo path. See "Seed data gap" below.
+
+**Anything outside this table is a real problem** — in particular a service failing with a *config* error rather than a *data* error.
+
 **Verify:**
 ```bash
-cd infra && docker compose config --quiet          # schema of the compose file is valid
-docker compose up -d apigateway webclient
-docker compose ps                                   # both healthy
+# Lint needs NO env file — unset ${VAR} are warnings, not errors. Structure only.
+cd infra && docker compose -f docker-compose.yml config --quiet
+
+# Everything else needs --env-file: Compose reads ${VAR} from a file named exactly
+# `.env`, never from `.env.docker`. Forgetting it makes all nine substitutions empty.
+docker compose --env-file .env.docker -f docker-compose.yml up -d apigateway webclient
+docker compose --env-file .env.docker -f docker-compose.yml ps          # both healthy
 curl -fsS http://localhost:7000/                    # gateway answers
 # lockdown gate — MUST all fail:
 for p in 7001 7002 7003 7004 7005 7006 7007 7008 7009 7010; do
@@ -485,17 +546,27 @@ Everything below depends on committed baseline schema (`docs/architecture/schema
 | `db/baseline/000_*.sql` | The 10 baseline scripts | **No — blocked** |
 | `.gitignore:106` | Remove `/source/*/Sql/` | **No — blocked (TIER 3)** |
 
-**Partial verify available now:** `docker compose up -d sqlserver && docker compose ps` → healthy. Confirms image tag, password complexity, and volume before approval lands.
-**Full verify (blocked):** `docker compose run --rm db-init` exits `0` and `sqlcmd -Q "SELECT name FROM sys.databases"` lists all 10.
+**Partial verify available now:**
+```bash
+docker compose --env-file .env.docker -f docker-compose.yml up -d sqlserver
+docker compose --env-file .env.docker -f docker-compose.yml ps        # healthy
+```
+Confirms the image tag, that `MSSQL_SA_PASSWORD` satisfies the complexity policy, and the named volume — all before schema approval lands. If the container exits immediately, the password is empty (missing `--env-file`) or too weak.
+
+**Full verify (blocked on schema):**
+```bash
+docker compose --env-file .env.docker -f docker-compose.yml run --rm db-init   # exits 0
+```
+then `sqlcmd -Q "SELECT name FROM sys.databases"` lists all 10.
 
 ### Batch L — Full-stack acceptance
 **Blocked by:** Batch K complete
 
 | Check |
 |---|
-| `docker compose up -d` on a clean clone → 15 services, all healthy, `db-init` `exited (0)` |
+| `docker compose --env-file .env.docker -f docker-compose.yml up -d` on a clean clone → 15 services, all healthy, `db-init` `exited (0)` |
 | Browser → `localhost:5130` → log in → start interview → answer a question |
-| `docker compose exec apigateway curl -fsS http://interviewapi:8080/health` → 200 |
+| `docker compose --env-file .env.docker -f docker-compose.yml exec apigateway curl -fsS http://interviewapi:8080/health` → 200 |
 | Lockdown gate (Batch H command) still all-refused |
 
 ### Batch M — CvJdAPI schema trap

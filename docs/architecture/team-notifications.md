@@ -91,7 +91,7 @@ Record of what has **already been written** into teammate-owned service director
 | B | AuthAPI, PaymentAPI, UserAPI, NewsAPI, NotificationAPI | `Dockerfile` | Written, pending commit |
 | B | CvJdAPI, QuestionAPI, FeedbackAPI | `Dockerfile` | Written, pending commit |
 | C | **QuestionAPI** | `Program.cs:87` — **logic change, see §0.9** | Written, pending commit |
-| C | ApiGateway | `appsettings.Production.json` (new) | Written, pending commit |
+| C | ApiGateway | `appsettings.Compose.json` (new; created as `appsettings.Production.json` in Batch C, renamed in Batch G) | Written, pending commit |
 | D | **UserAPI** | `Program.cs:46-73` — peer URLs to config, see §0.10 | Written, pending commit |
 | E | **CvJdAPI** | `appsettings.json` + `appsettings.Development.json` + 4 endpoint files — **AI_SERVICE_URL fixed, see §0.11** | Written, pending commit |
 | F | ApiGateway, CvJdAPI, EvaluationAPI, FeedbackAPI, InterviewAPI, QuestionAPI | `Program.cs` — removed `.env.example` runtime load | Written, pending commit |
