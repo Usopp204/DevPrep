@@ -3,6 +3,19 @@ using WebClient.Services.Shared;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Explicit UseUrls(), not ASPNETCORE_URLS: appsettings.json used to carry its own
+// "Urls" key, which occupies the same configuration key ("urls") that ASPNETCORE_URLS
+// would need to override — but the unprefixed environment-variable provider that
+// builds this IConfiguration reads that env var under the literal key
+// "ASPNETCORE_URLS", never touching "urls", so appsettings.json's value always won
+// regardless of what ASPNETCORE_URLS was set to (see phase1-checklist.md H-2). The
+// stale "Urls" key has been removed from appsettings.json; this explicit call is now
+// the single source of truth, matching the pattern every backend service already
+// uses (SERVICE_BIND_HOST + <SVC>_API_PORT).
+var servicePort = builder.Configuration.GetValue<int>("WEBCLIENT_PORT", 5130);
+var bindHost = builder.Configuration.GetValue<string>("SERVICE_BIND_HOST", "localhost");
+builder.WebHost.UseUrls($"http://{bindHost}:{servicePort}");
+
 builder.Services.AddControllersWithViews();
 builder.Services.AddWebClientServices(builder.Configuration);
 builder.Services.AddSingleton<IHomeFeedbackPopupGate, HomeFeedbackPopupGate>();

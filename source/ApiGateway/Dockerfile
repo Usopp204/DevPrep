@@ -37,16 +37,7 @@ ENV GLOBAL_API_GATEWAY_PORT=8080 \
 
 EXPOSE 8080
 
-# --- B-3: no HEALTHCHECK yet ----------------------------------------------------
-# ApiGateway has NO /health endpoint — Program.cs maps only the reverse proxy, so a
-# `curl /health` probe would fail forever and the container would sit permanently
-# `unhealthy`, which would in turn block every `depends_on: condition: service_healthy`
-# in Batch H.
-#
-# Adding /health means editing source/ApiGateway/Program.cs, which is NOT part of
-# Batch B's file list, so it is deliberately NOT pulled forward here. When it is added
-# it must be registered BEFORE app.MapReverseProxy() or the proxy catch-all swallows it.
-#
-# Batch H must not use `condition: service_healthy` against this service until then.
+HEALTHCHECK --interval=30s --timeout=3s --start-period=20s --retries=3 \
+  CMD curl -fsS http://localhost:8080/health || exit 1
 
 ENTRYPOINT ["dotnet", "ApiGateway.dll"]

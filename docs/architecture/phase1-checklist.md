@@ -388,12 +388,25 @@ ApiGateway instead takes `GLOBAL_API_GATEWAY_PORT=8080` (it already binds `0.0.0
 > ```
 > Mixed environments across containers is unusual but valid, and deliberate here. Revisit before a production deployment; for the demo it is the right trade.
 
-> ### H-2 — WebClient defines its listen URL twice
-> `source/WebClient/appsettings.json:2` sets `"Urls": "http://localhost:5130"`, **in addition to** the `ApiGateway:BaseUrl` entry at `:4` that Batch C reviewed. Two different keys, two different purposes: `Urls` is where WebClient *listens*, `ApiGateway:BaseUrl` is what it *calls*.
+> ### H-2 — WebClient defined its listen URL twice; the wrong one won
+> `source/WebClient/appsettings.json:2` used to set `"Urls": "http://localhost:5130"`, in addition to the `ApiGateway:BaseUrl` entry at `:4` that Batch C reviewed. Two different keys, two different purposes: `Urls` is where WebClient *listens*, `ApiGateway:BaseUrl` is what it *calls*.
 >
-> The container is fine — `source/WebClient/Dockerfile` sets `ASPNETCORE_URLS=http://0.0.0.0:8080`, and the environment-variable provider is registered after the JSON provider, so the env var wins and WebClient binds `0.0.0.0:8080` as intended.
+> **The original conclusion here was wrong — corrected after the container proved it.** It assumed the environment-variable provider, registered after the JSON provider in the standard configuration chain, would override JSON's `"Urls"` key with `ASPNETCORE_URLS` the way later sources normally override earlier ones by key. The running container instead logged `Now listening on: http://localhost:5130` — JSON won, the container never bound `0.0.0.0:8080`, `5130:8080` on the host mapped to nothing, and the healthcheck (once B-3 added one) reported unhealthy because `curl` inside the container hit an empty port 8080.
 >
-> Recorded because it is genuinely non-obvious: a future reader debugging a WebClient port problem will find `"Urls": "http://localhost:5130"` in appsettings.json, assume it is authoritative, and lose time. If that binding ever *does* look wrong in a container, the cause is provider ordering, not this line.
+> **Root cause:** `ASPNETCORE_URLS` and appsettings.json's `"Urls"` key are not on equal footing in the merged configuration, despite both looking like they target the same setting. `builder.Configuration`'s environment-variable provider is unprefixed, so the env var `ASPNETCORE_URLS` lands under the literal config key `"ASPNETCORE_URLS"` — never `"urls"`/`"Urls"`, the key Kestrel's address binding actually reads from the final merged configuration. Nothing in that chain ever overrides JSON's `"Urls"` entry, so JSON wins by being the *only* source that ever wrote to that exact key — not because it is "later." (`ASPNETCORE_URLS` does work as a default when no appsettings.json `"Urls"` key exists, via a separate `ASPNETCORE_`-prefixed bootstrap read that seeds Kestrel before the full configuration is built — which is why no other service was affected.)
+>
+> **Is this a general precedence rule, or specific to WebClient?** Specific — but the *mechanism* would hit any service with both an appsettings.json `"Urls"` key and no explicit `UseUrls()` call. Checked: grepped every `appsettings*.json` under `source/` for a `"Urls"` key — **only WebClient had one.** All nine backend services plus ApiGateway call `builder.WebHost.UseUrls(...)` explicitly in code, which bypasses this key collision entirely (an explicit code call always wins over configuration, full stop). AuthAPI has neither an explicit `UseUrls()` nor a JSON `"Urls"` key, so plain `ASPNETCORE_URLS` works for it unmodified. WebClient was the only service with both conditions at once.
+>
+> **Fix:** `source/WebClient/Program.cs` now calls `builder.WebHost.UseUrls($"http://{bindHost}:{servicePort}")` explicitly, reading `SERVICE_BIND_HOST` (default `localhost`) and `WEBCLIENT_PORT` (default `5130`) — the identical pattern the backend services use for the identical reason. `source/WebClient/Dockerfile` sets `SERVICE_BIND_HOST=0.0.0.0` and `WEBCLIENT_PORT=8080`, replacing the now-dead `ASPNETCORE_URLS=http://0.0.0.0:8080` line. The stale `"Urls": "http://localhost:5130"` key was removed from `appsettings.json` — it is fully superseded by the explicit call, and leaving it in place is exactly what caused this. Local dev (`run-all.ps1`, which passes `--urls http://localhost:5130` on the command line) is unaffected: command-line args still win there regardless, and the code's new defaults resolve to the identical value even if they didn't.
+>
+> **Verify — do not assume, this healthcheck has never actually passed:**
+> ```powershell
+> docker compose --env-file .env.docker build webclient
+> docker compose --env-file .env.docker up -d webclient
+> docker logs devprep-webclient | Select-String "Now listening"   # must show http://0.0.0.0:8080, not localhost:5130
+> docker ps --filter name=devprep-webclient                        # STATUS must show (healthy), not (unhealthy) or none
+> curl http://localhost:5130/health                                 # from the host, through the 5130->8080 mapping
+> ```
 
 > ### H-3 — Avatar files are served outside the gateway and break under port lockdown
 > **Two changes needed in Batch H. No code change, and — verified below — no data migration.**
