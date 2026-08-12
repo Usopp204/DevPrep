@@ -19,6 +19,23 @@ builder.Services.AddSession(options =>
 
 var app = builder.Build();
 
+// Liveness probe for the container HEALTHCHECK. Deliberately trivial — a literal 200, no
+// dependency checks.
+// Registered as the FIRST middleware, before UseHttpsRedirection and before the auth/account
+// middlewares, for two reasons: the container serves plain HTTP, so a redirect to HTTPS would
+// make the probe meaningless; and the probe must not be affected by session, authentication,
+// or the blocked-account checks further down the pipeline.
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path == "/health")
+    {
+        await context.Response.WriteAsJsonAsync(new { service = "WebClient", status = "ok" });
+        return;
+    }
+
+    await next();
+});
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
