@@ -1,10 +1,111 @@
 # ==============================================================================
-# DEVPREP INFRASTRUCTURE - DOCKER COMPOSE ORCHESTRATION
+# DEVPREP — FULL STACK
+# ==============================================================================
+#
+# ┌────────────────────────────────────────────────────────────────────────────┐
+# │ EXPECTED FIRST-RUN STATE — READ BEFORE DEBUGGING                           │
+# │                                                                            │
+# │ Schema is now committed (db/baseline/*.sql) and applied by db-init, so all │
+# │ 15 services SHOULD reach healthy. db-init exits 0 after ~30s.              │
+# │                                                                            │
+# │ ONE KNOWN GAP: the baselines are schema-only — they contain ZERO INSERT    │
+# │ statements. So Questions, QuestionCategories, Positions and CreditPackages │
+# │ start EMPTY. Every service still starts and reports healthy; the failure   │
+# │ is functional, not structural:                                             │
+# │   - starting an interview fails (no questions to plan from)                │
+# │   - the Buy Credits page is empty (no credit packages)                     │
+# │ EmailTemplates is fine — NotificationAPI seeds it itself at startup.       │
+# │                                                                            │
+# │ ai-service takes 15-40 min on FIRST build (CUDA base + model download) and │
+# │ a few more minutes to warm models before /health passes.                   │
+# │                                                                            │
+# │ ANYTHING ELSE failing is a real problem. Full table in                     │
+# │ docs/architecture/phase1-checklist.md → "Expected first-run state".        │
+# └────────────────────────────────────────────────────────────────────────────┘
+#
+# PORT LOCKDOWN — ACCEPTANCE GATE. Only `apigateway` and `webclient` may have a
+# `ports:` block. Every other service is reachable ONLY on the internal network.
+# Adding `ports:` to anything else is a review-blocking defect, not a preference:
+# centralising auth at the gateway while leaving service ports open would make the
+# system less secure than it is today. Dev-only publishing goes in
+# docker-compose.override.yml, which is not used in a demo or deployment.
+#
+# ┌────────────────────────────────────────────────────────────────────────────┐
+# │ ⚠ EVERY COMMAND NEEDS --env-file. THERE IS NO WORKING SHORT FORM.          │
+# │                                                                            │
+# │     docker compose --env-file .env.docker -f docker-compose.yml <cmd>      │
+# │                                                                            │
+# │ Compose resolves ${VAR} from the shell environment and from a file named   │
+# │ exactly `.env` in this directory — NOT from `.env.docker`. Without the      │
+# │ flag, all nine ${...} references below silently become empty strings.      │
+# │                                                                            │
+# │ The failure is loud, not silent: sqlserver refuses to start with an empty  │
+# │ MSSQL_SA_PASSWORD, and authapi throws "Jwt:Key is missing". If you see     │
+# │ either, you forgot the flag.                                               │
+# │                                                                            │
+# │ `-f docker-compose.yml` is also deliberate: it excludes                    │
+# │ docker-compose.override.yml, which publishes extra ports and would break   │
+# │ the lockdown gate. Omit it only when you WANT the dev overrides.           │
+# └────────────────────────────────────────────────────────────────────────────┘
+#
+# The repo-root .env is NOT used for substitution here — it stays pointed at the
+# local SQL Server instance so manual PowerShell startup keeps working unchanged.
+# (ai-service separately reads ../.env and ./.env via `env_file:`; that is a
+# different mechanism and is unaffected by --env-file.)
 # ==============================================================================
 
 services:
+
   # ----------------------------------------------------------------------------
-  # 1. CORE AI SERVICE (FASTAPI + NVIDIA GPU PASSTHROUGH)
+  # DATA
+  # ----------------------------------------------------------------------------
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-CU16-ubuntu-22.04
+    container_name: devprep-sqlserver
+    restart: unless-stopped
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=${MSSQL_SA_PASSWORD}
+      - MSSQL_PID=Developer
+    volumes:
+      - mssql-data:/var/opt/mssql
+    healthcheck:
+      # The image refuses to start with a weak password, so a failure here usually
+      # means MSSQL_SA_PASSWORD is missing or under 8 chars with complexity.
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks: [devprep-internal-net]
+
+  db-init:
+    # One-shot: waits for SQL Server, creates the 10 catalogs, applies
+    # db/baseline/*.sql in numeric order, verifies all ten exist. Exits 0.
+    #
+    # Every application service gates on this with service_completed_successfully,
+    # because F-01's cross-database queries mean a service can fail at runtime if
+    # ANY of the ten is missing, not just its own.
+    #
+    # Idempotent at the DATABASE level: the baselines are raw SSMS output with no
+    # IF NOT EXISTS guards, so init.sh counts user tables and skips any database
+    # that already has them. Re-running on an existing volume is a no-op.
+    # Does NOT apply source/<Service>/Sql/*.sql — see the note at the end of init.sh.
+    image: mcr.microsoft.com/mssql-tools:latest
+    container_name: devprep-db-init
+    depends_on:
+      sqlserver: { condition: service_healthy }
+    environment:
+      - MSSQL_SA_PASSWORD=${MSSQL_SA_PASSWORD}
+    volumes:
+      - ../db:/db:ro
+      - ../source:/source:ro
+    entrypoint: ["/bin/bash", "/db/init.sh"]
+    restart: "no"
+    networks: [devprep-internal-net]
+
+  # ----------------------------------------------------------------------------
+  # AI SERVICE (GPU)
   # ----------------------------------------------------------------------------
   ai-service:
     shm_size: '4gb'
@@ -13,36 +114,24 @@ services:
       dockerfile: Dockerfile
     container_name: devprep-ai-node
     restart: unless-stopped
-    # Exposing port 8000 to the host for direct debugging + the test UI at
-    # http://localhost:8080/ui/interviewdashboard.html
-    ports:
-      - "8080:8000"
-    # Env layering: the repo-root .env is the single source of truth (keys, model ids);
-    # infra/.env only overrides container-specific paths. Later files win.
+    # NO ports: — internal-network only, per the lockdown gate. Host access for
+    # the test UI or a cloudflared tunnel goes in docker-compose.override.yml.
     env_file:
       - ../.env
       - .env
     volumes:
-      # Localized model weights (no image bloat, hot-swappable).
       - ../ai-service/models:/app/models
       - tts-cache:/app/tts_cache
-      # Persist the ChromaDB index across rebuilds (matches CHROMA_DIR below).
-      # Separate dir from the venv mode's ./chroma_data so the two modes never
-      # write to the same Chroma index concurrently.
       - ../ai-service/chroma_data_docker:/app/chroma_data
-      # Mount the test UI so /ui works without rebaking the image (edit live).
       - ../ai-service/test-ui:/app/test-ui
-      # Cache HuggingFace weights (embedder + Gemma) to avoid re-downloading.
       - hf-cache:/root/.cache/huggingface
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
     environment:
       - PYTHONUNBUFFERED=1
-      - HF_TOKEN=${HF_TOKEN}                 # gated Gemma weights
-      # Non-secret runtime config consumed by the app:
+      - HF_TOKEN=${HF_TOKEN}
       - HF_HOME=/root/.cache/huggingface
       - CHROMA_DIR=/app/chroma_data
       - EMBED_MODEL=BAAI/bge-m3
-    # Real readiness probe (/health responds immediately; models load lazily).
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
@@ -56,20 +145,248 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu]
-    networks:
-      - devprep-internal-net
+    networks: [devprep-internal-net]
 
-# ----------------------------------------------------------------------------
-# 2. VIRTUAL NETWORK TOPOLOGY
-# ----------------------------------------------------------------------------
+  # ----------------------------------------------------------------------------
+  # BACKEND SERVICES
+  # Build context is the REPOSITORY ROOT (blocker B-1): AuthAPI, UserAPI and
+  # NotificationAPI reference ../../contracts/auth/auth.csproj, outside source/.
+  # SERVICE_BIND_HOST / <SVC>_API_PORT are already set in each Dockerfile (B-2);
+  # only per-environment values are repeated here.
+  # ----------------------------------------------------------------------------
+  authapi:
+    build: { context: .., dockerfile: source/AuthAPI/Dockerfile }
+    container_name: devprep-auth
+    restart: unless-stopped
+    depends_on:
+      db-init: { condition: service_completed_successfully }
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - AUTH_DB_CONNECTION_STRING=Server=sqlserver,1433;Database=DevPrep_Auth;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;Encrypt=False;
+      - USER_API_BASEURL=http://userapi:8080
+      - NOTIFICATION_API_BASEURL=http://notificationapi:8080
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY}
+      - Jwt__Key=${JWT_KEY}
+      - Jwt__Issuer=${JWT_ISSUER}
+      - Jwt__Audience=${JWT_AUDIENCE}
+    networks: [devprep-internal-net]
+
+  userapi:
+    build: { context: .., dockerfile: source/UserAPI/Dockerfile }
+    container_name: devprep-user
+    restart: unless-stopped
+    depends_on:
+      db-init: { condition: service_completed_successfully }
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - USER_DB_CONNECTION_STRING=Server=sqlserver,1433;Database=DevPrep_User;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;Encrypt=False;
+      # AdminUserRepository still reads ConnectionStrings:DefaultConnection (see .env comment).
+      - ConnectionStrings__DefaultConnection=Server=sqlserver,1433;Database=DevPrep_User;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;Encrypt=False;
+      - AUTH_API_BASEURL=http://authapi:8080
+      - INTERVIEW_API_BASEURL=http://interviewapi:8080
+      - PAYMENT_API_BASEURL=http://paymentapi:8080
+      # BROWSER-facing URL for avatar links (H-3): must be the gateway's PUBLISHED
+      # host port, not a compose DNS name — a browser cannot resolve userapi:8080.
+      # Depends on the /avatars route added to ApiGateway/appsettings.json.
+      - FILE_PUBLIC_BASE_URL=http://localhost:7000
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY}
+      - Jwt__Key=${JWT_KEY}
+      - Jwt__Issuer=${JWT_ISSUER}
+      - Jwt__Audience=${JWT_AUDIENCE}
+    networks: [devprep-internal-net]
+
+  cvjdapi:
+    build: { context: .., dockerfile: source/CvJdAPI/Dockerfile }
+    container_name: devprep-cvjd
+    restart: unless-stopped
+    depends_on:
+      db-init:    { condition: service_completed_successfully }
+      ai-service: { condition: service_healthy }
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - DOC_DB_CONNECTION_STRING=Server=sqlserver,1433;Database=DevPrep_CvJd;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;Encrypt=False;
+      - AI_SERVICE_URL=http://ai-service:8000
+    networks: [devprep-internal-net]
+
+  questionapi:
+    build: { context: .., dockerfile: source/QuestionAPI/Dockerfile }
+    container_name: devprep-question
+    restart: unless-stopped
+    depends_on:
+      db-init:    { condition: service_completed_successfully }
+      ai-service: { condition: service_healthy }
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - QUESTION_DB_CONNECTION_STRING=Server=sqlserver,1433;Database=DevPrep_Question;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;Encrypt=False;
+      - AiService__BaseUrl=http://ai-service:8000
+      - AiService__InternalApiKey=${INTERNAL_API_KEY}
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY}
+      - Jwt__Key=${JWT_KEY}
+      - Jwt__Issuer=${JWT_ISSUER}
+      - Jwt__Audience=${JWT_AUDIENCE}
+    networks: [devprep-internal-net]
+
+  interviewapi:
+    build: { context: .., dockerfile: source/InterviewAPI/Dockerfile }
+    container_name: devprep-interview
+    restart: unless-stopped
+    depends_on:
+      db-init:    { condition: service_completed_successfully }
+      ai-service: { condition: service_healthy }
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - INTERVIEW_DB_CONNECTION_STRING=Server=sqlserver,1433;Database=DevPrep_Interview;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;Encrypt=False;
+      - AiService__BaseUrl=http://ai-service:8000
+      - AiService__InternalApiKey=${INTERNAL_API_KEY}
+      - AUTH_API_BASEURL=http://authapi:8080
+      - USER_API_BASEURL=http://userapi:8080
+      - PAYMENT_API_BASEURL=http://paymentapi:8080
+      - EVALUATION_API_BASEURL=http://evaluationapi:8080
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY}
+      - Jwt__Key=${JWT_KEY}
+      - Jwt__Issuer=${JWT_ISSUER}
+      - Jwt__Audience=${JWT_AUDIENCE}
+    networks: [devprep-internal-net]
+
+  evaluationapi:
+    build: { context: .., dockerfile: source/EvaluationAPI/Dockerfile }
+    container_name: devprep-evaluation
+    restart: unless-stopped
+    depends_on:
+      db-init:    { condition: service_completed_successfully }
+      ai-service: { condition: service_healthy }
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - EVALUATION_DB_CONNECTION_STRING=Server=sqlserver,1433;Database=DevPrep_Evaluation;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;Encrypt=False;
+      - AiService__BaseUrl=http://ai-service:8000
+      - AiService__InternalApiKey=${INTERNAL_API_KEY}
+      - INTERVIEW_API_BASEURL=http://interviewapi:8080
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY}
+      - Jwt__Key=${JWT_KEY}
+      - Jwt__Issuer=${JWT_ISSUER}
+      - Jwt__Audience=${JWT_AUDIENCE}
+    networks: [devprep-internal-net]
+
+  feedbackapi:
+    build: { context: .., dockerfile: source/FeedbackAPI/Dockerfile }
+    container_name: devprep-feedback
+    restart: unless-stopped
+    depends_on:
+      db-init: { condition: service_completed_successfully }
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - FEEDBACK_DB_CONNECTION_STRING=Server=sqlserver,1433;Database=DevPrep_Feedback;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;Encrypt=False;
+      - USER_API_BASEURL=http://userapi:8080
+      - AUTH_API_BASEURL=http://authapi:8080
+      - INTERVIEW_API_BASEURL=http://interviewapi:8080
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY}
+      - Jwt__Key=${JWT_KEY}
+      - Jwt__Issuer=${JWT_ISSUER}
+      - Jwt__Audience=${JWT_AUDIENCE}
+    networks: [devprep-internal-net]
+
+  paymentapi:
+    build: { context: .., dockerfile: source/PaymentAPI/Dockerfile }
+    container_name: devprep-payment
+    restart: unless-stopped
+    depends_on:
+      db-init: { condition: service_completed_successfully }
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - PAYMENT_DB_CONNECTION_STRING=Server=sqlserver,1433;Database=DevPrep_Payment;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;Encrypt=False;
+      - AUTH_API_BASEURL=http://authapi:8080
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY}
+      - Jwt__Key=${JWT_KEY}
+      - Jwt__Issuer=${JWT_ISSUER}
+      - Jwt__Audience=${JWT_AUDIENCE}
+      - VNPay__TmnCode=${VNPAY_TMNCODE}
+      - VNPay__HashSecret=${VNPAY_HASHSECRET}
+      - VNPay__PaymentUrl=${VNPAY_PAYMENTURL}
+      # BROWSER redirect target — stays a HOST address. Converting this to a compose
+      # DNS name would break the payment return leg (see §1.4 row 27).
+      - VNPay__ReturnUrl=http://localhost:7000/api/payment/vnpay/return
+    networks: [devprep-internal-net]
+
+  newsapi:
+    build: { context: .., dockerfile: source/NewsAPI/Dockerfile }
+    container_name: devprep-news
+    restart: unless-stopped
+    depends_on:
+      db-init: { condition: service_completed_successfully }
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - NEWS_DB_CONNECTION_STRING=Server=sqlserver,1433;Database=DevPrep_News;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;Encrypt=False;
+      - Jwt__Key=${JWT_KEY}
+      - Jwt__Issuer=${JWT_ISSUER}
+      - Jwt__Audience=${JWT_AUDIENCE}
+    networks: [devprep-internal-net]
+
+  notificationapi:
+    build: { context: .., dockerfile: source/NotificationAPI/Dockerfile }
+    container_name: devprep-notification
+    restart: unless-stopped
+    depends_on:
+      db-init: { condition: service_completed_successfully }
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - NOTIFICATION_DB_CONNECTION_STRING=Server=sqlserver,1433;Database=DevPrep_Notification;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;Encrypt=False;
+      # Fail-closed by design: this service refuses to start without the key.
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY}
+    networks: [devprep-internal-net]
+
+  # ----------------------------------------------------------------------------
+  # EDGE — the only two services that publish ports to the host
+  # ----------------------------------------------------------------------------
+  apigateway:
+    build: { context: .., dockerfile: source/ApiGateway/Dockerfile }
+    container_name: devprep-gateway
+    restart: unless-stopped
+    depends_on:
+      authapi:         { condition: service_healthy }
+      userapi:         { condition: service_healthy }
+      cvjdapi:         { condition: service_healthy }
+      questionapi:     { condition: service_healthy }
+      interviewapi:    { condition: service_healthy }
+      evaluationapi:   { condition: service_healthy }
+      feedbackapi:     { condition: service_healthy }
+      paymentapi:      { condition: service_healthy }
+      newsapi:         { condition: service_healthy }
+      notificationapi: { condition: service_healthy }
+    environment:
+      # 'Compose', NOT 'Production'. .NET defaults to Production when the variable is
+      # unset, which is what happens on manual startup — naming this environment
+      # Compose means an accidental default loads nothing and the gateway falls back
+      # to appsettings.json's localhost addresses instead of 502-ing every route.
+      # See ApiGateway/appsettings.Compose.json and phase1-checklist.md H-1.
+      - ASPNETCORE_ENVIRONMENT=Compose
+      - CORS_ALLOWED_ORIGINS=http://localhost:5130
+    ports:
+      - "7000:8080"
+    networks: [devprep-internal-net]
+
+  webclient:
+    build: { context: .., dockerfile: source/WebClient/Dockerfile }
+    container_name: devprep-webclient
+    restart: unless-stopped
+    depends_on:
+      apigateway: { condition: service_healthy }
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      # WebClient calls the gateway server-side, so this is a compose DNS name.
+      # (appsettings.json:2 also sets "Urls" for the listen address — ASPNETCORE_URLS
+      # from the Dockerfile overrides it; see phase1-checklist.md H-2.)
+      - ApiGateway__BaseUrl=http://apigateway:8080/
+    ports:
+      - "5130:8080"
+    networks: [devprep-internal-net]
+
+# ------------------------------------------------------------------------------
 networks:
   devprep-internal-net:
     driver: bridge
     name: devprep-overlay-network
 
-# ----------------------------------------------------------------------------
-# 3. NAMED VOLUMES
-# ----------------------------------------------------------------------------
 volumes:
+  mssql-data:
   hf-cache:
   tts-cache:
