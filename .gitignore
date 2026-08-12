@@ -110,3 +110,9 @@ infra/collect_sample.py
 
 # Personal AI context file
 /DEVPREP_MEMORY.md
+
+# Docker environment secrets
+infra/.env.docker
+
+# Raw SSMS exports - merged into db/baseline/
+/SQL/
