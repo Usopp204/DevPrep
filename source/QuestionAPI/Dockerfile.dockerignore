@@ -1,0 +1,48 @@
+# Per-Dockerfile ignore file (BuildKit). Applies ONLY to builds that use the sibling
+# source/<Service>/Dockerfile, and takes precedence over the root .dockerignore.
+#
+# Why this exists instead of a plain .dockerignore in this directory:
+# the build context is the REPOSITORY ROOT, not source/. AuthAPI, UserAPI and
+# NotificationAPI reference ../../contracts/auth/auth.csproj, which lives outside
+# source/, and Docker cannot COPY from outside the build context — so the context has
+# to contain both source/ and contracts/.
+#
+# The root .dockerignore excludes source/ (correct for the ai-service build) and must
+# stay exactly as it is. This file overrides it for .NET image builds only.
+# See docs/architecture/phase1-checklist.md, Batch A and blocker B-1.
+
+# --- Version control and tooling metadata (.git alone is ~552 MB) ---
+.git/
+.github/
+.claude/
+.agents/
+.tmp/
+
+# --- Other build contexts and large trees no .NET image needs ---
+ai-service/
+infra/
+docs/
+
+# --- Build output and IDE state ---
+**/bin/
+**/obj/
+**/.vs/
+**/node_modules/
+**/*.user
+**/*.suo
+
+# --- Secrets: injected as environment variables at runtime, never baked into a layer ---
+.env
+.env.example
+**/appsettings.*.local.json
+**/secrets.json
+
+# --- Documentation ---
+**/*.md
+
+# --- Local-only artifacts. Untracked on the current machine, but excluded so they
+#     can never enter the build context on any clone. Added during implementation,
+#     beyond the literal Batch A spec — see the Batch A handover note. ---
+*.docx
+Sequence and class/
+bin_verify/

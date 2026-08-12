@@ -102,8 +102,17 @@ infra/collect_sample.py
 # Piper voice models
 /ai-service/models/piper/
 
-# SQL migrations shared via Zalo, not tracked
-/source/*/Sql/
+# SQL migrations are TRACKED. The previous rule (/source/*/Sql/) hid three of the
+# four existing migration scripts from the repository entirely, so a clean clone
+# could not reproduce the schema. Baseline schema now lives in db/baseline/;
+# incremental migrations stay with their owning service here and must be committed.
+# See db/README.md section 4.
 
 # Personal AI context file
 /DEVPREP_MEMORY.md
+
+# Docker environment secrets
+infra/.env.docker
+
+# Raw SSMS exports - merged into db/baseline/
+/SQL/

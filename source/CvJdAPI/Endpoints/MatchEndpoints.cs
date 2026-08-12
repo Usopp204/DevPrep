@@ -27,7 +27,11 @@ public static class MatchEndpoints
             if (cv?.ParsedJson is null || jd?.ClarifiedJson is null)
                 return Results.BadRequest(new { error = "Parse CV and JD first before matching" });
 
-            var aiUrl = config.GetValue<string>("AI_SERVICE_URL") ?? "http://localhost:8000";
+            // No literal fallback: the old default was port 8000, which Docker does not publish
+            // to the host (it maps 8080:8000), so a missing key failed as "ai-service unreachable"
+            // instead of naming the real cause. AI_SERVICE_URL now lives in appsettings.json.
+            var aiUrl = config.GetValue<string>("AI_SERVICE_URL")
+                ?? throw new InvalidOperationException("AI_SERVICE_URL is not configured.");
             var client = factory.CreateClient();
             var payload = JsonSerializer.Serialize(new
             {

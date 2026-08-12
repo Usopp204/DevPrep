@@ -1,7 +1,7 @@
 ﻿using DotNetEnv;
 using Microsoft.AspNetCore.Http.Timeouts;
 
-try { Env.TraversePath().Load(".env.example"); } catch { }
+// Only the real .env: loading .env.example too let a missing key resolve to a placeholder.
 try { Env.TraversePath().Load(); } catch { }
 
 var builder = WebApplication.CreateBuilder(args);
@@ -81,6 +81,12 @@ app.Use(async (context, next) =>
 
     await next();
 });
+
+// Liveness probe for the container HEALTHCHECK. Deliberately trivial — a literal 200 with no
+// dependency checks: the gateway's job is to forward requests, and a probe that failed when a
+// downstream service was down would take the whole stack's dependency graph with it.
+// MUST be registered BEFORE MapReverseProxy() so the proxy's catch-all routes cannot swallow it.
+app.MapGet("/health", () => Results.Ok(new { service = "ApiGateway", status = "ok" }));
 
 app.MapReverseProxy();
 

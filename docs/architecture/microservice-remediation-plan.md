@@ -60,7 +60,7 @@ Explicitly listed by you: **F-05** (`X-User-Id` → JWT subject), **F-15** (CvJd
 | *(pending)* | `PaymentAPI/Program.cs:235-251` | `/credits/balance` takes identity from JWT subject, not `X-User-Id`; added `/api/internal/credit/balance` for service callers | F-05 — auth bypass on a financial endpoint | PaymentAPI owner *(confirm — git suggests Duong Nguyen)* |
 | *(pending)* | `CvJdAPI/Program.cs:22-25` | `"ai"` HttpClient now sends `X-Internal-Api-Key` | Prerequisite for F-17: lets ai-service authenticate `/parse/*` | Duong |
 | *(pending)* | `CvJdAPI/Program.cs`, `Endpoints/*` | Added JWT bearer auth + `RequireAuthorization()` | F-15 — unauthenticated GPU access | Duong |
-| *(pending)* | `CvJdAPI/appsettings.Development.json:8` + 4 call sites | `AI_SERVICE_URL` → compose DNS | §0(c) — CV/JD broken in Docker mode | Duong |
+| **DONE (Batch E)** | `CvJdAPI/appsettings.json` (added), `appsettings.Development.json` (key removed), 4 call sites | `AI_SERVICE_URL` corrected to 8080; literal fallbacks replaced with a clear error | §0(c) — CV/JD broken in Docker mode | Duong — **notify only, not an ask**; message at `team-notifications.md` §0.11 |
 | *(pending)* | `PaymentAPI/Program.cs:456-460`, `ManagerPaymentsController.cs:210-215` | Cross-DB joins → batch internal API calls | F-01 | PaymentAPI owner |
 | *(pending)* | `UserAPI/Controllers/ManagerUsersController.cs:59-266` | Cross-DB joins → batch internal API calls | F-01 | Usopp204 *(or HuynhAnh181405 — see Caveat 3)* |
 | *(pending)* | `QuestionAPI/Controllers/InternalQuestionController.cs:40-45` | Removed fail-open branch; startup now fails closed | F-02 *(unlisted — see flag above)* | DHHaoNam/HaoNam |

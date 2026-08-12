@@ -1,0 +1,31 @@
+# ==============================================================================
+# DEV-ONLY OVERRIDES
+# ==============================================================================
+# Compose loads this automatically alongside docker-compose.yml. It exists so the
+# base file can keep the port lockdown absolute — only apigateway and webclient
+# publish there — while a developer can still reach the internals when debugging.
+#
+# ⚠ NEVER use this file for a demo or a deployment. Run the base file alone:
+#     docker compose -f docker-compose.yml up -d
+# Otherwise the lockdown acceptance gate does not hold, and the negative test in
+# phase1-checklist.md Batch H will (correctly) fail.
+# ==============================================================================
+
+services:
+
+  # SQL Server on the host, so SSMS can connect for the schema work
+  # (docs/architecture/schema-recovery.md).
+  sqlserver:
+    ports:
+      - "1433:1433"
+
+  # ai-service on the host, for the /ui test page and for the cloudflared tunnel
+  # that gives GPU-less teammates access.
+  #
+  # ⚠ Read docs/architecture/microservice-remediation-plan.md F-17 first. While this
+  # port is published AND a tunnel is running, ai-service is exposed to the public
+  # internet with most routes unauthenticated — /parse/*, /interview/*, /evaluate,
+  # /catalog and /ui have no auth today. Prefer tunnelling apigateway:7000 instead.
+  ai-service:
+    ports:
+      - "8080:8000"
