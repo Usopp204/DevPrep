@@ -17,9 +17,22 @@
 # The baselines are raw SSMS output: bare `CREATE TABLE` with no IF NOT EXISTS
 # guards. Re-running them against a populated database fails with "There is
 # already an object named ...". This script is therefore idempotent at the
-# DATABASE level rather than the statement level: it counts user tables and skips
-# any database that already has them. That keeps `docker compose up` on an
-# existing volume a no-op without rewriting ten files of generated SQL.
+# DATABASE level rather than the statement level, using an explicit completion
+# marker rather than inferring completion from schema state.
+#
+# Each database gets a dbo.__baseline_applied table with exactly one row once
+# its baseline has run to completion. That row is inserted in a SEPARATE
+# statement, only after run_file_db returns 0 — so a run that dies partway
+# through (as 04_DevPrep_Question.sql's sqlcmd $(...) failure once did) leaves
+# NO marker, even though it may have left tables behind. Presence of tables is
+# deliberately NOT treated as proof of completion: that was the previous
+# design, and it is exactly what let a half-applied DevPrep_Question go
+# silently skipped forever on retry.
+#
+# If a database has tables but no marker, a prior run was interrupted. The
+# baselines have no per-statement idempotency guards, so that cannot be
+# resumed in place — the check below fails loudly with instructions to
+# DROP DATABASE rather than attempting (and cryptically failing) a re-apply.
 #
 set -euo pipefail
 
@@ -60,9 +73,27 @@ log "using ${SQLCMD}"
 
 # -b makes sqlcmd exit non-zero on a SQL error, which combined with `set -e` is what
 # turns a failed script into a failed container instead of a half-built database.
-run_sql()      { "$SQLCMD" -S "$SERVER" -U "$SA_USER" -P "$MSSQL_SA_PASSWORD" $TLS -b -Q "$1"; }
-run_sql_db()   { "$SQLCMD" -S "$SERVER" -U "$SA_USER" -P "$MSSQL_SA_PASSWORD" $TLS -b -d "$1" -Q "$2"; }
-run_file_db()  { "$SQLCMD" -S "$SERVER" -U "$SA_USER" -P "$MSSQL_SA_PASSWORD" $TLS -b -d "$1" -i "$2"; }
+# -x disables sqlcmd's own $(variable_name) scripting-variable substitution. sqlcmd
+# scans raw input text for that pattern before parsing SQL, with no awareness of
+# string-literal quoting — a literal "$(...)" inside seed-data text (e.g. jQuery
+# examples like "$(this)" or "$(document).ready()" in 04_DevPrep_Question.sql) gets
+# treated as a variable reference and aborts with a client-side syntax error, even
+# though the SQL itself is well-formed. None of our scripts use sqlcmd variables, so
+# this substitution has no legitimate use here and is off everywhere.
+run_sql()      { "$SQLCMD" -S "$SERVER" -U "$SA_USER" -P "$MSSQL_SA_PASSWORD" $TLS -b -x -Q "$1"; }
+run_file_db()  { "$SQLCMD" -S "$SERVER" -U "$SA_USER" -P "$MSSQL_SA_PASSWORD" $TLS -b -x -d "$1" -i "$2"; }
+# For a single-row single-column result only. -h -1 drops the header AND the dashed
+# separator line under it; -W right-trims column padding. These flags are baked into
+# this function's own definition, not appended as extra arguments at a call site: a
+# fixed-arity shell function silently ignores any argument past the ones it names, so
+# passing "-h -1" as a 3rd/4th argument to a two-parameter function does nothing —
+# not an error, just silently discarded. That was this script's original bug: sqlcmd
+# ran with default formatting (header + separator + value + footer) the whole time,
+# and the flags meant to fix that never reached it at all.
+query_scalar_db() { "$SQLCMD" -S "$SERVER" -U "$SA_USER" -P "$MSSQL_SA_PASSWORD" $TLS -b -x -d "$1" -h -1 -W -Q "$2"; }
+# Same as run_sql but scoped to one database via -d, for inline statements with
+# no result set to capture (creating/inserting into the completion marker).
+run_sql_db()   { "$SQLCMD" -S "$SERVER" -U "$SA_USER" -P "$MSSQL_SA_PASSWORD" $TLS -b -x -d "$1" -Q "$2"; }
 
 # --- 1. Wait for SQL Server -------------------------------------------------
 # The container reports ready before the engine accepts logins, so poll rather
@@ -104,17 +135,40 @@ for f in "${baselines[@]}"; do
     *) fail "baseline ${base} maps to '${db}', which is not one of the ten databases" ;;
   esac
 
-  # Statement-level idempotency does not exist in generated SSMS output, so guard
-  # at the database level: if it already has user tables, this baseline already ran.
-  count=$(run_sql_db "$db" "SET NOCOUNT ON; SELECT COUNT(*) FROM sys.tables WHERE is_ms_shipped = 0;" -h -1 2>/dev/null | tr -d '[:space:]' || echo "")
-  if [ -n "$count" ] && [ "$count" != "0" ]; then
-    log "  skip ${base} — ${db} already has ${count} table(s)"
+  # Completion marker, not table count: ensure dbo.__baseline_applied exists,
+  # then use its row count (0 or 1) to decide whether this baseline already ran
+  # to completion. No `|| echo ""` fallback here on purpose: if a query fails,
+  # that is a real problem (permissions, connectivity) and must stop the
+  # script, not be silently treated as "not complete, safe to proceed."
+  run_sql_db "$db" "IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = N'__baseline_applied' AND schema_id = SCHEMA_ID('dbo')) BEGIN CREATE TABLE dbo.__baseline_applied (applied_at DATETIME2 NOT NULL); END" >/dev/null
+
+  raw_marker="$(query_scalar_db "$db" "SET NOCOUNT ON; SELECT COUNT(*) FROM dbo.__baseline_applied;")"
+  marker_count="$(printf '%s' "$raw_marker" | tr -d '[:space:]')"
+  if ! [[ "$marker_count" =~ ^[0-9]+$ ]]; then
+    fail "could not read completion marker for ${db}: sqlcmd returned $(printf '%q' "$raw_marker") (stripped to $(printf '%q' "$marker_count")). Expected a bare integer from -h -1 -W."
+  fi
+  if [ "$marker_count" -gt 0 ]; then
+    log "  skip ${base} — ${db} already marked complete"
     skipped=$(( skipped + 1 ))
     continue
   fi
 
+  # Marker says "not complete." If user tables already exist anyway (other than
+  # the marker table itself), a previous run was interrupted mid-baseline.
+  # Re-applying would fail on the first colliding CREATE TABLE with a
+  # confusing raw SQL error — fail here instead, with an actionable message.
+  raw_objcount="$(query_scalar_db "$db" "SET NOCOUNT ON; SELECT COUNT(*) FROM sys.tables WHERE is_ms_shipped = 0 AND name <> N'__baseline_applied';")"
+  objcount="$(printf '%s' "$raw_objcount" | tr -d '[:space:]')"
+  if ! [[ "$objcount" =~ ^[0-9]+$ ]]; then
+    fail "could not read object count for ${db}: sqlcmd returned $(printf '%q' "$raw_objcount")."
+  fi
+  if [ "$objcount" -gt 0 ]; then
+    fail "${db} has ${objcount} table(s) but no completion marker — a previous run was interrupted mid-baseline. DROP DATABASE [${db}] and re-run; this cannot be resumed in place."
+  fi
+
   log "  applying ${base} -> ${db}"
   run_file_db "$db" "$f"
+  run_sql_db "$db" "INSERT INTO dbo.__baseline_applied (applied_at) VALUES (SYSDATETIME());" >/dev/null
   applied=$(( applied + 1 ))
 done
 
