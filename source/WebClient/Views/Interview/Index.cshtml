@@ -149,6 +149,20 @@
                                 @minutes Minutes — @cost credits@(affordable ? "" : " (insufficient balance)")
                             </option>
                         }
+                        @* DEMO-SESSION: remove after defence — start *@
+                        @* Extra option appended after the real list rather than added to
+                           CreditPricing.DurationToCreditCost, so the shared pricing table stays
+                           untouched and this deletes as one block. Hidden unless
+                           DEMO_SESSION_ENABLED is set; InterviewAPI enforces the same flag. *@
+                        @if (WebClient.Helpers.DemoSession.IsEnabled(Context.RequestServices))
+                        {
+                            var demoAffordable = Model.CreditBalance is null
+                                || Model.CreditBalance >= WebClient.Helpers.DemoSession.CreditCost;
+                            <option value="@WebClient.Helpers.DemoSession.DurationMinutes" disabled="@(!demoAffordable)">
+                                @WebClient.Helpers.DemoSession.DurationMinutes Minutes — @WebClient.Helpers.DemoSession.CreditCost credits (demo)@(demoAffordable ? "" : " (insufficient balance)")
+                            </option>
+                        }
+                        @* DEMO-SESSION: remove after defence — end *@
                     </select>
                     @{
                         var cheapestCost = WebClient.Helpers.CreditPricing.DurationToCreditCost.Values.Min();

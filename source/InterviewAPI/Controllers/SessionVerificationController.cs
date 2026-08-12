@@ -17,13 +17,21 @@ public class SessionVerificationController : ControllerBase
 {
     private readonly IBiometricVerificationService _service;
     private readonly ISessionService _sessionService;
+    private readonly ILogger<SessionVerificationController> _logger;
 
+    // NOTE for future passes: the `catch (BiometricQualityException)` and
+    // `catch (KeyNotFoundException)` blocks in this file deliberately return ex.Message and are NOT
+    // leaks. BiometricQualityException relays ai-service's actionable reason ("No face detected"),
+    // and KeyNotFoundException is always the authored string "Session not found.". Only the generic
+    // `catch (Exception)` blocks were leaking raw dependency text; those are the ones fixed here.
     public SessionVerificationController(
         IBiometricVerificationService service,
-        ISessionService sessionService)
+        ISessionService sessionService,
+        ILogger<SessionVerificationController> logger)
     {
         _service = service;
         _sessionService = sessionService;
+        _logger = logger;
     }
 
     [HttpGet("in-session-check")]
@@ -39,7 +47,10 @@ public class SessionVerificationController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+            _logger.LogError(ex, "In-session check lookup failed for session {SessionId}.", sessionId);
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                ApiResponse<object>.Fail("Could not check verification status. Please try again shortly."));
         }
     }
 
@@ -67,7 +78,10 @@ public class SessionVerificationController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+            _logger.LogError(ex, "Issuing a {Modality} challenge failed for session {SessionId}.", normalized, sessionId);
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                ApiResponse<object>.Fail("Could not start the identity check. Please try again shortly."));
         }
     }
 
@@ -85,6 +99,7 @@ public class SessionVerificationController : ControllerBase
             var result = await _service.VerifyFaceAsync(userId, sessionId, frames, cancellationToken, phase);
             return Ok(ApiResponse<VerificationResultResponse>.Ok(result));
         }
+        // KEEP ex.Message — ai-service's quality reason is what tells the user how to retake the shot.
         catch (BiometricQualityException ex)
         {
             return UnprocessableEntity(ApiResponse<object>.Fail(ex.Message));
@@ -95,7 +110,10 @@ public class SessionVerificationController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+            _logger.LogError(ex, "Face verification failed for session {SessionId}, phase {Phase}.", sessionId, phase);
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                ApiResponse<object>.Fail("Face verification is temporarily unavailable. Please try again shortly."));
         }
     }
 
@@ -112,6 +130,7 @@ public class SessionVerificationController : ControllerBase
             var result = await _service.VerifyVoiceAsync(userId, sessionId, file, cancellationToken, phase);
             return Ok(ApiResponse<VerificationResultResponse>.Ok(result));
         }
+        // KEEP ex.Message — see VerifyFace above.
         catch (BiometricQualityException ex)
         {
             return UnprocessableEntity(ApiResponse<object>.Fail(ex.Message));
@@ -122,7 +141,10 @@ public class SessionVerificationController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+            _logger.LogError(ex, "Voice verification failed for session {SessionId}, phase {Phase}.", sessionId, phase);
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                ApiResponse<object>.Fail("Voice verification is temporarily unavailable. Please try again shortly."));
         }
     }
 
@@ -144,7 +166,10 @@ public class SessionVerificationController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+            _logger.LogError(ex, "Entry-gate status lookup failed for session {SessionId}.", sessionId);
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                ApiResponse<object>.Fail("Could not check verification status. Please try again shortly."));
         }
     }
 
@@ -175,7 +200,10 @@ public class SessionVerificationController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+            _logger.LogError(ex, "In-session verification failed for session {SessionId}, check {CheckId}.", sessionId, checkId);
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                ApiResponse<object>.Fail("Identity check is temporarily unavailable. Please try again shortly."));
         }
     }
 
@@ -202,7 +230,10 @@ public class SessionVerificationController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+            _logger.LogError(ex, "Voice-answer verification failed for session {SessionId}, check {CheckId}.", sessionId, checkId);
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                ApiResponse<object>.Fail("Voice verification is temporarily unavailable. Please try again shortly."));
         }
     }
 
