@@ -205,18 +205,38 @@ public sealed class EvaluationService(IApiClient apiClient) : IEvaluationService
 
         if (state == EvaluationReportState.EvaluationUnavailable)
         {
-            SetEvaluationUnavailable(viewModel);
+            // Deliberately NOT SetEvaluationUnavailable(), unlike the seven other call sites in
+            // this file. Those are local bail-outs (eligibility mismatch, a failed /performance
+            // call, an unparseable state) and are genuinely terminal, so they must keep saying so.
+            //
+            // This one is different: the state came from the SERVER, where it means "zero of this
+            // session's answers have an evaluation" — and EvaluationAPI has just asked InterviewAPI
+            // to re-grade all of them. Recovery is in flight, so the terminal wording ("could not
+            // be evaluated. No final score or grade is available") would be wrong here. Same
+            // enum value, different message, on purpose — a separate state would have to propagate
+            // through the enum, the mapping and the view for one call site's worth of distinction.
+            viewModel.RecoveryInProgress = true;
+            SetState(
+                viewModel,
+                state,
+                "Evaluation is still processing",
+                "Grading for this interview did not complete. It has been restarted automatically — refresh in a moment to check again.");
             return viewModel;
         }
 
         if (state == EvaluationReportState.EvaluationIncomplete)
         {
             await LoadQuestionEvaluationsAsync(viewModel, context, cancellationToken);
+            // Wording is deliberately true in BOTH cases the server can be in here: grading that is
+            // genuinely still in flight, and grading that had died and has just been re-queued
+            // (EvaluationAPI asks InterviewAPI to recover missing evaluations before returning this
+            // state). The user's action is identical either way — wait and refresh — so one message
+            // covers both rather than exposing a distinction they cannot act on differently.
             SetState(
                 viewModel,
                 state,
                 "Evaluation is still processing",
-                "Some answers are still being evaluated. Refresh this page when you are ready to check again.");
+                "Some answers are still being graded. Grading resumes automatically — refresh in a moment to check again.");
             return viewModel;
         }
 

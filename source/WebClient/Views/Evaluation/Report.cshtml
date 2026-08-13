@@ -13,7 +13,12 @@
     var stateIcon = Model.DisplayState switch
     {
         EvaluationReportState.EvaluationIncomplete => "rule",
-        EvaluationReportState.EvaluationUnavailable => "cloud_off",
+        // EvaluationUnavailable covers two situations. When grading has been restarted
+        // (RecoveryInProgress) the user is told to refresh shortly, so a cloud-off glyph would
+        // contradict the text and read as permanently broken — use the same icon as the
+        // Incomplete state, which is the same situation from the user's side. The terminal
+        // bail-outs keep cloud_off.
+        EvaluationReportState.EvaluationUnavailable => Model.RecoveryInProgress ? "rule" : "cloud_off",
         _ => "bar_chart"
     };
     const double circumference = 2 * Math.PI * 45; // gauge radius 45
