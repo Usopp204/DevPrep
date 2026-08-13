@@ -213,6 +213,14 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - DOC_DB_CONNECTION_STRING=Server=sqlserver,1433;Database=DevPrep_CvJd;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;Encrypt=False;
       - AI_SERVICE_URL=http://ai-service:8000
+    volumes:
+      # Uploaded CV files. Without this they live in the container's writable layer and
+      # are destroyed by the next `up --build`, while the Cvs rows survive still pointing
+      # at them through FileUrl — leaving records whose file no longer exists, which the
+      # delete path then silently skips (its cleanup is best-effort and swallows errors).
+      # The image creates /app/uploads owned by appuser, so this volume inherits that
+      # owner when Docker first seeds it; see source/CvJdAPI/Dockerfile.
+      - cv-uploads:/app/uploads
     networks: [devprep-internal-net]
 
   questionapi:
@@ -408,3 +416,4 @@ volumes:
   mssql-data:
   hf-cache:
   tts-cache:
+  cv-uploads:

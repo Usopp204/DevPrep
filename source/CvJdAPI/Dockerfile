@@ -26,6 +26,22 @@ RUN apt-get update \
  && useradd --system --gid appgroup --shell /usr/sbin/nologin appuser
 WORKDIR /app
 COPY --from=build --chown=appuser:appgroup /app/publish .
+
+# --- Upload directory, created here because appuser cannot create it at runtime ------
+# WORKDIR makes /app owned by root with mode 755, and the --chown above only retitles the
+# files copied INTO it, not the directory itself. So appuser can read /app but not write
+# to it, and CvEndpoints' Directory.CreateDirectory(".../uploads/cvs") failed with
+# "Access to the path '/app/uploads' is denied." on every CV upload.
+#
+# Creating the tree here with the right owner also decides the ownership of the named
+# volume compose mounts over it: Docker seeds an empty named volume from the image path,
+# ownership included. Build the image without this and the volume comes up root-owned,
+# which fails exactly the same way.
+#
+# JD uploads need nothing here — JdEndpoints writes through Path.GetTempFileName(), and
+# /tmp is world-writable in the base image.
+RUN mkdir -p /app/uploads/cvs && chown -R appuser:appgroup /app/uploads
+
 USER appuser
 
 # --- B-2: bind 0.0.0.0 inside the container -----------------------------------

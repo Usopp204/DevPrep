@@ -303,6 +303,15 @@
                             <div class="section-label">AI Suggestions</div>
                             <div id="suggestions"></div>
                         </div>
+
+                        @* Ghi chú phạm vi đánh giá. Không đặt display:none và không do JS
+                           dựng ra, để nó hiện ở mọi lần chấm điểm — kể cả khi lượt chấm
+                           thất bại hoặc trang chỉ hiển thị lại điểm đã lưu từ trước. *@
+                        <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--pf-border);
+                                    font-size:.7rem;color:var(--pf-muted);line-height:1.5;">
+                            This evaluation is based only on the objective criteria taken from the CV
+                            and the Job Description.
+                        </div>
                     </div>
                 </div>
             </div>
