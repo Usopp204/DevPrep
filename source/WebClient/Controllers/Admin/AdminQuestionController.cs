@@ -1,10 +1,13 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Filters;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using WebClient.Models.Admin;
 using WebClient.Services.Admin;
 
 namespace WebClient.Controllers.Admin;
 
+// Vai tro doc tu claim trong cookie xac thuc da ky, khong doc tu cookie
+// user_role: cookie do duoc dat voi HttpOnly = false nen trinh duyet sua duoc.
+[Authorize(Roles = "Admin")]
 [Route("admin/questions")]
 public class AdminQuestionController : Controller
 {
@@ -15,52 +18,6 @@ public class AdminQuestionController : Controller
         _questionService = questionService;
     }
 
-    public override void OnActionExecuting(ActionExecutingContext context)
-    {
-        if (IsAdmin(context))
-        {
-            base.OnActionExecuting(context);
-            return;
-        }
-
-        var request = context.HttpContext.Request;
-
-        var isAjax =
-            string.Equals(
-                request.Headers["X-Requested-With"].ToString(),
-                "XMLHttpRequest",
-                StringComparison.OrdinalIgnoreCase
-            );
-
-        if (isAjax || request.Method.Equals("POST", StringComparison.OrdinalIgnoreCase))
-        {
-            context.Result = new UnauthorizedObjectResult(new
-            {
-                success = false,
-                message = "Bạn không có quyền thực hiện thao tác này."
-            });
-
-            return;
-        }
-
-        context.Result = Redirect("/Auth/Login");
-    }
-
-    private static bool IsAdmin(ActionExecutingContext context)
-    {
-        var request = context.HttpContext.Request;
-
-        var role = request.Cookies["user_role"];
-        var accessToken = request.Cookies["access_token"];
-        var jwtToken = request.Cookies["JWToken"];
-
-        var hasToken =
-            !string.IsNullOrWhiteSpace(accessToken) ||
-            !string.IsNullOrWhiteSpace(jwtToken);
-
-        return hasToken &&
-               string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase);
-    }
 
     [HttpGet("")]
     public async Task<IActionResult> Index([FromQuery] AdminQuestionQueryDto query)
@@ -85,7 +42,7 @@ public class AdminQuestionController : Controller
         }
         else
         {
-            ViewBag.ErrorMessage = apiResponse.Message ?? "Không thể tải danh sách câu hỏi từ API.";
+            ViewBag.ErrorMessage = apiResponse.Message ?? "The question list could not be loaded.";
         }
 
         var categoryResponse = await _questionService.GetCategoriesAsync();
@@ -105,7 +62,7 @@ public class AdminQuestionController : Controller
 
         if (question == null)
         {
-            TempData["ErrorMessage"] = "Không tìm thấy câu hỏi yêu cầu.";
+            TempData["ErrorMessage"] = "The requested question was not found.";
             return Redirect("/admin/questions");
         }
 
@@ -157,7 +114,7 @@ public class AdminQuestionController : Controller
             return BadRequest(new
             {
                 success = false,
-                message = "Vui lòng nhập nội dung câu hỏi."
+                message = "Please enter the question text."
             });
         }
 
@@ -168,14 +125,14 @@ public class AdminQuestionController : Controller
             return Ok(new
             {
                 success = true,
-                message = result.Message ?? "Thêm câu hỏi thành công!"
+                message = result.Message ?? "Question added successfully."
             });
         }
 
         return BadRequest(new
         {
             success = false,
-            message = result.Message ?? "Không thể tạo câu hỏi qua API."
+            message = result.Message ?? "The question could not be created."
         });
     }
 
@@ -186,13 +143,13 @@ public class AdminQuestionController : Controller
 
         if (question == null)
         {
-            TempData["ErrorMessage"] = "Không tìm thấy câu hỏi yêu cầu để chỉnh sửa.";
+            TempData["ErrorMessage"] = "The question you want to edit was not found.";
             return Redirect("/admin/questions");
         }
 
         if (question.IsDeleted)
         {
-            TempData["ErrorMessage"] = "Câu hỏi này đã bị xóa mềm. Vui lòng khôi phục trước khi chỉnh sửa.";
+            TempData["ErrorMessage"] = "This question has been deleted. Restore it before editing.";
             return Redirect("/admin/questions");
         }
         var viewModel = new AdminQuestionViewModel();
@@ -205,7 +162,7 @@ public class AdminQuestionController : Controller
         }
         else
         {
-            ViewBag.CategoryError = categoryResponse.Message ?? "Lỗi không xác định khi lấy danh mục.";
+            ViewBag.CategoryError = categoryResponse.Message ?? "The category list could not be loaded.";
         }
 
         var positionResponse = await _questionService.GetPositionsAsync();
@@ -228,7 +185,7 @@ public class AdminQuestionController : Controller
             return BadRequest(new
             {
                 success = false,
-                message = "Vui lòng nhập nội dung câu hỏi."
+                message = "Please enter the question text."
             });
         }
 
@@ -239,14 +196,14 @@ public class AdminQuestionController : Controller
             return Ok(new
             {
                 success = true,
-                message = result.Message ?? "Cập nhật câu hỏi thành công!"
+                message = result.Message ?? "Question updated successfully."
             });
         }
 
         return BadRequest(new
         {
             success = false,
-            message = result.Message ?? "Không thể cập nhật câu hỏi qua API."
+            message = result.Message ?? "The question could not be updated."
         });
     }
 
@@ -260,14 +217,14 @@ public class AdminQuestionController : Controller
             return Ok(new
             {
                 success = true,
-                message = result.Message ?? "Xóa mềm câu hỏi thành công."
+                message = result.Message ?? "Question deleted successfully."
             });
         }
 
         return BadRequest(new
         {
             success = false,
-            message = result.Message ?? "Không thể thực hiện thao tác xóa."
+            message = result.Message ?? "The question could not be deleted."
         });
     }
 
@@ -281,14 +238,14 @@ public class AdminQuestionController : Controller
             return Ok(new
             {
                 success = true,
-                message = result.Message ?? "Khôi phục câu hỏi thành công."
+                message = result.Message ?? "Question restored successfully."
             });
         }
 
         return BadRequest(new
         {
             success = false,
-            message = result.Message ?? "Không thể khôi phục câu hỏi."
+            message = result.Message ?? "The question could not be restored."
         });
     }
 
@@ -300,7 +257,7 @@ public class AdminQuestionController : Controller
             return BadRequest(new
             {
                 success = false,
-                message = "Vui lòng chọn ít nhất một câu hỏi để xóa."
+                message = "Select at least one question to delete."
             });
         }
 
@@ -311,14 +268,14 @@ public class AdminQuestionController : Controller
             return Ok(new
             {
                 success = true,
-                message = result.Message ?? "Xóa hàng loạt câu hỏi thành công."
+                message = result.Message ?? "The selected questions were deleted."
             });
         }
 
         return BadRequest(new
         {
             success = false,
-            message = result.Message ?? "Không thể xóa hàng loạt câu hỏi."
+            message = result.Message ?? "The selected questions could not be deleted."
         });
     }
 }

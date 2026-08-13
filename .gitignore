@@ -116,3 +116,8 @@ infra/.env.docker
 
 # Raw SSMS exports - merged into db/baseline/
 /SQL/
+
+# Real data copied off a developer's SQL Server so a Docker stack starts populated.
+# Never committed: it carries live account e-mail addresses and bcrypt password
+# hashes. Regenerate it locally instead - see db/data-local/README.md.
+/db/data-local/

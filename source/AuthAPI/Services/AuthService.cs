@@ -811,7 +811,7 @@ public class AuthService : IAuthService
         }
 
         _logger.LogInformation(
-            "Đã xoá account Pending hết hạn xác thực: {Email} ({AccountId}).",
+            "Removed a pending account whose verification window expired: {Email} ({AccountId}).",
             account.Email, account.AccountId);
 
         await DeleteProfilesBestEffortAsync(new[] { account.AccountId });
@@ -848,7 +848,7 @@ public class AuthService : IAuthService
         var resetUrl = $"{baseUrl}?token={Uri.EscapeDataString(token)}";
 
         _logger.LogInformation(
-            "Password reset link cho {Email}: {ResetUrl} (hết hạn sau {Minutes} phút)",
+            "Password reset link for {Email}: {ResetUrl} (expires in {Minutes} minutes)",
             email, resetUrl, ResetPasswordExpiryMinutes);
 
         try

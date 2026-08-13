@@ -40,7 +40,7 @@ public class FirebaseTokenValidator : IFirebaseTokenValidator
         var projectId = _configuration["Firebase:ProjectId"];
         if (string.IsNullOrWhiteSpace(projectId))
         {
-            throw new InvalidOperationException("Firebase:ProjectId chưa được cấu hình (appsettings hoặc ENV).");
+            throw new InvalidOperationException("Firebase:ProjectId is not configured (appsettings or environment variable).");
         }
 
         if (string.IsNullOrWhiteSpace(idToken))
@@ -62,21 +62,21 @@ public class FirebaseTokenValidator : IFirebaseTokenValidator
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Firebase ID token verify thất bại sau khi refresh khóa công khai.");
-                throw new BadRequestException("Firebase ID token không hợp lệ hoặc đã hết hạn.");
+                _logger.LogWarning(ex, "Firebase ID token verification failed after refreshing the public keys.");
+                throw new BadRequestException("The sign-in token is invalid or has expired.");
             }
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Firebase ID token verify thất bại.");
-            throw new BadRequestException("Firebase ID token không hợp lệ hoặc đã hết hạn.");
+            _logger.LogWarning(ex, "Firebase ID token verification failed.");
+            throw new BadRequestException("The sign-in token is invalid or has expired.");
         }
 
         // Token đã được verify -> đọc lại payload (an toàn) để lấy các claim, kể cả claim lồng "firebase".
         var segments = idToken.Split('.');
         if (segments.Length < 2)
         {
-            throw new BadRequestException("Firebase ID token sai định dạng.");
+            throw new BadRequestException("The sign-in token is malformed.");
         }
 
         using var doc = JsonDocument.Parse(Encoding.UTF8.GetString(Base64UrlDecode(segments[1])));
@@ -85,7 +85,7 @@ public class FirebaseTokenValidator : IFirebaseTokenValidator
         var uid = GetString(root, "user_id") ?? GetString(root, "sub");
         if (string.IsNullOrWhiteSpace(uid))
         {
-            throw new BadRequestException("Token thiếu uid.");
+            throw new BadRequestException("The sign-in token carries no user identifier.");
         }
 
         var email = GetString(root, "email");
@@ -154,7 +154,7 @@ public class FirebaseTokenValidator : IFirebaseTokenValidator
             var keys = new JsonWebKeySet(json).GetSigningKeys().ToList();
             if (keys.Count == 0)
             {
-                throw new InvalidOperationException("Không lấy được khóa công khai của Google securetoken.");
+                throw new InvalidOperationException("Could not fetch the Google securetoken public keys.");
             }
 
             _cachedKeys = keys;
@@ -174,7 +174,7 @@ public class FirebaseTokenValidator : IFirebaseTokenValidator
         "github.com" => "GitHub",
         "facebook.com" => "Facebook",
         "microsoft.com" => "Microsoft",
-        _ => throw new BadRequestException($"Nhà cung cấp đăng nhập không được hỗ trợ: {signInProvider}.")
+        _ => throw new BadRequestException($"Sign-in provider is not supported: {signInProvider}.")
     };
 
     private static string? GetString(JsonElement element, string property) =>

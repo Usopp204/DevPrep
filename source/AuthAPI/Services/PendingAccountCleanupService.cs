@@ -102,7 +102,7 @@ public class PendingAccountCleanupService : BackgroundService
         }
 
         _logger.LogInformation(
-            "Đã dọn {Count} account Pending hết hạn xác thực: {Emails}",
+            "Cleaned up {Count} pending accounts whose verification window expired: {Emails}",
             deleted.Count, string.Join(", ", deleted.Select(a => a.Email)));
 
         // Xoá hồ sơ bên UserAPI (best-effort — lỗi chỉ log, lượt quét sau không lặp lại

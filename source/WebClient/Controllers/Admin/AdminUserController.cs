@@ -1,10 +1,13 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Filters;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using WebClient.Models.Admin;
 using WebClient.Services.Admin;
 
 namespace WebClient.Controllers.Admin;
 
+// Vai tro doc tu claim trong cookie xac thuc da ky, khong doc tu cookie
+// user_role: cookie do duoc dat voi HttpOnly = false nen trinh duyet sua duoc.
+[Authorize(Roles = "Admin")]
 [Route("Admin/User")]
 public class AdminUserController : Controller
 {
@@ -15,52 +18,6 @@ public class AdminUserController : Controller
         _userService = userService;
     }
 
-    public override void OnActionExecuting(ActionExecutingContext context)
-    {
-        if (IsAdmin(context))
-        {
-            base.OnActionExecuting(context);
-            return;
-        }
-
-        var request = context.HttpContext.Request;
-
-        var isAjax =
-            string.Equals(
-                request.Headers["X-Requested-With"].ToString(),
-                "XMLHttpRequest",
-                StringComparison.OrdinalIgnoreCase
-            );
-
-        if (isAjax || request.Method.Equals("POST", StringComparison.OrdinalIgnoreCase))
-        {
-            context.Result = new UnauthorizedObjectResult(new
-            {
-                success = false,
-                message = "Bạn không có quyền thực hiện thao tác này."
-            });
-
-            return;
-        }
-
-        context.Result = Redirect("/Auth/Login");
-    }
-
-    private static bool IsAdmin(ActionExecutingContext context)
-    {
-        var request = context.HttpContext.Request;
-
-        var role = request.Cookies["user_role"];
-        var accessToken = request.Cookies["access_token"];
-        var jwtToken = request.Cookies["JWToken"];
-
-        var hasToken =
-            !string.IsNullOrWhiteSpace(accessToken) ||
-            !string.IsNullOrWhiteSpace(jwtToken);
-
-        return hasToken &&
-               string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase);
-    }
 
     [HttpGet("")]
     public async Task<IActionResult> Index([FromQuery] AdminUserQueryDto query)
@@ -84,7 +41,7 @@ public class AdminUserController : Controller
         }
         else
         {
-            ViewBag.ErrorMessage = response.Message ?? "Không thể tải danh sách người dùng.";
+            ViewBag.ErrorMessage = response.Message ?? "The user list could not be loaded.";
         }
 
         return View("~/Views/Admin/AdminListUser.cshtml", viewModel);
@@ -97,7 +54,7 @@ public class AdminUserController : Controller
 
         if (!response.Success || response.Data == null)
         {
-            TempData["ErrorMessage"] = response.Message ?? "Không tìm thấy người dùng.";
+            TempData["ErrorMessage"] = response.Message ?? "User not found.";
             return Redirect("/Admin/User");
         }
 
@@ -111,7 +68,7 @@ public class AdminUserController : Controller
 
         if (!response.Success || response.Data == null)
         {
-            TempData["ErrorMessage"] = response.Message ?? "Không tìm thấy người dùng để chỉnh sửa.";
+            TempData["ErrorMessage"] = response.Message ?? "The user you want to edit was not found.";
             return Redirect("/Admin/User");
         }
 
@@ -123,7 +80,7 @@ public class AdminUserController : Controller
     {
         if (string.IsNullOrWhiteSpace(dto.Role))
         {
-            TempData["ErrorMessage"] = "Vui lòng chọn role hợp lệ.";
+            TempData["ErrorMessage"] = "Choose a valid role.";
             return Redirect($"/Admin/User/Edit/{id}");
         }
 
@@ -131,11 +88,11 @@ public class AdminUserController : Controller
 
         if (result.Success)
         {
-            TempData["SuccessMessage"] = result.Message ?? "Cập nhật role thành công.";
+            TempData["SuccessMessage"] = result.Message ?? "Role updated successfully.";
             return Redirect($"/Admin/User/Detail/{id}");
         }
 
-        TempData["ErrorMessage"] = result.Message ?? "Không thể cập nhật role.";
+        TempData["ErrorMessage"] = result.Message ?? "The role could not be updated.";
         return Redirect($"/Admin/User/Edit/{id}");
     }
 
@@ -147,7 +104,7 @@ public class AdminUserController : Controller
             return BadRequest(new
             {
                 success = false,
-                message = "Trạng thái không hợp lệ."
+                message = "That status is not valid."
             });
         }
 
@@ -158,14 +115,14 @@ public class AdminUserController : Controller
             return Ok(new
             {
                 success = true,
-                message = result.Message ?? "Cập nhật trạng thái người dùng thành công."
+                message = result.Message ?? "User status updated successfully."
             });
         }
 
         return BadRequest(new
         {
             success = false,
-            message = result.Message ?? "Không thể cập nhật trạng thái người dùng."
+            message = result.Message ?? "The user status could not be updated."
         });
     }
 }

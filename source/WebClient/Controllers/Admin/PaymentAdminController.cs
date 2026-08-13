@@ -1,28 +1,25 @@
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WebClient.Models.Admin;
 using WebClient.Services.Admin;
 
 namespace WebClient.Controllers.Admin;
 
+// Admin only. The guard this replaces also let Manager through, which is why a Manager
+// signing in landed on the Admin credit-package page; Manager has its own screens at
+// /Manager/CreditPackages and /Manager/Payments (ManagerController), so nothing is lost.
+//
+// The role now comes from the claim inside the signed authentication cookie rather than
+// from the user_role cookie, which is written with HttpOnly = false and can therefore be
+// edited in the browser.
+[Authorize(Roles = "Admin")]
 [Route("Admin/Payment")]
 public class PaymentAdminController(IPaymentAdminService adminService) : Controller
 {
-    private IActionResult? GuardAdmin()
-    {
-        if (string.IsNullOrEmpty(Request.Cookies["access_token"]))
-            return RedirectToAction("Login", "Auth");
-        var role = Request.Cookies["user_role"] ?? string.Empty;
-        if (!string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase) &&
-            !string.Equals(role, "Manager", StringComparison.OrdinalIgnoreCase))
-            return RedirectToAction("Login", "Auth");
-        return null;
-    }
-
     [HttpGet("")]
     [HttpGet("Packages")]
     public async Task<IActionResult> Packages(string? success, string? error, CancellationToken ct = default)
     {
-        if (GuardAdmin() is { } r1) return r1;
         var model = await adminService.GetPackagesAsync(ct);
         if (success != null) model.SuccessMessage = success;
         if (error != null) model.ErrorMessage = error;
@@ -35,7 +32,6 @@ public class PaymentAdminController(IPaymentAdminService adminService) : Control
         string name, string? description, int credits, int bonusCredits,
         decimal price, int sortOrder, CancellationToken ct = default)
     {
-        if (GuardAdmin() is { } r2) return r2;
         var dto = new CreditPackageAdminDto
         {
             Name = name, Description = description, Credits = credits,
@@ -53,7 +49,6 @@ public class PaymentAdminController(IPaymentAdminService adminService) : Control
         Guid id, string name, string? description, int credits,
         int bonusCredits, decimal price, int sortOrder, CancellationToken ct = default)
     {
-        if (GuardAdmin() is { } r3) return r3;
         var dto = new CreditPackageAdminDto
         {
             Name = name, Description = description, Credits = credits,
@@ -69,7 +64,6 @@ public class PaymentAdminController(IPaymentAdminService adminService) : Control
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeletePackage(Guid id, string? name, CancellationToken ct = default)
     {
-        if (GuardAdmin() is { } r4) return r4;
         var (ok, err) = await adminService.DeletePackageAsync(id, ct);
         return ok
             ? RedirectToAction(nameof(Packages), new { success = $"Package '{name}' deactivated." })
@@ -80,7 +74,6 @@ public class PaymentAdminController(IPaymentAdminService adminService) : Control
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RestorePackage(Guid id, string? name, CancellationToken ct = default)
     {
-        if (GuardAdmin() is { } r6) return r6;
         var (ok, err) = await adminService.RestorePackageAsync(id, ct);
         return ok
             ? RedirectToAction(nameof(Packages), new { success = $"Package '{name}' restored." })
@@ -95,7 +88,6 @@ public class PaymentAdminController(IPaymentAdminService adminService) : Control
         string period = "today", DateTime? from = null, DateTime? to = null,
         CancellationToken ct = default)
     {
-        if (GuardAdmin() is { } r5) return r5;
 
         var model = await adminService.GetPaymentsAsync(
             page, keyword: keyword, status: status, paymentMethod: paymentMethod,
@@ -106,20 +98,13 @@ public class PaymentAdminController(IPaymentAdminService adminService) : Control
         return View(model);
     }
 
-    // JSON feed for the transaction-detail modal on the Payments page. Deliberately does NOT
-    // use GuardAdmin(): that redirects to the login page, and fetch() would then receive the
-    // login HTML with a 200 status instead of an error it can act on.
+    // JSON feed for the transaction-detail modal on the Payments page. The class-level
+    // [Authorize] covers it: a fetch() that fails authorisation is answered with a 401 and a
+    // JSON body rather than a redirect to the login page, which would have arrived here as
+    // login HTML with a 200 status. See DenyOrRedirect in ServiceCollectionExtensions.
     [HttpGet("Payments/Detail/{id:guid}")]
     public async Task<IActionResult> PaymentDetail(Guid id, CancellationToken ct = default)
     {
-        if (string.IsNullOrEmpty(Request.Cookies["access_token"]))
-            return Unauthorized(new { error = "Your session has expired. Please sign in again." });
-
-        var role = Request.Cookies["user_role"] ?? string.Empty;
-        if (!string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase) &&
-            !string.Equals(role, "Manager", StringComparison.OrdinalIgnoreCase))
-            return StatusCode(StatusCodes.Status403Forbidden, new { error = "Admin access required." });
-
         var detail = await adminService.GetPaymentDetailAsync(id, ct);
         return detail?.Order is null
             ? NotFound(new { error = "Transaction not found." })

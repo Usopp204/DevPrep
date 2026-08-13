@@ -30,6 +30,18 @@ public static class ServiceCollectionExtensions
                 options.LoginPath = "/Auth/Login";
                 options.AccessDeniedPath = "/Auth/Login";
                 options.Cookie.Name = "WebClient_Auth";
+
+                // A browser navigation that fails authorisation should land on the login page,
+                // but a fetch() call must not: a 302 to /Auth/Login resolves to the login HTML
+                // with status 200, so the caller sees a "successful" response it cannot parse
+                // and reports nothing useful. The admin pages hit their own controllers with
+                // fetch(), so both redirect events answer those calls with JSON instead.
+                //
+                // 401 for both cases, not 401/403, because that is what the hand-written
+                // guards these events replace already returned — the page scripts branch on
+                // that status and changing it would break them.
+                options.Events.OnRedirectToLogin = ctx => DenyOrRedirect(ctx);
+                options.Events.OnRedirectToAccessDenied = ctx => DenyOrRedirect(ctx);
             });
 
         services.Configure<ApiGatewayOptions>(configuration.GetSection("ApiGateway"));
@@ -93,6 +105,43 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPaymentAdminService, PaymentAdminService>();
         services.AddScoped<IAdminTechStackService, AdminTechStackService>();
         return services;
+    }
+
+    /// <summary>
+    /// Answers a failed authorisation the way the caller can actually use: JSON with a 401 for
+    /// script-driven requests, the usual redirect for a browser navigation.
+    /// </summary>
+    /// <remarks>
+    /// A request counts as script-driven when it carries the XMLHttpRequest header, asks for
+    /// JSON, or is anything other than GET. That last one matters because the admin pages post
+    /// forms through fetch() without setting either header.
+    /// </remarks>
+    private static Task DenyOrRedirect(
+        Microsoft.AspNetCore.Authentication.RedirectContext<
+            Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationOptions> context)
+    {
+        var request = context.Request;
+
+        var wantsJson =
+            string.Equals(request.Headers["X-Requested-With"], "XMLHttpRequest",
+                          StringComparison.OrdinalIgnoreCase)
+            || request.Headers.Accept.Any(
+                   v => v is not null && v.Contains("application/json", StringComparison.OrdinalIgnoreCase))
+            || !HttpMethods.IsGet(request.Method);
+
+        if (!wantsJson)
+        {
+            context.Response.Redirect(context.RedirectUri);
+            return Task.CompletedTask;
+        }
+
+        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+        context.Response.ContentType = "application/json";
+        return context.Response.WriteAsJsonAsync(new
+        {
+            success = false,
+            message = "You do not have permission to perform this action."
+        });
     }
 
     // Shared by both clients above so the base address and handler wiring cannot drift apart;

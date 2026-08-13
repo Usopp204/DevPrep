@@ -1,7 +1,7 @@
 ﻿@model WebClient.Models.Admin.AdminQuestionDetailDto
 
 @{
-    ViewData["Title"] = "Chi tiết câu hỏi";
+    ViewData["Title"] = "Question Detail";
     Layout = null;
 
     string status = Model.Status?.Trim() ?? "Active";
@@ -302,7 +302,7 @@
 
                                     <small class="text-muted d-block"
                                            style="font-size: 0.75rem; color: #71717a !important;">
-                                        Chuyên mục câu hỏi
+                                        Question Category
                                     </small>
                                 </div>
                             </div>
@@ -364,15 +364,15 @@
     <script>
         function deleteQuestion(id) {
             Swal.fire({
-                title: 'Xác nhận xóa?',
-                text: 'Bạn có chắc chắn muốn xóa mềm câu hỏi này không?',
+                title: 'Delete this question?',
+                text: 'The question will be removed from the bank. You can restore it later.',
                 icon: 'warning',
                 showCancelButton: true,
                 background: '#11121a',
                 color: '#fff',
                 confirmButtonColor: '#ef4444',
                 cancelButtonColor: '#475569',
-                confirmButtonText: 'Vâng, xóa mềm!'
+                confirmButtonText: 'Delete'
             }).then((result) => {
                 if (!result.isConfirmed) {
                     return;
@@ -384,7 +384,7 @@
                     success: function (response) {
                         Swal.fire({
                             title: 'Deleted!',
-                            text: response.message || 'Xóa mềm câu hỏi thành công.',
+                            text: response.message || 'Question deleted successfully.',
                             icon: 'success',
                             background: '#11121a',
                             color: '#fff',
@@ -394,7 +394,7 @@
                         });
                     },
                     error: function (xhr) {
-                        var errMsg = xhr.responseJSON ? xhr.responseJSON.message : 'Không thể xóa câu hỏi này.';
+                        var errMsg = xhr.responseJSON ? xhr.responseJSON.message : 'This question could not be deleted.';
 
                         Swal.fire({
                             title: 'Error!',
@@ -411,15 +411,15 @@
 
         function restoreQuestion(id) {
             Swal.fire({
-                title: 'Xác nhận khôi phục?',
-                text: 'Bạn muốn khôi phục câu hỏi này?',
+                title: 'Restore this question?',
+                text: 'The question will be returned to the bank.',
                 icon: 'question',
                 showCancelButton: true,
                 background: '#11121a',
                 color: '#fff',
                 confirmButtonColor: '#10b981',
                 cancelButtonColor: '#475569',
-                confirmButtonText: 'Khôi phục ngay'
+                confirmButtonText: 'Restore'
             }).then((result) => {
                 if (!result.isConfirmed) {
                     return;
@@ -431,7 +431,7 @@
                     success: function (response) {
                         Swal.fire({
                             title: 'Restored!',
-                            text: response.message || 'Khôi phục câu hỏi thành công.',
+                            text: response.message || 'Question restored successfully.',
                             icon: 'success',
                             background: '#11121a',
                             color: '#fff',
@@ -441,7 +441,7 @@
                         });
                     },
                     error: function (xhr) {
-                        var errMsg = xhr.responseJSON ? xhr.responseJSON.message : 'Không thể khôi phục câu hỏi này.';
+                        var errMsg = xhr.responseJSON ? xhr.responseJSON.message : 'This question could not be restored.';
 
                         Swal.fire({
                             title: 'Error!',

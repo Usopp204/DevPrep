@@ -1,10 +1,13 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Filters;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using WebClient.Models.News;
 using WebClient.Services.News;
 
 namespace WebClient.Controllers.News;
 
+// Vai tro doc tu claim trong cookie xac thuc da ky, khong doc tu cookie
+// user_role: cookie do duoc dat voi HttpOnly = false nen trinh duyet sua duoc.
+[Authorize(Roles = "Admin")]
 [Route("Admin/News")]
 public class AdminNewsController : Controller
 {
@@ -19,52 +22,6 @@ public class AdminNewsController : Controller
         _env = env;
     }
 
-    public override void OnActionExecuting(ActionExecutingContext context)
-    {
-        if (IsAdmin(context))
-        {
-            base.OnActionExecuting(context);
-            return;
-        }
-
-        var request = context.HttpContext.Request;
-
-        var isAjax =
-            string.Equals(
-                request.Headers["X-Requested-With"].ToString(),
-                "XMLHttpRequest",
-                StringComparison.OrdinalIgnoreCase
-            );
-
-        if (isAjax || request.Method.Equals("POST", StringComparison.OrdinalIgnoreCase))
-        {
-            context.Result = new UnauthorizedObjectResult(new
-            {
-                success = false,
-                message = "Bạn không có quyền thực hiện thao tác này."
-            });
-
-            return;
-        }
-
-        context.Result = Redirect("/Auth/Login");
-    }
-
-    private static bool IsAdmin(ActionExecutingContext context)
-    {
-        var request = context.HttpContext.Request;
-
-        var role = request.Cookies["user_role"];
-        var accessToken = request.Cookies["access_token"];
-        var jwtToken = request.Cookies["JWToken"];
-
-        var hasToken =
-            !string.IsNullOrWhiteSpace(accessToken) ||
-            !string.IsNullOrWhiteSpace(jwtToken);
-
-        return hasToken &&
-               string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase);
-    }
 
     [HttpGet("")]
     public async Task<IActionResult> Index([FromQuery] AdminNewsQueryDto query)

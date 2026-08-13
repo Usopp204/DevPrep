@@ -1,7 +1,7 @@
 @model WebClient.Models.Admin.AdminQuestionViewModel
 
 @{
-    ViewData["Title"] = "Cập nhật câu hỏi";
+    ViewData["Title"] = "Update Question";
     Layout = null;
 
     var qDetail = ViewBag.QuestionDetail as WebClient.Models.Admin.AdminQuestionDetailDto;
@@ -301,7 +301,7 @@
             @if (qDetail == null)
             {
                 <div class="alert alert-danger">
-                    Không tìm thấy dữ liệu câu hỏi để cập nhật.
+                    No question data was found to update.
                 </div>
 
                 <a href="/admin/questions"
@@ -611,7 +611,7 @@
                 if (!questionInput || !questionInput.value.trim()) {
                     await Swal.fire({
                         title: 'Update Failed!',
-                        text: 'Vui lòng nhập nội dung câu hỏi.',
+                        text: 'Please enter the question text.',
                         icon: 'error',
                         background: '#16161a',
                         color: '#ffffff',
@@ -625,7 +625,7 @@
                 if (!difficultyInput || !difficultyInput.value.trim()) {
                     await Swal.fire({
                         title: 'Update Failed!',
-                        text: 'Vui lòng nhập Difficulty.',
+                        text: 'Please choose a difficulty.',
                         icon: 'error',
                         background: '#16161a',
                         color: '#ffffff',
@@ -639,7 +639,7 @@
                 if (!categoryInput || !categoryInput.value) {
                     await Swal.fire({
                         title: 'Update Failed!',
-                        text: 'Vui lòng chọn Category.',
+                        text: 'Please choose a category.',
                         icon: 'error',
                         background: '#16161a',
                         color: '#ffffff',
@@ -653,7 +653,7 @@
                 if (!statusInput) {
                     await Swal.fire({
                         title: 'Update Failed!',
-                        text: 'Vui lòng chọn Status.',
+                        text: 'Please choose a status.',
                         icon: 'error',
                         background: '#16161a',
                         color: '#ffffff',
