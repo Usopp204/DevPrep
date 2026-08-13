@@ -70,7 +70,10 @@ public class TransactionDto
 
 public class TransactionHistoryViewModel
 {
-    public CreditBalanceDto Balance { get; set; } = new();
+    // NULL means "unknown" — the balance lookup failed, or the whole page load failed. It does NOT
+    // mean a zero balance. Defaulting this to `new()` made the stat cards render 0 credits during a
+    // PaymentAPI outage, next to an error banner, as if 0 were a fact we had confirmed.
+    public CreditBalanceDto? Balance { get; set; }
     public List<TransactionDto> Items { get; set; } = [];
     public int TotalCount { get; set; }
     public int Page { get; set; } = 1;
@@ -94,9 +97,10 @@ public class CreditLedgerItemDto
 /// <summary>Trang "Credit History" trong khu Profile — lịch sử trừ/cộng credit.</summary>
 public class CreditHistoryViewModel
 {
-    public CreditBalanceDto Balance { get; set; } = new();
-    public int TotalUsed { get; set; }          // tổng credit đã trừ (Usage, số dương)
-    public int TotalRefunded { get; set; }
+    // NULL on all three means "unknown", not zero — see TransactionHistoryViewModel.Balance.
+    public CreditBalanceDto? Balance { get; set; }
+    public int? TotalUsed { get; set; }          // tổng credit đã trừ (Usage, số dương)
+    public int? TotalRefunded { get; set; }
     public string? Type { get; set; }            // filter đang chọn (Usage/Purchase/Refund, null = tất cả)
     public List<CreditLedgerItemDto> Items { get; set; } = [];
     public int TotalCount { get; set; }

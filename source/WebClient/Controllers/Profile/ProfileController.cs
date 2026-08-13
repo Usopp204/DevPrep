@@ -259,6 +259,14 @@ public class ProfileController(
         if (userId is null) return Unauthorized();
 
         var balance = await paymentService.GetCreditBalanceAsync(userId.Value, ct);
+
+        // Unknown balance must NOT come back as 200 with a number. Both dropdowns that call this
+        // (_AuthenticatedAccountMenu.cshtml, _ProfileTopbar.cshtml) already treat a non-OK response
+        // as "unknown" and render a dash — they check `response.ok` and fall into `.catch`. Sending
+        // 200 with balance = 0 defeated that and showed a confident "0" during a PaymentAPI outage.
+        if (balance is null)
+            return StatusCode(StatusCodes.Status503ServiceUnavailable);
+
         return Json(new { balance = balance.Balance });
     }
 }

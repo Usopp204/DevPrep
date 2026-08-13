@@ -9,14 +9,23 @@ public interface IPaymentService
 {
     Task<BuyCreditsViewModel> GetBuyCreditsAsync(CancellationToken ct = default);
     Task<CreateOrderResponse> CreateOrderAsync(Guid packageId, Guid userId, CancellationToken ct = default);
-    Task<CreditBalanceDto> GetCreditBalanceAsync(Guid userId, CancellationToken ct = default);
+    // null means "we could not find out" (PaymentAPI down, timed out, bad payload) — NOT "zero
+    // credits". Callers must decide how to show the unknown case; they must not render it as 0.
+    Task<CreditBalanceDto?> GetCreditBalanceAsync(Guid userId, CancellationToken ct = default);
     Task<TransactionHistoryViewModel> GetTransactionHistoryAsync(Guid userId, int page = 1, int pageSize = 10, CancellationToken ct = default);
     Task<CreditHistoryViewModel> GetCreditHistoryAsync(Guid userId, int page = 1, int pageSize = 10, string? type = null, CancellationToken ct = default);
 }
 
-public sealed class PaymentService(IApiClient apiClient) : IPaymentService
+public sealed class PaymentService(IApiClient apiClient, ILogger<PaymentService> logger) : IPaymentService
 {
     private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
+
+    // Shown to the user when a payment call fails. Deliberately fixed text: `ex.Message` here is
+    // raw transport detail ("Response status code does not indicate success: 502 (Bad Gateway)")
+    // which tells a user nothing they can act on and exposes internals. The exception itself goes
+    // to the log, where it is actually useful.
+    private const string UnavailableMessage =
+        "Credit service is temporarily unavailable. Please try again shortly.";
 
     public async Task<BuyCreditsViewModel> GetBuyCreditsAsync(CancellationToken ct = default)
     {
@@ -28,7 +37,8 @@ public sealed class PaymentService(IApiClient apiClient) : IPaymentService
         }
         catch (Exception ex)
         {
-            return new BuyCreditsViewModel { ErrorMessage = ex.Message };
+            logger.LogError(ex, "Loading credit packages failed.");
+            return new BuyCreditsViewModel { ErrorMessage = UnavailableMessage };
         }
     }
 
@@ -45,7 +55,7 @@ public sealed class PaymentService(IApiClient apiClient) : IPaymentService
                ?? throw new InvalidOperationException("Empty response from payment API.");
     }
 
-    public async Task<CreditBalanceDto> GetCreditBalanceAsync(Guid userId, CancellationToken ct = default)
+    public async Task<CreditBalanceDto?> GetCreditBalanceAsync(Guid userId, CancellationToken ct = default)
     {
         try
         {
@@ -53,11 +63,15 @@ public sealed class PaymentService(IApiClient apiClient) : IPaymentService
             request.Headers.Add("X-User-Id", userId.ToString());
             var response = await apiClient.HttpClient.SendAsync(request, ct);
             response.EnsureSuccessStatusCode();
-            return await response.Content.ReadFromJsonAsync<CreditBalanceDto>(JsonOpts, ct) ?? new();
+            return await response.Content.ReadFromJsonAsync<CreditBalanceDto>(JsonOpts, ct);
         }
-        catch
+        // Returning `new CreditBalanceDto()` here used to turn every failure into a confident
+        // "0 credits" in the navbar dropdown — a wrong number shown to the user as if it were
+        // real. null means unknown, and the caller renders it as such.
+        catch (Exception ex)
         {
-            return new CreditBalanceDto();
+            logger.LogWarning(ex, "Credit balance lookup failed; reporting balance as unknown.");
+            return null;
         }
     }
 
@@ -79,6 +93,9 @@ public sealed class PaymentService(IApiClient apiClient) : IPaymentService
 
             return new TransactionHistoryViewModel
             {
+                // Left nullable on purpose: the ledger call can succeed while the balance lookup
+                // fails, and the page should then show the table with a dash in the balance card
+                // rather than inventing a 0.
                 Balance    = balance,
                 Items      = result?.Items ?? [],
                 TotalCount = result?.TotalCount ?? 0,
@@ -88,7 +105,8 @@ public sealed class PaymentService(IApiClient apiClient) : IPaymentService
         }
         catch (Exception ex)
         {
-            return new TransactionHistoryViewModel { ErrorMessage = ex.Message };
+            logger.LogError(ex, "Loading transaction history failed for page {Page}.", page);
+            return new TransactionHistoryViewModel { ErrorMessage = UnavailableMessage };
         }
     }
 
@@ -112,6 +130,8 @@ public sealed class PaymentService(IApiClient apiClient) : IPaymentService
 
             return new CreditHistoryViewModel
             {
+                // Nullable on purpose — see GetTransactionHistoryAsync. TotalUsed/TotalRefunded do
+                // come from the ledger call that just succeeded, so they are real numbers here.
                 Balance       = balance,
                 TotalUsed     = result?.TotalUsed ?? 0,
                 TotalRefunded = result?.TotalRefunded ?? 0,
@@ -124,7 +144,8 @@ public sealed class PaymentService(IApiClient apiClient) : IPaymentService
         }
         catch (Exception ex)
         {
-            return new CreditHistoryViewModel { ErrorMessage = ex.Message };
+            logger.LogError(ex, "Loading credit history failed for page {Page}, type {Type}.", page, type);
+            return new CreditHistoryViewModel { ErrorMessage = UnavailableMessage };
         }
     }
 

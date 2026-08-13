@@ -15,10 +15,14 @@ namespace InterviewAPI.Controllers;
 public class ProfileBiometricsController : ControllerBase
 {
     private readonly IProfileBiometricsService _service;
+    private readonly ILogger<ProfileBiometricsController> _logger;
 
-    public ProfileBiometricsController(IProfileBiometricsService service)
+    public ProfileBiometricsController(
+        IProfileBiometricsService service,
+        ILogger<ProfileBiometricsController> logger)
     {
         _service = service;
+        _logger = logger;
     }
 
     // GET api/profiles/me/biometrics — per-modality enrollment status for the profile page.
@@ -33,7 +37,10 @@ public class ProfileBiometricsController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+            _logger.LogError(ex, "Loading biometric enrollment status failed.");
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                ApiResponse<object>.Fail("Could not load your verification status. Please try again shortly."));
         }
     }
 
@@ -55,6 +62,11 @@ public class ProfileBiometricsController : ControllerBase
             var result = await _service.EnrollAsync(userId, modality, file, ct);
             return Ok(ApiResponse<BiometricEnrollResponse>.Ok(result, "Enrolled."));
         }
+        // KEEP ex.Message on both typed catches below — they are NOT ex.Message leaks.
+        // ai-service produces genuinely actionable text here ("No face detected", "Audio too
+        // short"), and WebClient renders it verbatim (BiometricsService.cs:53-54 comments on
+        // exactly this). Replacing these with a generic string would delete the only information
+        // telling the user how to retake their sample. Do not "finish the job" on them.
         catch (BiometricQualityException ex)
         {
             // Quality rejection from ai-service — the message is user-facing.
@@ -66,7 +78,10 @@ public class ProfileBiometricsController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+            _logger.LogError(ex, "Biometric enrollment failed for modality {Modality}.", modality);
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                ApiResponse<object>.Fail("Enrollment is temporarily unavailable. Please try again shortly."));
         }
     }
 }

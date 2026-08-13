@@ -17,12 +17,18 @@ public class InterviewSessionController : ControllerBase
     private readonly ISessionService _service;
     private readonly IAiServiceClient _aiServiceClient;
     private readonly IPaymentApiClient _paymentApiClient;
+    private readonly ILogger<InterviewSessionController> _logger;
 
-    public InterviewSessionController(ISessionService service, IAiServiceClient aiServiceClient, IPaymentApiClient paymentApiClient)
+    public InterviewSessionController(
+        ISessionService service,
+        IAiServiceClient aiServiceClient,
+        IPaymentApiClient paymentApiClient,
+        ILogger<InterviewSessionController> logger)
     {
         _service = service;
         _aiServiceClient = aiServiceClient;
         _paymentApiClient = paymentApiClient;
+        _logger = logger;
     }
 
     /// <summary>
@@ -39,7 +45,10 @@ public class InterviewSessionController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+            _logger.LogError(ex, "Loading the interview catalog from ai-service failed.");
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                ApiResponse<object>.Fail("Could not load interview options. Please try again shortly."));
         }
     }
 
@@ -58,7 +67,10 @@ public class InterviewSessionController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+            _logger.LogError(ex, "Marking the room tour as seen failed.");
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                ApiResponse<object>.Fail("Could not save your preference. Please try again shortly."));
         }
     }
 
@@ -74,7 +86,10 @@ public class InterviewSessionController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+            _logger.LogError(ex, "Loading the user's session list failed.");
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                ApiResponse<object>.Fail("Could not load your interviews. Please try again shortly."));
         }
     }
 
@@ -174,7 +189,10 @@ public class InterviewSessionController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+            _logger.LogError(ex, "Loading the transcript failed for session {SessionId}.", id);
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                ApiResponse<object>.Fail("Could not load the interview transcript. Please try again shortly."));
         }
     }
 
@@ -190,6 +208,43 @@ public class InterviewSessionController : ControllerBase
         if (!owns)
             return NotFound(ApiResponse<object>.Fail("Session not found."));
         return Ok(ApiResponse<object>.Ok(new { }));
+    }
+
+    /// <summary>
+    /// Re-queues grading work for answers whose original job was lost (grading queue is in-memory
+    /// with no dead letter, so an exhausted retry is gone for good). Called by EvaluationAPI when a
+    /// report request finds evaluations missing — it knows WHICH are missing but cannot rebuild the
+    /// work itself, because the grading payload needs SessionQuestion.ReferenceAnswer and that
+    /// never leaves this service.
+    ///
+    /// SECURITY NOTE: this is an ordinary authenticated route, not an internal-key one, and the
+    /// gateway's "internal" path filter does NOT cover it — any signed-in user can call it for
+    /// their own sessions. That is deliberate (ownership falls out of the JWT for free, and
+    /// EvaluationAPI's client forwards the caller's bearer token rather than an internal key), but
+    /// it means the per-session cooldown inside RequeueMissingEvaluationsAsync is the ONLY thing
+    /// rate-limiting this. Nothing about the network topology restricts it.
+    /// </summary>
+    [HttpPost("{id:guid}/regrade-missing")]
+    public async Task<IActionResult> RegradeMissing(
+        Guid id,
+        [FromBody] RequeueMissingEvaluationsRequest req,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var result = await _service.RequeueMissingEvaluationsAsync(userId, id, req, cancellationToken);
+            return Ok(ApiResponse<RequeueMissingEvaluationsResponse>.Ok(result));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<object>.Fail(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Re-queue of missing evaluations failed for session {SessionId}.", id);
+            return BadRequest(ApiResponse<object>.Fail("Could not re-queue the missing evaluations."));
+        }
     }
 
     [HttpGet("{id:guid}/integrity-policy")]
@@ -238,7 +293,10 @@ public class InterviewSessionController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+            _logger.LogError(ex, "Reading the timer failed for session {SessionId}.", id);
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                ApiResponse<object>.Fail("Could not read the remaining time. Please try again shortly."));
         }
     }
 
@@ -255,7 +313,10 @@ public class InterviewSessionController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+            _logger.LogError(ex, "Recording response time failed for session {SessionId}.", id);
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                ApiResponse<object>.Fail("Could not record interview time. Please try again shortly."));
         }
     }
 
@@ -272,7 +333,10 @@ public class InterviewSessionController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+            _logger.LogError(ex, "Completing session {SessionId} failed.", id);
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                ApiResponse<object>.Fail("Could not finish this interview. Please try again shortly."));
         }
     }
 
@@ -289,7 +353,10 @@ public class InterviewSessionController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+            _logger.LogError(ex, "Ending session {SessionId} failed.", id);
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                ApiResponse<object>.Fail("Could not end this interview. Please try again shortly."));
         }
     }
 
@@ -305,7 +372,10 @@ public class InterviewSessionController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+            _logger.LogError(ex, "Pausing session {SessionId} failed.", id);
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                ApiResponse<object>.Fail("Could not pause this interview. Please try again shortly."));
         }
     }
 
@@ -321,7 +391,10 @@ public class InterviewSessionController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+            _logger.LogError(ex, "Unpausing session {SessionId} failed.", id);
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                ApiResponse<object>.Fail("Could not resume this interview. Please try again shortly."));
         }
     }
 
@@ -340,7 +413,10 @@ public class InterviewSessionController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+            _logger.LogError(ex, "Recording a camera violation failed for session {SessionId}.", id);
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                ApiResponse<object>.Fail("Could not record the camera event. Please try again shortly."));
         }
     }
 
@@ -354,6 +430,8 @@ public class InterviewSessionController : ControllerBase
             var result = await _service.ResumeSessionAsync(userId, id, cancellationToken);
             return Ok(ApiResponse<ResumeResponse>.Ok(result));
         }
+        // KEEP ex.Message — SessionGuardException carries a machine-readable ErrorCode that
+        // WebClient parses (InterviewService.ParseErrorBody) plus authored user copy. Not a leak.
         catch (SessionGuardException ex)
         {
             if (ex.RetryAfterSeconds is int retryAfter)
@@ -362,7 +440,10 @@ public class InterviewSessionController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+            _logger.LogError(ex, "Resuming session {SessionId} failed.", id);
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                ApiResponse<object>.Fail("Could not resume this interview. Please try again shortly."));
         }
     }
 
@@ -376,9 +457,20 @@ public class InterviewSessionController : ControllerBase
             await _service.SoftDeleteAsync(userId, id, cancellationToken);
             return NoContent();
         }
-        catch (Exception ex)
+        // Split out on purpose: SoftDeleteAsync throws InvalidOperationException("Session not
+        // found.") for a missing/foreign session, which genuinely is a 404. The old single
+        // catch-all reported EVERY failure as 404 — so a database outage told the user their
+        // session did not exist, which is a different and misleading claim.
+        catch (InvalidOperationException ex)
         {
             return NotFound(ApiResponse<object>.Fail(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Soft-deleting session {SessionId} failed.", id);
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                ApiResponse<object>.Fail("Could not delete this interview. Please try again shortly."));
         }
     }
 
@@ -392,15 +484,27 @@ public class InterviewSessionController : ControllerBase
             var result = await _service.ConfigDurationAsync(userId, req, cancellationToken);
             return Ok(ApiResponse<ConfigResponse>.Ok(result));
         }
+        // KEEP ex.Message — machine-readable ErrorCode + authored copy. Not a leak.
         catch (SessionGuardException ex)
         {
             if (ex.RetryAfterSeconds is int retryAfter)
                 Response.Headers.Append("Retry-After", retryAfter.ToString());
             return StatusCode(ex.StatusCode, new { error = ex.ErrorCode, message = ex.Message, activeSessionId = ex.ActiveSessionId });
         }
-        catch (Exception ex)
+        // KEEP ex.Message — this is real validation copy: "Invalid duration. Must be 15, 30, 45,
+        // or 60." (SessionService.ConfigDurationAsync). It names the allowed values, which is the
+        // only thing that tells the caller how to fix the request. Split out from the catch-all
+        // below so the generic message never swallows it. Do not merge these two.
+        catch (InvalidOperationException ex)
         {
             return BadRequest(ApiResponse<object>.Fail(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Configuring session duration failed.");
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                ApiResponse<object>.Fail("Could not save the interview duration. Please try again shortly."));
         }
     }
 
@@ -414,15 +518,25 @@ public class InterviewSessionController : ControllerBase
             var result = await _service.ConfigLevelAsync(userId, req, cancellationToken);
             return Ok(ApiResponse<ConfigResponse>.Ok(result));
         }
+        // KEEP ex.Message — machine-readable ErrorCode + authored copy. Not a leak.
         catch (SessionGuardException ex)
         {
             if (ex.RetryAfterSeconds is int retryAfter)
                 Response.Headers.Append("Retry-After", retryAfter.ToString());
             return StatusCode(ex.StatusCode, new { error = ex.ErrorCode, message = ex.Message, activeSessionId = ex.ActiveSessionId });
         }
-        catch (Exception ex)
+        // KEEP ex.Message — real validation copy ("Invalid level.", SessionService:413). See
+        // ConfigDuration above for why this is split from the catch-all.
+        catch (InvalidOperationException ex)
         {
             return BadRequest(ApiResponse<object>.Fail(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Configuring session level failed.");
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                ApiResponse<object>.Fail("Could not save the interview level. Please try again shortly."));
         }
     }
 
@@ -436,15 +550,25 @@ public class InterviewSessionController : ControllerBase
             var result = await _service.ConfigInteractionAsync(userId, req, cancellationToken);
             return Ok(ApiResponse<ConfigResponse>.Ok(result));
         }
+        // KEEP ex.Message — machine-readable ErrorCode + authored copy. Not a leak.
         catch (SessionGuardException ex)
         {
             if (ex.RetryAfterSeconds is int retryAfter)
                 Response.Headers.Append("Retry-After", retryAfter.ToString());
             return StatusCode(ex.StatusCode, new { error = ex.ErrorCode, message = ex.Message, activeSessionId = ex.ActiveSessionId });
         }
-        catch (Exception ex)
+        // KEEP ex.Message — real validation copy ("Invalid interaction mode.", SessionService:447).
+        // See ConfigDuration above for why this is split from the catch-all.
+        catch (InvalidOperationException ex)
         {
             return BadRequest(ApiResponse<object>.Fail(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Configuring session interaction mode failed.");
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                ApiResponse<object>.Fail("Could not save the interview mode. Please try again shortly."));
         }
     }
 
@@ -462,6 +586,7 @@ public class InterviewSessionController : ControllerBase
             var result = await _service.SendMessageAsync(userId, id, req, cancellationToken);
             return Ok(ApiResponse<MessageResponse>.Ok(result));
         }
+        // KEEP ex.Message — machine-readable ErrorCode + authored copy. Not a leak.
         catch (SessionGuardException ex)
         {
             if (ex.RetryAfterSeconds is int retryAfter)
@@ -470,7 +595,10 @@ public class InterviewSessionController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+            _logger.LogError(ex, "Submitting an answer failed for session {SessionId}.", id);
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                ApiResponse<object>.Fail("Could not send your answer. Please try again."));
         }
     }
 
@@ -493,9 +621,22 @@ public class InterviewSessionController : ControllerBase
                 Response.Headers.Append("Retry-After", retryAfter.ToString());
             return StatusCode(ex.StatusCode, new { error = ex.ErrorCode, message = ex.Message });
         }
+        // PaymentAPI unreachable while charging the session. 503 with a fixed message, matching the
+        // ai-service shape in Init — the transport detail (host:port) is already in the service log
+        // and must not be echoed to the browser.
+        catch (CreditServiceUnavailableException ex)
+        {
+            _logger.LogWarning(ex, "Question generation failed: payment service unavailable for session {SessionId}.", id);
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                ApiResponse<object>.Fail("The payment service is temporarily unavailable. Please try again shortly."));
+        }
         catch (Exception ex)
         {
-            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+            _logger.LogError(ex, "Generating the next question failed for session {SessionId}.", id);
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                ApiResponse<object>.Fail("Could not load the next question. Please try again shortly."));
         }
     }
 
@@ -518,7 +659,10 @@ public class InterviewSessionController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+            _logger.LogError(ex, "Text-to-speech failed.");
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                ApiResponse<object>.Fail("Audio playback is temporarily unavailable. Please try again shortly."));
         }
     }
 
@@ -545,7 +689,10 @@ public class InterviewSessionController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+            _logger.LogError(ex, "Speech-to-text failed.");
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                ApiResponse<object>.Fail("Voice input is temporarily unavailable. You can type your answer instead."));
         }
     }
 
@@ -563,6 +710,7 @@ public class InterviewSessionController : ControllerBase
             var result = await _service.HintAsync(userId, id, req.SessionQuestionId, cancellationToken);
             return Ok(ApiResponse<HintResponse>.Ok(result));
         }
+        // KEEP ex.Message — carries the "hint_already_used" ErrorCode the Room UI branches on.
         catch (SessionGuardException ex)
         {
             if (ex.RetryAfterSeconds is int retryAfter)
@@ -575,7 +723,13 @@ public class InterviewSessionController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+            // ai-service down/unreachable. HintAsync has already released the hint quota, so the
+            // candidate keeps their one hint for this question and a retry is genuinely useful.
+            _logger.LogError(ex, "Fetching a hint failed for session {SessionId}, question {SessionQuestionId}.",
+                id, req.SessionQuestionId);
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                ApiResponse<object>.Fail("Hints are temporarily unavailable. Please try again shortly."));
         }
     }
 
@@ -592,9 +746,23 @@ public class InterviewSessionController : ControllerBase
             var result = await _service.InitAsync(userId, req, cancellationToken);
             return Ok(ApiResponse<InitResponse>.Ok(result));
         }
+        // ai-service could not plan the questions (down, timing out, or breaker open). 503 says
+        // "our side, try again shortly"; the old catch-all answered 400, which blamed the caller
+        // for a request that was perfectly valid.
+        catch (SessionInitDependencyException ex)
+        {
+            _logger.LogWarning(ex, "Session init failed: interview setup dependency unavailable.");
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                ApiResponse<object>.Fail("Interview setup is temporarily unavailable. Please try again shortly."));
+        }
         catch (Exception ex)
         {
-            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+            // Detail stays in the server log; the client gets a generic message. Returning
+            // ex.Message echoed internal exception text (and any path/connection string in it)
+            // straight to the browser.
+            _logger.LogError(ex, "Session init failed unexpectedly.");
+            return BadRequest(ApiResponse<object>.Fail("Could not start the interview session."));
         }
     }
     private bool TryGetAuthenticatedUserId(out Guid userId)
@@ -610,11 +778,23 @@ public class InterviewSessionController : ControllerBase
         {
             var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
             var balance = await _paymentApiClient.GetBalanceAsync(userId, cancellationToken);
-            return Ok(ApiResponse<object>.Ok(new { Balance = balance }));
+
+            // Unknown is NOT zero. Answering 200 with Balance = 0 would tell the caller the user
+            // is out of credits when the truth is that PaymentAPI did not answer.
+            if (!balance.Available)
+            {
+                _logger.LogWarning("Credit balance unavailable: {Reason}", balance.Message);
+                return StatusCode(
+                    StatusCodes.Status503ServiceUnavailable,
+                    ApiResponse<object>.Fail("Credit service is temporarily unavailable."));
+            }
+
+            return Ok(ApiResponse<object>.Ok(new { Balance = balance.Balance }));
         }
         catch (Exception ex)
         {
-            return StatusCode(500, ApiResponse<object>.Fail($"Failed to check credit balance: {ex.Message}"));
+            _logger.LogError(ex, "Credit balance check failed unexpectedly.");
+            return StatusCode(500, ApiResponse<object>.Fail("Failed to check credit balance."));
         }
     }
 }

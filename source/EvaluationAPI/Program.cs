@@ -3,6 +3,7 @@ using System.Text;
 using DotNetEnv;
 using EvaluationAPI.Clients;
 using EvaluationAPI.Data;
+using EvaluationAPI.Http;
 using EvaluationAPI.Repositories;
 using EvaluationAPI.Repositories.Interfaces;
 using EvaluationAPI.Services;
@@ -44,6 +45,17 @@ var aiServiceBaseUrl = builder.Configuration["AiService:BaseUrl"]
     ?? throw new InvalidOperationException("AiService:BaseUrl is not configured.");
 var aiServiceApiKey = builder.Configuration["AiService:InternalApiKey"] ?? string.Empty;
 
+var interviewBaseUrl = builder.Configuration.GetValue<string>("INTERVIEW_API_BASEURL", "http://localhost:7005");
+
+// Circuit breakers for both outbound dependencies. Singleton on purpose — see the class comment:
+// a breaker rebuilt per request never accumulates failures and never opens. Base addresses are
+// passed in rather than re-read from configuration so the log lines name the same address the
+// HttpClient actually calls, with no second source of truth to drift.
+builder.Services.AddSingleton(sp => new ResiliencePolicies(
+    sp.GetRequiredService<ILoggerFactory>(),
+    aiServiceBaseUrl,
+    interviewBaseUrl!));
+
 builder.Services.AddHttpClient<IAiServiceClient, AiServiceClient>(client =>
 {
     client.BaseAddress = new Uri(aiServiceBaseUrl);
@@ -51,17 +63,18 @@ builder.Services.AddHttpClient<IAiServiceClient, AiServiceClient>(client =>
     if (!string.IsNullOrEmpty(aiServiceApiKey))
         client.DefaultRequestHeaders.Add("X-Internal-Api-Key", aiServiceApiKey);
 })
-.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { UseProxy = false });
+.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { UseProxy = false })
+.AddPolicyHandler((sp, _) => sp.GetRequiredService<ResiliencePolicies>().AiService);
 
 // Verifies session ownership against InterviewAPI (Evaluation tables have no UserId of their own),
 // forwarding the caller's bearer token. Guards every action against IDOR.
-var interviewBaseUrl = builder.Configuration.GetValue<string>("INTERVIEW_API_BASEURL", "http://localhost:7005");
 builder.Services.AddHttpClient<IInterviewApiClient, InterviewApiClient>(client =>
 {
     client.BaseAddress = new Uri(interviewBaseUrl!);
     client.Timeout = TimeSpan.FromSeconds(15);
 })
-.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { UseProxy = false });
+.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { UseProxy = false })
+.AddPolicyHandler((sp, _) => sp.GetRequiredService<ResiliencePolicies>().InterviewApi);
 
 builder.Services.AddHttpContextAccessor();
 

@@ -17,14 +17,52 @@ builder.WebHost.ConfigureKestrel(options =>
     options.Limits.MaxRequestBodySize = bodyLimitMb * 1024 * 1024;
 });
 
-// Global timeout (30s)
+// ── Request timeouts, one budget per route group ──────────────────────────────
+//
+// Routes select a policy by name via "TimeoutPolicy" in appsettings.json's
+// ReverseProxy.Routes section (YARP 2.3.0 RouteConfig.TimeoutPolicy). A route that
+// names none falls to DefaultPolicy. Policy names must match the JSON exactly.
+//
+// Each budget is the slowest thing downstream of that group, plus room for the hop:
+//   default  30s  - DB-only work: news, profile, payment, session history, admin lists.
+//   ai-backed 90s - InterviewAPI and EvaluationAPI both cap ai-service at 60s
+//                   (InterviewAPI/Program.cs:96,118; EvaluationAPI/Program.cs:62).
+//   document 330s - CvJdAPI caps ai-service at 300s (CvJdAPI/Program.cs:24).
+//
+// WHY THIS REPLACED A SINGLE BLANKET POLICY. DefaultPolicy applies to EVERY request,
+// including proxied ones, so the old 30s cap silently killed CV/JD parsing long before
+// document-cluster's 5-minute ActivityTimeout could matter. Measured by pausing the
+// cvjdapi container and calling through the gateway: the request died at 30.013s.
+// A per-route budget is the only way one slow group can be allowed time without
+// handing the same allowance to every DB-only endpoint.
+//
+// KNOWN, NOT FIXED HERE: a timeout on the default and ai-backed groups still reaches
+// the client as HTTP 400, not 504. When the policy fires, YARP is awaiting the
+// downstream on HttpContext.RequestAborted and cannot tell "an outer middleware timed
+// me out" from "the client disconnected", so it writes ForwarderError.RequestCanceled
+// (400) before this middleware ever catches the OperationCanceledException. Setting
+// TimeoutStatusCode here would not help: it is documented as unusable "if the response
+// has already started", and 504 is already its default. The fix is to give each cluster
+// an ActivityTimeout slightly SHORTER than its route's policy so YARP's own timeout
+// fires first and is classified as RequestTimedOut. Document routes already behave that
+// way by accident (ActivityTimeout 300s < policy 330s); the other two groups do not,
+// because YARP's default ActivityTimeout is 100s, which is longer than both 30s and 90s.
+const string AiRouteTimeoutPolicy = "ai-backed";
+const string DocumentRouteTimeoutPolicy = "document";
+
 var timeoutSeconds = builder.Configuration.GetValue<int>("Gateway:RequestTimeoutSeconds", 30);
+var aiTimeoutSeconds = builder.Configuration.GetValue<int>("Gateway:AiRequestTimeoutSeconds", 90);
+var documentTimeoutSeconds = builder.Configuration.GetValue<int>("Gateway:DocumentRequestTimeoutSeconds", 330);
+
 builder.Services.AddRequestTimeouts(options =>
 {
     options.DefaultPolicy = new RequestTimeoutPolicy
     {
         Timeout = TimeSpan.FromSeconds(timeoutSeconds)
     };
+
+    options.AddPolicy(AiRouteTimeoutPolicy, TimeSpan.FromSeconds(aiTimeoutSeconds));
+    options.AddPolicy(DocumentRouteTimeoutPolicy, TimeSpan.FromSeconds(documentTimeoutSeconds));
 });
 
 // CORS (Frontend -> Gateway)

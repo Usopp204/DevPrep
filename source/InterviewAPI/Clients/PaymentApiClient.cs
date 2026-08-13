@@ -35,9 +35,13 @@ public class PaymentApiClient : IPaymentApiClient
                 _logger.LogWarning(
                     "PaymentAPI deduct credit failed: status={StatusCode}, userId={UserId}, amount={Amount}",
                     response.StatusCode, userId, amount);
+                // A non-2xx means PaymentAPI never gave us a business answer, so this is treated as
+                // "service unavailable" rather than a refusal. A genuine refusal (not enough
+                // credits) comes back as 2xx with Success=false in the body, below.
                 return new CreditDeductionResponse
                 {
                     Success = false,
+                    ServiceAvailable = false,
                     Message = $"PaymentAPI error: {response.StatusCode}"
                 };
             }
@@ -55,9 +59,12 @@ public class PaymentApiClient : IPaymentApiClient
         catch (Exception ex)
         {
             _logger.LogError(ex, "PaymentAPI deduct credit exception: userId={UserId}, amount={Amount}", userId, amount);
+            // Transport-level failure (DNS, refused connection, timeout, open circuit). Message is
+            // kept for the server log only — ServiceAvailable=false tells callers not to show it.
             return new CreditDeductionResponse
             {
                 Success = false,
+                ServiceAvailable = false,
                 Message = $"Error: {ex.Message}"
             };
         }
@@ -84,9 +91,11 @@ public class PaymentApiClient : IPaymentApiClient
                 _logger.LogWarning(
                     "PaymentAPI refund credit failed: status={StatusCode}, userId={UserId}, amount={Amount}",
                     response.StatusCode, userId, amount);
+                // Same classification as deduct: no business answer means unavailable, not refused.
                 return new CreditDeductionResponse
                 {
                     Success = false,
+                    ServiceAvailable = false,
                     Message = $"PaymentAPI error: {response.StatusCode}"
                 };
             }
@@ -104,9 +113,11 @@ public class PaymentApiClient : IPaymentApiClient
         catch (Exception ex)
         {
             _logger.LogError(ex, "PaymentAPI refund credit exception: userId={UserId}, amount={Amount}", userId, amount);
+            // Transport-level failure — detail is for the server log only, never the browser.
             return new CreditDeductionResponse
             {
                 Success = false,
+                ServiceAvailable = false,
                 Message = $"Error: {ex.Message}"
             };
         }
@@ -161,7 +172,7 @@ public class PaymentApiClient : IPaymentApiClient
         }
     }
 
-    public async Task<int> GetBalanceAsync(Guid userId, CancellationToken ct)
+    public async Task<CreditBalanceResult> GetBalanceAsync(Guid userId, CancellationToken ct)
     {
         try
         {
@@ -172,17 +183,26 @@ public class PaymentApiClient : IPaymentApiClient
             {
                 _logger.LogWarning("GetBalance failed: status={StatusCode}, userId={UserId}",
                     response.StatusCode, userId);
-                return 0;
+                return CreditBalanceResult.Unknown($"PaymentAPI returned {(int)response.StatusCode}.");
             }
 
             using var stream = await response.Content.ReadAsStreamAsync(ct);
             var jsonDoc = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
-            return jsonDoc.RootElement.GetProperty("Balance").GetInt32();
+            return CreditBalanceResult.Known(jsonDoc.RootElement.GetProperty("Balance").GetInt32());
+        }
+        // A caller-cancelled request is not a PaymentAPI failure; let it propagate so it is not
+        // reported as "balance unavailable" to a user who simply navigated away.
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
+            // Covers connection failures, HttpClient timeouts, malformed payloads, and
+            // BrokenCircuitException once the breaker has opened. All mean the same thing to a
+            // caller: the balance is not known right now. Never 0 — that is a real number.
             _logger.LogError(ex, "GetBalance exception: userId={UserId}", userId);
-            return 0;
+            return CreditBalanceResult.Unknown("Credit service is unavailable.");
         }
     }
 }

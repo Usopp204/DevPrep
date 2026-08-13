@@ -15,6 +15,10 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.8" />
+    <!-- Resilience for outbound HttpClient calls (circuit breakers). Pinned here in the same
+         batch as InterviewAPI even though this service's policies land in a later batch, so the
+         two cannot drift onto different Polly versions. Keep these two lines identical. -->
+    <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="8.0.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
   </ItemGroup>
 </Project>

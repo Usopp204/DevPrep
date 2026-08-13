@@ -35,7 +35,7 @@ public class PaymentController(IPaymentService paymentService) : Controller
         var userId = JwtUserId.FromToken(Request.Cookies["access_token"]);
         if (userId is null)
         {
-            TempData["PaymentError"] = "Phiên đăng nhập không hợp lệ. Vui lòng thử lại.";
+            TempData["PaymentError"] = "Your session is no longer valid. Please sign in again.";
             return RedirectToAction("Index");
         }
 
@@ -46,7 +46,7 @@ public class PaymentController(IPaymentService paymentService) : Controller
         }
         catch (Exception)
         {
-            TempData["PaymentError"] = "Không thể tạo đơn thanh toán. Vui lòng thử lại.";
+            TempData["PaymentError"] = "Could not create the payment order. Please try again.";
             return RedirectToAction("Index");
         }
     }

@@ -395,19 +395,20 @@
             <div class="stat-card stat-primary">
                 <span class="material-symbols-outlined stat-icon primary" style="font-variation-settings:'FILL' 1;">toll</span>
                 <p class="stat-label">Current Balance</p>
-                <p class="stat-value primary">@Model.Balance.Balance</p>
+                @* null = unknown (PaymentAPI did not answer), rendered as a dash rather than 0. *@
+                <p class="stat-value primary">@(Model.Balance?.Balance.ToString() ?? "—")</p>
                 <p class="stat-unit">credits available</p>
             </div>
             <div class="stat-card stat-success">
                 <span class="material-symbols-outlined stat-icon success" style="font-variation-settings:'FILL' 1;">shopping_cart</span>
                 <p class="stat-label">Total Purchased</p>
-                <p class="stat-value success">@Model.Balance.TotalPurchased</p>
+                <p class="stat-value success">@(Model.Balance?.TotalPurchased.ToString() ?? "—")</p>
                 <p class="stat-unit">credits all-time</p>
             </div>
             <div class="stat-card stat-secondary">
                 <span class="material-symbols-outlined stat-icon secondary" style="font-variation-settings:'FILL' 1;">live_help</span>
                 <p class="stat-label">Sessions Remaining</p>
-                <p class="stat-value secondary">@Model.Balance.Balance</p>
+                <p class="stat-value secondary">@(Model.Balance?.Balance.ToString() ?? "—")</p>
                 <p class="stat-unit">interview sessions</p>
             </div>
         </div>

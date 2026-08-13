@@ -26,15 +26,30 @@ public class InterviewController(
     private const int HistoryPageSize = 5;
     private const int RecentSessionsPageSize = 6;
 
+    // Both messages are shown from two different actions each, for the same user situation.
+    // Kept as constants so the wording cannot drift between the two copies.
+    private const string FaceEnrollmentRequiredMessage =
+        "You need to enroll your face before starting an interview.";
+
+    // Deliberately says "too many times" rather than naming a number. The real cap is
+    // InterviewAPI's `Biometrics:EntryMaxRetries` config (default 3) and is never sent to
+    // WebClient — EntryGateStatusResponse carries AttemptsUsed/AttemptsRemaining for one
+    // session, not the limit itself, and VerifyFailed below has no gate data at all. A
+    // hardcoded "3" here would silently start lying the moment that config changed.
+    private const string FaceVerificationExhaustedMessage =
+        "Face verification failed too many times. This session has been cancelled — please start a new interview.";
+
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
         return View(await BuildDashboardAsync(cancellationToken));
     }
 
     // Populates the dashboard plus the user's current credit balance (shown next to each
-    // duration option — see CreditPricing/Views/Interview/Index.cshtml). Balance stays 0 if the
-    // user id can't be resolved from the auth cookie or the lookup fails; PaymentService already
-    // swallows its own errors and returns an empty CreditBalanceDto (see GetCreditBalanceAsync).
+    // duration option — see CreditPricing/Views/Interview/Index.cshtml). CreditBalance stays NULL
+    // ("unknown") if the user id can't be resolved from the auth cookie or PaymentAPI does not
+    // answer — GetCreditBalanceAsync returns null in that case rather than an empty DTO. The view
+    // renders unknown as a dash and keeps every duration selectable; Start is gated server-side by
+    // InterviewAPI, so a stale hint here can never let a user spend credits they do not have.
     private async Task<DashboardViewModel> BuildDashboardAsync(CancellationToken cancellationToken)
     {
         var dashboard = await interviewService.GetDashboardAsync(cancellationToken);
@@ -42,7 +57,7 @@ public class InterviewController(
         if (userId is not null)
         {
             var balance = await paymentService.GetCreditBalanceAsync(userId.Value, cancellationToken);
-            dashboard.CreditBalance = balance.Balance;
+            dashboard.CreditBalance = balance?.Balance;
         }
 
         // Best-effort: a failed lookup just means no banner, never breaks the dashboard.
@@ -63,8 +78,7 @@ public class InterviewController(
         var (statusOk, biometricStatus, _) = await biometricsService.GetStatusAsync(cancellationToken);
         if (statusOk && biometricStatus is not null && !biometricStatus.FaceEnrolled)
         {
-            TempData["InfoMessage"] =
-                "Bạn cần xác thực khuôn mặt (enroll) trước khi bắt đầu phỏng vấn.";
+            TempData["InfoMessage"] = FaceEnrollmentRequiredMessage;
             return RedirectToAction("Identity", "Profile");
         }
 
@@ -117,15 +131,13 @@ public class InterviewController(
 
         if (!gate.FaceEnrolled)
         {
-            TempData["InfoMessage"] =
-                "Bạn cần xác thực khuôn mặt (enroll) trước khi bắt đầu phỏng vấn.";
+            TempData["InfoMessage"] = FaceEnrollmentRequiredMessage;
             return RedirectToAction("Identity", "Profile");
         }
 
         if (gate.AttemptsRemaining <= 0)
         {
-            TempData["ErrorMessage"] =
-                "Xác thực khuôn mặt thất bại sau 3 lần. Phiên này đã bị huỷ — vui lòng tạo phiên phỏng vấn mới.";
+            TempData["ErrorMessage"] = FaceVerificationExhaustedMessage;
             return RedirectToAction(nameof(Index));
         }
 
@@ -136,8 +148,7 @@ public class InterviewController(
     // server-side (TempData) and send the user back to the dashboard.
     public IActionResult VerifyFailed()
     {
-        TempData["ErrorMessage"] =
-            "Xác thực khuôn mặt thất bại sau 3 lần. Phiên này đã bị huỷ — vui lòng tạo phiên phỏng vấn mới.";
+        TempData["ErrorMessage"] = FaceVerificationExhaustedMessage;
         return RedirectToAction(nameof(Index));
     }
 
@@ -232,7 +243,7 @@ public class InterviewController(
         var (gateOk, gate, _) = await verificationService.GetEntryGateAsync(id, cancellationToken);
         if (!gateOk || gate is null)
         {
-            TempData["ErrorMessage"] = "Không thể xác minh danh tính, vui lòng thử lại.";
+            TempData["ErrorMessage"] = "Could not verify your identity. Please try again.";
             return RedirectToAction(nameof(Index));
         }
 

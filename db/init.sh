@@ -80,8 +80,30 @@ log "using ${SQLCMD}"
 # treated as a variable reference and aborts with a client-side syntax error, even
 # though the SQL itself is well-formed. None of our scripts use sqlcmd variables, so
 # this substitution has no legitimate use here and is off everywhere.
-run_sql()      { "$SQLCMD" -S "$SERVER" -U "$SA_USER" -P "$MSSQL_SA_PASSWORD" $TLS -b -x -Q "$1"; }
-run_file_db()  { "$SQLCMD" -S "$SERVER" -U "$SA_USER" -P "$MSSQL_SA_PASSWORD" $TLS -b -x -d "$1" -i "$2"; }
+# -I sets QUOTED_IDENTIFIER ON for the connection. sqlcmd defaults it OFF; SSMS defaults
+# it ON. That difference is a real trap here, because SQL Server REFUSES any INSERT/UPDATE/
+# DELETE on a table carrying a filtered index (also indexed views and computed-column
+# indexes) unless QUOTED_IDENTIFIER is ON:
+#     Msg 1934 - INSERT failed because the following SET options have incorrect
+#                settings: 'QUOTED_IDENTIFIER'.
+# So a statement that works when pasted into SSMS fails through db-init, which is exactly
+# how db/seed/08_DevPrep_Payment.sql failed: dbo.CreditLedger carries four filtered indexes
+# (IX_Ledger_Reference, UX_Ledger_PurchaseOrder, UX_Ledger_RefundPerReference,
+# UX_Ledger_UserBonus - see db/baseline/08_DevPrep_Payment.sql:162-200).
+#
+# The ten baselines are unaffected because SSMS emits its own `SET QUOTED_IDENTIFIER ON`
+# into every generated script. Only hand-written files can forget it, so -I is here as the
+# harness-level guarantee: it makes sqlcmd behave like the tool these files were authored
+# in, and covers any future seed or migration whose author does not know about this.
+# The seed files ALSO set it themselves, so they stay correct when run outside this script.
+#
+# Safe to apply globally - verified, not assumed: every double-quote character in db/seed/
+# and db/baseline/ sits either inside a single-quoted string literal (e.g. N'Flask is a
+# "microframework"') or inside a `--` comment. There is no double-quoted string literal
+# anywhere in the corpus, so nothing changes meaning from identifier-vs-string reparsing.
+# 04_DevPrep_Question.sql's 34,776 INSERTs already run under QUOTED_IDENTIFIER ON today.
+run_sql()      { "$SQLCMD" -S "$SERVER" -U "$SA_USER" -P "$MSSQL_SA_PASSWORD" $TLS -b -x -I -Q "$1"; }
+run_file_db()  { "$SQLCMD" -S "$SERVER" -U "$SA_USER" -P "$MSSQL_SA_PASSWORD" $TLS -b -x -I -d "$1" -i "$2"; }
 # For a single-row single-column result only. -h -1 drops the header AND the dashed
 # separator line under it; -W right-trims column padding. These flags are baked into
 # this function's own definition, not appended as extra arguments at a call site: a
@@ -90,10 +112,10 @@ run_file_db()  { "$SQLCMD" -S "$SERVER" -U "$SA_USER" -P "$MSSQL_SA_PASSWORD" $T
 # not an error, just silently discarded. That was this script's original bug: sqlcmd
 # ran with default formatting (header + separator + value + footer) the whole time,
 # and the flags meant to fix that never reached it at all.
-query_scalar_db() { "$SQLCMD" -S "$SERVER" -U "$SA_USER" -P "$MSSQL_SA_PASSWORD" $TLS -b -x -d "$1" -h -1 -W -Q "$2"; }
+query_scalar_db() { "$SQLCMD" -S "$SERVER" -U "$SA_USER" -P "$MSSQL_SA_PASSWORD" $TLS -b -x -I -d "$1" -h -1 -W -Q "$2"; }
 # Same as run_sql but scoped to one database via -d, for inline statements with
 # no result set to capture (creating/inserting into the completion marker).
-run_sql_db()   { "$SQLCMD" -S "$SERVER" -U "$SA_USER" -P "$MSSQL_SA_PASSWORD" $TLS -b -x -d "$1" -Q "$2"; }
+run_sql_db()   { "$SQLCMD" -S "$SERVER" -U "$SA_USER" -P "$MSSQL_SA_PASSWORD" $TLS -b -x -I -d "$1" -Q "$2"; }
 
 # --- 1. Wait for SQL Server -------------------------------------------------
 # The container reports ready before the engine accepts logins, so poll rather
@@ -172,6 +194,66 @@ for f in "${baselines[@]}"; do
   applied=$(( applied + 1 ))
 done
 
+# --- 3b. Apply sample data (opt-in) -----------------------------------------
+# SAMPLE-DATA: remove before production — start
+#
+# Sign-in accounts, credit packages and starting credits, so a fresh clone is
+# usable without manual setup. Off unless SEED_SAMPLE_DATA=true.
+#
+# SEPARATE MARKER FROM THE BASELINE — this is what makes the flag usable on a
+# stack that is already built. The seed records dbo.__seed_applied, not
+# dbo.__baseline_applied, so a database whose baseline is already marked complete
+# is still eligible for seeding. Turning SEED_SAMPLE_DATA on later and re-running
+# db-init applies the seed WITHOUT touching or re-running the schema, and without
+# dropping the volume. Sharing the baseline's marker would have meant the seed
+# could only ever land on a database created in the same run.
+#
+# The seed files are additionally guarded row-by-row with IF NOT EXISTS, so even a
+# lost marker cannot produce duplicates.
+if [ "${SEED_SAMPLE_DATA:-false}" = "true" ]; then
+  shopt -s nullglob
+  seeds=( "${SCRIPT_DIR}/seed"/*.sql )
+  shopt -u nullglob
+
+  if [ "${#seeds[@]}" -eq 0 ]; then
+    log "SEED_SAMPLE_DATA=true but db/seed/ has no .sql files — nothing to seed."
+  else
+    log "SEED_SAMPLE_DATA=true — applying sample data (db/seed/)..."
+    seeded=0; seed_skipped=0
+    for f in "${seeds[@]}"; do
+      base="$(basename "$f")"
+      db="${base#*_}"; db="${db%.sql}"
+
+      case " ${DATABASES[*]} " in
+        *" ${db} "*) ;;
+        *) fail "seed ${base} maps to '${db}', which is not one of the ten databases" ;;
+      esac
+
+      run_sql_db "$db" "IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = N'__seed_applied' AND schema_id = SCHEMA_ID('dbo')) BEGIN CREATE TABLE dbo.__seed_applied (applied_at DATETIME2 NOT NULL); END" >/dev/null
+
+      raw_seed_marker="$(query_scalar_db "$db" "SET NOCOUNT ON; SELECT COUNT(*) FROM dbo.__seed_applied;")"
+      seed_marker="$(printf '%s' "$raw_seed_marker" | tr -d '[:space:]')"
+      if ! [[ "$seed_marker" =~ ^[0-9]+$ ]]; then
+        fail "could not read seed marker for ${db}: sqlcmd returned $(printf '%q' "$raw_seed_marker")."
+      fi
+      if [ "$seed_marker" -gt 0 ]; then
+        log "  skip ${base} — ${db} already seeded"
+        seed_skipped=$(( seed_skipped + 1 ))
+        continue
+      fi
+
+      log "  seeding ${base} -> ${db}"
+      run_file_db "$db" "$f"
+      run_sql_db "$db" "INSERT INTO dbo.__seed_applied (applied_at) VALUES (SYSDATETIME());" >/dev/null
+      seeded=$(( seeded + 1 ))
+    done
+    log "sample data: seeded=${seeded} skipped=${seed_skipped}"
+  fi
+else
+  log "SEED_SAMPLE_DATA is not 'true' — skipping sample data."
+fi
+# SAMPLE-DATA: remove before production — end
+
 # --- 4. Verify ---------------------------------------------------------------
 log "verifying all ten databases exist..."
 missing=0
@@ -204,7 +286,7 @@ log "done. applied=${applied} skipped=${skipped} databases=${#DATABASES[@]}"
 #   for f in "${SCRIPT_DIR}"/../source/*/Sql/*.sql; do
 #     [ -e "$f" ] || continue
 #     log "  migration $(basename "$f")"
-#     "$SQLCMD" -S "$SERVER" -U "$SA_USER" -P "$MSSQL_SA_PASSWORD" $TLS -b -i "$f"
+#     "$SQLCMD" -S "$SERVER" -U "$SA_USER" -P "$MSSQL_SA_PASSWORD" $TLS -b -x -I -i "$f"
 #   done
 #
 # Those scripts carry their own `USE [DevPrep_X];` line, so they are run without -d.

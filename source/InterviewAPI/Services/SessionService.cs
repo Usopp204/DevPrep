@@ -364,6 +364,17 @@ public class SessionService : ISessionService
 
     public async Task<ConfigResponse> ConfigDurationAsync(Guid userId, ConfigDurationRequest req, CancellationToken ct)
     {
+        // DEMO-SESSION: remove after defence — start
+        // ValidDurations is a hard whitelist, so admitting the demo duration means touching this
+        // check — the one place demo logic sits on a normal session's path. Written as a guard in
+        // FRONT of the original check rather than an extra `&&` clause inside it, so that deleting
+        // everything between these two markers leaves the original statement intact and correct:
+        //     if (!ValidDurations.Contains(req.DurationMinutes))
+        //         throw new InvalidOperationException(...);
+        // IsDemoDuration is false whenever DEMO_SESSION_ENABLED is off, so with the flag off a
+        // 5-minute request falls through to the whitelist and is rejected exactly as before.
+        if (!DemoSession.IsDemoDuration(_configuration, req.DurationMinutes))
+        // DEMO-SESSION: remove after defence — end
         if (!ValidDurations.Contains(req.DurationMinutes))
             throw new InvalidOperationException("Invalid duration. Must be 15, 30, 45, or 60.");
 
@@ -510,7 +521,55 @@ public class SessionService : ISessionService
             "InitAsync: calling ai-service PlanQuestions for session {SessionId} (position={Position}, level={Level}, durationMin={DurationMin}).",
             session.SessionId, planRequest.Position, planRequest.Level, planRequest.DurationMin);
 
-        var plan = await _aiServiceClient.PlanQuestionsAsync(planRequest, ct);
+        // ai-service is a hard dependency here: without a question set there is no interview to
+        // start. Translate any failure into SessionInitDependencyException so the controller can
+        // answer 503 ("try again shortly") instead of letting a raw dependency error surface as a
+        // 400, which would tell the user their request was malformed when it was not.
+        AiQuestionPlanResponse? plan;
+        try
+        {
+            plan = await _aiServiceClient.PlanQuestionsAsync(planRequest, ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "InitAsync: ai-service PlanQuestions failed for session {SessionId}; session was not initialized.",
+                session.SessionId);
+            throw new SessionInitDependencyException(ex);
+        }
+
+        // DEMO-SESSION: remove after defence — start
+        // Keep only the first DemoSession.QuestionCount questions of the real RAG plan. ai-service
+        // still runs its full pipeline for a 5-minute request (target_questions(5) => 8 questions)
+        // — nothing here is scripted, we simply stop after the first few.
+        //
+        // Placement is deliberate: this runs BEFORE Step D maps AiPlannedQuestion -> SessionQuestion
+        // and therefore before Step E's single INSERT. The discarded questions never become
+        // entities and never reach the database, so a demo session leaves exactly 3 rows in
+        // SessionQuestions with no orphans for anyone inspecting the data afterwards.
+        //
+        // Taking the FIRST 3 (rather than sampling across tracks) is intentional: ai-service's
+        // _weave orders the pool so any prefix is valid — see its comment "a time-driven session
+        // may stop anywhere" — and every question is planned at the same difficulty (the
+        // candidate's level), so a prefix is not an easier subset. The first three come from the
+        // core technical track; Problem-Solving first appears at question 4.
+        if (plan is not null
+            && DemoSession.IsDemoDuration(_configuration, session.DurationMinutes)
+            && plan.Questions.Count > DemoSession.QuestionCount)
+        {
+            var plannedCount = plan.Questions.Count;
+            plan.Questions = plan.Questions.Take(DemoSession.QuestionCount).ToList();
+            _logger.LogInformation(
+                "DEMO-SESSION: trimmed ai-service plan from {PlannedCount} to {KeptCount} questions " +
+                "for session {SessionId} before persistence.",
+                plannedCount, plan.Questions.Count, session.SessionId);
+        }
+        // DEMO-SESSION: remove after defence — end
 
         // Log số câu hỏi ai-service trả về — nếu 0 thì response rỗng hoặc deserialize sai.
         var returnedCount = plan?.Questions?.Count ?? 0;
@@ -664,6 +723,14 @@ public class SessionService : ISessionService
                 _logger.LogError("Credit deduction failed: {Message}", deductResult.Message);
                 // Rollback status back to Initialized (race-safe: only we can update from InProgress in this flow).
                 await _repo.UpdateStatusIfAsync(userId, sessionId, "InProgress", "Initialized", ct);
+
+                // PaymentAPI never answered: its Message holds transport detail (host names, ports)
+                // that must not reach the user. The log line above already captured it.
+                if (!deductResult.ServiceAvailable)
+                    throw new CreditServiceUnavailableException();
+
+                // PaymentAPI answered and refused — e.g. "Insufficient credits". That message is
+                // written for the user and stays intact.
                 throw new InvalidOperationException($"Credit deduction failed: {deductResult.Message}");
             }
 
@@ -1760,6 +1827,169 @@ public class SessionService : ISessionService
     {
         var session = await _repo.GetByIdAsync(sessionId, ct);
         return session is not null && session.UserId == userId;
+    }
+
+    // How long after one re-queue burst before the same session may trigger another.
+    private const int RegradeCooldownSeconds = 60;
+
+    // Last time each session was allowed a re-queue burst.
+    //
+    // WHAT THIS PROTECTS AGAINST: a user refreshing the report page in a loop. Without it, every
+    // refresh would enqueue one job per missing answer, stacking duplicate work that all competes
+    // for the same GPU. EvaluateAnswerAsync is idempotent at the ROW level, which prevents
+    // duplicate evaluations — it does nothing to prevent duplicate QUEUE ENTRIES.
+    //
+    // WHAT THIS DOES *NOT* PROTECT AGAINST — do not assume more of it than it does:
+    //   - It is IN-MEMORY. A restart clears it, so the first request after a restart always
+    //     passes, regardless of how recently a burst ran.
+    //   - It is PER-INSTANCE. Running more than one InterviewAPI replica gives each its own copy,
+    //     so N replicas allow N concurrent bursts. Fine at this project's single-instance scale;
+    //     a shared store (or moving the guard into the database) is the fix if that ever changes.
+    //   - It is NOT a security control. The endpoint is reachable by any authenticated owner of
+    //     the session through the gateway — nothing about the network topology restricts it, and
+    //     the gateway's "internal" path filter does not cover this route. This cooldown is the
+    //     ONLY thing rate-limiting the recovery path. Do not remove it on the assumption that
+    //     network isolation is doing the work, because it is not.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<Guid, DateTime> RegradeCooldowns = new();
+
+    public async Task<RequeueMissingEvaluationsResponse> RequeueMissingEvaluationsAsync(
+        Guid userId, Guid sessionId, RequeueMissingEvaluationsRequest req, CancellationToken ct)
+    {
+        var session = await _repo.GetWithFullHistoryAsync(sessionId, ct);
+        if (session is null || session.UserId != userId)
+            throw new KeyNotFoundException("Session not found.");
+
+        var requestedIds = (req.SessionQuestionIds ?? new List<Guid>())
+            .Where(id => id != Guid.Empty)
+            .Distinct()
+            .ToList();
+
+        var response = new RequeueMissingEvaluationsResponse
+        {
+            SessionId = sessionId,
+            RequestedCount = requestedIds.Count
+        };
+
+        if (requestedIds.Count == 0)
+            return response;
+
+        // Cooldown check comes before any work is built, so a suppressed burst costs one dictionary
+        // read. Logged at Warning: a suppressed recovery is a recovery that did NOT happen, and the
+        // whole point of this path is that silent drops are what got us here.
+        var now = VietnamTime.Now;
+        if (RegradeCooldowns.TryGetValue(sessionId, out var lastBurst))
+        {
+            var elapsed = (now - lastBurst).TotalSeconds;
+            if (elapsed < RegradeCooldownSeconds)
+            {
+                response.CooldownActive = true;
+                response.CooldownSecondsRemaining = (int)Math.Ceiling(RegradeCooldownSeconds - elapsed);
+                _logger.LogWarning(
+                    "Re-queue of {RequestedCount} missing evaluation(s) SUPPRESSED by cooldown for " +
+                    "session {SessionId}, user {UserId}. {SecondsRemaining}s remaining of the " +
+                    "{CooldownSeconds}s window. Nothing was queued by this call.",
+                    requestedIds.Count,
+                    sessionId,
+                    userId,
+                    response.CooldownSecondsRemaining,
+                    RegradeCooldownSeconds);
+                return response;
+            }
+        }
+
+        var bearerToken = _httpContextAccessor.HttpContext?.Request.Headers.Authorization.ToString();
+        var questionsById = session.SessionQuestions.ToDictionary(q => q.SessionQuestionId);
+
+        foreach (var questionId in requestedIds)
+        {
+            if (!questionsById.TryGetValue(questionId, out var question))
+            {
+                response.NotEligibleCount++;
+                continue;
+            }
+
+            // Same substantive-answer rule the original enqueue used, so a skipped or timed-out
+            // question is never re-queued: those legitimately have no evaluation and the aggregate
+            // report already excludes them.
+            var answer = question.ChatMessages
+                .Where(SubstantiveAnswerRules.IsSubstantive)
+                .OrderByDescending(m => m.SentAt)
+                .FirstOrDefault();
+
+            if (answer is null)
+            {
+                response.NotEligibleCount++;
+                continue;
+            }
+
+            var workItem = new GradingWorkItem(
+                sessionId,
+                question.SessionQuestionId,
+                answer.MessageId,
+                userId,
+                new EvaluateAnswerPayload
+                {
+                    Question = question.Content,
+                    ReferenceAnswer = question.ReferenceAnswer ?? string.Empty,
+                    Category = string.Empty,
+                    Difficulty = string.Empty,
+                    UserAnswer = answer.Content
+                },
+                bearerToken);
+
+            // TryEnqueue, NOT EnqueueAsync: this runs inside a live HTTP request and must never
+            // block on a full queue. See IGradingQueue for why the two paths differ.
+            if (_gradingQueue.TryEnqueue(workItem))
+                response.EnqueuedCount++;
+            else
+                response.DroppedCount++;
+        }
+
+        var eligibleCount = response.EnqueuedCount + response.DroppedCount;
+        if (eligibleCount > 0)
+        {
+            // Start the cooldown on any burst that had real work to do — including one whose items
+            // were all dropped. A full queue means the system is already saturated, which is
+            // precisely when an immediate retry is least welcome.
+            RegradeCooldowns[sessionId] = now;
+            PruneRegradeCooldowns(now);
+        }
+
+        if (response.DroppedCount > 0)
+        {
+            _logger.LogWarning(
+                "Re-queue for session {SessionId}, user {UserId}: {EnqueuedCount} queued but " +
+                "{DroppedCount} DROPPED because the grading queue was full or shutting down. " +
+                "Those answers stay ungraded until the next attempt after the {CooldownSeconds}s cooldown.",
+                sessionId, userId, response.EnqueuedCount, response.DroppedCount, RegradeCooldownSeconds);
+        }
+        else
+        {
+            _logger.LogInformation(
+                "Re-queue for session {SessionId}, user {UserId}: {EnqueuedCount} of {RequestedCount} " +
+                "requested evaluation(s) queued; {NotEligibleCount} had no substantive answer to grade.",
+                sessionId, userId, response.EnqueuedCount, response.RequestedCount, response.NotEligibleCount);
+        }
+
+        return response;
+    }
+
+    /// <summary>
+    /// Drops cooldown entries that can no longer suppress anything. Without this the dictionary
+    /// grows once per session for the process lifetime; sessions are never revisited after their
+    /// report is built, so the entries are pure leak. Only runs once the map is large enough to be
+    /// worth walking.
+    /// </summary>
+    private static void PruneRegradeCooldowns(DateTime now)
+    {
+        if (RegradeCooldowns.Count < 512)
+            return;
+
+        foreach (var entry in RegradeCooldowns)
+        {
+            if ((now - entry.Value).TotalSeconds >= RegradeCooldownSeconds)
+                RegradeCooldowns.TryRemove(entry.Key, out _);
+        }
     }
 
     public async Task<IntegrityPolicyStatusResponse> GetIntegrityPolicyStatusAsync(Guid userId, Guid sessionId, CancellationToken ct)

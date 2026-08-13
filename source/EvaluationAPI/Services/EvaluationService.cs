@@ -13,6 +13,20 @@ namespace EvaluationAPI.Services;
 public class EvaluationService : IEvaluationService
 {
     private static readonly ConcurrentDictionary<Guid, SemaphoreSlim> ReportGates = new();
+
+    // Sessions this instance has already asked InterviewAPI to re-grade. EvaluationService is
+    // registered AddScoped, so this is per-HTTP-REQUEST, not per-process — exactly the lifetime
+    // needed here. EnsurePerformanceReportAsync calls GetPerformanceReportAsync up to three times
+    // (:248, :256, :258) and the regrade hook lives inside it, so without this one page load would
+    // fire three regrade calls: the first enqueues, the next two come back cooldownActive.
+    //
+    // Suppressing them HERE rather than letting the cooldown absorb them is deliberate. If the
+    // duplicates reached InterviewAPI, every log would contain cooldown suppressions that mean
+    // "we asked ourselves twice in one request" mixed with the ones that mean "the user is
+    // refreshing" — and the two are indistinguishable at the far end. With this set, any
+    // cooldownActive seen in the logs is a genuine repeat visit, which is the signal worth having.
+    private readonly HashSet<Guid> _regradeAttemptedThisRequest = new();
+
     private readonly IEvaluationRepository _repo;
     private readonly IAiServiceClient _aiServiceClient;
     private readonly IInterviewApiClient _interviewApiClient;
@@ -150,6 +164,65 @@ public class EvaluationService : IEvaluationService
         return ToResponse(evaluation);
     }
 
+    /// <summary>
+    /// Asks InterviewAPI to re-queue grading for the substantive answers that have no evaluation.
+    /// Fire-and-forget: RequestRegradeAsync never throws, so the caller's return value is
+    /// unaffected by whether recovery could be started.
+    /// </summary>
+    private async Task RequestRegradeIfNeededAsync(
+        Guid sessionId,
+        HashSet<Guid> substantiveQuestionIds,
+        IReadOnlyCollection<AnswerEvaluation> coveredEvaluations,
+        string? bearerToken,
+        CancellationToken ct)
+    {
+        // Once per session per request — see _regradeAttemptedThisRequest.
+        if (!_regradeAttemptedThisRequest.Add(sessionId))
+            return;
+
+        // When coveredEvaluations is empty this is every substantive question in the session, which
+        // is correct: with zero evaluations every answer needs grading. The set is bounded by the
+        // session's own question count (a 60-minute session plans ~90 questions and only answered
+        // ones are substantive), against a grading queue capacity of 256 — so one session's full
+        // recovery fits. If it ever does not, InterviewAPI's TryEnqueue drops rather than blocks
+        // AND logs each drop plus a DroppedCount summary at Warning, so a partially-dropped burst
+        // is visible rather than silent.
+        var evaluatedIds = coveredEvaluations
+            .Select(evaluation => evaluation.SessionQuestionId)
+            .ToHashSet();
+        var missingIds = substantiveQuestionIds
+            .Where(questionId => !evaluatedIds.Contains(questionId))
+            .ToList();
+
+        if (missingIds.Count == 0)
+            return;
+
+        // Two separate log statements with unmistakable leading tokens, NOT one template with the
+        // distinguishing word interpolated mid-sentence. The tokens exist to be grepped:
+        //   REGRADE-TOTAL-LOSS   only the zero-evaluation branch
+        //   REGRADE-PARTIAL      only the some-but-not-all branch
+        //   REGRADE-             every attempt, for counting duplicates in one request
+        // They cannot collide with ordinary prose in other log lines, so a test that greps for the
+        // wrong one fails loudly instead of matching a stray word like "partial" somewhere else.
+        if (evaluatedIds.Count == 0)
+        {
+            _logger.LogInformation(
+                "REGRADE-TOTAL-LOSS: session {SessionId} has NO evaluation for any of its " +
+                "{ExpectedCount} substantive answer(s) — every grading job was lost. Requesting a " +
+                "re-grade of all {MissingCount}.",
+                sessionId, substantiveQuestionIds.Count, missingIds.Count);
+        }
+        else
+        {
+            _logger.LogInformation(
+                "REGRADE-PARTIAL: session {SessionId} has {EvaluatedCount} of {ExpectedCount} " +
+                "substantive answer(s) evaluated. Requesting a re-grade of the {MissingCount} missing.",
+                sessionId, evaluatedIds.Count, substantiveQuestionIds.Count, missingIds.Count);
+        }
+
+        await _interviewApiClient.RequestRegradeAsync(sessionId, missingIds, bearerToken, ct);
+    }
+
     public async Task<PerformanceReportResponse> GetPerformanceReportAsync(
         Guid sessionId,
         string? bearerToken,
@@ -202,11 +275,28 @@ public class EvaluationService : IEvaluationService
                 .First())
             .ToList();
 
+        // RECOVERY HOOK — both branches below are the two ways grading can come up short, and both
+        // are recoverable. This is the right place for it because these two lines are where the
+        // shortfall is actually DECIDED, and because GetPerformanceReportAsync is on the path a
+        // plain report page load takes (WebClient calls GET /performance; it only POSTs /report
+        // when the state is already Scored). An earlier attempt hooked
+        // EnsurePerformanceReportAsync instead and never fired — see the comment there.
+
         if (coveredEvaluations.Count == 0)
+        {
+            // TOTAL LOSS: every grading job for this session died. The missing set is therefore
+            // every substantive question, not a subset — see RequestRegradeIfNeededAsync.
+            await RequestRegradeIfNeededAsync(
+                sessionId, substantiveQuestionIds, coveredEvaluations, bearerToken, ct);
             return StateOnly(sessionId, EvaluationLifecycleStates.EvaluationUnavailable);
+        }
 
         if (coveredEvaluations.Count < substantiveQuestionIds.Count)
+        {
+            await RequestRegradeIfNeededAsync(
+                sessionId, substantiveQuestionIds, coveredEvaluations, bearerToken, ct);
             return StateOnly(sessionId, EvaluationLifecycleStates.EvaluationIncomplete);
+        }
 
         var aggregate = CalculateAggregate(coveredEvaluations);
         var report = await _repo.GetReportBySessionAsync(sessionId, ct);
@@ -277,6 +367,16 @@ public class EvaluationService : IEvaluationService
                     .ThenByDescending(evaluation => evaluation.EvaluationId)
                     .First())
                 .ToList();
+            // RACE GUARD ONLY — do NOT put the re-grade hook here. Reaching this line means
+            // GetPerformanceReportAsync returned Scored at :303-305 above, and it only returns
+            // Scored when coveredEvaluations.Count == substantiveQuestionIds.Count. The two sets
+            // are then recomputed from a second fetch, so this comparison can differ only if the
+            // data changed between those two calls — same request, milliseconds apart, under the
+            // per-session gate. It is effectively unreachable.
+            //
+            // Batch 5.5b originally hooked the recovery call here and it never fired for either
+            // failure mode. The hook now lives in GetPerformanceReportAsync, at the two lines that
+            // actually decide a shortfall, which is also the path a plain page load takes.
             if (evaluations.Count != substantiveQuestionIds.Count)
                 throw new AggregateReportNotReadyException(EvaluationLifecycleStates.EvaluationIncomplete);
 

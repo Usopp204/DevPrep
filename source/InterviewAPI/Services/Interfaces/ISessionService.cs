@@ -52,6 +52,13 @@ public interface ISessionService
     // to verify ownership (the Evaluation tables have no UserId of their own).
     Task<bool> OwnsSessionAsync(Guid userId, Guid sessionId, CancellationToken ct);
 
+    // Rebuilds and re-queues grading work for the named questions. Recovery path for answers whose
+    // original grading job was discarded after its retries were exhausted — the grading queue is
+    // in-memory with no dead letter, so without this the answer stays ungraded forever and the
+    // aggregate report is blocked permanently. Rate-limited per session; see the implementation.
+    Task<RequeueMissingEvaluationsResponse> RequeueMissingEvaluationsAsync(
+        Guid userId, Guid sessionId, RequeueMissingEvaluationsRequest req, CancellationToken ct);
+
     Task<IntegrityPolicyStatusResponse> GetIntegrityPolicyStatusAsync(Guid userId, Guid sessionId, CancellationToken ct);
     Task<IntegrityPolicyStatusResponse> AcceptIntegrityPolicyAsync(Guid userId, Guid sessionId, CancellationToken ct);
 
