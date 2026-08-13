@@ -52,15 +52,31 @@ grep -nE "USE \[|CREATE DATABASE|ALTER AUTHORIZATION|CREATE USER|CREATE ROLE|GRA
 
 If this returns a hit, the corresponding option above was not set. **Fix the export and re-generate rather than hand-editing** — hand-edits do not survive the next regeneration.
 
-## 3. Seed data — three databases only
+## 3. Seed data — what the baselines actually carry
 
-Schema-only everywhere, except lookup rows the application needs to function on a fresh volume:
+**As exported today, exactly one baseline contains data.** Verified by counting `INSERT`
+statements in `db/baseline/*.sql`:
 
-| Database | Seed | Why |
+| Database | Rows in its baseline | Notes |
 |---|---|---|
-| `DevPrep_Question` | tech stacks, positions | `AdminTechStacksController` / `AdminPositionsController` read them |
-| `DevPrep_Payment` | credit packages | the Buy Credits page renders empty without them |
-| `DevPrep_Notification` | email templates | **check first** — `NotificationAPI/Program.cs:61` seeds `VERIFY_EMAIL` at startup, so this may be redundant |
+| `DevPrep_Question` | **34,776** — `Questions` 34,678, `QuestionCategories` 92, `Positions` 6 | The whole question bank, not just lookups. Drives the ~28 MB file size |
+| all other nine | **0** | Schema only |
+
+The admin UI's **"Tech Stacks" are `QuestionCategories` rows** — there is no `TechStacks` table.
+`QuestionAPI/Repositories/TechStackRepository.cs:63-89` reads and writes `_db.QuestionCategories`,
+and `QuestionBankDbContext` declares exactly three `DbSet`s, matching the three tables above.
+
+Two things the baselines do **not** carry, despite earlier drafts of this section saying otherwise:
+
+| Not in any baseline | Where it actually comes from |
+|---|---|
+| `DevPrep_Payment.CreditPackages` | `db/seed/08_DevPrep_Payment.sql`, only when `SEED_SAMPLE_DATA=true` |
+| `DevPrep_Notification.EmailTemplates` | `NotificationAPI/Program.cs:61` seeds `VERIFY_EMAIL` itself at startup |
+
+**If you regenerate `04_DevPrep_Question.sql`, script `Questions`, `QuestionCategories` and
+`Positions` as "Schema and data".** Scripting only the lookup tables would drop 34,678 questions and
+leave a stack that boots cleanly but cannot start an interview — the failure this note exists to
+prevent.
 
 **Never**: user rows, CVs, JDs, interview transcripts, evaluations, payment records. That is real personal data and must not enter git.
 
@@ -131,11 +147,32 @@ END
 
 `source/PaymentAPI/Sql/002_add_credit_wallets_userid_unique_index.sql` already demonstrates the house style — copy it so the codebase stays internally consistent.
 
-### `db-init`'s idempotency is at the database level, not the statement level
+### `db-init`'s idempotency is at the file level, driven by explicit completion markers
 
-The baselines are raw SSMS output — bare `CREATE TABLE`/`INSERT`, no `IF NOT EXISTS` guards. Re-running them against a populated database fails on the first line that collides with an existing object or a unique-key row. `db/init.sh` works around this by checking, per database, whether user tables already exist (`sys.tables WHERE is_ms_shipped = 0`) and **skipping the entire baseline — schema and seed data together — if so**.
+The baselines are raw SSMS output — bare `CREATE TABLE`/`INSERT`, no `IF NOT EXISTS` guards. Re-running one against a populated database fails on the first line that collides with an existing object or a unique-key row. So `db/init.sh` decides per file whether to run it at all.
 
-**Practical consequence: on a second `docker compose up` against an existing volume, the Question/Payment/Notification seed rows are not re-applied, even if you've since edited the baseline file.** This is deliberate — it's what keeps re-runs fast and non-destructive — but it means a seed-data fix landed in `db/baseline/04_DevPrep_Question.sql` after a volume already has `DevPrep_Question` populated will **not** reach that running instance. To pick up a seed change on an existing environment, drop the affected database (or the whole `mssql-data` volume) so `db-init` sees it as absent and re-applies the baseline in full.
+> **Do not "simplify" this back to counting tables.** An earlier version inferred completion from schema state — if user tables existed, the baseline was considered done and skipped. That is precisely what let a **half-applied `DevPrep_Question` be skipped forever**: the run died partway through, left tables behind, and every retry saw those tables and moved on. The marker design below exists to make that impossible, and `init.sh` carries the same warning in its own header. Changing `init.sh` to match an older description of it would reintroduce the bug.
+
+**Two markers, deliberately separate:**
+
+| Table | Written after | Guards |
+|---|---|---|
+| `dbo.__baseline_applied` | `db/baseline/NN_*.sql` applies cleanly | the schema |
+| `dbo.__seed_applied` | `db/seed/NN_*.sql` applies cleanly | the opt-in sample data |
+
+They are separate so `SEED_SAMPLE_DATA` stays usable on a stack that is **already built** — a database whose baseline is long since marked complete is still eligible for seeding, so flipping the flag on later applies the seed without touching the schema or dropping the volume. One shared marker would have meant the seed could only ever land on a database created in the same run.
+
+**The ordering is the whole point.** The marker row is inserted by a *separate statement, only after* the file's `sqlcmd` invocation returns 0 (`init.sh:193` for baselines, `:247` for seeds). Combined with `set -euo pipefail` and sqlcmd's `-b`, a SQL error aborts the container **before** any marker is written. A run that dies partway leaves **no marker**, even though it may have left tables or rows behind. Presence of tables is never treated as proof of completion.
+
+**Three outcomes per file:**
+
+1. **Marker present** (`init.sh:172`, `:239`) → skip, log `already marked complete` / `already seeded`.
+2. **No marker, no user tables** → apply, then write the marker.
+3. **No marker, but user tables exist** (`init.sh:182-188`) → **fail loudly**, with the message `has N table(s) but no completion marker — a previous run was interrupted mid-baseline. DROP DATABASE [X] and re-run; this cannot be resumed in place.` The baselines have no per-statement guards, so this genuinely cannot be resumed; failing beats a cryptic collision error or a silent skip.
+
+Seed files are additionally guarded row-by-row with `IF NOT EXISTS` on their own keys, so even a lost `__seed_applied` marker cannot produce duplicates. That belt-and-braces is what made the `08_DevPrep_Payment.sql` retries safe after it failed twice mid-file.
+
+**Practical consequence: on a second `docker compose up` against an existing volume, the 34,776 question-bank rows in `04_DevPrep_Question.sql` are not re-applied, even if you've since edited the baseline file.** (Payment credit packages and Notification email templates are unaffected — neither is in a baseline; see §3.) This is deliberate: it keeps re-runs fast and non-destructive. But it means a data fix landed in `db/baseline/04_DevPrep_Question.sql` after a volume already has `DevPrep_Question` populated will **not** reach that running instance. To pick it up, drop the affected database (or the whole `mssql-data` volume) so `db-init` sees no marker and re-applies the baseline in full.
 
 ## 7. Known limitation
 

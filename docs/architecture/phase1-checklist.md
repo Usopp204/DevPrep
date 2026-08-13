@@ -428,9 +428,9 @@ ApiGateway instead takes `GLOBAL_API_GATEWAY_PORT=8080` (it already binds `0.0.0
 >
 > ### Verified: no data migration needed
 > The concern was that existing `UserProfiles.AvatarUrl` rows hold absolute `http://localhost:7002/avatars/…` strings that config cannot retroactively fix. **That does not apply to compose**, because the compose database starts empty of user data:
-> - No code seeds `UserProfiles` — the only insert is `UserProfileRepository.cs:42`, reached at runtime via `CreateProfileIfNotExistsAsync` when an account registers.
-> - No committed SQL script contains an `INSERT` or the word `avatar`.
-> - `schema-recovery.md` §3.1 seeds only `DevPrep_Question` (tech stacks, positions), `DevPrep_Payment` (credit packages), and `DevPrep_Notification` (email templates), and explicitly excludes user rows as personal data.
+> - At runtime the only insert into `UserProfiles` is `UserProfileRepository.cs:42`, reached via `CreateProfileIfNotExistsAsync` when an account registers — so a profile is only ever created by a real registration.
+> - **Re-verified after `db/seed/` was added, which changed two of the original three bullets.** `db/seed/02_DevPrep_User.sql:30,38,46` *does* now insert three `UserProfiles` rows when `SEED_SAMPLE_DATA=true` — but every one sets `AvatarUrl` to `NULL`. Zero avatar URLs either way, so the conclusion below is unchanged.
+> - No baseline inserts into `UserProfiles`. The only baseline carrying data at all is `04_DevPrep_Question.sql` (`Questions`, `QuestionCategories`, `Positions` — see §"Expected first-run state"); `avatar` appears in `db/baseline/02_DevPrep_User.sql:51` only as the `AvatarUrl` **column definition**, never as a value.
 >
 > So on a fresh volume there are zero profiles and therefore zero avatar URLs; accounts are registered fresh during the demo and every upload gets the correct base URL from the env var.
 >
@@ -476,14 +476,26 @@ Schema is committed (`db/baseline/*.sql`) and applied by `db-init`. **All 15 ser
 
 **`cvjdapi` and `notificationapi` no longer crash-loop.** Both touched the DB during startup (`EnsureCreated()` at `CvJdAPI/Program.cs:68`, `SeedEmailTemplatesAsync()` at `NotificationAPI/Program.cs:61`) and now find their schema present. `notificationapi` additionally **seeds its own `EmailTemplates`**, so that table is populated even though the baseline carries no rows.
 
-**Structurally healthy ≠ functionally complete.** The baselines are schema-only — **zero `INSERT` statements in all ten**. Everything starts, but these tables are empty:
+**Structurally healthy ≠ functionally complete.** **Nine** of the ten baselines are schema-only.
+`04_DevPrep_Question.sql` is the exception: it carries **34,776 `INSERT` statements** —
+`Questions` 34,678 rows, `QuestionCategories` 92, `Positions` 6 — so the question bank ships with
+the schema. That is why the file is ~28 MB and takes visibly longer to apply than the other nine.
 
-| Empty table | Consequence |
-|---|---|
-| `DevPrep_Question.Questions`, `.QuestionCategories`, `.Positions` | **Starting an interview fails** — nothing to plan questions from, and ai-service's RAG index seeds from `/internal/questions/export`, which returns `[]` |
-| `DevPrep_Payment.CreditPackages` | Buy Credits page renders empty; credits cannot be purchased |
+| Table | State after `db-init` | Consequence |
+|---|---|---|
+| `DevPrep_Question.Questions`, `.QuestionCategories`, `.Positions` | **Populated by the baseline** | None. Interviews can be planned, and `/internal/questions/export` returns the bank so ai-service's RAG index seeds normally |
+| `DevPrep_Payment.CreditPackages` | **Empty** | Buy Credits page renders empty; credits cannot be purchased |
+| `DevPrep_Notification.EmailTemplates` | **Populated at startup, not by the baseline** | None — `NotificationAPI/Program.cs:61` seeds `VERIFY_EMAIL` itself |
 
-Neither breaks a container. Both break the demo path. See "Seed data gap" below.
+`CreditPackages` is the only genuinely empty table that matters, and it does not break a container.
+Sign-in accounts, credit packages and starting credits come from `db/seed/` behind
+`SEED_SAMPLE_DATA=true` — see `db/seed/README.md`.
+
+> **Naming trap:** the admin UI's "Tech Stacks" are rows in **`QuestionCategories`**, not a
+> `TechStacks` table — `QuestionAPI/Repositories/TechStackRepository.cs:63-89` reads and writes
+> `_db.QuestionCategories`. There is no `TechStacks` table anywhere, and none is missing:
+> `QuestionBankDbContext` declares exactly three `DbSet`s, matching the baseline's three tables.
+> Docs that say the Question baseline seeds "tech stacks and positions" mean these 92 + 6 rows.
 
 **Anything outside this table is a real problem** — in particular a service failing with a *config* error rather than a *data* error.
 

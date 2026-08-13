@@ -97,6 +97,13 @@ services:
       sqlserver: { condition: service_healthy }
     environment:
       - MSSQL_SA_PASSWORD=${MSSQL_SA_PASSWORD}
+      # SAMPLE-DATA: remove before production — start
+      # Opt-in sign-in accounts, credit packages and starting credits (db/seed/).
+      # Default false. Safe to flip on later: the seed uses its own completion
+      # marker, so it applies to an already-built stack without dropping the
+      # volume. See db/seed/README.md.
+      - SEED_SAMPLE_DATA=${SEED_SAMPLE_DATA:-false}
+      # SAMPLE-DATA: remove before production — end
     volumes:
       - ../db:/db:ro
       - ../source:/source:ro
@@ -246,6 +253,11 @@ services:
       - Jwt__Key=${JWT_KEY}
       - Jwt__Issuer=${JWT_ISSUER}
       - Jwt__Audience=${JWT_AUDIENCE}
+      # DEMO-SESSION: remove after defence — start
+      # Server-side enforcement of the 5-minute demo session. Defaults to false in code, so
+      # leaving this unset (or absent from .env.docker) disables it everywhere.
+      - DEMO_SESSION_ENABLED=${DEMO_SESSION_ENABLED:-false}
+      # DEMO-SESSION: remove after defence — end
     networks: [devprep-internal-net]
 
   evaluationapi:
@@ -376,6 +388,12 @@ services:
       # (appsettings.json:2 also sets "Urls" for the listen address — ASPNETCORE_URLS
       # from the Dockerfile overrides it; see phase1-checklist.md H-2.)
       - ApiGateway__BaseUrl=http://apigateway:8080/
+      # DEMO-SESSION: remove after defence — start
+      # Controls only whether the extra duration appears in the dropdown. Must match the value
+      # given to interviewapi — showing the option while the API rejects it (or vice versa) is
+      # the confusing half-configured state to avoid.
+      - DEMO_SESSION_ENABLED=${DEMO_SESSION_ENABLED:-false}
+      # DEMO-SESSION: remove after defence — end
     ports:
       - "5130:8080"
     networks: [devprep-internal-net]
