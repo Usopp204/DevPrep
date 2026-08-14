@@ -1,11 +1,14 @@
 ﻿using DevPrep.Contracts;
 using DotNetEnv;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using NotificationAPI.Models;
 using NotificationAPI.Repositories;
 using NotificationAPI.Repositories.Interfaces;
 using NotificationAPI.Services;
 using NotificationAPI.Services.Interfaces;
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -24,6 +27,34 @@ builder.WebHost.UseUrls($"http://{bindHost}:{servicePort}");
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// ── JWT Authentication ────────────────────────────────────────────────────────
+var jwtKey = builder.Configuration["Jwt:Key"]
+    ?? throw new InvalidOperationException("Jwt:Key is missing.");
+var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "DevPrep.AuthAPI";
+var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "DevPrep.Client";
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtIssuer,
+            ValidAudience = jwtAudience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            RoleClaimType = ClaimTypes.Role
+        };
+    });
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("AnnouncementReader", policy => policy.RequireRole("Admin", "Manager"));
+    options.AddPolicy("AnnouncementAdmin", policy => policy.RequireRole("Admin"));
+});
 
 // CHỈ đọc từ .env (key NOTIFICATION_DB_CONNECTION_STRING, DotNetEnv nạp ở trên).
 var connectionString = builder.Configuration.GetValue<string>("NOTIFICATION_DB_CONNECTION_STRING");
@@ -66,6 +97,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.MapGet("/health", () => Results.Ok(new
 {
     service = "Notification",
@@ -89,7 +123,8 @@ app.MapGet("/announcements", async (IAnnouncementRepository repo) =>
     }));
 });
 
-// ADMIN CRUD (guard quyền ở WebClient AdminController — giống pattern /admin/* của PaymentAPI).
+// NotificationAPI enforces the service-level authorization boundary; WebClient role checks
+// provide UI-level protection only.
 app.MapGet("/admin/announcements", async (IAnnouncementRepository repo, bool onlyDeleted = false) =>
 {
     var items = await repo.GetAdminListAsync(onlyDeleted, 100);
@@ -97,7 +132,8 @@ app.MapGet("/admin/announcements", async (IAnnouncementRepository repo, bool onl
     {
         a.AnnouncementId, a.Title, a.Content, a.IsActive, a.IsDeleted, a.DeletedAt, a.CreatedAt, a.UpdatedAt
     }));
-});
+})
+.RequireAuthorization("AnnouncementReader");
 
 app.MapPost("/admin/announcements", async (AnnouncementRequest req, IAnnouncementRepository repo) =>
 {
@@ -118,7 +154,8 @@ app.MapPost("/admin/announcements", async (AnnouncementRequest req, IAnnouncemen
     await repo.AddAsync(announcement);
     await repo.SaveChangesAsync();
     return Results.Ok(new { announcement.AnnouncementId });
-});
+})
+.RequireAuthorization("AnnouncementAdmin");
 
 app.MapPut("/admin/announcements/{id:guid}", async (Guid id, AnnouncementRequest req, IAnnouncementRepository repo) =>
 {
@@ -135,7 +172,8 @@ app.MapPut("/admin/announcements/{id:guid}", async (Guid id, AnnouncementRequest
     announcement.UpdatedAt = NotificationAPI.Helpers.VietnamTime.Now;
     await repo.SaveChangesAsync();
     return Results.Ok(new { announcement.AnnouncementId });
-});
+})
+.RequireAuthorization("AnnouncementAdmin");
 
 app.MapDelete("/admin/announcements/{id:guid}", async (Guid id, IAnnouncementRepository repo) =>
 {
@@ -150,7 +188,8 @@ app.MapDelete("/admin/announcements/{id:guid}", async (Guid id, IAnnouncementRep
         await repo.SaveChangesAsync();
     }
     return Results.NoContent();
-});
+})
+.RequireAuthorization("AnnouncementAdmin");
 
 app.MapPost("/admin/announcements/{id:guid}/restore", async (Guid id, IAnnouncementRepository repo) =>
 {
@@ -164,7 +203,8 @@ app.MapPost("/admin/announcements/{id:guid}/restore", async (Guid id, IAnnouncem
         await repo.SaveChangesAsync();
     }
     return Results.Ok(new { announcement.AnnouncementId });
-});
+})
+.RequireAuthorization("AnnouncementAdmin");
 
 // ── Internal endpoints (thay cho consumer RabbitMQ) — AuthAPI gọi qua HTTP ──
 app.MapPost("/internal/notifications/email-verification",
