@@ -1,10 +1,11 @@
-using DotNetEnv;
+﻿using DotNetEnv;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using PaymentAPI.Data;
+using PaymentAPI.Endpoints;
 using PaymentAPI.Models;
 using PaymentAPI.Repositories;
 using PaymentAPI.Services;
@@ -176,61 +177,13 @@ app.MapGet("/health", () => Results.Ok(new { service = "Payment", status = "ok" 
     .WithName("GetHealth")
     .WithOpenApi();
 
-// --- Packages ---
-app.MapGet("/packages", async (ICreditPackageRepository repo) =>
-    Results.Ok(await repo.GetActiveAsync()));
+app.MapCreditPackageEndpoints();
+app.MapVnPayEndpoints();
+app.MapTransactionEndpoints();
+app.MapAdminPaymentEndpoints();
 
-// --- POST /vnpay/order ---
-app.MapPost("/vnpay/order", async (HttpContext ctx, IVnPayService vnPay) =>
-{
-    var userIdStr = ctx.Request.Headers["X-User-Id"].FirstOrDefault();
-    if (!Guid.TryParse(userIdStr, out var userId))
-        return Results.BadRequest("Missing or invalid X-User-Id header.");
-
-    VnpayOrderRequest? body;
-    try
-    {
-        body = await JsonSerializer.DeserializeAsync<VnpayOrderRequest>(
-            ctx.Request.Body, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-    }
-    catch { return Results.BadRequest("Invalid request body."); }
-    if (body == null) return Results.BadRequest("Invalid request body.");
-
-    var log = ctx.RequestServices.GetRequiredService<ILogger<Program>>();
-    log.LogInformation("CreateOrder: userId={UserId} packageId={PackageId}", userId, body.PackageId);
-    try
-    {
-        var ipAddr = ctx.Connection.RemoteIpAddress?.MapToIPv4().ToString() ?? "127.0.0.1";
-        var paymentUrl = await vnPay.CreateOrderUrlAsync(userId, body.PackageId, ipAddr);
-        return Results.Ok(new { PaymentUrl = paymentUrl });
-    }
-    catch (InvalidOperationException ex)
-    {
-        log.LogWarning("CreateOrder 404: {Message}", ex.Message);
-        return Results.NotFound(ex.Message);
-    }
-    catch (Exception ex)
-    {
-        log.LogError(ex, "CreateOrder failed for user {UserId} package {PackageId}", userId, body.PackageId);
-        return Results.Problem(ex.Message);
-    }
-});
-
-// --- GET /vnpay/return (browser redirect after payment) ---
-app.MapGet("/vnpay/return", async (HttpRequest req, IVnPayService vnPay) =>
-{
-    var query       = req.Query.ToDictionary(kv => kv.Key, kv => kv.Value.ToString());
-    var redirectUrl = await vnPay.ProcessReturnAsync(query);
-    return Results.Redirect(redirectUrl);
-});
-
-// --- GET /vnpay/ipn (VNPay server-to-server callback) ---
-app.MapGet("/vnpay/ipn", async (HttpRequest req, IVnPayService vnPay) =>
-{
-    var query  = req.Query.ToDictionary(kv => kv.Key, kv => kv.Value.ToString());
-    var result = await vnPay.ProcessIpnAsync(query);
-    return Results.Json(new { RspCode = result.RspCode, Message = result.Message });
-});
+// Package catalogue + VNPay routes: see Endpoints/CreditPackageEndpoints.cs
+// and Endpoints/VnPayEndpoints.cs.
 
 // --- GET /credits/balance ---
 app.MapGet("/credits/balance", async (HttpContext ctx, ILedgerRepository ledgerRepo, IOrderRepository orderRepo) =>
@@ -303,308 +256,9 @@ app.MapGet("/credits/ledger", async (
     });
 });
 
-// --- Admin: GET /admin/credit-packages ---
-app.MapGet("/admin/credit-packages", async (ICreditPackageRepository repo) =>
-{
-    var packages = await repo.GetAllAsync();
-    return Results.Ok(packages.Cast<CreditPackage>().OrderBy(p => p.SortOrder).ThenBy(p => p.CreatedAt));
-}).RequireAuthorization("AdminArea");
+// Admin credit-package maintenance: see Endpoints/CreditPackageEndpoints.cs.
 
-// --- Admin: GET /admin/credit-packages/{id} ---
-app.MapGet("/admin/credit-packages/{id:guid}", async (Guid id, ICreditPackageRepository repo) =>
-{
-    var pkg = await repo.GetByIdAsync(id);
-    return pkg is null ? Results.NotFound() : Results.Ok(pkg);
-}).RequireAuthorization("AdminArea");
-
-// --- Admin: POST /admin/credit-packages ---
-app.MapPost("/admin/credit-packages", async (HttpContext ctx, ICreditPackageRepository repo) =>
-{
-    AdminPackageRequest? body;
-    try { body = await JsonSerializer.DeserializeAsync<AdminPackageRequest>(ctx.Request.Body, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }); }
-    catch { return Results.BadRequest("Invalid request body."); }
-    if (body is null) return Results.BadRequest();
-
-    if (await repo.ExistsActiveNameAsync(body.Name))
-        return Results.Conflict($"Active package with name '{body.Name}' already exists.");
-
-    var now = DateTime.UtcNow.AddHours(7);
-    var pkg = new CreditPackage
-    {
-        PackageId    = Guid.NewGuid(),
-        Name         = body.Name,
-        Description  = body.Description,
-        Credits      = body.Credits,
-        BonusCredits = body.BonusCredits,
-        Price        = body.Price,
-        Currency     = body.Currency ?? "VND",
-        IsActive     = true,
-        SortOrder    = body.SortOrder,
-        CreatedAt    = now,
-        UpdatedAt    = now
-    };
-    await repo.AddAsync(pkg);
-    await repo.SaveChangesAsync();
-    return Results.Created($"/admin/credit-packages/{pkg.PackageId}", pkg);
-}).RequireAuthorization("AdminArea");
-
-// --- Admin: PUT /admin/credit-packages/{id} ---
-app.MapPut("/admin/credit-packages/{id:guid}", async (Guid id, HttpContext ctx, ICreditPackageRepository repo) =>
-{
-    var pkg = await repo.GetByIdAsync(id);
-    if (pkg is null) return Results.NotFound();
-
-    AdminPackageRequest? body;
-    try { body = await JsonSerializer.DeserializeAsync<AdminPackageRequest>(ctx.Request.Body, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }); }
-    catch { return Results.BadRequest("Invalid request body."); }
-    if (body is null) return Results.BadRequest();
-
-    if (await repo.ExistsActiveNameAsync(body.Name, id))
-        return Results.Conflict($"Another active package named '{body.Name}' already exists.");
-
-    pkg.Name         = body.Name;
-    pkg.Description  = body.Description;
-    pkg.Credits      = body.Credits;
-    pkg.BonusCredits = body.BonusCredits;
-    pkg.Price        = body.Price;
-    pkg.Currency     = body.Currency ?? pkg.Currency;
-    pkg.SortOrder    = body.SortOrder;
-    pkg.UpdatedAt    = DateTime.UtcNow.AddHours(7);
-    await repo.SaveChangesAsync();
-    return Results.Ok(pkg);
-}).RequireAuthorization("AdminArea");
-
-// --- Admin: DELETE /admin/credit-packages/{id} (soft delete) ---
-app.MapDelete("/admin/credit-packages/{id:guid}", async (Guid id, ICreditPackageRepository repo) =>
-{
-    var pkg = await repo.GetByIdAsync(id);
-    if (pkg is null) return Results.NotFound();
-
-    pkg.IsActive  = false;
-    pkg.UpdatedAt = DateTime.UtcNow.AddHours(7);
-    await repo.SaveChangesAsync();
-    return Results.NoContent();
-}).RequireAuthorization("AdminArea");
-
-// --- Admin: POST /admin/credit-packages/{id}/restore ---
-app.MapPost("/admin/credit-packages/{id:guid}/restore", async (Guid id, ICreditPackageRepository repo) =>
-{
-    var pkg = await repo.GetByIdAsync(id);
-    if (pkg is null) return Results.NotFound();
-    if (pkg.IsActive) return Results.Ok(pkg);
-
-    pkg.IsActive  = true;
-    pkg.UpdatedAt = DateTime.UtcNow.AddHours(7);
-    await repo.SaveChangesAsync();
-    return Results.Ok(pkg);
-}).RequireAuthorization("AdminArea");
-
-// --- Admin: GET /admin/payments (filter + search + aggregates) ---
-app.MapGet("/admin/payments", async (
-    PaymentDbContext db,
-    int page = 1, int pageSize = 20,
-    string? keyword = null, string? status = null, string? paymentMethod = null,
-    DateTime? dateFrom = null, DateTime? dateTo = null,
-    decimal? minAmount = null, decimal? maxAmount = null) =>
-{
-    pageSize = Math.Clamp(pageSize, 1, 100);
-    page     = Math.Max(1, page);
-
-    var orders = db.Orders.AsNoTracking().AsQueryable();
-
-    if (!string.IsNullOrWhiteSpace(keyword))
-    {
-        var kw = keyword.Trim();
-        orders = orders.Where(o => o.OrderCode.Contains(kw));
-    }
-    if (!string.IsNullOrWhiteSpace(status))
-        orders = orders.Where(o => o.Status == status);
-    if (!string.IsNullOrWhiteSpace(paymentMethod))
-        orders = orders.Where(o => o.PaymentMethod == paymentMethod);
-    if (dateFrom.HasValue)
-        orders = orders.Where(o => o.CreatedAt >= dateFrom.Value);
-    if (dateTo.HasValue)
-        orders = orders.Where(o => o.CreatedAt < dateTo.Value.AddDays(1));
-    if (minAmount.HasValue)
-        orders = orders.Where(o => o.Amount >= minAmount.Value);
-    if (maxAmount.HasValue)
-        orders = orders.Where(o => o.Amount <= maxAmount.Value);
-
-    var totalCount  = await orders.CountAsync();
-    var totalAmount = await orders.SumAsync(o => (decimal?)o.Amount) ?? 0m;
-    var paidAmount  = await orders.Where(o => o.Status == "Paid").SumAsync(o => (decimal?)o.Amount) ?? 0m;
-    var paidCount   = await orders.CountAsync(o => o.Status == "Paid");
-
-    var items = await orders
-        .OrderByDescending(o => o.CreatedAt)
-        .Skip((page - 1) * pageSize)
-        .Take(pageSize)
-        .Select(o => new
-        {
-            o.OrderId, o.OrderCode, o.UserId, o.Amount, o.Credits,
-            o.Currency, o.PaymentMethod, o.Status, o.PaidAt, o.CreatedAt
-        })
-        .ToListAsync();
-
-    var userNames = new Dictionary<Guid, string?>();
-    if (items.Count > 0)
-    {
-        try
-        {
-            var ids = items.Select(i => i.UserId).Distinct().ToList();
-            var inClause = string.Join(",", ids.Select((_, i) => $"@u{i}"));
-            var sql = $@"
-                SELECT a.AccountId, COALESCE(NULLIF(p.FullName, ''), a.Email) AS DisplayName
-                FROM DevPrep_Auth.dbo.Accounts a
-                LEFT JOIN DevPrep_User.dbo.UserProfiles p ON p.AccountId = a.AccountId
-                WHERE a.AccountId IN ({inClause});";
-            await using var conn = new SqlConnection(db.Database.GetConnectionString());
-            await conn.OpenAsync();
-            await using var cmd = new SqlCommand(sql, conn);
-            for (var i = 0; i < ids.Count; i++)
-                cmd.Parameters.AddWithValue($"@u{i}", ids[i]);
-            await using var reader = await cmd.ExecuteReaderAsync();
-            while (await reader.ReadAsync())
-                userNames[reader.GetGuid(0)] = reader.IsDBNull(1) ? null : reader.GetString(1);
-        }
-        catch { }
-    }
-
-    return Results.Ok(new
-    {
-        TotalCount = totalCount, Page = page, PageSize = pageSize,
-        TotalAmount = totalAmount, PaidAmount = paidAmount, PaidCount = paidCount,
-        Items = items.Select(o => new
-        {
-            o.OrderId, o.OrderCode, o.UserId,
-            UserName = userNames.GetValueOrDefault(o.UserId),
-            o.Amount, o.Credits, o.Currency, o.PaymentMethod, o.Status, o.PaidAt, o.CreatedAt
-        })
-    });
-}).RequireAuthorization("AdminArea");
-
-// --- Admin: GET /admin/payments/revenue-report ---
-app.MapGet("/admin/payments/revenue-report", async (
-    PaymentDbContext db,
-    string period = "today", DateTime? from = null, DateTime? to = null) =>
-{
-    var now = DateTime.UtcNow.AddHours(7); // giờ Việt Nam, khớp quy ước chung của codebase
-    DateTime rangeFrom, rangeTo;
-
-    switch (period.ToLowerInvariant())
-    {
-        case "month":
-            rangeFrom = new DateTime(now.Year, now.Month, 1);
-            rangeTo   = rangeFrom.AddMonths(1);
-            break;
-        case "year":
-            rangeFrom = new DateTime(now.Year, 1, 1);
-            rangeTo   = rangeFrom.AddYears(1);
-            break;
-        case "custom":
-            rangeFrom = (from ?? now.Date).Date;
-            rangeTo   = (to ?? now.Date).Date.AddDays(1);
-            break;
-        default:
-            period    = "today";
-            rangeFrom = now.Date;
-            rangeTo   = rangeFrom.AddDays(1);
-            break;
-    }
-
-    var paidOrders = db.Orders.AsNoTracking()
-        .Where(o => o.Status == "Paid" && o.PaidAt >= rangeFrom && o.PaidAt < rangeTo);
-
-    var packagesSold = await paidOrders.CountAsync();
-    var totalRevenue = await paidOrders.SumAsync(o => (decimal?)o.Amount) ?? 0m;
-    var totalCredits = await paidOrders.SumAsync(o => (int?)o.Credits) ?? 0;
-
-    return Results.Ok(new
-    {
-        Period = period,
-        From = rangeFrom,
-        To = rangeTo,
-        PackagesSold = packagesSold,
-        TotalRevenue = totalRevenue,
-        TotalCredits = totalCredits
-    });
-}).RequireAuthorization("AdminArea");
-
-// --- Admin: GET /admin/payments/revenue-daily ---
-// Vietnam-naive PaidAt calendar days, inclusive [from..to]. Returns an explicit row for every day.
-app.MapGet("/admin/payments/revenue-daily", async (
-    PaymentDbContext db,
-    DateOnly? from = null,
-    DateOnly? to = null) =>
-{
-    var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(7));
-    var rangeFrom = from ?? new DateOnly(today.Year, today.Month, 1);
-    var rangeToInclusive = to ?? today;
-
-    if (rangeFrom > rangeToInclusive)
-        return Results.BadRequest(new { message = "The From date must be on or before the To date." });
-
-    var inclusiveDays = rangeToInclusive.DayNumber - rangeFrom.DayNumber + 1;
-    if (inclusiveDays > 366)
-        return Results.BadRequest(new { message = "The selected date range must contain no more than 366 days." });
-
-    var rangeStart = rangeFrom.ToDateTime(TimeOnly.MinValue);
-    var rangeToExclusive = rangeToInclusive.AddDays(1).ToDateTime(TimeOnly.MinValue);
-    var paidVnpayOrders = db.Orders.AsNoTracking()
-        .Where(order =>
-            order.Status == "Paid" &&
-            order.PaymentMethod.ToUpper() == "VNPAY" &&
-            order.Currency.ToUpper() == "VND" &&
-            order.PaidAt.HasValue);
-
-    var totalRevenueAsOf = await paidVnpayOrders
-        .Where(order => order.PaidAt!.Value < rangeToExclusive)
-        .SumAsync(order => (decimal?)order.Amount) ?? 0m;
-    var totalOrdersAsOf = await paidVnpayOrders
-        .LongCountAsync(order => order.PaidAt!.Value < rangeToExclusive);
-    var grouped = await paidVnpayOrders
-        .Where(order =>
-            order.PaidAt!.Value >= rangeStart &&
-            order.PaidAt.Value < rangeToExclusive)
-        .GroupBy(order => order.PaidAt!.Value.Date)
-        .Select(group => new
-        {
-            Date = group.Key,
-            Revenue = group.Sum(order => order.Amount),
-            Orders = group.LongCount()
-        })
-        .ToListAsync();
-
-    var byDate = grouped.ToDictionary(
-        item => DateOnly.FromDateTime(item.Date),
-        item => (item.Revenue, item.Orders));
-    var days = new List<DashboardRevenueDay>(inclusiveDays);
-    for (var date = rangeFrom; date <= rangeToInclusive; date = date.AddDays(1))
-    {
-        var value = byDate.GetValueOrDefault(date);
-        days.Add(new DashboardRevenueDay(date, value.Revenue, value.Orders));
-    }
-
-    return Results.Ok(new
-    {
-        From = rangeFrom,
-        To = rangeToInclusive,
-        TotalRevenueAsOf = totalRevenueAsOf,
-        TotalOrdersAsOf = totalOrdersAsOf,
-        PeriodRevenue = days.Sum(day => day.Revenue),
-        PeriodOrders = days.Sum(day => day.Orders),
-        Days = days
-    });
-}).RequireAuthorization("AdminArea");
-
-// --- Admin: GET /admin/payments/{id} ---
-app.MapGet("/admin/payments/{id:guid}", async (Guid id, IOrderRepository orderRepo, ITransactionRepository txRepo) =>
-{
-    var order = await orderRepo.GetByIdAsync(id);
-    if (order is null) return Results.NotFound();
-    var tx = await txRepo.GetByOrderIdAsync(id);
-    return Results.Ok(new { Order = order, Transaction = tx });
-}).RequireAuthorization("AdminArea");
+// Admin payment monitoring: see Endpoints/AdminPaymentEndpoints.cs.
 
 // --- Admin: POST /admin/credits/add ---
 // Cộng credit cho account theo EMAIL (admin nhập tay). Ghi ledger EntryType='Refund'
@@ -704,42 +358,12 @@ app.MapPost("/admin/credits/deduct", async (AdminCreditAdjustRequest req, IAuthA
     }
 }).RequireAuthorization("AdminArea");
 
-// --- GET /transactions ---
-app.MapGet("/transactions", async (HttpContext ctx, IOrderRepository orderRepo, int page = 1, int pageSize = 10) =>
-{
-    var userIdStr = ctx.Request.Headers["X-User-Id"].FirstOrDefault();
-    if (!Guid.TryParse(userIdStr, out var userId))
-        return Results.BadRequest("Missing or invalid X-User-Id header.");
-
-    pageSize = Math.Clamp(pageSize, 1, 50);
-    page     = Math.Max(1, page);
-
-    var result = await orderRepo.GetPagedByUserAsync(userId, page, pageSize);
-    var items  = result.Items.Select(o => new
-    {
-        o.OrderId, o.OrderCode, o.Amount, o.Credits,
-        o.Currency, o.PaymentMethod, o.Status, o.PaidAt, o.CreatedAt
-    });
-    return Results.Ok(new { TotalCount = result.TotalCount, Page = page, PageSize = pageSize, Items = items });
-});
+// Buyer purchase history: see Endpoints/TransactionEndpoints.cs.
 
 app.MapControllers();
 
 app.Run();
 
-record DashboardRevenueDay(DateOnly Date, decimal Revenue, long Orders);
-
-record VnpayOrderRequest(Guid PackageId);
 
 record AdminCreditAdjustRequest(string Email, int Amount, string? Description);
 
-record AdminPackageRequest(
-    string Name,
-    string? Description,
-    int Credits,
-    int BonusCredits,
-    decimal Price,
-    string? Currency,
-    int SortOrder,
-    bool IsActive = true
-);
