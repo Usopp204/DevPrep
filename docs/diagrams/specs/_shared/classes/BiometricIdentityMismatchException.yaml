@@ -1,9 +1,0 @@
-# Shared class body — source/InterviewAPI/Clients/BiometricIdentityMismatchException.cs
-# (exception, FULL: 3 properties + the single constructor).
-name: "BiometricIdentityMismatchException"
-fields:
-  - "+ Modality: string"
-  - "+ Score: double"
-  - "+ Threshold: double"
-methods:
-  - "+ BiometricIdentityMismatchException(modality: string, score: double, threshold: double)"

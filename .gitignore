@@ -127,3 +127,15 @@ docs/diagrams/.rebuild/
 docs/diagrams/out/.$*
 *.bak
 *.dtmp
+
+# draw.io temp and backup files
+docs/diagrams/.rebuild/
+docs/diagrams/out/.$*
+*.bak
+*.dtmp
+
+# Generated diagram images - regenerate from .drawio locally
+docs/diagrams/out/*.png
+
+# Documentation - kept local only
+docs/
