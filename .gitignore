@@ -121,3 +121,21 @@ infra/.env.docker
 # Never committed: it carries live account e-mail addresses and bcrypt password
 # hashes. Regenerate it locally instead - see db/data-local/README.md.
 /db/data-local/
+
+# draw.io temp and backup files
+docs/diagrams/.rebuild/
+docs/diagrams/out/.$*
+*.bak
+*.dtmp
+
+# draw.io temp and backup files
+docs/diagrams/.rebuild/
+docs/diagrams/out/.$*
+*.bak
+*.dtmp
+
+# Generated diagram images - regenerate from .drawio locally
+docs/diagrams/out/*.png
+
+# Documentation - kept local only
+docs/

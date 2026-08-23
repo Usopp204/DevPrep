@@ -1,4 +1,0 @@
-name: "CheatingStrikeHelper"
-fields: []
-methods:
-  - "+ ComputeEffectiveStrikeCount(events: IEnumerable<SessionVerificationEvent>, noFaceStrikeThreshold: int): int"
