@@ -121,3 +121,7 @@ infra/.env.docker
 # Never committed: it carries live account e-mail addresses and bcrypt password
 # hashes. Regenerate it locally instead - see db/data-local/README.md.
 /db/data-local/
+
+docs/
+
+source/InterviewAPI/Sql/013_widen_ck_sess_level_add_fresher.sql
