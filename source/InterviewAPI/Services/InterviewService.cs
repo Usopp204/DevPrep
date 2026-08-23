@@ -166,9 +166,25 @@ public class InterviewService : IInterviewService
         var pageSize = Math.Clamp(query.PageSize, 1, MaxPageSize);
         var skip = (page - 1) * pageSize;
 
-        var q = _repository.Query()
-            .Where(s => s.InterviewRoom != null &&
-                (s.InterviewRoom.Status == "Active" || s.InterviewRoom.Status == "Closed"));
+        // Previously hard-filtered to `InterviewRoom != null && Status IN (Active, Closed)`,
+        // which — given that a room is only created when a session leaves "Configured"
+        // (SessionService.CreateRoomAsync, called from ConfigLevelAsync's Init step) and never
+        // closed except on Completed/Expired/Cancelled — was exactly equivalent to excluding
+        // Status="Configured" from this list. Removed because it was never an access boundary:
+        // GetManagerSessionLogAsync (the /log detail endpoint this list's "eye" action opens)
+        // has no such Room condition, so a Manager who already has a session's GUID could read
+        // a Configured session's full detail before this change. Hiding the row here just meant
+        // it was reachable but not discoverable — an artefact of how the query happened to be
+        // written, not a deliberate scope decision. Manager's list is now scoped by the same
+        // optional Status/Level/etc. query filters as Admin's (applied below), not by room
+        // existence.
+        //
+        // Caveat: the "no room implies Configured" equivalence this relied on holds only for the
+        // CURRENT session lifecycle. If a room is ever created earlier than "Configured -> ..."
+        // transition, or the unused CK_Room_Status value "Open" starts being assigned, that
+        // equivalence breaks — at that point this method is simply full parity with Admin's
+        // GetListAsync, not "Admin minus Configured", and this comment should be revisited.
+        var q = _repository.Query();
 
         if (!string.IsNullOrWhiteSpace(query.Keyword))
         {

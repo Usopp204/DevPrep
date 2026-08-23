@@ -356,8 +356,6 @@
                                     <tr>
                                         <th>Position</th>
                                         <th>Level</th>
-                                        <th>Mode</th>
-                                        <th>Type</th>
                                         <th>Status</th>
                                         <th>Started</th>
                                         <th>Questions</th>
@@ -368,7 +366,7 @@
                                     @if (Model.Sessions.Count == 0)
                                     {
                                         <tr>
-                                            <td colspan="8" class="text-center py-5 text-secondary">
+                                            <td colspan="6" class="text-center py-5 text-secondary">
                                                 No interview sessions found.
                                             </td>
                                         </tr>
@@ -385,8 +383,6 @@
                                                     </div>
                                                 </td>
                                                 <td>@(s.Level ?? "N/A")</td>
-                                                <td>@(s.InteractionMode ?? "N/A")</td>
-                                                <td>@(s.QuestionType ?? "N/A")</td>
                                                 <td>@(s.Status ?? "N/A")</td>
                                                 <td>@(s.StartedAt?.ToString("dd/MM/yyyy HH:mm") ?? "N/A")</td>
                                                 <td>@s.AnsweredQuestions / @s.TotalQuestions</td>

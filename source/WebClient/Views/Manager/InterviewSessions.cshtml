@@ -66,8 +66,6 @@
                         <tr>
                             <th scope="col">User</th>
                             <th scope="col" class="tech-stack-status-column">Level</th>
-                            <th scope="col" class="tech-stack-status-column">Mode</th>
-                            <th scope="col" class="tech-stack-status-column">Type</th>
                             <th scope="col" class="tech-stack-status-column">Progress</th>
                             <th scope="col" class="tech-stack-status-column">Status</th>
                             <th scope="col">Date</th>
@@ -75,7 +73,7 @@
                         </tr>
                     </thead>
                     <tbody id="iv-table-body">
-                        <tr><td colspan="8" class="text-center" style="padding:40px; color:var(--ts-muted);">Loading...</td></tr>
+                        <tr><td colspan="6" class="text-center" style="padding:40px; color:var(--ts-muted);">Loading...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -86,8 +84,17 @@
     <script>
         const API_BASE = '@ViewData["ApiBaseUrl"]/api/admin/manager/sessions';
         const token = '@token';
-        const STATUSES = ['Completed', 'Expired'];
-        const LEVELS = ['Intern', 'Junior', 'Middle', 'Senior'];
+        // InProgress and Paused are real InterviewSessions.Status values but are deliberately
+        // left out of this dropdown — not user-selectable in the UI.
+        // 'Configured' is kept here for consistency with Admin's dropdown, even though it will
+        // always return zero results on this screen: GetManagerSessionListAsync filters on
+        // InterviewRoom.Status, and no room exists until a session leaves "Configured". This is
+        // a deliberate choice (consistency over hiding an always-empty option) — do not remove
+        // it thinking it's a bug.
+        const STATUSES = ['Configured', 'Initialized', 'Completed', 'Expired', 'Cancelled'];
+        // Lead exists in SessionService.ValidLevels but is deliberately left out of this
+        // dropdown — reserved for future development, not yet selectable in the UI.
+        const LEVELS = ['Intern', 'Fresher', 'Junior', 'Middle', 'Senior'];
         let currentPage = 1, pageSize = 10, totalPages = 1, searchTimer = null;
 
         document.addEventListener("DOMContentLoaded", () => {
@@ -147,7 +154,7 @@
                 renderPagination(json.data);
             } catch (error) {
                 console.error(error);
-                tbody.innerHTML = '<tr><td colspan="8" class="text-center" style="padding:40px; color:var(--ts-danger);">Interview sessions are temporarily unavailable.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center" style="padding:40px; color:var(--ts-danger);">Interview sessions are temporarily unavailable.</td></tr>';
                 renderPagination({ totalItems: 0, totalPages: 1, page: 1 });
             }
         }
@@ -155,7 +162,7 @@
         function renderTable(items) {
             const tbody = document.getElementById('iv-table-body');
             if (!items.length) {
-                tbody.innerHTML = '<tr><td colspan="8" class="text-center" style="padding:48px; color:var(--ts-muted);">No sessions found.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center" style="padding:48px; color:var(--ts-muted);">No sessions found.</td></tr>';
                 return;
             }
 
@@ -168,8 +175,6 @@
                         </div>
                     </td>
                     <td class="tech-stack-status-column">${badge(item.level)}</td>
-                    <td class="tech-stack-status-column">${badge(item.interactionMode)}</td>
-                    <td class="tech-stack-status-column">${badge(item.questionType)}</td>
                     <td class="tech-stack-status-column"><span style="font:600 12px 'JetBrains Mono',monospace; color:#cbd5e1;">${item.answeredQuestions}/${item.totalQuestions}</span></td>
                     <td class="tech-stack-status-column">${statusBadge(item.status)}</td>
                     <td>${fmtDate(item.createdAt)}</td>
