@@ -66,8 +66,6 @@
                         <tr>
                             <th scope="col">User</th>
                             <th scope="col" class="tech-stack-status-column">Level</th>
-                            <th scope="col" class="tech-stack-status-column">Mode</th>
-                            <th scope="col" class="tech-stack-status-column">Type</th>
                             <th scope="col" class="tech-stack-status-column">Progress</th>
                             <th scope="col" class="tech-stack-status-column">Status</th>
                             <th scope="col">Date</th>
@@ -75,7 +73,7 @@
                         </tr>
                     </thead>
                     <tbody id="iv-table-body">
-                        <tr><td colspan="8" class="text-center" style="padding:40px; color:var(--ts-muted);">Loading…</td></tr>
+                        <tr><td colspan="6" class="text-center" style="padding:40px; color:var(--ts-muted);">Loading…</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -86,8 +84,12 @@
     <script>
         const API_BASE = 'http://localhost:7000/api/admin/interviews';
         const token = '@token';
-        const STATUSES = ['Completed', 'Expired'];
-        const LEVELS = ['Intern', 'Junior', 'Middle', 'Senior'];
+        // InProgress and Paused are real InterviewSessions.Status values but are deliberately
+        // left out of this dropdown — not user-selectable in the UI.
+        const STATUSES = ['Configured', 'Initialized', 'Completed', 'Expired', 'Cancelled'];
+        // Lead exists in SessionService.ValidLevels but is deliberately left out of this
+        // dropdown — reserved for future development, not yet selectable in the UI.
+        const LEVELS = ['Intern', 'Fresher', 'Junior', 'Middle', 'Senior'];
         let currentPage = 1, pageSize = 10, totalPages = 1, searchTimer = null;
 
         document.addEventListener("DOMContentLoaded", () => {
@@ -111,13 +113,13 @@
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const json = await res.json();
                 if (json.success) { renderTable(json.data.items || []); renderPagination(json.data); }
-                else tbody.innerHTML = `<tr><td colspan="8" class="text-center" style="padding:40px; color:var(--ts-danger);">Failed: ${escapeHtml(json.message)}</td></tr>`;
-            } catch (e) { tbody.innerHTML = `<tr><td colspan="8" class="text-center" style="padding:40px; color:var(--ts-danger);">Failed to load. Please sign in again or check ApiGateway (:7000).</td></tr>`; }
+                else tbody.innerHTML = `<tr><td colspan="6" class="text-center" style="padding:40px; color:var(--ts-danger);">Failed: ${escapeHtml(json.message)}</td></tr>`;
+            } catch (e) { tbody.innerHTML = `<tr><td colspan="6" class="text-center" style="padding:40px; color:var(--ts-danger);">Failed to load. Please sign in again or check ApiGateway (:7000).</td></tr>`; }
         }
 
         function renderTable(items) {
             const tbody = document.getElementById('iv-table-body');
-            if (!items.length) { tbody.innerHTML = `<tr><td colspan="8" class="text-center" style="padding:48px; color:var(--ts-muted);">No sessions found.</td></tr>`; return; }
+            if (!items.length) { tbody.innerHTML = `<tr><td colspan="6" class="text-center" style="padding:48px; color:var(--ts-muted);">No sessions found.</td></tr>`; return; }
             tbody.innerHTML = items.map(it => `
                 <tr class="iv-row" onclick="openDetail('${it.sessionId}')">
                     <td>
@@ -127,8 +129,6 @@
                         </div>
                     </td>
                     <td class="tech-stack-status-column">${badge(it.level)}</td>
-                    <td class="tech-stack-status-column">${badge(it.interactionMode)}</td>
-                    <td class="tech-stack-status-column">${badge(it.questionType)}</td>
                     <td class="tech-stack-status-column"><span style="font:600 12px 'JetBrains Mono',monospace; color:#cbd5e1;">${it.answeredQuestions}/${it.totalQuestions}</span></td>
                     <td class="tech-stack-status-column">${statusBadge(it.status)}</td>
                     <td>${fmtDate(it.createdAt)}</td>

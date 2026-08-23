@@ -76,16 +76,6 @@
                     </select>
                 </label>
                 <label>
-                    <span>Question Type</span>
-                    <select name="questionType">
-                        <option value="">All</option>
-                        @foreach (var option in Model.Sessions.QuestionTypeOptions)
-                        {
-                            <option value="@option" selected="@(string.Equals(Model.QuestionType, option, StringComparison.OrdinalIgnoreCase))">@option</option>
-                        }
-                    </select>
-                </label>
-                <label>
                     <span>Keyword</span>
                     <input name="keyword" value="@Model.Keyword" placeholder="Search title or role" />
                 </label>
@@ -109,7 +99,6 @@
                 <section class="history-table-shell">
                     <div class="history-table-head">
                         <span>Session</span>
-                        <span>Question Type</span>
                         <span>Level</span>
                         <span>Status</span>
                         <span>Questions</span>
@@ -120,12 +109,10 @@
                     @foreach (var session in Model.Sessions.Items)
                     {
                         var detailsUrl = Url.Action("Details", "Interview", new { id = session.SessionId });
-                        var questionTypeDisplay = string.IsNullOrWhiteSpace(session.QuestionType) ? "Not specified" : session.QuestionType;
                         <article class="history-row" data-href="@detailsUrl">
                             <a class="history-row-main" href="@detailsUrl">
                                 <strong>@(session.Position ?? "Interview Session")</strong>
                             </a>
-                            <div class="history-cell-center history-question-type">@questionTypeDisplay</div>
                             <div class="history-cell-center">@session.Level</div>
                             <div class="history-cell-center"><span class="history-status @StatusClass(session.Status)">@session.DisplayStatus</span></div>
                             <div class="history-cell-center">@session.AnsweredQuestions/@session.TotalQuestions</div>
