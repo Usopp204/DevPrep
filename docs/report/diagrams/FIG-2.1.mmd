@@ -1,0 +1,46 @@
+sequenceDiagram
+    participant Browser
+    participant InterviewController as WebClient InterviewController
+    participant InterviewSvc as WebClient InterviewService
+    participant Gateway as ApiGateway interview-route
+    participant SessionCtrl as InterviewSessionController
+    participant SessionSvc as SessionService
+    participant Repo as SessionRepository
+    participant PayClient as PaymentApiClient
+    participant PaymentAPI
+
+    Browser->>InterviewController: GET Room SessionId
+    InterviewController->>InterviewSvc: GetRoomAsync calls resume
+    InterviewSvc->>Gateway: GET sessions SessionId resume
+    Gateway-->>InterviewSvc: room status Initialized
+    InterviewController->>InterviewController: check entry gate Allowed true
+    InterviewController->>InterviewController: check integrity policy Accepted true
+    InterviewController->>InterviewSvc: GenerateQuestionAsync
+    InterviewSvc->>Gateway: POST sessions SessionId questions generate
+    Gateway->>SessionCtrl: POST questions generate
+    SessionCtrl->>SessionSvc: GenerateQuestionAsync
+    SessionSvc->>SessionSvc: verify Entry Face Pass verification event exists
+    SessionSvc->>SessionSvc: verify IntegrityPolicyAccepted true
+    SessionSvc->>Repo: find next unanswered SessionQuestion
+    Repo-->>SessionSvc: nextQuestion
+    SessionSvc->>Repo: UpdateStatusIfAsync Initialized to InProgress atomic conditional update
+    Repo-->>SessionSvc: statusChanged true only for the winning request
+    alt isFirstEntry and statusChanged
+        SessionSvc->>PayClient: DeductCreditAsync userId creditCost sessionId
+        PayClient->>PaymentAPI: POST api internal credit deduct
+        PaymentAPI-->>PayClient: Success true BalanceAfter
+        PayClient-->>SessionSvc: CreditDeductionResponse Success true
+        SessionSvc->>Repo: save CreditCost and StartedAt
+    else deduction fails
+        PaymentAPI-->>PayClient: Success false or unreachable
+        PayClient-->>SessionSvc: CreditDeductionResponse Success false ServiceAvailable
+        SessionSvc->>Repo: UpdateStatusIfAsync InProgress back to Initialized rollback
+        SessionSvc-->>SessionCtrl: throw CreditServiceUnavailableException or InvalidOperationException
+        SessionCtrl-->>Gateway: 503 or 400
+    end
+    SessionSvc->>Repo: AddChatMessageAsync AI Question idempotent alreadyAsked check
+    SessionSvc-->>SessionCtrl: GenerateQuestionResponse Content OrderIndex
+    SessionCtrl-->>Gateway: 200
+    Gateway-->>InterviewSvc: 200
+    InterviewSvc-->>InterviewController: generated true
+    InterviewController-->>Browser: render Room with first question

@@ -1,0 +1,75 @@
+flowchart LR
+    subgraph ClientZone[Untrusted client zone]
+        Browser[Browser]
+    end
+
+    subgraph EdgeZone[Same origin edge trust boundary JWT held only here]
+        WebClient[WebClient MVC Razor owned]
+    end
+
+    subgraph GatewayZone[Gateway trust boundary no AuthorizationPolicy on any route]
+        Gateway[ApiGateway YARP]
+    end
+
+    subgraph OwnedZone[Owned services full business logic]
+        InterviewAPI[InterviewAPI owned]
+        EvaluationAPI[EvaluationAPI owned]
+        AiService[ai-service FastAPI owned internal only by design]
+    end
+
+    subgraph TeammateZone[Teammate owned services integration contract only]
+        AuthAPI[AuthAPI]
+        UserAPI[UserAPI]
+        CvJdAPI[CvJdAPI stub]
+        QuestionAPI[QuestionAPI stub]
+        FeedbackAPI[FeedbackAPI partial]
+        PaymentAPI[PaymentAPI stub]
+        NewsAPI[NewsAPI]
+        NotificationAPI[NotificationAPI]
+    end
+
+    subgraph DataZone[Data and external AI trust boundary]
+        SqlAuth[(SQL Server DevPrep_Auth)]
+        SqlUser[(SQL Server DevPrep_User)]
+        SqlInterview[(SQL Server DevPrep_Interview)]
+        SqlEvaluation[(SQL Server DevPrep_Evaluation)]
+        SqlOthers[(SQL Server other catalogs Feedback Payment News Notification CvJd Question)]
+        Chroma[(ChromaDB devprep_qa collection)]
+        Gemini[[Gemini API cloud]]
+        Deepgram[[Deepgram API cloud]]
+    end
+
+    Browser -- HttpOnly cookie access_token same origin only --> WebClient
+    WebClient -- Bearer JWT attached by JwtDelegatingHandler --> Gateway
+    Gateway -- interview route no prefix strip --> InterviewAPI
+    Gateway -- evaluation route no prefix strip --> EvaluationAPI
+    Gateway -- auth users document questions feedback payment news notifications routes --> AuthAPI
+    Gateway --> UserAPI
+    Gateway --> CvJdAPI
+    Gateway --> QuestionAPI
+    Gateway --> FeedbackAPI
+    Gateway --> PaymentAPI
+    Gateway --> NewsAPI
+    Gateway --> NotificationAPI
+
+    InterviewAPI -- X-Internal-Api-Key --> AiService
+    EvaluationAPI -- X-Internal-Api-Key --> AiService
+    EvaluationAPI -- HTTP ownership and transcript calls --> InterviewAPI
+    InterviewAPI -- HTTP internal lookups --> AuthAPI
+    InterviewAPI -- HTTP internal lookups --> UserAPI
+    InterviewAPI -- credit deduct refund award --> PaymentAPI
+
+    AiService --> Chroma
+    AiService --> Gemini
+    AiService --> Deepgram
+
+    InterviewAPI --> SqlInterview
+    EvaluationAPI --> SqlEvaluation
+    AuthAPI --> SqlAuth
+    UserAPI --> SqlUser
+    CvJdAPI --> SqlOthers
+    QuestionAPI --> SqlOthers
+    FeedbackAPI --> SqlOthers
+    PaymentAPI --> SqlOthers
+    NewsAPI --> SqlOthers
+    NotificationAPI --> SqlOthers

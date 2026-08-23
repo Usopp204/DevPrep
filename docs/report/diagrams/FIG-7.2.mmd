@@ -1,0 +1,104 @@
+erDiagram
+    %% Database DevPrep_Interview
+    InterviewSessions {
+        uniqueidentifier SessionId PK
+        uniqueidentifier UserId
+        nvarchar Level
+        nvarchar InteractionMode
+        nvarchar Status
+        nvarchar TerminationReason
+        int DurationMinutes
+        int CreditCost
+        int PauseCount
+        int TotalPausedSeconds
+        int CameraViolationCount
+        bit IntegrityPolicyAccepted
+        datetime2 LastSkipAtUtc "naming trap stores Vietnam local time not UTC"
+    }
+    InterviewRooms {
+        uniqueidentifier RoomId PK
+        uniqueidentifier SessionId FK
+        nvarchar Status
+    }
+    SessionQuestions {
+        uniqueidentifier SessionQuestionId PK
+        uniqueidentifier SessionId FK
+        int OrderIndex
+        nvarchar Content
+        nvarchar ReferenceAnswer "server only never sent to browser"
+        datetime2 HintUsedAt
+    }
+    ChatMessages {
+        uniqueidentifier MessageId PK
+        uniqueidentifier SessionQuestionId FK
+        nvarchar SenderType
+        nvarchar MessageType
+        nvarchar AnswerReason
+    }
+    ProfileBiometrics {
+        bigint Id PK
+        uniqueidentifier UserId
+        nvarchar Modality
+        varbinary Embedding "vector only never raw image or audio"
+        int Dim
+        nvarchar ModelVersion
+        float Quality
+    }
+    SessionVerificationChallenges {
+        bigint Id PK
+        uniqueidentifier SessionId FK
+        nvarchar Modality
+        nvarchar ChallengeJson
+        datetime2 ExpiresAt
+        datetime2 ConsumedAt
+    }
+    SessionVerificationEvents {
+        bigint Id PK
+        uniqueidentifier SessionId FK
+        nvarchar Phase
+        nvarchar Modality
+        float Score
+        bit LivenessPassed "recorded even though it never gates the decision"
+        bit Matched
+        nvarchar Decision
+        uniqueidentifier IncidentId "unique filtered index idempotency"
+        int CheckSequence
+    }
+
+    InterviewSessions ||--|| InterviewRooms : opens
+    InterviewSessions ||--o{ SessionQuestions : has
+    SessionQuestions ||--o{ ChatMessages : has
+    InterviewSessions ||--o{ SessionVerificationChallenges : issues
+    InterviewSessions ||--o{ SessionVerificationEvents : audits
+    SessionQuestions ||--o{ SessionVerificationEvents : "in session check for"
+
+    %% Database DevPrep_Evaluation separate catalog no cross database FK
+    AnswerEvaluations {
+        uniqueidentifier EvaluationId PK
+        uniqueidentifier SessionId "no FK plain Guid value only"
+        uniqueidentifier SessionQuestionId "no FK plain Guid value only"
+        decimal Score
+        nvarchar CriteriaScoresJson
+        nvarchar ModelUsed
+    }
+    FeedbackReports {
+        uniqueidentifier ReportId PK
+        uniqueidentifier SessionId "no FK unique index one per session"
+        decimal OverallScore
+        decimal TechnicalScore "populated from the knowledge axis"
+        decimal CommunicationScore
+        decimal ProblemSolvingScore
+        decimal TheoryScore "declared column never written or read"
+        nvarchar Grade
+    }
+    PerformanceMetrics {
+        uniqueidentifier MetricId PK
+        uniqueidentifier SessionId "no FK plain Guid value only"
+        nvarchar MetricName
+        decimal MetricValue
+    }
+
+    FeedbackReports ||--o{ PerformanceMetrics : "same SessionId value app level join only"
+    AnswerEvaluations }o--|| FeedbackReports : "same SessionId value app level join only"
+
+    InterviewSessions ||--o{ AnswerEvaluations : "cross database same GUID value no physical FK ownership checked over HTTP"

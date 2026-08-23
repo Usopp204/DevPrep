@@ -424,7 +424,7 @@ ALTER TABLE [dbo].[InterviewRooms]  WITH CHECK ADD  CONSTRAINT [CK_Room_Status] 
 GO
 ALTER TABLE [dbo].[InterviewRooms] CHECK CONSTRAINT [CK_Room_Status]
 GO
-ALTER TABLE [dbo].[InterviewSessions]  WITH CHECK ADD  CONSTRAINT [CK_Sess_Level] CHECK  (([Level]='Lead' OR [Level]='Senior' OR [Level]='Middle' OR [Level]='Junior' OR [Level]='Intern'))
+ALTER TABLE [dbo].[InterviewSessions]  WITH CHECK ADD  CONSTRAINT [CK_Sess_Level] CHECK  (([Level]='Lead' OR [Level]='Senior' OR [Level]='Middle' OR [Level]='Junior' OR [Level]='Intern' OR [Level]='Fresher'))
 GO
 ALTER TABLE [dbo].[InterviewSessions] CHECK CONSTRAINT [CK_Sess_Level]
 GO

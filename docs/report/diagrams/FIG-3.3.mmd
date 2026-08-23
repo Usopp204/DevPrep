@@ -1,0 +1,48 @@
+sequenceDiagram
+    participant Browser
+    participant RoomJS as interview-room.js
+    participant InterviewController as WebClient InterviewController
+    participant InterviewSvc as WebClient InterviewService
+    participant Gateway as ApiGateway interview-route
+    participant SessionCtrl as InterviewSessionController
+    participant SessionSvc as SessionService
+    participant Repo as SessionRepository
+    participant AiClient as AiServiceClient
+    participant AiHint as ai-service internal hint
+    participant Gemini as GeminiJudge
+
+    Browser->>RoomJS: click Hint button
+    RoomJS->>InterviewController: POST Hint SessionId SessionQuestionId
+    InterviewController->>InterviewSvc: GetHintAsync
+    InterviewSvc->>Gateway: POST sessions SessionId hint
+    Gateway->>SessionCtrl: POST hint
+    SessionCtrl->>SessionSvc: HintAsync
+    SessionSvc->>Repo: GetQuestionByIdAsync ownership check text loaded from DB never from client
+    SessionSvc->>Repo: TryConsumeHintAsync atomic one time claim before calling ai-service
+    alt already used
+        Repo-->>SessionSvc: claimed false
+        SessionSvc-->>SessionCtrl: throw SessionGuardException 409 hint_already_used
+    else claim succeeds
+        Repo-->>SessionSvc: claimed true
+        SessionSvc->>AiClient: GetHintAsync question text only
+        AiClient->>AiHint: POST internal hint question no reference answer no session state
+        AiHint->>Gemini: judge prompt short directional hint do not reveal answer
+        Gemini-->>AiHint: hint text
+        alt ai-service call fails
+            AiHint-->>AiClient: error
+            AiClient-->>SessionSvc: exception
+            SessionSvc->>Repo: ReleaseHintAsync refund the one time quota
+            SessionSvc-->>SessionCtrl: rethrow
+        else success
+            AiHint-->>AiClient: hint text
+            AiClient-->>SessionSvc: hint
+            SessionSvc-->>SessionCtrl: HintResponse Hint
+        end
+    end
+    SessionCtrl-->>Gateway: 200 or 409
+    Gateway-->>InterviewSvc: response
+    InterviewSvc-->>InterviewController: hint or error
+    InterviewController-->>RoomJS: json
+    RoomJS-->>Browser: append hint bubble and speak it aloud if AI Voice on
+
+    Note over Gemini: The deployed hint path always uses Gemini stateless no reference answer. A separate in session hint method exists on GemmaChat interviewer.py using the reference answer but that class is only reachable through ai-service own unauthenticated interview start router which nothing in this call chain ever invokes

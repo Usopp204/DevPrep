@@ -1,0 +1,34 @@
+sequenceDiagram
+    participant Browser
+    participant InterviewController as WebClient InterviewController
+    participant InterviewSvc as WebClient InterviewService
+    participant Gateway as ApiGateway interview-route
+    participant SessionCtrl as InterviewSessionController
+    participant SessionSvc as SessionService
+    participant Repo as SessionRepository
+
+    Browser->>InterviewController: submit Start form with DurationMinutes
+    InterviewController->>InterviewSvc: StartInterviewAsync duration first call
+    InterviewSvc->>Gateway: PUT api interview sessions config duration body DurationMinutes
+    Gateway->>SessionCtrl: PUT config duration
+    SessionCtrl->>SessionSvc: ConfigDurationAsync userId req
+    SessionSvc->>SessionSvc: validate DurationMinutes in 15 30 45 60 or demo value
+    alt duration not valid
+        SessionSvc-->>SessionCtrl: throw InvalidOperationException Invalid duration
+        SessionCtrl-->>Gateway: 400 BadRequest ApiResponse Fail
+        Gateway-->>InterviewSvc: 400
+        InterviewSvc-->>InterviewController: Failure message
+    else no active session in progress
+        SessionSvc->>Repo: CreateAsync new InterviewSession Status Configured DurationMinutes
+        Repo-->>SessionSvc: session with new SessionId
+        SessionSvc-->>SessionCtrl: ConfigResponse SessionId DurationMinutes
+        SessionCtrl-->>Gateway: 200 ConfigResponse
+        Gateway-->>InterviewSvc: 200
+        InterviewSvc-->>InterviewController: sessionId to continue Level and Init
+    else active session already exists
+        SessionSvc-->>SessionCtrl: throw SessionGuardException 409 active_session_exists
+        SessionCtrl-->>Gateway: 409 error activeSessionId
+        Gateway-->>InterviewSvc: 409
+        InterviewSvc-->>InterviewController: ActiveSessionConflict activeSessionId
+        InterviewController-->>Browser: Redirect to Room activeSessionId
+    end

@@ -1,0 +1,19 @@
+stateDiagram-v2
+    [*] --> NotEnrolled: no Face row in ProfileBiometrics GetEntryGateStatusAsync
+    NotEnrolled --> [*]: Allowed false Reason Please enroll your face BiometricVerificationService.cs line 241 to 250
+    [*] --> ReadyToAttempt: Face enrolled AttemptsRemaining equals EntryMaxRetries three
+    ReadyToAttempt --> Verified: VerifyFaceAsync phase Entry passed true identity score at or above threshold BiometricVerificationService.cs line 158 to 174
+    ReadyToAttempt --> Attempt1Failed: identity mismatch or quality rejection recorded as Decision not Pass
+    Attempt1Failed --> Verified: next VerifyFaceAsync call passes
+    Attempt1Failed --> Attempt2Failed: another failed attempt AttemptsRemaining now one
+    Attempt2Failed --> Verified: next VerifyFaceAsync call passes
+    Attempt2Failed --> Exhausted: third failed attempt AttemptsRemaining zero BiometricVerificationService.cs line 145 to 147
+    Exhausted --> [*]: candidate redirected to VerifyFailed must create a new session fresh attempt budget entry-verify.js line 225 to 231
+    Verified --> [*]: Room opens IntegrityPolicy then GenerateQuestionAsync serves first question and charges credit
+
+    note right of ReadyToAttempt
+        Voice is never consulted here entry gate is face only BiometricVerificationService.cs line 220 to 223
+    end note
+    note right of Verified
+        Passed state persists for the life of the session GetEntryGateStatusAsync always finds the earlier Pass row on every later re check
+    end note

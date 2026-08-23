@@ -1,0 +1,43 @@
+sequenceDiagram
+    participant Browser
+    participant RoomJS as interview-room.js
+    participant InterviewController as WebClient InterviewController
+    participant InterviewSvc as WebClient InterviewService
+    participant Gateway as ApiGateway interview-route
+    participant VerifyCtrl as SessionVerificationController
+    participant BioSvc as BiometricVerificationService
+    participant AiClient as AiServiceClient
+    participant AiSTT as ai-service internal stt
+    participant AiVerify as ai-service biometrics verify
+
+    Note over Browser,RoomJS: TTS playback of the AI question when AI Voice is on
+    RoomJS->>InterviewController: POST Tts text
+    InterviewController->>InterviewSvc: GetTtsAudioAsync
+    InterviewSvc->>Gateway: POST sessions tts
+    Gateway->>AiClient: proxied through InterviewSessionController TextToSpeech
+    AiClient->>AiClient: POST interview tts to ai-service Piper local synth
+    AiClient-->>InterviewSvc: audio mpeg bytes
+    InterviewSvc-->>RoomJS: audio blob
+    RoomJS-->>Browser: play audio element
+
+    Note over Browser,RoomJS: Voice answer recording STT plus speaker check
+    Browser->>RoomJS: hold mic button record MediaRecorder webm
+    RoomJS->>InterviewController: POST Stt sessionId voiceCheckId audio
+    InterviewController->>InterviewSvc: TranscribeAudioAsync
+    InterviewSvc->>Gateway: POST sessions SessionId verify voice-answer
+    Gateway->>VerifyCtrl: POST verify voice-answer
+    VerifyCtrl->>BioSvc: VerifyVoiceAnswerAsync
+    BioSvc->>AiClient: TranscribeAsync audio start immediately
+    AiClient->>AiSTT: POST internal stt Deepgram nova-3
+    BioSvc->>BioSvc: if Biometrics disabled or no voice enrollment return transcript only
+    BioSvc->>AiClient: VerifyVoiceAsync probe audio plus stored embedding
+    AiClient->>AiVerify: POST internal biometrics verify modality voice
+    AiVerify-->>AiClient: match score decision
+    AiSTT-->>AiClient: transcript text
+    AiClient-->>BioSvc: transcript and verification result
+    BioSvc-->>VerifyCtrl: VoiceAnswerVerifyResponse Text VoiceChecked strike info
+    VerifyCtrl-->>Gateway: 200
+    Gateway-->>InterviewSvc: 200
+    InterviewSvc-->>InterviewController: transcript
+    InterviewController-->>RoomJS: json Text VoiceChecked
+    RoomJS-->>Browser: fill answer box with transcript never auto sent user reviews and clicks Send

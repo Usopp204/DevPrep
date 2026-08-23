@@ -1,0 +1,42 @@
+sequenceDiagram
+    participant Browser
+    participant InterviewController as WebClient InterviewController
+    participant InterviewSvc as WebClient InterviewService
+    participant Gateway as ApiGateway interview-route
+    participant SessionCtrl as InterviewSessionController
+    participant SessionSvc as SessionService
+    participant Repo as SessionRepository
+
+    Browser->>InterviewController: GET IntegrityPolicy SessionId
+    InterviewController->>InterviewSvc: GetIntegrityPolicyStatusAsync SessionId
+    InterviewSvc->>Gateway: GET sessions SessionId integrity-policy
+    Gateway->>SessionCtrl: GET integrity-policy
+    SessionCtrl->>SessionSvc: GetIntegrityPolicyStatusAsync
+    SessionSvc->>Repo: GetByIdAsync SessionId
+    Repo-->>SessionSvc: session
+    SessionSvc-->>SessionCtrl: Accepted AcceptedAt
+    SessionCtrl-->>Gateway: 200
+    Gateway-->>InterviewSvc: 200
+    InterviewSvc-->>InterviewController: Accepted false
+    InterviewController-->>Browser: render IntegrityPolicy view rules and checkbox
+
+    Browser->>InterviewController: POST AcceptIntegrityPolicy SessionId checkbox agreed
+    InterviewController->>InterviewSvc: AcceptIntegrityPolicyAsync SessionId
+    InterviewSvc->>Gateway: POST sessions SessionId integrity-policy accept
+    Gateway->>SessionCtrl: POST integrity-policy accept
+    SessionCtrl->>SessionSvc: AcceptIntegrityPolicyAsync
+    SessionSvc->>Repo: GetByIdAsync SessionId
+    Repo-->>SessionSvc: session
+    SessionSvc->>SessionSvc: check Status equals Initialized
+    alt status not Initialized
+        SessionSvc-->>SessionCtrl: throw InvalidOperationException cannot accept at this status
+        SessionCtrl-->>Gateway: 400 BadRequest
+    else status Initialized
+        SessionSvc->>Repo: AcceptIntegrityPolicyIfAsync SessionId atomic update
+        Repo-->>SessionSvc: rows affected true
+        SessionSvc-->>SessionCtrl: Accepted true AcceptedAt
+        SessionCtrl-->>Gateway: 200
+        Gateway-->>InterviewSvc: 200
+        InterviewSvc-->>InterviewController: Accepted true
+        InterviewController-->>Browser: Redirect to Room SessionId
+    end

@@ -1,0 +1,41 @@
+sequenceDiagram
+    participant Browser
+    participant RoomJS as interview-room.js
+    participant InterviewController as WebClient InterviewController
+    participant InterviewSvc as WebClient InterviewService
+    participant Gateway as ApiGateway interview-route
+    participant SessionCtrl as InterviewSessionController
+    participant SessionSvc as SessionService
+    participant Repo as SessionVerificationEventRepository
+    participant SessionRepo as SessionRepository
+
+    Note over RoomJS: camera track ended event fires camera lost
+    RoomJS->>RoomJS: scheduleCameraRecovery wait CAMERA_RECONNECT_GRACE_MS fifteen seconds then retry connectCamera
+    alt reconnect succeeds within grace window
+        RoomJS-->>Browser: Camera On no violation reported this episode
+    else reconnect still failing after grace window
+        RoomJS->>RoomJS: cameraIncidentReported flag ensures at most one report per continuous loss episode
+        RoomJS->>InterviewController: POST CameraViolation incidentId reason PermissionDenied or Disconnected
+        InterviewController->>InterviewSvc: ReportCameraViolationAsync
+        InterviewSvc->>Gateway: POST sessions SessionId camera-violation
+        Gateway->>SessionCtrl: POST camera-violation
+        SessionCtrl->>SessionSvc: ReportCameraViolationAsync
+        SessionSvc->>Repo: TryAddIncidentAsync Phase InSession Modality Camera Decision Flag keyed on IncidentId unique filtered index UX_SVE_IncidentId
+        alt duplicate incidentId already reported
+            Repo-->>SessionSvc: inserted false idempotent no double strike
+        else new incident
+            SessionSvc->>SessionRepo: IncrementCameraViolationAsync plain audit tally on InterviewSessions.CameraViolationCount
+        end
+        SessionSvc->>Repo: ListBySessionAsync recompute CheatingStrikeHelper strike count Camera is in the direct strike whitelist
+        SessionSvc->>SessionSvc: ShouldEndSession check
+        alt should end
+            SessionSvc->>SessionSvc: EndSessionForCheatingAsync style termination Status Cancelled TerminationReason IntegrityViolation
+        end
+        SessionSvc-->>SessionCtrl: ReportCameraViolationResponse CameraViolationCount StrikeCount ShouldEndSession Message
+        SessionCtrl-->>Gateway: 200
+        Gateway-->>InterviewSvc: 200
+        InterviewSvc-->>InterviewController: result
+        InterviewController-->>RoomJS: json
+        RoomJS-->>Browser: strike banner or forced termination modal
+    end
+    RoomJS->>RoomJS: keep retrying connectCamera regardless every fifteen seconds until success or session ends

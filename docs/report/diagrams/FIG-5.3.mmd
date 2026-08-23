@@ -1,0 +1,45 @@
+sequenceDiagram
+    participant Browser
+    participant RoomJS as interview-room.js
+    participant InterviewController as WebClient InterviewController
+    participant InterviewSvc as WebClient InterviewService
+    participant Gateway as ApiGateway interview-route
+    participant SessionVerifyCtrl as SessionVerificationController
+    participant BioSvc as BiometricVerificationService
+    participant AiClient as AiServiceClient
+    participant AiSTT as ai-service internal stt
+    participant AiVerify as ai-service internal biometrics verify
+    participant Repo as SessionVerificationEventRepository
+
+    Browser->>RoomJS: record spoken answer stop recording
+    RoomJS->>InterviewController: POST Stt sessionId voiceCheckId client generated audio
+    InterviewController->>InterviewSvc: TranscribeAudioAsync
+    InterviewSvc->>Gateway: POST verify voice-answer
+    Gateway->>SessionVerifyCtrl: POST voice-answer
+    SessionVerifyCtrl->>BioSvc: VerifyVoiceAnswerAsync checkId audio
+    BioSvc->>AiClient: TranscribeAsync started immediately not blocked by verification
+    AiClient->>AiSTT: POST internal stt Deepgram nova-3 English default
+    par transcription in flight
+        AiSTT-->>AiClient: transcript text
+    and speaker check only if Biometrics enabled and voice enrolled
+        BioSvc->>BioSvc: check Biometrics Enabled and voice ProfileBiometrics row exists
+        alt disabled or not enrolled
+            BioSvc-->>SessionVerifyCtrl: Text from transcription VoiceChecked false
+        else enrolled and enabled
+            BioSvc->>AiClient: VerifyVoiceAsync probe audio plus stored voice embedding speaker score only no phrase content check
+            AiClient->>AiVerify: POST internal biometrics verify modality voice
+            AiVerify-->>AiClient: match score threshold cosine similarity against enrolled embedding
+            AiClient-->>BioSvc: result
+            BioSvc->>Repo: TryAddIncidentAsync Phase InSession Modality Voice Decision Pass or Flag keyed on client generated checkId
+            BioSvc->>Repo: ListBySessionAsync recompute strike count ShouldEndSession same shared predicate as Face
+            alt mismatch and should end
+                BioSvc->>BioSvc: EndSessionForCheatingAsync Status Cancelled TerminationReason IntegrityViolation
+            end
+            BioSvc-->>SessionVerifyCtrl: VoiceAnswerVerifyResponse Text VoiceChecked VoiceMatched StrikeCount ShouldEndSession
+        end
+    end
+    SessionVerifyCtrl-->>Gateway: 200
+    Gateway-->>InterviewSvc: 200
+    InterviewSvc-->>InterviewController: transcript plus verification outcome
+    InterviewController-->>RoomJS: json
+    RoomJS-->>Browser: transcript fills answer box never auto sent strike banner only if VoiceMatched false
