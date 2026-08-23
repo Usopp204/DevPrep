@@ -352,6 +352,10 @@ services:
       - NOTIFICATION_DB_CONNECTION_STRING=Server=sqlserver,1433;Database=DevPrep_Notification;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;Encrypt=False;
       # Fail-closed by design: this service refuses to start without the key.
       - INTERNAL_API_KEY=${INTERNAL_API_KEY}
+      # Program.cs:32 throws "Jwt:Key is missing." without this (added in 46cb496).
+      - Jwt__Key=${JWT_KEY}
+      - Jwt__Issuer=${JWT_ISSUER}
+      - Jwt__Audience=${JWT_AUDIENCE}
     networks: [devprep-internal-net]
 
   # ----------------------------------------------------------------------------
@@ -396,6 +400,10 @@ services:
       # (appsettings.json:2 also sets "Urls" for the listen address — ASPNETCORE_URLS
       # from the Dockerfile overrides it; see phase1-checklist.md H-2.)
       - ApiGateway__BaseUrl=http://apigateway:8080/
+      # BROWSER-facing gateway address, same rule as userapi's FILE_PUBLIC_BASE_URL above: the
+      # Manager pages print this into their fetch() calls, and a browser cannot resolve
+      # apigateway:8080. Must stay the published host port.
+      - ApiGateway__PublicBaseUrl=http://localhost:7000
       # DEMO-SESSION: remove after defence — start
       # Controls only whether the extra duration appears in the dropdown. Must match the value
       # given to interviewapi — showing the option while the API rejects it (or vice versa) is

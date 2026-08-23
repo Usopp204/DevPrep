@@ -17,7 +17,14 @@ public class ManagerController(
     IFeedbackService feedbackService,
     IManagementDashboardService dashboardService) : Controller
 {
-    private string ApiBaseUrl => gatewayOptions.Value.BaseUrl?.TrimEnd('/') ?? "http://localhost:7000";
+    // Browser-facing on purpose: this value is printed into the pages' fetch() calls, so it has
+    // to be the gateway's PUBLISHED address, never the compose DNS name BaseUrl carries inside
+    // Docker. Falling back to BaseUrl keeps non-Docker runs working, where the two are equal.
+    private string ApiBaseUrl =>
+        (string.IsNullOrWhiteSpace(gatewayOptions.Value.PublicBaseUrl)
+            ? gatewayOptions.Value.BaseUrl
+            : gatewayOptions.Value.PublicBaseUrl)?.TrimEnd('/')
+        ?? "http://localhost:7000";
 
     public async Task<IActionResult> Index()
     {
