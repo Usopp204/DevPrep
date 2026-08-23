@@ -1,0 +1,143 @@
+feature: VoiceInteraction
+title: Voice Interaction
+uc_id: ""
+uc_label: "[UC-44]"
+backlog: [42, 43]
+
+participants:
+  - name: Candidate
+    kind: actor
+    w: 30
+  - name: ":Interview Room UI"
+    kind: box
+    w: 180
+  - name: ":InterviewController\n(WebClient)"
+    kind: box
+    w: 200
+  - name: ":InterviewService\n(WebClient)"
+    kind: box
+    w: 190
+  - name: ":API Gateway"
+    kind: box
+    w: 140
+  - name: ":InterviewSessionController\n(InterviewAPI)"
+    kind: box
+    w: 250
+  - name: ":AiServiceClient\n(InterviewAPI)"
+    kind: box
+    w: 190
+  - name: ":ai-service\n/interview/tts"
+    kind: box
+    w: 200
+  - name: ":tts_cache\n(disk)"
+    kind: box
+    w: 160
+  - name: ":PiperTTS / ElevenLabsTTS"
+    kind: box
+    w: 220
+
+flow:
+  - {d: 0, t: 1, k: call, l: "1. [auto] A new AI bubble appears while AI Voice is on"}
+  - {d: 1, t: 1, k: call, l: "2. speak(text): guard !aiVoiceOn / !text / !ttsUrl", self: true}
+  - frame: opt
+    sections:
+      - guard: "[AI Voice is off OR text is empty OR the Room has no TTS url]"
+        body:
+          - {d: 1, t: 1, k: call, l: "A.1. return early - no request is sent", self: true}
+          - {d: 1, t: 0, k: ret, l: "A.2. Nothing is spoken; the text bubble is still shown as usual"}
+  - {d: 1, t: 2, k: call, l: "3. POST /Interview/Tts { text } (application/json)"}
+  - frame: opt
+    sections:
+      - guard: "[request.Text is null or whitespace (WebClient guard)]"
+        body:
+          - {d: 2, t: 1, k: ret, l: 'B.1. Return 400 { error: "Text is required." }'}
+          - {d: 1, t: 0, k: ret, l: "B.2. speak() returns silently"}
+  - {d: 2, t: 3, k: call, l: "4. GetTtsAudioAsync(request.Text, ct)"}
+  - {d: 3, t: 4, k: call, l: "5. POST api/interview/sessions/tts { text }"}
+  - {d: 4, t: 5, k: call, l: "6. Forward (route interview-route, no prefix strip)"}
+  - frame: opt
+    sections:
+      - guard: "[req.Text is null or whitespace (InterviewAPI guard)]"
+        body:
+          - {d: 5, t: 4, k: ret, l: "C.1. Return 400 {error}"}
+          - {d: 4, t: 3, k: ret, l: "C.2. Return 400"}
+          - {d: 3, t: 2, k: ret, l: 'C.3. Return (false, null, "TTS request failed (400).")'}
+          - {d: 2, t: 1, k: ret, l: "C.4. Return 400 { error }"}
+          - {d: 1, t: 0, k: ret, l: "C.5. response.ok is false -> silent; nothing is spoken"}
+  - {d: 5, t: 6, k: call, l: "7. SynthesizeSpeechAsync(req.Text, ct)"}
+  - {d: 6, t: 7, k: call, l: "8. POST /interview/tts { text } (header X-Internal-Api-Key)"}
+  - {d: 7, t: 7, k: call, l: "9. _tts_identity(); key = sha256(text + provider + voice)", self: true}
+  - {d: 7, t: 8, k: call, l: "10. get(key)"}
+  - {d: 8, t: 7, k: ret, l: "11. Return the cached MP3 bytes / None"}
+  - frame: alt
+    sections:
+      - guard: "[cache HIT]"
+        body:
+          - {d: 7, t: 6, k: ret, l: "D-a.1. Return 200 audio/mpeg (X-TTS-Cache: HIT)"}
+      - guard: "[cache MISS - or the cache is disabled / unreadable]"
+        body:
+          - {d: 7, t: 9, k: call, l: "D-b.1. _tts.synthesize(text)"}
+          - frame: opt
+            sections:
+              - guard: "[_tts.synthesize throws]"
+                body:
+                  - {d: 9, t: 7, k: ret, l: "F.1. raise (logged: TTS synthesis failed, provider=...)"}
+                  - {d: 7, t: 6, k: ret, l: 'F.2. Return 502 { error: "tts_unavailable" } (X-TTS-Cache: MISS)'}
+                  - {d: 6, t: 5, k: ret, l: "F.3. EnsureSuccessStatusCode() throws HttpRequestException"}
+                  - {d: 5, t: 4, k: ret, l: "F.4. Return 400 {error}"}
+                  - {d: 4, t: 3, k: ret, l: "F.5. Return 400"}
+                  - {d: 3, t: 2, k: ret, l: 'F.6. Return (false, null, "TTS request failed (400).")'}
+                  - {d: 2, t: 1, k: ret, l: "F.7. Return 400 { error }"}
+                  - {d: 1, t: 0, k: ret, l: "F.8. speak() returns silently"}
+          - frame: alt
+            sections:
+              - guard: '[TTS_PROVIDER = "piper" (default, local)]'
+                body:
+                  - {d: 9, t: 9, k: call, l: "E-a.1. PiperVoice.synthesize_wav(text, SynthesisConfig)", self: true}
+                  - {d: 9, t: 7, k: ret, l: "E-a.2. Return MP3 bytes"}
+              - guard: '[TTS_PROVIDER = "elevenlabs" (legacy, still wired)]'
+                body:
+                  - {d: 9, t: 9, k: call, l: "E-b.1. ElevenLabs text_to_speech.stream(voice_id, model_id)", self: true}
+                  - {d: 9, t: 7, k: ret, l: "E-b.2. Return MP3 bytes"}
+          - {d: 7, t: 8, k: call, l: "D-b.2. put(key, audio) [best-effort]"}
+          - {d: 8, t: 7, k: ret, l: "D-b.3. Return"}
+          - {d: 7, t: 6, k: ret, l: "D-b.4. Return 200 audio/mpeg (X-TTS-Cache: MISS)"}
+  - {d: 6, t: 5, k: ret, l: "12. Return byte[] MP3"}
+  - frame: opt
+    sections:
+      - guard: "[audio is null OR audio.Length == 0]"
+        body:
+          - {d: 5, t: 4, k: ret, l: 'G.1. Return 502 { error: "tts_unavailable" }'}
+          - {d: 4, t: 3, k: ret, l: "G.2. Return 502"}
+          - {d: 3, t: 2, k: ret, l: 'G.3. Return (false, null, "TTS request failed (502).")'}
+          - {d: 2, t: 1, k: ret, l: "G.4. Return 400 { error }"}
+          - {d: 1, t: 0, k: ret, l: "G.5. response.ok is false -> silent; nothing is spoken"}
+  - {d: 5, t: 4, k: ret, l: '13. Return 200 File(audio, "audio/mpeg")'}
+  - {d: 4, t: 3, k: ret, l: "14. Return 200 audio/mpeg"}
+  - {d: 3, t: 2, k: ret, l: "15. Return (true, byte[] audio, null)"}
+  - {d: 2, t: 1, k: ret, l: '16. Return 200 File(audio, "audio/mpeg")'}
+  - {d: 1, t: 1, k: call, l: "17. blob = await response.blob(); new Audio(...)", self: true}
+  - frame: opt
+    sections:
+      - guard: "[the response blob is empty]"
+        body:
+          - {d: 1, t: 1, k: call, l: 'H.1. console.warn("[TTS] empty audio response") and return', self: true}
+          - {d: 1, t: 0, k: ret, l: "H.2. Nothing is spoken"}
+  - {d: 1, t: 0, k: ret, l: "18. The interviewer voice plays and the waveform animates"}
+
+  - {d: 0, t: 1, k: call, l: "19. Click the AI Voice toggle"}
+  - {d: 1, t: 1, k: call, l: "20. aiVoiceOn = !aiVoiceOn; currentAudio?.pause()", self: true}
+  - {d: 1, t: 0, k: ret, l: "21. The switch flips; a playing clip stops at once"}
+
+  - frame: opt
+    sections:
+      - guard: "[the candidate answers by voice instead of typing]"
+        body:
+          - {d: 0, t: 1, k: call, l: "J.1. Click the microphone, record the answer, click again to stop"}
+          - {d: 1, t: 2, k: call, l: "J.2. POST /Interview/Stt (multipart)"}
+          - {d: 2, t: 3, k: call, l: "J.3. TranscribeAudioAsync(sessionId, voiceCheckId, bytes, ...)"}
+          - {d: 3, t: 4, k: call, l: "J.4. POST .../verify/voice-answer [see #16]"}
+          - {d: 4, t: 3, k: ret, l: "J.5. Return 200 SttResponse / non-2xx"}
+          - {d: 3, t: 2, k: ret, l: "J.6. Return (Success, SttResponse, Error)"}
+          - {d: 2, t: 1, k: ret, l: "J.7. Return 200 JSON / 400 { error }"}
+          - {d: 1, t: 0, k: ret, l: "J.8. Transcript dropped into the answer box [see #16]"}

@@ -1,0 +1,433 @@
+feature: GenerateInterviewHint
+title: Generate Interview Hint
+uc_id: "UC-09"
+uc_label: "[UC-45]"
+backlog:
+- 44
+participants:
+- name: Candidate
+  kind: actor
+  w: 30
+- name: ":Interview Room UI"
+  kind: box
+  w: 160
+- name: ":InterviewController\n(WebClient)"
+  kind: box
+  w: 200
+- name: ":InterviewService\n(WebClient)"
+  kind: box
+  w: 170
+- name: ":API Gateway"
+  kind: box
+  w: 140
+- name: ":InterviewSessionController\n(InterviewAPI)"
+  kind: box
+  w: 230
+- name: ":SessionService\n(InterviewAPI)"
+  kind: box
+  w: 170
+- name: ":SessionRepository\n(InterviewAPI)"
+  kind: box
+  w: 180
+- name: SQL Server
+  kind: db
+  w: 70
+- name: ":AiServiceClient\n(InterviewAPI)"
+  kind: box
+  w: 180
+- name: ":ai-service /internal/hint"
+  kind: box
+  w: 210
+- name: ":GeminiJudge\n(ai-service)"
+  kind: box
+  w: 180
+- name: Gemini API
+  kind: box
+  w: 140
+flow:
+- d: 0
+  t: 1
+  k: call
+  l: '1. Click "Ask for hint"'
+- d: 1
+  t: 1
+  k: call
+  l: 2. askHint()
+  self: true
+- frame: opt
+  sections:
+  - guard: '[!currentQuestionId OR ended OR !hintUrl]'
+    body:
+    - d: 1
+      t: 1
+      k: ret
+      l: 2.1. askHint() returns (guard failed)
+      self: true
+    - d: 1
+      t: 0
+      k: ret
+      l: 2.2. Return (no request sent)
+- d: 1
+  t: 1
+  k: call
+  l: 3. hintBtn.disabled = true
+  self: true
+- d: 1
+  t: 2
+  k: call
+  l: '4. POST /Interview/Hint {sessionId, sessionQuestionId}'
+- frame: opt
+  sections:
+  - guard: '[request is null OR SessionId == Guid.Empty OR SessionQuestionId == Guid.Empty]'
+    body:
+    - d: 2
+      t: 1
+      k: ret
+      l: '4.1. Return 400 {error}'
+    - d: 1
+      t: 0
+      k: ret
+      l: '4.2. appendBubble("Could not get a hint: ...")'
+- d: 2
+  t: 3
+  k: call
+  l: 5. GetHintAsync(sessionId, sessionQuestionId)
+- d: 3
+  t: 4
+  k: call
+  l: '6. POST api/interview/sessions/{id}/hint {sessionQuestionId}'
+- d: 4
+  t: 5
+  k: call
+  l: 7. Forward request to InterviewAPI (no prefix strip)
+- d: 5
+  t: 5
+  k: call
+  l: 8. Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier))
+  self: true
+- d: 5
+  t: 6
+  k: call
+  l: 9. HintAsync(userId, id, req.SessionQuestionId)
+- d: 6
+  t: 7
+  k: call
+  l: 10. GetQuestionByIdAsync(sessionQuestionId)
+- d: 7
+  t: 8
+  k: call
+  l: 11. SELECT SessionQuestion + Session by SessionQuestionId
+- d: 8
+  t: 7
+  k: ret
+  l: 12. Return question row / null
+- d: 7
+  t: 6
+  k: ret
+  l: 13. Return SessionQuestion?
+- frame: alt
+  sections:
+  - guard: '[question is null OR question.SessionId != sessionId OR question.Session.UserId != userId]'
+    body:
+    - d: 6
+      t: 5
+      k: ret
+      l: 14.1. throw KeyNotFoundException("Question not found.")
+    - d: 5
+      t: 4
+      k: ret
+      l: 14.2. Return 404 ApiResponse.Fail(ex.Message)
+    - d: 4
+      t: 3
+      k: ret
+      l: 14.3. Return 404
+    - d: 3
+      t: 3
+      k: call
+      l: 14.4. ParseErrorBody(raw)
+      self: true
+    - d: 3
+      t: 3
+      k: call
+      l: '14.5. ToUserFacingError(404, message, "Could not get a hint.")'
+      self: true
+    - d: 3
+      t: 2
+      k: ret
+      l: 14.6. Return (false, null, error, errorCode, 404)
+    - d: 2
+      t: 1
+      k: ret
+      l: '14.7. Return 404 {error, message}'
+    - d: 1
+      t: 1
+      k: call
+      l: 14.8. throw Error(status=404) in postProxy
+      self: true
+    - d: 1
+      t: 0
+      k: ret
+      l: "14.9. appendBubble(\"Could not get a hint: ...\")"
+  - guard: '[question belongs to this session AND this user]'
+    body:
+    - d: 6
+      t: 7
+      k: call
+      l: 15.1. TryConsumeHintAsync(sessionQuestionId, sessionId)
+    - d: 7
+      t: 8
+      k: call
+      l: "15.2. UPDATE SessionQuestions SET HintUsedAt"
+    - d: 8
+      t: 7
+      k: ret
+      l: 15.3. Return rowsAffected
+    - d: 7
+      t: 6
+      k: ret
+      l: 15.4. Return claimed (rowsAffected > 0)
+    - frame: alt
+      sections:
+      - guard: '[claimed == false]'
+        body:
+        - d: 6
+          t: 5
+          k: ret
+          l: 15.5. throw SessionGuardException(409, "hint_already_used")
+        - d: 5
+          t: 4
+          k: ret
+          l: '15.6. Return 409 {error: "hint_already_used", message}'
+        - d: 4
+          t: 3
+          k: ret
+          l: 15.7. Return 409
+        - d: 3
+          t: 3
+          k: call
+          l: 15.8. ParseErrorBody(raw) -> code = "hint_already_used"
+          self: true
+        - d: 3
+          t: 2
+          k: ret
+          l: 15.9. Return (false, null, error, "hint_already_used", 409)
+        - d: 2
+          t: 1
+          k: ret
+          l: '15.10. Return 409 {error, message}'
+        - d: 1
+          t: 1
+          k: call
+          l: 15.11. throw Error(status=409) in postProxy
+          self: true
+        - d: 1
+          t: 0
+          k: ret
+          l: "15.12. appendBubble(\"You've already used your hint...\")"
+      - guard: '[claimed == true]'
+        body:
+        - d: 6
+          t: 9
+          k: call
+          l: 15.13. GetHintAsync(question.Content)
+        - d: 9
+          t: 10
+          k: call
+          l: '15.14. POST /internal/hint {question}'
+        - d: 10
+          t: 10
+          k: call
+          l: 15.15. _check_key(x_internal_api_key)
+          self: true
+        - d: 10
+          t: 10
+          k: call
+          l: 15.16. prompt = _HINT_PROMPT.format(question, language_name)
+          self: true
+        - d: 10
+          t: 11
+          k: call
+          l: 15.17. judge(prompt)
+        - frame: alt
+          sections:
+          - guard: '[GeminiJudge call succeeds]'
+            body:
+            - d: 11
+              t: 12
+              k: call
+              l: "15.18. generate_content(model, contents=prompt)"
+            - d: 12
+              t: 11
+              k: ret
+              l: 15.19. Return resp.text
+            - d: 11
+              t: 10
+              k: ret
+              l: 15.20. Return hint text
+          - guard: '[judge(prompt) raised Exception]'
+            body:
+            - d: 11
+              t: 10
+              k: ret
+              l: 15.21. throw Exception
+            - d: 10
+              t: 10
+              k: call
+              l: 15.22. hint = ""
+              self: true
+        - frame: opt
+          sections:
+          - guard: '[not hint]'
+            body:
+            - d: 10
+              t: 10
+              k: call
+              l: "15.23. hint = \"Think about the core concept...\""
+              self: true
+        - frame: alt
+          sections:
+          - guard: '[ai-service returned 2xx]'
+            body:
+            - d: 10
+              t: 9
+              k: ret
+              l: '15.24. Return 200 {"hint": hint}'
+            - d: 9
+              t: 9
+              k: call
+              l: 15.25. EnsureSuccessStatusCode()
+              self: true
+            - d: 9
+              t: 9
+              k: call
+              l: 15.26. ReadFromJsonAsync<AiHintResponse>()
+              self: true
+            - d: 9
+              t: 6
+              k: ret
+              l: 15.27. Return result?.Hint ?? string.Empty
+            - d: 6
+              t: 5
+              k: ret
+              l: 15.28. Return HintResponse { Hint }
+            - d: 5
+              t: 4
+              k: ret
+              l: 15.29. Return 200 ApiResponse<HintResponse>.Ok(result)
+            - d: 4
+              t: 3
+              k: ret
+              l: 15.30. Return 200 ApiResponse<HintResponse>
+            - d: 3
+              t: 3
+              k: call
+              l: 15.31. JsonSerializer.Deserialize<ApiResponse<HintResponse>>(raw)
+              self: true
+            - frame: opt
+              sections:
+              - guard: '[envelope is null OR !envelope.Success]'
+                body:
+                - d: 3
+                  t: 2
+                  k: ret
+                  l: 15.32. Return (false, null, envelope?.Message, null, 200)
+                - d: 2
+                  t: 1
+                  k: ret
+                  l: "15.33. Return 502 {error, message} [see KI-01]"
+                - d: 1
+                  t: 1
+                  k: call
+                  l: 15.34. throw Error(status=502) in postProxy
+                  self: true
+                - d: 1
+                  t: 0
+                  k: ret
+                  l: "15.35. appendBubble(\"Could not get a hint: ...\")"
+            - d: 3
+              t: 2
+              k: ret
+              l: 15.36. Return (true, envelope.Data?.Hint, null, null, 200)
+            - d: 2
+              t: 1
+              k: ret
+              l: '15.37. Return 200 Json({ hint })'
+            - d: 1
+              t: 1
+              k: call
+              l: 15.38. appendBubble("AI", "💡 " + hintText)
+              self: true
+            - d: 1
+              t: 1
+              k: call
+              l: 15.39. speak(hintText) [best-effort]
+              self: true
+            - d: 1
+              t: 0
+              k: ret
+              l: 15.40. Return hint bubble displayed (hintBtn stays disabled)
+          - guard: '[ai-service call failed (non-2xx / network / timeout)]'
+            body:
+            - d: 10
+              t: 9
+              k: ret
+              l: 15.41. Return 4xx/5xx (or no response)
+            - d: 9
+              t: 9
+              k: call
+              l: "15.42. _logger.LogWarning(\"POST /internal/hint failed.\")"
+              self: true
+            - d: 9
+              t: 6
+              k: ret
+              l: 15.43. throw Exception
+            - d: 6
+              t: 6
+              k: call
+              l: 15.44. _logger.LogError("...releasing it")
+              self: true
+            - d: 6
+              t: 7
+              k: call
+              l: 15.45. ReleaseHintAsync(sessionQuestionId)
+            - d: 7
+              t: 8
+              k: call
+              l: 15.46. UPDATE SessionQuestions SET HintUsedAt = NULL WHERE Id = @id
+            - d: 8
+              t: 7
+              k: ret
+              l: 15.47. Return
+            - d: 7
+              t: 6
+              k: ret
+              l: 15.48. Return
+            - d: 6
+              t: 5
+              k: ret
+              l: 15.49. throw (rethrow)
+            - d: 5
+              t: 4
+              k: ret
+              l: 15.50. Return 400 ApiResponse<object>.Fail(ex.Message)
+            - d: 4
+              t: 3
+              k: ret
+              l: 15.51. Return 400
+            - d: 3
+              t: 3
+              k: call
+              l: 15.52. ParseErrorBody(raw) + ToUserFacingError(400, ...)
+              self: true
+            - d: 3
+              t: 2
+              k: ret
+              l: 15.53. Return (false, null, error, null, 400)
+            - d: 2
+              t: 1
+              k: ret
+              l: '15.54. Return 400 {error, message}'
+            - d: 1
+              t: 0
+              k: ret
+              l: "15.55. appendBubble(\"Could not get a hint: ...\")"

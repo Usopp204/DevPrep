@@ -1,0 +1,20 @@
+# Shared class body — response envelope used by InterviewAPI and EvaluationAPI
+# (source/InterviewAPI/DTOs/ApiResponse.cs and source/EvaluationAPI/DTOs/ApiResponse.cs
+# are byte-for-byte identical: Success/Message/Data + static Ok/Fail).
+#
+# NOT for WebClient/Models/Shared/ApiResponse.cs — that class has the same name but a
+# DIFFERENT shape (fields only, no Ok/Fail methods; it only mirrors the envelope for
+# deserialization). If a diagram needs the WebClient-side class, define it as its own
+# local class (or a separate shared file), do NOT include this one for it.
+#
+# No x/y/column here — position is always supplied by the including file, and 2 backend
+# projects can each include this under a different `name:` override to disambiguate
+# (see SPEC_SCHEMA.md "include:").
+name: "ApiResponse<T>"
+fields:
+  - "+ Success: bool"
+  - "+ Message: string?"
+  - "+ Data: T?"
+methods:
+  - "+ Ok(data: T, message: string?): ApiResponse<T>"
+  - "+ Fail(message: string): ApiResponse<T>"

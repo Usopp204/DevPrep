@@ -1,0 +1,679 @@
+<mxfile host="app.diagrams.net" version="29.0.3" pages="2">
+  <diagram id="seq-enrollfacebiometric" name="Sequence - Enroll Face Biometric [UC-50] [BL#11,#12,#53]">
+    <mxGraphModel dx="1601" dy="835" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2850" pageHeight="4595" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="s-a1" value="Candidate" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="45" y="10" width="30" height="45" as="geometry" /></mxCell>
+        <mxCell id="s-h2" value=":Biometric Wizard UI" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="95" y="30" width="190" height="40" as="geometry" /></mxCell>
+        <mxCell id="s-h3" value=":ProfileController&#10;(WebClient)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="305" y="30" width="190" height="40" as="geometry" /></mxCell>
+        <mxCell id="s-h4" value=":BiometricsService&#10;(WebClient)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="515" y="30" width="190" height="40" as="geometry" /></mxCell>
+        <mxCell id="s-h5" value=":API Gateway" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="725" y="30" width="140" height="40" as="geometry" /></mxCell>
+        <mxCell id="s-h6" value=":ProfileBiometricsController&#10;(InterviewAPI)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="885" y="30" width="250" height="40" as="geometry" /></mxCell>
+        <mxCell id="s-h7" value=":ProfileBiometricsService&#10;(InterviewAPI)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="1155" y="30" width="240" height="40" as="geometry" /></mxCell>
+        <mxCell id="s-h8" value=":ProfileBiometricsRepository&#10;(InterviewAPI)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="1415" y="30" width="250" height="40" as="geometry" /></mxCell>
+        <mxCell id="s-h9" value=":AiServiceClient&#10;(InterviewAPI)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="1685" y="30" width="190" height="40" as="geometry" /></mxCell>
+        <mxCell id="s-h10" value=":ai-service&#10;/internal/biometrics/face/embed" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="1895" y="30" width="320" height="40" as="geometry" /></mxCell>
+        <mxCell id="s-h11" value=":PaymentApiClient&#10;(InterviewAPI)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="2235" y="30" width="200" height="40" as="geometry" /></mxCell>
+        <mxCell id="s-h12" value=":PaymentAPI (:7008)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="2455" y="30" width="170" height="40" as="geometry" /></mxCell>
+        <mxCell id="s-db13" value="SQL Server" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="2645" y="10" width="70" height="55" as="geometry" /></mxCell>
+        <mxCell id="s-a14" value="Candidate" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="45" y="4410" width="30" height="45" as="geometry" /></mxCell>
+        <mxCell id="s-h15" value=":Biometric Wizard UI" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="95" y="4430" width="190" height="40" as="geometry" /></mxCell>
+        <mxCell id="s-h16" value=":ProfileController&#10;(WebClient)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="305" y="4430" width="190" height="40" as="geometry" /></mxCell>
+        <mxCell id="s-h17" value=":BiometricsService&#10;(WebClient)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="515" y="4430" width="190" height="40" as="geometry" /></mxCell>
+        <mxCell id="s-h18" value=":API Gateway" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="725" y="4430" width="140" height="40" as="geometry" /></mxCell>
+        <mxCell id="s-h19" value=":ProfileBiometricsController&#10;(InterviewAPI)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="885" y="4430" width="250" height="40" as="geometry" /></mxCell>
+        <mxCell id="s-h20" value=":ProfileBiometricsService&#10;(InterviewAPI)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="1155" y="4430" width="240" height="40" as="geometry" /></mxCell>
+        <mxCell id="s-h21" value=":ProfileBiometricsRepository&#10;(InterviewAPI)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="1415" y="4430" width="250" height="40" as="geometry" /></mxCell>
+        <mxCell id="s-h22" value=":AiServiceClient&#10;(InterviewAPI)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="1685" y="4430" width="190" height="40" as="geometry" /></mxCell>
+        <mxCell id="s-h23" value=":ai-service&#10;/internal/biometrics/face/embed" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="1895" y="4430" width="320" height="40" as="geometry" /></mxCell>
+        <mxCell id="s-h24" value=":PaymentApiClient&#10;(InterviewAPI)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="2235" y="4430" width="200" height="40" as="geometry" /></mxCell>
+        <mxCell id="s-h25" value=":PaymentAPI (:7008)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="2455" y="4430" width="170" height="40" as="geometry" /></mxCell>
+        <mxCell id="s-db26" value="SQL Server" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="2645" y="4410" width="70" height="55" as="geometry" /></mxCell>
+        <mxCell id="s-l27" value="" style="html=1;dashed=1;endArrow=none;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="60" y="70" as="sourcePoint" /><mxPoint x="60" y="4405" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-l28" value="" style="html=1;dashed=1;endArrow=none;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="190" y="70" as="sourcePoint" /><mxPoint x="190" y="4405" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-l29" value="" style="html=1;dashed=1;endArrow=none;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="400" y="70" as="sourcePoint" /><mxPoint x="400" y="4405" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-l30" value="" style="html=1;dashed=1;endArrow=none;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="610" y="70" as="sourcePoint" /><mxPoint x="610" y="4405" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-l31" value="" style="html=1;dashed=1;endArrow=none;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="795" y="70" as="sourcePoint" /><mxPoint x="795" y="4405" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-l32" value="" style="html=1;dashed=1;endArrow=none;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1010" y="70" as="sourcePoint" /><mxPoint x="1010" y="4405" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-l33" value="" style="html=1;dashed=1;endArrow=none;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1275" y="70" as="sourcePoint" /><mxPoint x="1275" y="4405" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-l34" value="" style="html=1;dashed=1;endArrow=none;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1540" y="70" as="sourcePoint" /><mxPoint x="1540" y="4405" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-l35" value="" style="html=1;dashed=1;endArrow=none;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1780" y="70" as="sourcePoint" /><mxPoint x="1780" y="4405" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-l36" value="" style="html=1;dashed=1;endArrow=none;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="2055" y="70" as="sourcePoint" /><mxPoint x="2055" y="4405" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-l37" value="" style="html=1;dashed=1;endArrow=none;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="2335" y="70" as="sourcePoint" /><mxPoint x="2335" y="4405" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-l38" value="" style="html=1;dashed=1;endArrow=none;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="2540" y="70" as="sourcePoint" /><mxPoint x="2540" y="4405" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-l39" value="" style="html=1;dashed=1;endArrow=none;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="2680" y="70" as="sourcePoint" /><mxPoint x="2680" y="4405" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-b40" value="" style="rounded=0;html=1;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="55" y="100" width="10" height="4250" as="geometry" /></mxCell>
+        <mxCell id="s-b41" value="" style="rounded=0;html=1;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="185" y="100" width="10" height="4250" as="geometry" /></mxCell>
+        <mxCell id="s-b42" value="" style="rounded=0;html=1;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="395" y="130" width="10" height="4190" as="geometry" /></mxCell>
+        <mxCell id="s-b43" value="" style="rounded=0;html=1;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="605" y="160" width="10" height="4130" as="geometry" /></mxCell>
+        <mxCell id="s-b44" value="" style="rounded=0;html=1;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="790" y="996" width="10" height="3264" as="geometry" /></mxCell>
+        <mxCell id="s-b45" value="" style="rounded=0;html=1;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="1005" y="1026" width="10" height="3204" as="geometry" /></mxCell>
+        <mxCell id="s-b46" value="" style="rounded=0;html=1;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="1270" y="1116" width="10" height="3084" as="geometry" /></mxCell>
+        <mxCell id="s-b47" value="" style="rounded=0;html=1;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="1775" y="1414" width="10" height="438" as="geometry" /></mxCell>
+        <mxCell id="s-b48" value="" style="rounded=0;html=1;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="2050" y="1444" width="10" height="378" as="geometry" /></mxCell>
+        <mxCell id="s-b49" value="" style="rounded=0;html=1;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="1535" y="1862" width="10" height="1522" as="geometry" /></mxCell>
+        <mxCell id="s-b50" value="" style="rounded=0;html=1;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="2675" y="1892" width="10" height="1462" as="geometry" /></mxCell>
+        <mxCell id="s-b51" value="" style="rounded=0;html=1;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="2330" y="3632" width="10" height="418" as="geometry" /></mxCell>
+        <mxCell id="s-b52" value="" style="rounded=0;html=1;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="2535" y="3662" width="10" height="358" as="geometry" /></mxCell>
+        <mxCell id="s-f53" value="opt" style="shape=umlFrame;whiteSpace=wrap;html=1;width=60;height=25;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="0" y="500" width="250" height="158" as="geometry" /></mxCell>
+        <mxCell id="s-g54" value="[getUserMedia for the camera throws]" style="text;html=1;align=left;verticalAlign=middle;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="70" y="508" width="214" height="20" as="geometry" /></mxCell>
+        <mxCell id="s-f55" value="opt" style="shape=umlFrame;whiteSpace=wrap;html=1;width=60;height=25;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="0" y="828" width="460" height="128" as="geometry" /></mxCell>
+        <mxCell id="s-g56" value="[face is null OR face.Length == 0]" style="text;html=1;align=left;verticalAlign=middle;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="70" y="836" width="192" height="20" as="geometry" /></mxCell>
+        <mxCell id="s-f57" value="opt" style="shape=umlFrame;whiteSpace=wrap;html=1;width=60;height=25;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="0" y="1156" width="1335" height="248" as="geometry" /></mxCell>
+        <mxCell id="s-g58" value="[file is null OR file.Length == 0]" style="text;html=1;align=left;verticalAlign=middle;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="70" y="1164" width="177" height="20" as="geometry" /></mxCell>
+        <mxCell id="s-f59" value="opt" style="shape=umlFrame;whiteSpace=wrap;html=1;width=60;height=25;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="0" y="1484" width="2115" height="308" as="geometry" /></mxCell>
+        <mxCell id="s-g60" value="[ai-service returns 422 - quality rejection]" style="text;html=1;align=left;verticalAlign=middle;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="70" y="1492" width="229" height="20" as="geometry" /></mxCell>
+        <mxCell id="s-f61" value="alt" style="shape=umlFrame;whiteSpace=wrap;html=1;width=60;height=25;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="0" y="1992" width="2740" height="974" as="geometry" /></mxCell>
+        <mxCell id="s-g62" value="[first enrollment - no Face template yet]" style="text;html=1;align=left;verticalAlign=middle;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="70" y="2000" width="221" height="20" as="geometry" /></mxCell>
+        <mxCell id="s-dv63" value="" style="html=1;dashed=1;endArrow=none;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="0" y="2160" as="sourcePoint" /><mxPoint x="2740" y="2160" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-g64" value="[re-enrollment - a Face template already exists]" style="text;html=1;align=left;verticalAlign=middle;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="70" y="2190" width="264" height="20" as="geometry" /></mxCell>
+        <mxCell id="s-f65" value="opt" style="shape=umlFrame;whiteSpace=wrap;html=1;width=60;height=25;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="0" y="2290" width="1335" height="248" as="geometry" /></mxCell>
+        <mxCell id="s-g66" value="[existing.Dim != candidate.Dim OR existing.ModelVersion != candidate.ModelVersion]" style="text;html=1;align=left;verticalAlign=middle;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="70" y="2298" width="464" height="20" as="geometry" /></mxCell>
+        <mxCell id="s-f67" value="opt" style="shape=umlFrame;whiteSpace=wrap;html=1;width=60;height=25;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="0" y="2558" width="1335" height="248" as="geometry" /></mxCell>
+        <mxCell id="s-g68" value="[score &amp;lt; threshold]" style="text;html=1;align=left;verticalAlign=middle;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="70" y="2566" width="114" height="20" as="geometry" /></mxCell>
+        <mxCell id="s-f69" value="alt" style="shape=umlFrame;whiteSpace=wrap;html=1;width=60;height=25;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="1215" y="3106" width="1525" height="1064" as="geometry" /></mxCell>
+        <mxCell id="s-g70" value="[Voice is not enrolled yet]" style="text;html=1;align=left;verticalAlign=middle;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="1285" y="3114" width="148" height="20" as="geometry" /></mxCell>
+        <mxCell id="s-dv71" value="" style="html=1;dashed=1;endArrow=none;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1215" y="3214" as="sourcePoint" /><mxPoint x="2740" y="3214" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-g72" value="[both Face and Voice are now enrolled]" style="text;html=1;align=left;verticalAlign=middle;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="1285" y="3244" width="222" height="20" as="geometry" /></mxCell>
+        <mxCell id="s-f73" value="alt" style="shape=umlFrame;whiteSpace=wrap;html=1;width=60;height=25;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="1215" y="3464" width="1385" height="666" as="geometry" /></mxCell>
+        <mxCell id="s-g74" value="[canonicalAccount is null OR belongs to an earlier account]" style="text;html=1;align=left;verticalAlign=middle;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="1285" y="3472" width="326" height="20" as="geometry" /></mxCell>
+        <mxCell id="s-dv75" value="" style="html=1;dashed=1;endArrow=none;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1215" y="3572" as="sourcePoint" /><mxPoint x="2600" y="3572" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-g76" value="[this account owns the face identity]" style="text;html=1;align=left;verticalAlign=middle;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="1285" y="3602" width="203" height="20" as="geometry" /></mxCell>
+        <mxCell id="s-f77" value="alt" style="shape=umlFrame;whiteSpace=wrap;html=1;width=60;height=25;fillColor=#ffffff;strokeColor=#000000;" vertex="1" parent="1"><mxGeometry x="1215" y="3702" width="1385" height="388" as="geometry" /></mxCell>
+        <mxCell id="s-g78" value="[200, Awarded == true]" style="text;html=1;align=left;verticalAlign=middle;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="1285" y="3710" width="136" height="20" as="geometry" /></mxCell>
+        <mxCell id="s-dv79" value="" style="html=1;dashed=1;endArrow=none;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1215" y="3810" as="sourcePoint" /><mxPoint x="2600" y="3810" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-g80" value="[200, Awarded == false - idempotent no-op, the account already had the bonus]" style="text;html=1;align=left;verticalAlign=middle;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="1285" y="3840" width="433" height="20" as="geometry" /></mxCell>
+        <mxCell id="s-dv81" value="" style="html=1;dashed=1;endArrow=none;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1215" y="3940" as="sourcePoint" /><mxPoint x="2600" y="3940" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-g82" value="[non-2xx, unreachable, or the client throws]" style="text;html=1;align=left;verticalAlign=middle;fontStyle=1;fontSize=11;" vertex="1" parent="1"><mxGeometry x="1285" y="3970" width="243" height="20" as="geometry" /></mxCell>
+        <mxCell id="s-m83" value="1. Open Profile &amp;gt; Identity verification" style="html=1;rounded=0;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="65" y="110" as="sourcePoint" /><mxPoint x="185" y="110" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m84" value="2. GET /Profile/Identity" style="html=1;rounded=0;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="195" y="140" as="sourcePoint" /><mxPoint x="395" y="140" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m85" value="3. GetStatusAsync(ct) [see #22]" style="html=1;rounded=0;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="405" y="170" as="sourcePoint" /><mxPoint x="605" y="170" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m86" value="4. Return (Success, BiometricStatusModel, Error)" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="605" y="200" as="sourcePoint" /><mxPoint x="405" y="200" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m87" value="5. View Identity(BiometricsViewModel{Status})" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="395" y="230" as="sourcePoint" /><mxPoint x="195" y="230" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m88" value="6. Identity page shows Face/Voice enrolment state" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="185" y="260" as="sourcePoint" /><mxPoint x="65" y="260" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m89" value="18. Click Grant camera &amp;amp; microphone access" style="html=1;rounded=0;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="65" y="290" as="sourcePoint" /><mxPoint x="185" y="290" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m90" value="19. getUserMedia({video, audio}) probe; applyPermState()" style="html=1;rounded=0;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="195.0" y="320" as="sourcePoint" /><mxPoint x="195.0" y="350" as="targetPoint" /><Array as="points"><mxPoint x="235.0" y="320" /><mxPoint x="235.0" y="350" /></Array></mxGeometry></mxCell>
+        <mxCell id="s-m91" value="20. Update permission pills; Start stays disabled" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="185" y="380" as="sourcePoint" /><mxPoint x="65" y="380" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m92" value="21. Tick the consent checkbox, then click Start" style="html=1;rounded=0;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="65" y="410" as="sourcePoint" /><mxPoint x="185" y="410" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m93" value="22. showScreen(&quot;face&quot;); enterFaceStep(): getUserMedia({video})" style="html=1;rounded=0;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="195.0" y="440" as="sourcePoint" /><mxPoint x="195.0" y="470" as="targetPoint" /><Array as="points"><mxPoint x="235.0" y="440" /><mxPoint x="235.0" y="470" /></Array></mxGeometry></mxCell>
+        <mxCell id="s-m94" value="B.1. setFaceError(&quot;Could not access the camera...&quot;)" style="html=1;rounded=0;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="195.0" y="548" as="sourcePoint" /><mxPoint x="195.0" y="578" as="targetPoint" /><Array as="points"><mxPoint x="235.0" y="548" /><mxPoint x="235.0" y="578" /></Array></mxGeometry></mxCell>
+        <mxCell id="s-m95" value="B.2. Show &quot;Camera unavailable&quot;" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="185" y="608" as="sourcePoint" /><mxPoint x="65" y="608" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m96" value="23. Show face screen; &quot;I am ready&quot; enabled" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="185" y="678" as="sourcePoint" /><mxPoint x="65" y="678" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m97" value="24. Click I am ready" style="html=1;rounded=0;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="65" y="708" as="sourcePoint" /><mxPoint x="185" y="708" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m98" value="25. runFaceCapture(): countdown -&amp;gt; canvas.toBlob(&quot;image/jpeg&quot;)" style="html=1;rounded=0;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="195.0" y="738" as="sourcePoint" /><mxPoint x="195.0" y="768" as="targetPoint" /><Array as="points"><mxPoint x="235.0" y="738" /><mxPoint x="235.0" y="768" /></Array></mxGeometry></mxCell>
+        <mxCell id="s-m99" value="26. POST /Profile/EnrollFace (multipart: face=face.jpg)" style="html=1;rounded=0;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="195" y="798" as="sourcePoint" /><mxPoint x="395" y="798" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m100" value="C.1. Return 400 { error: &quot;A face image is required.&quot; }" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="395" y="876" as="sourcePoint" /><mxPoint x="195" y="876" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m101" value="C.2. failFaceStep(error) - red oval, &quot;Check failed&quot;, Try again" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="185" y="906" as="sourcePoint" /><mxPoint x="65" y="906" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m102" value="27. EnrollAsync(&quot;face&quot;, bytes, fileName, contentType, ct)" style="html=1;rounded=0;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="405" y="976" as="sourcePoint" /><mxPoint x="605" y="976" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m103" value="28. POST api/profiles/me/biometrics/face (multipart file)" style="html=1;rounded=0;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="615" y="1006" as="sourcePoint" /><mxPoint x="790" y="1006" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m104" value="29. Forward (route profiles-biometrics-route, no prefix strip)" style="html=1;rounded=0;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="800" y="1036" as="sourcePoint" /><mxPoint x="1005" y="1036" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m105" value="30. Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier))" style="html=1;rounded=0;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1015.0" y="1066" as="sourcePoint" /><mxPoint x="1015.0" y="1096" as="targetPoint" /><Array as="points"><mxPoint x="1055.0" y="1066" /><mxPoint x="1055.0" y="1096" /></Array></mxGeometry></mxCell>
+        <mxCell id="s-m106" value="31. EnrollAsync(userId, &quot;Face&quot;, file, ct)" style="html=1;rounded=0;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1015" y="1126" as="sourcePoint" /><mxPoint x="1270" y="1126" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m107" value="D.1. throw ArgumentException(&quot;A sample file is required.&quot;)" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1270" y="1204" as="sourcePoint" /><mxPoint x="1015" y="1204" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m108" value="D.2. Return 400 ApiResponse.Fail(ex.Message)" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1005" y="1234" as="sourcePoint" /><mxPoint x="800" y="1234" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m109" value="D.3. Return 400" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="790" y="1264" as="sourcePoint" /><mxPoint x="615" y="1264" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m110" value="D.4. Return (false, null, envelope.Message)" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="605" y="1294" as="sourcePoint" /><mxPoint x="405" y="1294" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m111" value="D.5. Return 400 { error }" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="395" y="1324" as="sourcePoint" /><mxPoint x="195" y="1324" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m112" value="D.6. failFaceStep(error) - red oval, &quot;Check failed&quot;, Try again" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="185" y="1354" as="sourcePoint" /><mxPoint x="65" y="1354" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m113" value="32. EmbedFaceAsync(file, ct)" style="html=1;rounded=0;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1280" y="1424" as="sourcePoint" /><mxPoint x="1775" y="1424" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m114" value="33. POST /internal/biometrics/face/embed (multipart)" style="html=1;rounded=0;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1785" y="1454" as="sourcePoint" /><mxPoint x="2050" y="1454" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m115" value="E.1. Return 422 {detail}" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="2050" y="1532" as="sourcePoint" /><mxPoint x="1785" y="1532" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m116" value="E.2. throw BiometricQualityException(detail)" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1775" y="1562" as="sourcePoint" /><mxPoint x="1280" y="1562" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m117" value="E.3. propagate BiometricQualityException" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1270" y="1592" as="sourcePoint" /><mxPoint x="1015" y="1592" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m118" value="E.4. Return 422 ApiResponse.Fail(ex.Message)" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1005" y="1622" as="sourcePoint" /><mxPoint x="800" y="1622" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m119" value="E.5. Return 422" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="790" y="1652" as="sourcePoint" /><mxPoint x="615" y="1652" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m120" value="E.6. Return (false, null, envelope.Message)" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="605" y="1682" as="sourcePoint" /><mxPoint x="405" y="1682" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m121" value="E.7. Return 400 { error }" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="395" y="1712" as="sourcePoint" /><mxPoint x="195" y="1712" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m122" value="E.8. failFaceStep(reason)" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="185" y="1742" as="sourcePoint" /><mxPoint x="65" y="1742" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m123" value="34. Return 200 FaceEmbedResponse" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="2050" y="1812" as="sourcePoint" /><mxPoint x="1785" y="1812" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m124" value="35. Return BiometricEmbeddingResult" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1775" y="1842" as="sourcePoint" /><mxPoint x="1280" y="1842" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m125" value="36. GetAsync(userId, &quot;Face&quot;, ct)" style="html=1;rounded=0;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1280" y="1872" as="sourcePoint" /><mxPoint x="1535" y="1872" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m126" value="37. SELECT ProfileBiometric WHERE UserId AND Modality=&quot;Face&quot;" style="html=1;rounded=0;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1545" y="1902" as="sourcePoint" /><mxPoint x="2675" y="1902" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m127" value="38. Return row / null" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="2675" y="1932" as="sourcePoint" /><mxPoint x="1545" y="1932" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m128" value="39. Return ProfileBiometric?" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1535" y="1962" as="sourcePoint" /><mxPoint x="1280" y="1962" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m129" value="G-a.1. AddAsync(ProfileBiometric{Modality=&quot;Face&quot;})" style="html=1;rounded=0;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1280" y="2040" as="sourcePoint" /><mxPoint x="1535" y="2040" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m130" value="G-a.2. INSERT ProfileBiometric (SaveChangesAsync)" style="html=1;rounded=0;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1545" y="2070" as="sourcePoint" /><mxPoint x="2675" y="2070" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m131" value="G-a.3. Return rows affected" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="2675" y="2100" as="sourcePoint" /><mxPoint x="1545" y="2100" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m132" value="G-a.4. Return" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1535" y="2130" as="sourcePoint" /><mxPoint x="1280" y="2130" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m133" value="G-b.1. EnsureReEnrollmentMatches(): Cosine vs threshold 0.35" style="html=1;rounded=0;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1280.0" y="2230" as="sourcePoint" /><mxPoint x="1280.0" y="2260" as="targetPoint" /><Array as="points"><mxPoint x="1320.0" y="2230" /><mxPoint x="1320.0" y="2260" /></Array></mxGeometry></mxCell>
+        <mxCell id="s-m134" value="H.1. throw InvalidOperationException" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1270" y="2338" as="sourcePoint" /><mxPoint x="1015" y="2338" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m135" value="H.2. Return 400 ApiResponse.Fail(ex.Message)" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1005" y="2368" as="sourcePoint" /><mxPoint x="800" y="2368" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m136" value="H.3. Return 400" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="790" y="2398" as="sourcePoint" /><mxPoint x="615" y="2398" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m137" value="H.4. Return (false, null, envelope.Message)" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="605" y="2428" as="sourcePoint" /><mxPoint x="405" y="2428" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m138" value="H.5. Return 400 { error }" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="395" y="2458" as="sourcePoint" /><mxPoint x="195" y="2458" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m139" value="H.6. failFaceStep(error)" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="185" y="2488" as="sourcePoint" /><mxPoint x="65" y="2488" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m140" value="J.1. throw BiometricIdentityMismatchException(&quot;Face&quot;, ...)" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1270" y="2606" as="sourcePoint" /><mxPoint x="1015" y="2606" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m141" value="J.2. Return 409 ApiResponse.Fail(ex.Message)" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1005" y="2636" as="sourcePoint" /><mxPoint x="800" y="2636" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m142" value="J.3. Return 409" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="790" y="2666" as="sourcePoint" /><mxPoint x="615" y="2666" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m143" value="J.4. Return (false, null, envelope.Message)" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="605" y="2696" as="sourcePoint" /><mxPoint x="405" y="2696" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m144" value="J.5. Return 400 { error }" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="395" y="2726" as="sourcePoint" /><mxPoint x="195" y="2726" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m145" value="J.6. failFaceStep(&quot;The new face sample does not match...&quot;)" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="185" y="2756" as="sourcePoint" /><mxPoint x="65" y="2756" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m146" value="G-b.2. SaveChangesAsync(ct)" style="html=1;rounded=0;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1280" y="2826" as="sourcePoint" /><mxPoint x="1535" y="2826" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m147" value="G-b.3. UPDATE ProfileBiometrics SET Embedding, Quality, UpdatedAt" style="html=1;rounded=0;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1545" y="2856" as="sourcePoint" /><mxPoint x="2675" y="2856" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m148" value="G-b.4. Return rows affected" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="2675" y="2886" as="sourcePoint" /><mxPoint x="1545" y="2886" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m149" value="G-b.5. Return" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1535" y="2916" as="sourcePoint" /><mxPoint x="1280" y="2916" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m150" value="40. GetAsync(userId, &quot;Voice&quot;, ct)" style="html=1;rounded=0;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1280" y="2986" as="sourcePoint" /><mxPoint x="1535" y="2986" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m151" value="41. SELECT ProfileBiometric WHERE UserId AND Modality=&quot;Voice&quot;" style="html=1;rounded=0;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1545" y="3016" as="sourcePoint" /><mxPoint x="2675" y="3016" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m152" value="42. Return row / null" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="2675" y="3046" as="sourcePoint" /><mxPoint x="1545" y="3046" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m153" value="43. Return ProfileBiometric?" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1535" y="3076" as="sourcePoint" /><mxPoint x="1280" y="3076" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m154" value="K-a.1. bonusStatus = &quot;NotYetEligible&quot; - no PaymentAPI call" style="html=1;rounded=0;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1280.0" y="3154" as="sourcePoint" /><mxPoint x="1280.0" y="3184" as="targetPoint" /><Array as="points"><mxPoint x="1320.0" y="3154" /><mxPoint x="1320.0" y="3184" /></Array></mxGeometry></mxCell>
+        <mxCell id="s-m155" value="K-b.1. ListByModalityAsync(&quot;Face&quot;, ct)" style="html=1;rounded=0;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1280" y="3284" as="sourcePoint" /><mxPoint x="1535" y="3284" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m156" value="K-b.2. SELECT ProfileBiometrics WHERE Modality=&quot;Face&quot;" style="html=1;rounded=0;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1545" y="3314" as="sourcePoint" /><mxPoint x="2675" y="3314" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m157" value="K-b.3. Return rows" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="2675" y="3344" as="sourcePoint" /><mxPoint x="1545" y="3344" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m158" value="K-b.4. Return List&amp;lt;ProfileBiometric&amp;gt;" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1535" y="3374" as="sourcePoint" /><mxPoint x="1280" y="3374" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m159" value="K-b.5. canonicalAccount = oldest template with Cosine &amp;gt;= 0.5" style="html=1;rounded=0;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1280.0" y="3404" as="sourcePoint" /><mxPoint x="1280.0" y="3434" as="targetPoint" /><Array as="points"><mxPoint x="1320.0" y="3404" /><mxPoint x="1320.0" y="3434" /></Array></mxGeometry></mxCell>
+        <mxCell id="s-m160" value="L-a.1. bonusStatus = &quot;IdentityAlreadyClaimed&quot;" style="html=1;rounded=0;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1280.0" y="3512" as="sourcePoint" /><mxPoint x="1280.0" y="3542" as="targetPoint" /><Array as="points"><mxPoint x="1320.0" y="3512" /><mxPoint x="1320.0" y="3542" /></Array></mxGeometry></mxCell>
+        <mxCell id="s-m161" value="L-b.1. AwardCreditAsync(userId, 100, userId, ...) [best-effort]" style="html=1;rounded=0;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1280" y="3642" as="sourcePoint" /><mxPoint x="2330" y="3642" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m162" value="L-b.2. POST /api/internal/credit/award" style="html=1;rounded=0;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="2340" y="3672" as="sourcePoint" /><mxPoint x="2535" y="3672" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m163" value="M-a.1. Return 200 CreditAwardResponse{Awarded=true}" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="2535" y="3750" as="sourcePoint" /><mxPoint x="2340" y="3750" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m164" value="M-a.2. Return CreditAwardResponse -&amp;gt; bonusStatus = &quot;Awarded&quot;" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="2330" y="3780" as="sourcePoint" /><mxPoint x="1280" y="3780" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m165" value="M-b.1. 200 CreditAwardResponse{Success=true, Awarded=false}" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="2535" y="3880" as="sourcePoint" /><mxPoint x="2340" y="3880" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m166" value="M-b.2. Return CreditAwardResponse -&amp;gt; bonusStatus = &quot;AlreadyAwarded&quot;" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="2330" y="3910" as="sourcePoint" /><mxPoint x="1280" y="3910" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m167" value="M-c.1. Non-2xx / no response" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="2535" y="4010" as="sourcePoint" /><mxPoint x="2340" y="4010" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m168" value="M-c.2. Return CreditAwardResponse{Success=false} [best-effort]" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="2330" y="4040" as="sourcePoint" /><mxPoint x="1280" y="4040" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m169" value="44. Return BiometricEnrollResponse{Modality=&quot;Face&quot;}" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1270" y="4190" as="sourcePoint" /><mxPoint x="1015" y="4190" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m170" value="45. Return 200 ApiResponse.Ok(result, &quot;Enrolled.&quot;)" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1005" y="4220" as="sourcePoint" /><mxPoint x="800" y="4220" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m171" value="46. Return 200" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="790" y="4250" as="sourcePoint" /><mxPoint x="615" y="4250" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m172" value="47. Return (true, BiometricEnrollModel, null)" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="605" y="4280" as="sourcePoint" /><mxPoint x="405" y="4280" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m173" value="48. Return 200 { enrolled: true, bonusStatus }" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="395" y="4310" as="sourcePoint" /><mxPoint x="195" y="4310" as="targetPoint" /></mxGeometry></mxCell>
+        <mxCell id="s-m174" value="49. mergeBonusStatus(); facePassed = true [see #2]" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#000000;fontSize=11;verticalAlign=bottom;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="185" y="4340" as="sourcePoint" /><mxPoint x="65" y="4340" as="targetPoint" /></mxGeometry></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="cls-enrollfacebiometric" name="Class - Enroll Face Biometric [UC-50] [BL#11,#12,#53]">
+    <mxGraphModel dx="1422" dy="794" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="3440" pageHeight="1888" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="k_title" value="Class Diagram - Enroll Face Biometric [BL#11, #12, #53] - Back-end scope (InterviewAPI)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="-70" width="3280" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="ctrl" value="ProfileBiometricsController (InterviewAPI)" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;rounded=0;shadow=0;strokeWidth=1;fillColor=#ffffff;swimlaneFillColor=#ffffff;fontSize=12;html=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="140" width="580" height="118" as="geometry" />
+        </mxCell>
+        <mxCell id="ctrl_f0" value="- _service: IProfileBiometricsService" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="ctrl">
+          <mxGeometry y="30" width="580" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="ctrl_div" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=#000000;" vertex="1" parent="ctrl">
+          <mxGeometry y="50" width="580" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="ctrl_m0" value="+ GetStatus(cancellationToken: CancellationToken): Task&lt;IActionResult&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="ctrl">
+          <mxGeometry y="58" width="580" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="ctrl_m1" value="+ EnrollFace(file: IFormFile, cancellationToken: CancellationToken): Task&lt;IActionResult&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="ctrl">
+          <mxGeometry y="78" width="580" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="ctrl_m2" value="- EnrollAsync(modality: string, file: IFormFile, ct: CancellationToken): Task&lt;IActionResult&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="ctrl">
+          <mxGeometry y="98" width="580" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="api" value="ApiResponse&lt;T&gt; &lt;&lt;DTO&gt;&gt;" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;rounded=0;shadow=0;strokeWidth=1;fillColor=#ffffff;swimlaneFillColor=#ffffff;fontSize=12;html=1;" vertex="1" parent="1">
+          <mxGeometry x="162" y="318" width="458" height="138" as="geometry" />
+        </mxCell>
+        <mxCell id="api_f0" value="+ Success: bool" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="api">
+          <mxGeometry y="30" width="458" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="api_f1" value="+ Message: string?" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="api">
+          <mxGeometry y="50" width="458" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="api_f2" value="+ Data: T?" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="api">
+          <mxGeometry y="70" width="458" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="api_div" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=#000000;" vertex="1" parent="api">
+          <mxGeometry y="90" width="458" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="api_m0" value="+ Ok(data: T, message: string?): ApiResponse&lt;T&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="api">
+          <mxGeometry y="98" width="458" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="api_m1" value="+ Fail(message: string): ApiResponse&lt;T&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="api">
+          <mxGeometry y="118" width="458" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="isvc" value="&lt;&lt;interface&gt;&gt; IProfileBiometricsService" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;rounded=0;shadow=0;strokeWidth=1;fillColor=#ffffff;swimlaneFillColor=#ffffff;fontSize=12;html=1;" vertex="1" parent="1">
+          <mxGeometry x="710" y="140" width="730" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="isvc_div" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=#000000;" vertex="1" parent="isvc">
+          <mxGeometry y="30" width="730" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="isvc_m0" value="+ EnrollAsync(userId: Guid, modality: string, file: IFormFile, ct: CancellationToken): Task&lt;BiometricEnrollResponse&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="isvc">
+          <mxGeometry y="38" width="730" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="isvc_m1" value="+ GetStatusAsync(userId: Guid, ct: CancellationToken): Task&lt;BiometricStatusResponse&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="isvc">
+          <mxGeometry y="58" width="730" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="svc" value="ProfileBiometricsService (InterviewAPI)" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;rounded=0;shadow=0;strokeWidth=1;fillColor=#ffffff;swimlaneFillColor=#ffffff;fontSize=12;html=1;" vertex="1" parent="1">
+          <mxGeometry x="710" y="278" width="730" height="378" as="geometry" />
+        </mxCell>
+        <mxCell id="svc_f0" value="+ ModalityFace: string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="svc">
+          <mxGeometry y="30" width="730" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="svc_f1" value="+ ModalityVoice: string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="svc">
+          <mxGeometry y="50" width="730" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="svc_f2" value="+ BonusStatusAwarded: string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="svc">
+          <mxGeometry y="70" width="730" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="svc_f3" value="+ BonusStatusAlreadyAwarded: string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="svc">
+          <mxGeometry y="90" width="730" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="svc_f4" value="+ BonusStatusIdentityAlreadyClaimed: string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="svc">
+          <mxGeometry y="110" width="730" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="svc_f5" value="+ BonusStatusNotAwarded: string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="svc">
+          <mxGeometry y="130" width="730" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="svc_f6" value="+ BonusStatusNotYetEligible: string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="svc">
+          <mxGeometry y="150" width="730" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="svc_f7" value="- _repository: IProfileBiometricsRepository" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="svc">
+          <mxGeometry y="170" width="730" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="svc_f8" value="- _aiServiceClient: IAiServiceClient" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="svc">
+          <mxGeometry y="190" width="730" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="svc_f9" value="- _paymentApiClient: IPaymentApiClient" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="svc">
+          <mxGeometry y="210" width="730" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="svc_f10" value="- _logger: ILogger&lt;ProfileBiometricsService&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="svc">
+          <mxGeometry y="230" width="730" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="svc_f11" value="- _configuration: IConfiguration" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="svc">
+          <mxGeometry y="250" width="730" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="svc_div" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=#000000;" vertex="1" parent="svc">
+          <mxGeometry y="270" width="730" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="svc_m0" value="+ EnrollAsync(userId: Guid, modality: string, file: IFormFile, ct: CancellationToken): Task&lt;BiometricEnrollResponse&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="svc">
+          <mxGeometry y="278" width="730" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="svc_m1" value="+ GetStatusAsync(userId: Guid, ct: CancellationToken): Task&lt;BiometricStatusResponse&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="svc">
+          <mxGeometry y="298" width="730" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="svc_m2" value="- EnsureReEnrollmentMatches(existing: ProfileBiometric, candidate: BiometricEmbeddingResult, modality: string): void" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="svc">
+          <mxGeometry y="318" width="730" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="svc_m3" value="- TryAwardEnrollmentBonusAsync(userId: Guid, justEnrolledModality: string, ct: CancellationToken): Task&lt;string&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="svc">
+          <mxGeometry y="338" width="730" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="svc_m4" value="- IsCanonicalBonusAccountAsync(userId: Guid, ct: CancellationToken): Task&lt;bool&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="svc">
+          <mxGeometry y="358" width="730" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="enroll_res" value="BiometricEnrollResponse &lt;&lt;DTO&gt;&gt;" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;rounded=0;shadow=0;strokeWidth=1;fillColor=#ffffff;swimlaneFillColor=#ffffff;fontSize=12;html=1;" vertex="1" parent="1">
+          <mxGeometry x="832" y="716" width="608" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="enroll_res_f0" value="+ Modality: string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="enroll_res">
+          <mxGeometry y="30" width="608" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="enroll_res_f1" value="+ Dim: int" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="enroll_res">
+          <mxGeometry y="50" width="608" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="enroll_res_f2" value="+ Quality: double?" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="enroll_res">
+          <mxGeometry y="70" width="608" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="enroll_res_f3" value="+ BonusStatus: string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="enroll_res">
+          <mxGeometry y="90" width="608" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="status_res" value="BiometricStatusResponse &lt;&lt;DTO&gt;&gt;" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;rounded=0;shadow=0;strokeWidth=1;fillColor=#ffffff;swimlaneFillColor=#ffffff;fontSize=12;html=1;" vertex="1" parent="1">
+          <mxGeometry x="832" y="886" width="608" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="status_res_f0" value="+ FaceEnrolled: bool" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="status_res">
+          <mxGeometry y="30" width="608" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="status_res_f1" value="+ FaceUpdatedAt: DateTime?" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="status_res">
+          <mxGeometry y="50" width="608" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="status_res_f2" value="+ VoiceEnrolled: bool" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="status_res">
+          <mxGeometry y="70" width="608" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="status_res_f3" value="+ VoiceUpdatedAt: DateTime?" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="status_res">
+          <mxGeometry y="90" width="608" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="quality_ex" value="BiometricQualityException" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;rounded=0;shadow=0;strokeWidth=1;fillColor=#ffffff;swimlaneFillColor=#ffffff;fontSize=12;html=1;" vertex="1" parent="1">
+          <mxGeometry x="710" y="1056" width="730" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="quality_ex_div" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=#000000;" vertex="1" parent="quality_ex">
+          <mxGeometry y="30" width="730" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="quality_ex_m0" value="+ BiometricQualityException(message: string)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="quality_ex">
+          <mxGeometry y="38" width="730" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="mismatch_ex" value="BiometricIdentityMismatchException" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;rounded=0;shadow=0;strokeWidth=1;fillColor=#ffffff;swimlaneFillColor=#ffffff;fontSize=12;html=1;" vertex="1" parent="1">
+          <mxGeometry x="710" y="1174" width="730" height="118" as="geometry" />
+        </mxCell>
+        <mxCell id="mismatch_ex_f0" value="+ Modality: string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="mismatch_ex">
+          <mxGeometry y="30" width="730" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="mismatch_ex_f1" value="+ Score: double" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="mismatch_ex">
+          <mxGeometry y="50" width="730" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="mismatch_ex_f2" value="+ Threshold: double" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="mismatch_ex">
+          <mxGeometry y="70" width="730" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="mismatch_ex_div" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=#000000;" vertex="1" parent="mismatch_ex">
+          <mxGeometry y="90" width="730" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="mismatch_ex_m0" value="+ BiometricIdentityMismatchException(modality: string, score: double, threshold: double)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="mismatch_ex">
+          <mxGeometry y="98" width="730" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="codec" value="EmbeddingCodec" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;rounded=0;shadow=0;strokeWidth=1;fillColor=#ffffff;swimlaneFillColor=#ffffff;fontSize=12;html=1;" vertex="1" parent="1">
+          <mxGeometry x="710" y="1352" width="730" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="codec_div" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=#000000;" vertex="1" parent="codec">
+          <mxGeometry y="30" width="730" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="codec_m0" value="+ ToBytes(embedding: float[]): byte[]" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="codec">
+          <mxGeometry y="38" width="730" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="codec_m1" value="+ ToFloats(bytes: byte[]): float[]" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="codec">
+          <mxGeometry y="58" width="730" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="similarity" value="BiometricSimilarity" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;rounded=0;shadow=0;strokeWidth=1;fillColor=#ffffff;swimlaneFillColor=#ffffff;fontSize=12;html=1;" vertex="1" parent="1">
+          <mxGeometry x="710" y="1490" width="730" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="similarity_div" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=#000000;" vertex="1" parent="similarity">
+          <mxGeometry y="30" width="730" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="similarity_m0" value="+ Cosine(left: float[], right: float[]): double" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="similarity">
+          <mxGeometry y="38" width="730" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="credit_cfg" value="CreditConfig" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;rounded=0;shadow=0;strokeWidth=1;fillColor=#ffffff;swimlaneFillColor=#ffffff;fontSize=12;html=1;" vertex="1" parent="1">
+          <mxGeometry x="710" y="1608" width="730" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="credit_cfg_f0" value="+ BiometricEnrollmentBonusCredits: int" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="credit_cfg">
+          <mxGeometry y="30" width="730" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="iai" value="&lt;&lt;interface&gt;&gt; IAiServiceClient" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;rounded=0;shadow=0;strokeWidth=1;fillColor=#ffffff;swimlaneFillColor=#ffffff;fontSize=12;html=1;" vertex="1" parent="1">
+          <mxGeometry x="1530" y="140" width="840" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="iai_div" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=#000000;" vertex="1" parent="iai">
+          <mxGeometry y="30" width="840" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="iai_m0" value="+ EmbedFaceAsync(file: IFormFile, ct: CancellationToken): Task&lt;BiometricEmbeddingResult&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="iai">
+          <mxGeometry y="38" width="840" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="ai" value="AiServiceClient (InterviewAPI)" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;rounded=0;shadow=0;strokeWidth=1;fillColor=#ffffff;swimlaneFillColor=#ffffff;fontSize=12;html=1;" vertex="1" parent="1">
+          <mxGeometry x="1530" y="258" width="840" height="118" as="geometry" />
+        </mxCell>
+        <mxCell id="ai_f0" value="- _httpClient: HttpClient" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="ai">
+          <mxGeometry y="30" width="840" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="ai_f1" value="- _logger: ILogger&lt;AiServiceClient&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="ai">
+          <mxGeometry y="50" width="840" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="ai_div" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=#000000;" vertex="1" parent="ai">
+          <mxGeometry y="70" width="840" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="ai_m0" value="+ EmbedFaceAsync(file: IFormFile, ct: CancellationToken): Task&lt;BiometricEmbeddingResult&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="ai">
+          <mxGeometry y="78" width="840" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="ai_m1" value="- EmbedAsync(path: string, file: IFormFile, ct: CancellationToken): Task&lt;BiometricEmbeddingResult&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="ai">
+          <mxGeometry y="98" width="840" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="embed_res" value="BiometricEmbeddingResult &lt;&lt;DTO&gt;&gt;" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;rounded=0;shadow=0;strokeWidth=1;fillColor=#ffffff;swimlaneFillColor=#ffffff;fontSize=12;html=1;" vertex="1" parent="1">
+          <mxGeometry x="1652" y="436" width="718" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="embed_res_f0" value="+ Embedding: float[]" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="embed_res">
+          <mxGeometry y="30" width="718" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="embed_res_f1" value="+ Dim: int" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="embed_res">
+          <mxGeometry y="50" width="718" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="embed_res_f2" value="+ Quality: double?" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="embed_res">
+          <mxGeometry y="70" width="718" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="embed_res_f3" value="+ ModelVersion: string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="embed_res">
+          <mxGeometry y="90" width="718" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="ipay" value="&lt;&lt;interface&gt;&gt; IPaymentApiClient" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;rounded=0;shadow=0;strokeWidth=1;fillColor=#ffffff;swimlaneFillColor=#ffffff;fontSize=12;html=1;" vertex="1" parent="1">
+          <mxGeometry x="1530" y="606" width="840" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="ipay_div" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=#000000;" vertex="1" parent="ipay">
+          <mxGeometry y="30" width="840" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="ipay_m0" value="+ AwardCreditAsync(userId: Guid, amount: int, referenceId: Guid, description: string, ct: CancellationToken): Task&lt;CreditAwardResponse&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="ipay">
+          <mxGeometry y="38" width="840" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="pay" value="PaymentApiClient (InterviewAPI)" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;rounded=0;shadow=0;strokeWidth=1;fillColor=#ffffff;swimlaneFillColor=#ffffff;fontSize=12;html=1;" vertex="1" parent="1">
+          <mxGeometry x="1530" y="724" width="840" height="98" as="geometry" />
+        </mxCell>
+        <mxCell id="pay_f0" value="- _httpClient: HttpClient" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="pay">
+          <mxGeometry y="30" width="840" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="pay_f1" value="- _logger: ILogger&lt;PaymentApiClient&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="pay">
+          <mxGeometry y="50" width="840" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="pay_div" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=#000000;" vertex="1" parent="pay">
+          <mxGeometry y="70" width="840" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="pay_m0" value="+ AwardCreditAsync(userId: Guid, amount: int, referenceId: Guid, description: string, ct: CancellationToken): Task&lt;CreditAwardResponse&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="pay">
+          <mxGeometry y="78" width="840" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="award_res" value="CreditAwardResponse &lt;&lt;DTO&gt;&gt;" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;rounded=0;shadow=0;strokeWidth=1;fillColor=#ffffff;swimlaneFillColor=#ffffff;fontSize=12;html=1;" vertex="1" parent="1">
+          <mxGeometry x="1652" y="882" width="718" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="award_res_f0" value="+ Success: bool" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="award_res">
+          <mxGeometry y="30" width="718" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="award_res_f1" value="+ Awarded: bool" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="award_res">
+          <mxGeometry y="50" width="718" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="award_res_f2" value="+ BalanceAfter: int" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="award_res">
+          <mxGeometry y="70" width="718" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="award_res_f3" value="+ Message: string?" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="award_res">
+          <mxGeometry y="90" width="718" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="irepo" value="&lt;&lt;interface&gt;&gt; IProfileBiometricsRepository" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;rounded=0;shadow=0;strokeWidth=1;fillColor=#ffffff;swimlaneFillColor=#ffffff;fontSize=12;html=1;" vertex="1" parent="1">
+          <mxGeometry x="2460" y="140" width="580" height="138" as="geometry" />
+        </mxCell>
+        <mxCell id="irepo_div" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=#000000;" vertex="1" parent="irepo">
+          <mxGeometry y="30" width="580" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="irepo_m0" value="+ GetAsync(userId: Guid, modality: string, ct: CancellationToken): Task&lt;ProfileBiometric?&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="irepo">
+          <mxGeometry y="38" width="580" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="irepo_m1" value="+ ListByUserAsync(userId: Guid, ct: CancellationToken): Task&lt;List&lt;ProfileBiometric&gt;&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="irepo">
+          <mxGeometry y="58" width="580" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="irepo_m2" value="+ ListByModalityAsync(modality: string, ct: CancellationToken): Task&lt;List&lt;ProfileBiometric&gt;&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="irepo">
+          <mxGeometry y="78" width="580" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="irepo_m3" value="+ AddAsync(entity: ProfileBiometric, ct: CancellationToken): Task" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="irepo">
+          <mxGeometry y="98" width="580" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="irepo_m4" value="+ SaveChangesAsync(ct: CancellationToken): Task" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="irepo">
+          <mxGeometry y="118" width="580" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="repo" value="ProfileBiometricsRepository (InterviewAPI)" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;rounded=0;shadow=0;strokeWidth=1;fillColor=#ffffff;swimlaneFillColor=#ffffff;fontSize=12;html=1;" vertex="1" parent="1">
+          <mxGeometry x="2460" y="338" width="580" height="158" as="geometry" />
+        </mxCell>
+        <mxCell id="repo_f0" value="- _db: InterviewDbContext" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="repo">
+          <mxGeometry y="30" width="580" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="repo_div" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=#000000;" vertex="1" parent="repo">
+          <mxGeometry y="50" width="580" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="repo_m0" value="+ GetAsync(userId: Guid, modality: string, ct: CancellationToken): Task&lt;ProfileBiometric?&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="repo">
+          <mxGeometry y="58" width="580" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="repo_m1" value="+ ListByUserAsync(userId: Guid, ct: CancellationToken): Task&lt;List&lt;ProfileBiometric&gt;&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="repo">
+          <mxGeometry y="78" width="580" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="repo_m2" value="+ ListByModalityAsync(modality: string, ct: CancellationToken): Task&lt;List&lt;ProfileBiometric&gt;&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="repo">
+          <mxGeometry y="98" width="580" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="repo_m3" value="+ AddAsync(entity: ProfileBiometric, ct: CancellationToken): Task" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="repo">
+          <mxGeometry y="118" width="580" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="repo_m4" value="+ SaveChangesAsync(ct: CancellationToken): Task" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="repo">
+          <mxGeometry y="138" width="580" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="db" value="InterviewDbContext" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;rounded=0;shadow=0;strokeWidth=1;fillColor=#ffffff;swimlaneFillColor=#ffffff;fontSize=12;html=1;" vertex="1" parent="1">
+          <mxGeometry x="2460" y="556" width="580" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="db_f0" value="+ ProfileBiometrics: DbSet&lt;ProfileBiometric&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="db">
+          <mxGeometry y="30" width="580" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="db_div" value="" style="line;strokeWidth=1;fillColor=none;align=left;verticalAlign=middle;spacingTop=-1;spacingLeft=3;spacingRight=3;rotatable=0;labelPosition=right;points=[];portConstraint=eastwest;strokeColor=#000000;" vertex="1" parent="db">
+          <mxGeometry y="50" width="580" height="8" as="geometry" />
+        </mxCell>
+        <mxCell id="db_m0" value="+ InterviewDbContext(options: DbContextOptions&lt;InterviewDbContext&gt;)" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="db">
+          <mxGeometry y="58" width="580" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="entity" value="ProfileBiometric &lt;&lt;entity&gt;&gt;" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;rounded=0;shadow=0;strokeWidth=1;fillColor=#ffffff;swimlaneFillColor=#ffffff;fontSize=12;html=1;" vertex="1" parent="1">
+          <mxGeometry x="3130" y="140" width="190" height="210" as="geometry" />
+        </mxCell>
+        <mxCell id="entity_f0" value="+ Id: long" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="entity">
+          <mxGeometry y="30" width="190" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="entity_f1" value="+ UserId: Guid" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="entity">
+          <mxGeometry y="50" width="190" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="entity_f2" value="+ Modality: string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="entity">
+          <mxGeometry y="70" width="190" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="entity_f3" value="+ Embedding: byte[]" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="entity">
+          <mxGeometry y="90" width="190" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="entity_f4" value="+ Dim: int" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="entity">
+          <mxGeometry y="110" width="190" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="entity_f5" value="+ ModelVersion: string" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="entity">
+          <mxGeometry y="130" width="190" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="entity_f6" value="+ Quality: double?" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="entity">
+          <mxGeometry y="150" width="190" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="entity_f7" value="+ CreatedAt: DateTime" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="entity">
+          <mxGeometry y="170" width="190" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="entity_f8" value="+ UpdatedAt: DateTime" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=6;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rounded=0;fontSize=11;html=1;" vertex="1" parent="entity">
+          <mxGeometry y="190" width="190" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="k_e0" value="&lt;&lt;use&gt;&gt;" style="html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;jumpStyle=arc;jumpSize=8;endArrow=open;endSize=12;dashed=1;fontSize=10;labelBackgroundColor=#ffffff;exitX=1;exitY=0.330508;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="ctrl" target="isvc">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="k_e1" value="&lt;&lt;create&gt;&gt;" style="html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;jumpStyle=arc;jumpSize=8;endArrow=open;endSize=12;dashed=1;fontSize=10;labelBackgroundColor=#ffffff;exitX=0.605172;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="ctrl" target="api">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="k_e2" value="" style="html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;jumpStyle=arc;jumpSize=8;endArrow=block;endSize=14;endFill=0;dashed=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="svc" target="isvc">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="k_e3" value="&lt;&lt;create&gt;&gt;" style="html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;jumpStyle=arc;jumpSize=8;endArrow=open;endSize=12;dashed=1;fontSize=10;labelBackgroundColor=#ffffff;exitX=0.443836;exitY=1;exitDx=0;exitDy=0;entryX=0.332237;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="svc" target="enroll_res">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="k_e4" value="&lt;&lt;create&gt;&gt;" style="html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;jumpStyle=arc;jumpSize=8;endArrow=open;endSize=12;dashed=1;fontSize=10;labelBackgroundColor=#ffffff;exitX=0.093151;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="svc" target="status_res">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="778" y="941" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="k_e5" value="&lt;&lt;throw&gt;&gt;" style="html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;jumpStyle=arc;jumpSize=8;endArrow=open;endSize=12;dashed=1;fontSize=10;labelBackgroundColor=#ffffff;exitX=0;exitY=0.198413;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="svc" target="mismatch_ex">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="656" y="353" />
+              <mxPoint x="656" y="1233" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="k_e6" value="&lt;&lt;use&gt;&gt;" style="html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;jumpStyle=arc;jumpSize=8;endArrow=open;endSize=12;dashed=1;fontSize=10;labelBackgroundColor=#ffffff;exitX=0;exitY=0.399471;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="svc" target="codec">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="674" y="429" />
+              <mxPoint x="674" y="1391" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="k_e7" value="&lt;&lt;use&gt;&gt;" style="html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;jumpStyle=arc;jumpSize=8;endArrow=open;endSize=12;dashed=1;fontSize=10;labelBackgroundColor=#ffffff;exitX=0;exitY=0.597884;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="svc" target="similarity">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="638" y="504" />
+              <mxPoint x="638" y="1519" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="k_e8" value="&lt;&lt;use&gt;&gt;" style="html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;jumpStyle=arc;jumpSize=8;endArrow=open;endSize=12;dashed=1;fontSize=10;labelBackgroundColor=#ffffff;exitX=0;exitY=0.830688;exitDx=0;exitDy=0;entryX=0;entryY=0.74;entryDx=0;entryDy=0;" edge="1" parent="1" source="svc" target="credit_cfg">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="629" y="592" />
+              <mxPoint x="629" y="1645" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="k_e9" value="&lt;&lt;use&gt;&gt;" style="html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;jumpStyle=arc;jumpSize=8;endArrow=open;endSize=12;dashed=1;fontSize=10;labelBackgroundColor=#ffffff;exitX=1;exitY=0.597884;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="svc" target="iai">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1476" y="504" />
+              <mxPoint x="1476" y="169" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="k_e10" value="&lt;&lt;use&gt;&gt;" style="html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;jumpStyle=arc;jumpSize=8;endArrow=open;endSize=12;dashed=1;fontSize=10;labelBackgroundColor=#ffffff;exitX=1;exitY=0.973545;exitDx=0;exitDy=0;entryX=0;entryY=0.689655;entryDx=0;entryDy=0;" edge="1" parent="1" source="svc" target="ipay">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="k_e11" value="&lt;&lt;use&gt;&gt;" style="html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;jumpStyle=arc;jumpSize=8;endArrow=open;endSize=12;dashed=1;fontSize=10;labelBackgroundColor=#ffffff;exitX=1;exitY=0.198413;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="svc" target="irepo">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1458" y="353" />
+              <mxPoint x="1458" y="35" />
+              <mxPoint x="2750" y="35" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="k_e12" value="&lt;&lt;use&gt;&gt;" style="html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;jumpStyle=arc;jumpSize=8;endArrow=open;endSize=12;dashed=1;fontSize=10;labelBackgroundColor=#ffffff;exitX=1;exitY=0.399471;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="svc" target="entity">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1512" y="429" />
+              <mxPoint x="1512" y="65" />
+              <mxPoint x="3225" y="65" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="k_e13" value="" style="html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;jumpStyle=arc;jumpSize=8;endArrow=block;endSize=14;endFill=0;dashed=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="ai" target="iai">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="k_e14" value="&lt;&lt;create&gt;&gt;" style="html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;jumpStyle=arc;jumpSize=8;endArrow=open;endSize=12;dashed=1;fontSize=10;labelBackgroundColor=#ffffff;exitX=0.572619;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="ai" target="embed_res">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="k_e15" value="&lt;&lt;throw&gt;&gt;" style="html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;jumpStyle=arc;jumpSize=8;endArrow=open;endSize=12;dashed=1;fontSize=10;labelBackgroundColor=#ffffff;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="ai" target="quality_ex">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1494" y="317" />
+              <mxPoint x="1494" y="1085" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="k_e16" value="" style="html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;jumpStyle=arc;jumpSize=8;endArrow=block;endSize=14;endFill=0;dashed=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="pay" target="ipay">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="k_e17" value="&lt;&lt;create&gt;&gt;" style="html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;jumpStyle=arc;jumpSize=8;endArrow=open;endSize=12;dashed=1;fontSize=10;labelBackgroundColor=#ffffff;exitX=0.572619;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="pay" target="award_res">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="k_e18" value="" style="html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;jumpStyle=arc;jumpSize=8;endArrow=block;endSize=14;endFill=0;dashed=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="repo" target="irepo">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="k_e19" value="" style="html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;jumpStyle=arc;jumpSize=8;endArrow=open;endSize=12;fontSize=10;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="repo" target="db">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="k_e20" value="" style="html=1;rounded=0;edgeStyle=orthogonalEdgeStyle;strokeColor=#000000;jumpStyle=arc;jumpSize=8;endArrow=open;endSize=12;fontSize=10;labelBackgroundColor=#ffffff;exitX=1;exitY=0.833333;exitDx=0;exitDy=0;entryX=0;entryY=0.166667;entryDx=0;entryDy=0;" edge="1" parent="1" source="db" target="entity">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="3058" y="621" />
+              <mxPoint x="3058" y="175" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="k_e20_ls" value="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=11;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="k_e20">
+          <mxGeometry x="-0.85" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="k_e20_ld" value="0..*" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=11;labelBackgroundColor=#ffffff;" vertex="1" connectable="0" parent="k_e20">
+          <mxGeometry x="0.85" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

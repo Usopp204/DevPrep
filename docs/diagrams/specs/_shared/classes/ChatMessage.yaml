@@ -1,0 +1,15 @@
+# Shared class body — source/InterviewAPI/Models/ChatMessage.cs (entity, FULL:
+# every column + the SessionQuestion navigation property).
+name: ChatMessage
+fields:
+  - "+ MessageId: Guid"
+  - "+ SessionQuestionId: Guid"
+  - "+ SenderType: string"
+  - "+ MessageType: string"
+  - "+ Content: string"
+  - "+ AudioUrl: string?"
+  - "+ ResponseTimeMs: int?"
+  - "+ AnswerReason: string?"
+  - "+ SentAt: DateTime"
+  - "+ SessionQuestion: SessionQuestion"
+methods: []

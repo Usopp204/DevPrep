@@ -1,0 +1,135 @@
+include:
+  - file: Controller.yaml
+    column: 0
+  - file: IApiClient.yaml
+    column: 0
+  - file: ApiClient.yaml
+    column: 0
+  - file: ControllerBase.yaml
+    column: 2
+  - file: ApiResponse.yaml
+    name: "ApiResponse<T> (InterviewAPI)"
+    column: 3
+  - file: AiServiceClient.yaml
+    name: "AiServiceClient (InterviewAPI)"
+    column: 4
+    w: 460
+
+classes:
+  - name: "InterviewController (WebClient)"
+    column: 0
+    w: 380
+    fields:
+      - "- interviewService: IInterviewService"
+    methods:
+      - "+ Tts(request: TtsProxyRequest, cancellationToken: CancellationToken): Task<IActionResult>"
+      - "+ Stt(sessionId: Guid, voiceCheckId: Guid, audio: IFormFile, cancellationToken: CancellationToken): Task<IActionResult>"
+
+  - name: "IInterviewService (WebClient)"
+    column: 0
+    w: 400
+    fields: []
+    methods:
+      - "+ GetTtsAudioAsync(text: string, cancellationToken: CancellationToken): Task<(bool Success, byte[]? Audio, string? Error)>"
+      - "+ TranscribeAudioAsync(sessionId: Guid, checkId: Guid, audio: byte[], fileName: string, contentType: string, cancellationToken: CancellationToken): Task<(bool Success, SttResponse? Result, string? Error)>"
+
+  - name: "InterviewService (WebClient)"
+    column: 0
+    w: 400
+    fields:
+      - "- JsonOptions: JsonSerializerOptions"
+      - "- apiClient: IApiClient"
+    methods:
+      - "+ GetTtsAudioAsync(text: string, cancellationToken: CancellationToken): Task<(bool Success, byte[]? Audio, string? Error)>"
+      - "+ TranscribeAudioAsync(sessionId: Guid, checkId: Guid, audio: byte[], fileName: string, contentType: string, cancellationToken: CancellationToken): Task<(bool Success, SttResponse? Result, string? Error)>"
+
+  - name: TtsProxyRequest
+    column: 1
+    w: 320
+    fields:
+      - "+ Text: string"
+    methods: []
+
+  - name: "SttResponse (WebClient)"
+    column: 1
+    w: 320
+    fields:
+      - "+ Text: string"
+      - "+ VoiceChecked: bool"
+      - "+ VoiceMatched: bool?"
+      - "+ Score: double?"
+      - "+ StrikeCount: int"
+      - "+ MaxStrikes: int"
+      - "+ ShouldEndSession: bool"
+      - "+ Duplicate: bool"
+      - "+ Message: string?"
+    methods: []
+
+  - name: "ApiResponse<T> (WebClient)"
+    column: 1
+    w: 320
+    fields:
+      - "+ Success: bool"
+      - "+ Message: string?"
+      - "+ Data: T?"
+    methods: []
+
+  - name: "InterviewSessionController (InterviewAPI)"
+    column: 2
+    w: 400
+    fields:
+      - "- _service: ISessionService"
+      - "- _aiServiceClient: IAiServiceClient"
+      - "- _paymentApiClient: IPaymentApiClient"
+    methods:
+      - "+ TextToSpeech(req: TtsRequest, cancellationToken: CancellationToken): Task<IActionResult>"
+      - "+ SpeechToText(audio: IFormFile, cancellationToken: CancellationToken): Task<IActionResult>"
+
+  - name: TtsRequest
+    column: 3
+    w: 320
+    fields:
+      - "+ Text: string"
+    methods: []
+
+  - name: "SttResponse (InterviewAPI)"
+    column: 3
+    w: 320
+    fields:
+      - "+ Text: string"
+    methods: []
+
+  - name: IAiServiceClient
+    column: 4
+    w: 460
+    fields: []
+    methods:
+      - "+ PlanQuestionsAsync(request: AiQuestionPlanRequest, ct: CancellationToken): Task<AiQuestionPlanResponse>"
+      - "+ EvaluateAnswerAsync(request: AiEvaluateAnswerRequest, ct: CancellationToken): Task<AiEvaluateAnswerResponse>"
+      - "+ BuildReportAsync(request: AiBuildReportRequest, ct: CancellationToken): Task<AiBuildReportResponse>"
+      - "+ SynthesizeSpeechAsync(text: string, ct: CancellationToken): Task<byte[]>"
+      - "+ TranscribeAsync(audio: byte[], fileName: string, contentType: string, ct: CancellationToken): Task<string>"
+      - "+ GetHintAsync(question: string, ct: CancellationToken): Task<string>"
+      - "+ GetCatalogAsync(ct: CancellationToken): Task<AiCatalogResponse>"
+      - "+ EmbedFaceAsync(file: IFormFile, ct: CancellationToken): Task<BiometricEmbeddingResult>"
+      - "+ EmbedVoiceAsync(file: IFormFile, ct: CancellationToken): Task<BiometricEmbeddingResult>"
+      - "+ VerifyFaceLiveAsync(frames: IReadOnlyList<IFormFile>, storedEmbedding: float[], challengeJson: string, ct: CancellationToken): Task<AiFaceVerifyLiveResponse>"
+      - "+ VerifyFaceAsync(frame: IFormFile, storedEmbedding: float[], ct: CancellationToken): Task<AiFaceVerifyResponse>"
+      - "+ VerifyVoiceAsync(audio: IFormFile, storedEmbedding: float[], ct: CancellationToken): Task<AiFaceVerifyResponse>"
+      - "+ VerifyVoiceChallengeAsync(file: IFormFile, storedEmbedding: float[], expectedPhrase: string, ct: CancellationToken): Task<AiVoiceVerifyChallengeResponse>"
+
+relations:
+  - {from: "InterviewController (WebClient)", to: Controller, type: extends}
+  - {from: "InterviewController (WebClient)", to: "IInterviewService (WebClient)", type: use, label: Use}
+  - {from: "InterviewController (WebClient)", to: TtsProxyRequest, type: use, label: Use}
+  - {from: "InterviewService (WebClient)", to: "IInterviewService (WebClient)", type: implements}
+  - {from: "InterviewService (WebClient)", to: IApiClient, type: use, label: Use}
+  - {from: "InterviewService (WebClient)", to: "ApiResponse<T> (WebClient)", type: use, label: Use}
+  - {from: "IInterviewService (WebClient)", to: "SttResponse (WebClient)", type: use, label: Use}
+  - {from: ApiClient, to: IApiClient, type: implements}
+  - {from: "InterviewSessionController (InterviewAPI)", to: ControllerBase, type: extends}
+  - {from: "InterviewSessionController (InterviewAPI)", to: IAiServiceClient, type: use, label: Use}
+  - {from: "InterviewSessionController (InterviewAPI)", to: "ApiResponse<T> (InterviewAPI)", type: use, label: Use}
+  - {from: "InterviewSessionController (InterviewAPI)", to: TtsRequest, type: use, label: Use}
+  - {from: "InterviewSessionController (InterviewAPI)", to: "SttResponse (InterviewAPI)", type: use, label: Use}
+  - {from: "AiServiceClient (InterviewAPI)", to: IAiServiceClient, type: implements}

@@ -1,0 +1,135 @@
+feature: ResumeActiveSession
+title: Resume Active Session
+uc_id: "UC-48"
+uc_label: "[UC-48]"
+backlog: []
+
+participants:
+  - name: Candidate
+    kind: actor
+    w: 30
+  - name: ":Interview Dashboard UI"
+    kind: box
+    w: 210
+  - name: ":InterviewController\n(WebClient)"
+    kind: box
+    w: 200
+  - name: ":InterviewService\n(WebClient)"
+    kind: box
+    w: 190
+  - name: ":API Gateway"
+    kind: box
+    w: 140
+  - name: ":InterviewSessionController\n(InterviewAPI)"
+    kind: box
+    w: 250
+  - name: ":SessionService\n(InterviewAPI)"
+    kind: box
+    w: 190
+  - name: ":SessionRepository\n(InterviewAPI)"
+    kind: box
+    w: 200
+  - name: "SQL Server"
+    kind: db
+    w: 70
+
+flow:
+  # ---------------- Phase 1: the two entry points that reach GetActiveSessionAsync --------
+  - frame: alt
+    sections:
+      - guard: "[entry 1 - the candidate opens the interview dashboard]"
+        body:
+          - {d: 0, t: 1, k: call, l: "1. Open the interview dashboard"}
+          - {d: 1, t: 2, k: call, l: "2. GET /Interview"}
+          - {d: 2, t: 3, k: call, l: "3. GetActiveSessionAsync(ct) [best-effort]"}
+          - {d: 3, t: 4, k: call, l: "4. GET api/interview/sessions/active"}
+          - {d: 4, t: 5, k: call, l: "5. Forward (route interview-route, no prefix strip)"}
+          - {d: 5, t: 5, k: call, l: "6. Guid.Parse(User.FindFirstValue(NameIdentifier))", self: true}
+          - {d: 5, t: 6, k: call, l: "7. GetActiveSessionAsync(userId, ct)"}
+      - guard: "[entry 2 - the candidate submits Start while a session is still open]"
+        body:
+          - {d: 0, t: 1, k: call, l: "8. Submit the interview configuration form"}
+          - {d: 1, t: 2, k: call, l: "9. POST /Interview/Start"}
+          - {d: 2, t: 3, k: call, l: "10. StartInterviewAsync(...) [see #3]"}
+          - {d: 3, t: 4, k: call, l: "11. PUT api/interview/sessions/config/duration"}
+          - {d: 4, t: 5, k: call, l: "12. Forward (route interview-route, no prefix strip)"}
+          - {d: 5, t: 6, k: call, l: "13. ConfigDurationAsync(userId, req, ct)"}
+          - {d: 6, t: 6, k: call, l: "14. ResolveSessionAsync(sessionId: null)", self: true}
+          - {d: 6, t: 6, k: call, l: "15. GetActiveSessionAsync(userId, ct)", self: true}
+
+  # ---------------- Phase 2: the shared lookup + its two lazy write side effects ----------
+  - {d: 6, t: 7, k: call, l: "16. GetActiveSessionAsync(userId, ct)"}
+  - {d: 7, t: 8, k: call, l: '17. SELECT InterviewSession WHERE Status IN ("InProgress","Paused")'}
+  - {d: 8, t: 7, k: ret, l: "18. Return the newest row / null"}
+  - {d: 7, t: 6, k: ret, l: "19. Return InterviewSession?"}
+  - frame: opt
+    sections:
+      - guard: "[session is null - nothing to resume]"
+        body:
+          - {d: 6, t: 5, k: ret, l: "A.1. Return null"}
+          - {d: 5, t: 4, k: ret, l: "A.2. Return 200 ApiResponse.Ok(Data = null)"}
+          - {d: 4, t: 3, k: ret, l: "A.3. Return 200"}
+          - {d: 3, t: 2, k: ret, l: "A.4. Return ApiCallResult(Data = null)"}
+          - {d: 2, t: 1, k: ret, l: "A.5. View Index without the resume banner"}
+          - {d: 1, t: 0, k: ret, l: "A.6. Dashboard shows the configuration form only"}
+  - {d: 6, t: 6, k: call, l: "20. AutoResumeIfPauseExpiredAsync(session, ct)", self: true}
+  - frame: opt
+    sections:
+      - guard: '[Status == "Paused" AND effective paused seconds >= 300]'
+        body:
+          - {d: 6, t: 7, k: call, l: "B.1. TryAutoResumeExpiredPauseAsync(sessionId, pausedAt, ...)"}
+          - {d: 7, t: 8, k: call, l: 'B.2. UPDATE InterviewSessions SET Status="InProgress"'}
+          - {d: 8, t: 7, k: ret, l: "B.3. Return rows affected"}
+          - {d: 7, t: 6, k: ret, l: "B.4. Return rowsAffected > 0"}
+          - {d: 6, t: 6, k: call, l: "B.5. Write the resumed state onto the tracked entity", self: true}
+  - {d: 6, t: 6, k: call, l: "21. FinalizeIfTimeExpiredAsync(session, ct)", self: true}
+  - frame: opt
+    sections:
+      - guard: '[Status == "InProgress" AND StartedAt set AND remaining < -5s]'
+        body:
+          - {d: 6, t: 7, k: call, l: "C.1. HasSubstantiveAnswerAsync(sessionId, ct)"}
+          - {d: 7, t: 8, k: call, l: "C.2. SELECT ChatMessages WHERE SenderType=\"User\""}
+          - {d: 8, t: 7, k: ret, l: "C.3. Return candidate answer rows"}
+          - {d: 7, t: 6, k: ret, l: "C.4. Return hasSubstantiveAnswer"}
+          - {d: 6, t: 7, k: call, l: "C.5. GetRoomBySessionAsync(sessionId, ct)"}
+          - {d: 7, t: 8, k: call, l: "C.6. SELECT InterviewRoom by SessionId"}
+          - {d: 8, t: 7, k: ret, l: "C.7. Return room row / null"}
+          - {d: 7, t: 6, k: ret, l: "C.8. Return InterviewRoom?"}
+          - {d: 6, t: 7, k: call, l: "C.9. UpdateRoomAsync(room, ct)"}
+          - {d: 7, t: 8, k: call, l: "C.10. UPDATE InterviewSessions SET Status, EndedAt"}
+          - {d: 8, t: 7, k: ret, l: "C.11. Return rows affected"}
+          - {d: 7, t: 6, k: ret, l: "C.12. Return"}
+          - {d: 6, t: 5, k: ret, l: "C.13. Return null (finalized, no longer active)"}
+          - {d: 5, t: 4, k: ret, l: "C.14. Return 200 ApiResponse.Ok(Data = null)"}
+          - {d: 4, t: 3, k: ret, l: "C.15. Return 200"}
+          - {d: 3, t: 2, k: ret, l: "C.16. Return ApiCallResult(Data = null)"}
+          - {d: 2, t: 1, k: ret, l: "C.17. View Index without the resume banner"}
+          - {d: 1, t: 0, k: ret, l: "C.18. Dashboard shows the configuration form only"}
+  - {d: 6, t: 6, k: call, l: "22. remaining = DurationMinutes*60 - elapsed", self: true}
+
+  # ---------------- Phase 3: each entry point turns the result into its own outcome -------
+  - frame: alt
+    sections:
+      - guard: "[entry 1 - the dashboard renders the resume banner]"
+        body:
+          - {d: 6, t: 5, k: ret, l: "D.1. Return ActiveSessionResponse"}
+          - {d: 5, t: 4, k: ret, l: "D.2. Return 200 ApiResponse.Ok(result)"}
+          - {d: 4, t: 3, k: ret, l: "D.3. Return 200"}
+          - {d: 3, t: 2, k: ret, l: "D.4. Return ApiCallResult<ActiveSessionResponse>"}
+          - {d: 2, t: 1, k: ret, l: "D.5. View Index(DashboardViewModel{ActiveSession})"}
+          - {d: 1, t: 0, k: ret, l: 'D.6. Show "interview in progress" banner + Resume link'}
+          - {d: 0, t: 1, k: call, l: "D.7. Click Resume"}
+          - {d: 1, t: 2, k: call, l: "D.8. GET /Interview/Room/{id} [see #19]"}
+          - {d: 2, t: 1, k: ret, l: "D.9. Hand over to the room-entry guards [see #19]"}
+          - {d: 1, t: 0, k: ret, l: "D.10. Interview room reopens at the current question"}
+      - guard: "[entry 2 - Start is refused and redirects into the open room]"
+        body:
+          - {d: 6, t: 5, k: ret, l: "E.1. throw SessionGuardException(409)"}
+          - {d: 5, t: 4, k: ret, l: "E.2. Return 409 {error, message, activeSessionId}"}
+          - {d: 4, t: 3, k: ret, l: "E.3. Return 409"}
+          - {d: 3, t: 3, k: call, l: "E.4. ParseErrorBody(raw); read activeSessionId", self: true}
+          - {d: 3, t: 2, k: ret, l: "E.5. Return StartInterviewResult.ActiveSessionConflict(id)"}
+          - {d: 2, t: 1, k: ret, l: 'E.6. TempData["RoomInfoMessage"]; 302 to Room {id}'}
+          - {d: 1, t: 2, k: call, l: "E.7. GET /Interview/Room/{id} [see #19]"}
+          - {d: 2, t: 1, k: ret, l: "E.8. Hand over to the room-entry guards [see #19]"}
+          - {d: 1, t: 0, k: ret, l: "E.9. Interview room reopens at the current question"}

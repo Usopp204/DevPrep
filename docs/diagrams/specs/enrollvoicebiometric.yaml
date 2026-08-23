@@ -1,0 +1,202 @@
+feature: EnrollVoiceBiometric
+title: Enroll Voice Biometric
+uc_id: ""
+uc_label: "[UC-51]"
+backlog: [13, 12, 53]
+
+participants:
+  - name: Candidate
+    kind: actor
+    w: 30
+  - name: ":Biometric Wizard UI"
+    kind: box
+    w: 190
+  - name: ":ProfileController\n(WebClient)"
+    kind: box
+    w: 190
+  - name: ":BiometricsService\n(WebClient)"
+    kind: box
+    w: 190
+  - name: ":API Gateway"
+    kind: box
+    w: 140
+  - name: ":ProfileBiometricsController\n(InterviewAPI)"
+    kind: box
+    w: 250
+  - name: ":ProfileBiometricsService\n(InterviewAPI)"
+    kind: box
+    w: 240
+  - name: ":ProfileBiometricsRepository\n(InterviewAPI)"
+    kind: box
+    w: 250
+  - name: ":AiServiceClient\n(InterviewAPI)"
+    kind: box
+    w: 190
+  - name: ":ai-service\n/internal/biometrics/voice/embed"
+    kind: box
+    w: 330
+  - name: ":PaymentApiClient\n(InterviewAPI)"
+    kind: box
+    w: 200
+  - name: ":PaymentAPI (:7008)"
+    kind: box
+    w: 170
+  - name: "SQL Server"
+    kind: db
+    w: 70
+
+flow:
+  - {d: 0, t: 1, k: call, l: "1. [auto] Face step passed [see #1]"}
+  - {d: 1, t: 1, k: call, l: "2. enterVoiceStep()", self: true}
+  - {d: 1, t: 0, k: ret, l: "3. Show voice screen; \"Start recording\" enabled"}
+  - {d: 0, t: 1, k: call, l: "4. Click Start recording"}
+  - {d: 1, t: 1, k: call, l: "5. startRecording(): MediaRecorder.start()", self: true}
+  - frame: opt
+    sections:
+      - guard: "[MediaRecorder does not support audio/webm OR getUserMedia for the microphone throws]"
+        body:
+          - {d: 1, t: 1, k: call, l: "A.1. setVoiceError(\"Could not access the microphone...\")", self: true}
+          - {d: 1, t: 0, k: ret, l: "A.2. Show the error"}
+  - {d: 1, t: 1, k: call, l: "6. 1s timer: enable \"Stop & submit\" at 4s, auto-stop at 20s", self: true}
+  - {d: 1, t: 0, k: ret, l: "7. Show live level bars + elapsed timer"}
+  - {d: 0, t: 1, k: call, l: "8. Click \"Stop & submit\""}
+  - {d: 1, t: 1, k: call, l: "9. onRecordingStopped(): stopMic(); blob = new Blob(chunks)", self: true}
+  - {d: 1, t: 2, k: call, l: "10. POST /Profile/EnrollVoice (multipart: voice=voice.webm)"}
+  - frame: opt
+    sections:
+      - guard: "[voice is null OR voice.Length == 0]"
+        body:
+          - {d: 2, t: 1, k: ret, l: 'B.1. Return 400 { error: "A voice recording is required." }'}
+          - {d: 1, t: 0, k: ret, l: "B.2. failVoiceStep(error)"}
+  - {d: 2, t: 3, k: call, l: "11. EnrollAsync(\"voice\", bytes, fileName, contentType, ct)"}
+  - {d: 3, t: 4, k: call, l: "12. POST api/profiles/me/biometrics/voice (multipart file)"}
+  - {d: 4, t: 5, k: call, l: "13. Forward (route profiles-biometrics-route, no prefix strip)"}
+  - {d: 5, t: 5, k: call, l: "14. Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier))", self: true}
+  - {d: 5, t: 6, k: call, l: '15. EnrollAsync(userId, "Voice", file, ct)'}
+  - frame: opt
+    sections:
+      - guard: "[file is null OR file.Length == 0]"
+        body:
+          - {d: 6, t: 5, k: ret, l: 'C.1. throw ArgumentException("A sample file is required.")'}
+          - {d: 5, t: 4, k: ret, l: "C.2. Return 400 ApiResponse.Fail(ex.Message)"}
+          - {d: 4, t: 3, k: ret, l: "C.3. Return 400"}
+          - {d: 3, t: 2, k: ret, l: "C.4. Return (false, null, envelope.Message)"}
+          - {d: 2, t: 1, k: ret, l: "C.5. Return 400 { error }"}
+          - {d: 1, t: 0, k: ret, l: "C.6. failVoiceStep(error) - red note + Record again"}
+  - {d: 6, t: 8, k: call, l: "16. EmbedVoiceAsync(file, ct)"}
+  - {d: 8, t: 9, k: call, l: "17. POST /internal/biometrics/voice/embed (multipart)"}
+  - frame: opt
+    sections:
+      - guard: "[ai-service returns 422 - cannot decode audio, or audio too short]"
+        body:
+          - {d: 9, t: 8, k: ret, l: "D.1. Return 422 {detail}"}
+          - {d: 8, t: 6, k: ret, l: "D.2. throw BiometricQualityException(detail)"}
+          - {d: 6, t: 5, k: ret, l: "D.3. propagate BiometricQualityException"}
+          - {d: 5, t: 4, k: ret, l: "D.4. Return 422 ApiResponse.Fail(ex.Message)"}
+          - {d: 4, t: 3, k: ret, l: "D.5. Return 422"}
+          - {d: 3, t: 2, k: ret, l: "D.6. Return (false, null, envelope.Message)"}
+          - {d: 2, t: 1, k: ret, l: "D.7. Return 400 { error }"}
+          - {d: 1, t: 0, k: ret, l: "D.8. failVoiceStep(reason)"}
+  - {d: 9, t: 8, k: ret, l: "18. Return 200 VoiceEmbedResponse"}
+  - {d: 8, t: 6, k: ret, l: "19. Return BiometricEmbeddingResult"}
+  - {d: 6, t: 7, k: call, l: '20. GetAsync(userId, "Voice", ct)'}
+  - {d: 7, t: 12, k: call, l: '21. SELECT ProfileBiometric WHERE UserId AND Modality="Voice"'}
+  - {d: 12, t: 7, k: ret, l: "22. Return row / null"}
+  - {d: 7, t: 6, k: ret, l: "23. Return ProfileBiometric?"}
+  - frame: alt
+    sections:
+      - guard: "[first enrollment - no Voice template yet]"
+        body:
+          - {d: 6, t: 7, k: call, l: "E-a.1. AddAsync(ProfileBiometric{Modality=\"Voice\"})"}
+          - {d: 7, t: 12, k: call, l: "E-a.2. INSERT ProfileBiometric (SaveChangesAsync)"}
+          - {d: 12, t: 7, k: ret, l: "E-a.3. Return rows affected"}
+          - {d: 7, t: 6, k: ret, l: "E-a.4. Return"}
+      - guard: "[re-enrollment - a Voice template already exists]"
+        body:
+          - {d: 6, t: 6, k: call, l: "E-b.1. EnsureReEnrollmentMatches(): Cosine vs threshold 0.25", self: true}
+          - frame: opt
+            sections:
+              - guard: "[existing.Dim != candidate.Dim OR existing.ModelVersion != candidate.ModelVersion]"
+                body:
+                  - {d: 6, t: 5, k: ret, l: "F.1. throw InvalidOperationException"}
+                  - {d: 5, t: 4, k: ret, l: "F.2. Return 400 ApiResponse.Fail(ex.Message)"}
+                  - {d: 4, t: 3, k: ret, l: "F.3. Return 400"}
+                  - {d: 3, t: 2, k: ret, l: "F.4. Return (false, null, envelope.Message)"}
+                  - {d: 2, t: 1, k: ret, l: "F.5. Return 400 { error }"}
+                  - {d: 1, t: 0, k: ret, l: "F.6. failVoiceStep(error)"}
+          - frame: opt
+            sections:
+              - guard: "[score < threshold]"
+                body:
+                  - {d: 6, t: 5, k: ret, l: "G.1. throw BiometricIdentityMismatchException(\"Voice\", ...)"}
+                  - {d: 5, t: 4, k: ret, l: "G.2. Return 409 ApiResponse.Fail(ex.Message)"}
+                  - {d: 4, t: 3, k: ret, l: "G.3. Return 409"}
+                  - {d: 3, t: 2, k: ret, l: "G.4. Return (false, null, envelope.Message)"}
+                  - {d: 2, t: 1, k: ret, l: "G.5. Return 400 { error }"}
+                  - {d: 1, t: 0, k: ret, l: "G.6. failVoiceStep(\"The new voice sample does not match...\")"}
+          - {d: 6, t: 7, k: call, l: "E-b.2. SaveChangesAsync(ct)"}
+          - {d: 7, t: 12, k: call, l: "E-b.3. UPDATE ProfileBiometrics SET Embedding, Quality, UpdatedAt"}
+          - {d: 12, t: 7, k: ret, l: "E-b.4. Return rows affected"}
+          - {d: 7, t: 6, k: ret, l: "E-b.5. Return"}
+  - {d: 6, t: 7, k: call, l: "24. GetAsync(userId, \"Face\", ct)"}
+  - {d: 7, t: 12, k: call, l: '25. SELECT ProfileBiometric WHERE UserId AND Modality="Face"'}
+  - {d: 12, t: 7, k: ret, l: "26. Return row / null"}
+  - {d: 7, t: 6, k: ret, l: "27. Return ProfileBiometric?"}
+  - frame: alt
+    sections:
+      - guard: "[Face is not enrolled yet]"
+        body:
+          - {d: 6, t: 6, k: call, l: 'H-a.1. bonusStatus = "NotYetEligible" - no PaymentAPI call', self: true}
+      - guard: "[both Face and Voice are now enrolled]"
+        body:
+          - {d: 6, t: 7, k: call, l: "H-b.1. ListByModalityAsync(\"Face\", ct)"}
+          - {d: 7, t: 12, k: call, l: "H-b.2. SELECT ProfileBiometrics WHERE Modality=\"Face\""}
+          - {d: 12, t: 7, k: ret, l: "H-b.3. Return rows"}
+          - {d: 7, t: 6, k: ret, l: "H-b.4. Return List<ProfileBiometric>"}
+          - {d: 6, t: 6, k: call, l: "H-b.5. canonicalAccount = oldest FACE template with Cosine >= 0.5", self: true}
+          - frame: alt
+            sections:
+              - guard: "[canonicalAccount is null OR belongs to an earlier account]"
+                body:
+                  - {d: 6, t: 6, k: call, l: "L-a.1. bonusStatus = \"IdentityAlreadyClaimed\"", self: true}
+              - guard: "[this account owns the face identity]"
+                body:
+                  - {d: 6, t: 10, k: call, l: "L-b.1. AwardCreditAsync(userId, 100, userId, ...) [best-effort]"}
+                  - {d: 10, t: 11, k: call, l: "L-b.2. POST /api/internal/credit/award"}
+                  - frame: alt
+                    sections:
+                      - guard: "[200, Awarded == true]"
+                        body:
+                          - {d: 11, t: 10, k: ret, l: "M-a.1. Return 200 CreditAwardResponse{Awarded=true}"}
+                          - {d: 10, t: 6, k: ret, l: 'M-a.2. Return CreditAwardResponse -> bonusStatus = "Awarded"'}
+                      - guard: "[200, Awarded == false - idempotent no-op]"
+                        body:
+                          - {d: 11, t: 10, k: ret, l: "M-b.1. 200 CreditAwardResponse{Success=true, Awarded=false}"}
+                          - {d: 10, t: 6, k: ret, l: 'M-b.2. Return CreditAwardResponse -> bonusStatus = "AlreadyAwarded"'}
+                      - guard: "[non-2xx, unreachable, or the client throws]"
+                        body:
+                          - {d: 11, t: 10, k: ret, l: "M-c.1. Non-2xx / no response"}
+                          - {d: 10, t: 6, k: ret, l: "M-c.2. Return CreditAwardResponse{Success=false} [best-effort]"}
+  - {d: 6, t: 5, k: ret, l: "28. Return BiometricEnrollResponse{Modality=\"Voice\"}"}
+  - {d: 5, t: 4, k: ret, l: '29. Return 200 ApiResponse.Ok(result, "Enrolled.")'}
+  - {d: 4, t: 3, k: ret, l: "30. Return 200"}
+  - {d: 3, t: 2, k: ret, l: "31. Return (true, BiometricEnrollModel, null)"}
+  - {d: 2, t: 1, k: ret, l: "32. Return 200 { enrolled: true, bonusStatus }"}
+  - {d: 1, t: 1, k: call, l: "33. mergeBonusStatus(); showScreen(\"done\"); enterDoneStep()", self: true}
+  - frame: alt
+    sections:
+      - guard: '[bonusStatus == "Awarded"]'
+        body:
+          - {d: 1, t: 0, k: ret, l: "K-a.1. Show \"You are all set\" + \"awarded 100 free credits\""}
+      - guard: '[bonusStatus == "AlreadyAwarded"]'
+        body:
+          - {d: 1, t: 0, k: ret, l: "K-b.1. Show \"You are all set\" + \"bonus already credited\""}
+      - guard: '[bonusStatus == "IdentityAlreadyClaimed"]'
+        body:
+          - {d: 1, t: 0, k: ret, l: "K-c.1. Show \"You are all set\" + \"bonus claimed on another account\""}
+      - guard: '[bonusStatus == "NotAwarded"]'
+        body:
+          - {d: 1, t: 0, k: ret, l: "K-d.1. Show \"You are all set\" + \"bonus could not be credited\""}
+      - guard: '[bonusStatus == "NotYetEligible" or no meaningful status]'
+        body:
+          - {d: 1, t: 0, k: ret, l: "K-e.1. Show \"You are all set\" - no bonus line"}

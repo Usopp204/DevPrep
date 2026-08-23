@@ -1,0 +1,18 @@
+name: "AiServiceClient"
+fields:
+  - "- _httpClient: HttpClient"
+  - "- _logger: ILogger<AiServiceClient>"
+methods:
+  - "+ PlanQuestionsAsync(request: AiQuestionPlanRequest, ct: CancellationToken): Task<AiQuestionPlanResponse>"
+  - "+ EvaluateAnswerAsync(request: AiEvaluateAnswerRequest, ct: CancellationToken): Task<AiEvaluateAnswerResponse>"
+  - "+ BuildReportAsync(request: AiBuildReportRequest, ct: CancellationToken): Task<AiBuildReportResponse>"
+  - "+ SynthesizeSpeechAsync(text: string, ct: CancellationToken): Task<byte[]>"
+  - "+ TranscribeAsync(audio: byte[], fileName: string, contentType: string, ct: CancellationToken): Task<string>"
+  - "+ GetHintAsync(question: string, ct: CancellationToken): Task<string>"
+  - "+ GetCatalogAsync(ct: CancellationToken): Task<AiCatalogResponse>"
+  - "+ EmbedFaceAsync(file: IFormFile, ct: CancellationToken): Task<BiometricEmbeddingResult>"
+  - "+ EmbedVoiceAsync(file: IFormFile, ct: CancellationToken): Task<BiometricEmbeddingResult>"
+  - "+ VerifyFaceLiveAsync(frames: IReadOnlyList<IFormFile>, storedEmbedding: float[], challengeJson: string, ct: CancellationToken): Task<AiFaceVerifyLiveResponse>"
+  - "+ VerifyFaceAsync(frame: IFormFile, storedEmbedding: float[], ct: CancellationToken): Task<AiFaceVerifyResponse>"
+  - "+ VerifyVoiceAsync(audio: IFormFile, storedEmbedding: float[], ct: CancellationToken): Task<AiFaceVerifyResponse>"
+  - "+ VerifyVoiceChallengeAsync(file: IFormFile, storedEmbedding: float[], expectedPhrase: string, ct: CancellationToken): Task<AiVoiceVerifyChallengeResponse>"

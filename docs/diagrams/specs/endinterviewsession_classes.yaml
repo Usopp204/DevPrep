@@ -1,0 +1,178 @@
+include:
+  - file: Controller.yaml
+    column: 0
+  - file: IApiClient.yaml
+    column: 0
+  - file: ApiClient.yaml
+    column: 0
+  - file: ControllerBase.yaml
+    column: 2
+  - file: ApiResponse.yaml
+    name: "ApiResponse<T> (InterviewAPI)"
+    column: 3
+  - file: InterviewSession.yaml
+    column: 5
+  - file: InterviewRoom.yaml
+    column: 5
+  - file: SessionQuestion.yaml
+    column: 6
+  - file: ChatMessage.yaml
+    column: 6
+  - file: InterviewDbContext.yaml
+    column: 5
+  - file: DbContext.yaml
+    column: 5
+
+classes:
+  - name: "InterviewController (WebClient)"
+    column: 0
+    w: 340
+    fields:
+      - "- interviewService: IInterviewService"
+    methods:
+      - "+ CompleteSession(id: Guid, cancellationToken: CancellationToken): Task<IActionResult>"
+      - "+ EndSession(id: Guid, cancellationToken: CancellationToken): Task<IActionResult>"
+
+  - name: "IInterviewService (WebClient)"
+    column: 0
+    w: 380
+    fields: []
+    methods:
+      - "+ CompleteSessionAsync(sessionId: Guid, cancellationToken: CancellationToken): Task<(bool Success, EndResponse? Completion, string? Error)>"
+      - "+ EndSessionAsync(sessionId: Guid, cancellationToken: CancellationToken): Task<(bool Success, EndResponse? Cancellation, string? Error)>"
+
+  - name: "InterviewService (WebClient)"
+    column: 0
+    w: 380
+    fields:
+      - "- JsonOptions: JsonSerializerOptions"
+      - "- apiClient: IApiClient"
+    methods:
+      - "+ CompleteSessionAsync(sessionId: Guid, cancellationToken: CancellationToken): Task<(bool Success, EndResponse? Completion, string? Error)>"
+      - "+ EndSessionAsync(sessionId: Guid, cancellationToken: CancellationToken): Task<(bool Success, EndResponse? Cancellation, string? Error)>"
+      - "- SendAsync<T>(method: HttpMethod, path: string, body: object?, cancellationToken: CancellationToken): Task<ApiCallResult<T>>"
+      - "- ReadErrorMessageAsync(response: HttpResponseMessage, raw: string, cancellationToken: CancellationToken): Task<string?>"
+
+  - name: "EndResponse (WebClient)"
+    column: 1
+    w: 300
+    fields:
+      - "+ Status: string"
+      - "+ EndedAt: DateTime?"
+    methods: []
+
+  - name: "ApiCallResult<T>"
+    column: 1
+    w: 300
+    fields:
+      - "+ Success: bool"
+      - "+ Data: T?"
+      - "+ Error: string?"
+      - "+ StatusCode: int"
+    methods:
+      - "+ Ok(data: T?, statusCode: int): ApiCallResult<T>"
+      - "+ Fail(error: string, statusCode: int): ApiCallResult<T>"
+
+  - name: "ApiResponse<T> (WebClient)"
+    column: 1
+    w: 300
+    fields:
+      - "+ Success: bool"
+      - "+ Message: string?"
+      - "+ Data: T?"
+    methods: []
+
+  - name: "InterviewSessionController (InterviewAPI)"
+    column: 2
+    w: 380
+    fields:
+      - "- _service: ISessionService"
+      - "- _aiServiceClient: IAiServiceClient"
+      - "- _paymentApiClient: IPaymentApiClient"
+    methods:
+      - "+ CompleteSession(id: Guid, cancellationToken: CancellationToken): Task<IActionResult>"
+      - "+ EndSession(id: Guid, cancellationToken: CancellationToken): Task<IActionResult>"
+
+  - name: ISessionService
+    column: 2
+    w: 400
+    fields: []
+    methods:
+      - "+ CompleteSessionAsync(userId: Guid, sessionId: Guid, ct: CancellationToken): Task<EndResponse>"
+      - "+ EndSessionAsync(userId: Guid, sessionId: Guid, ct: CancellationToken): Task<EndResponse>"
+
+  - name: "SessionService (InterviewAPI)"
+    column: 2
+    w: 400
+    fields:
+      - "- _repo: ISessionRepository"
+      - "- _aiServiceClient: IAiServiceClient"
+      - "- _paymentApiClient: IPaymentApiClient"
+      - "- _db: InterviewDbContext"
+      - "- _logger: ILogger<SessionService>"
+      - "- _scopeFactory: IServiceScopeFactory"
+      - "- _httpContextAccessor: IHttpContextAccessor"
+      - "- _biometricsRepository: IProfileBiometricsRepository"
+      - "- _verificationEventRepository: ISessionVerificationEventRepository"
+      - "- _configuration: IConfiguration"
+    methods:
+      - "+ CompleteSessionAsync(userId: Guid, sessionId: Guid, ct: CancellationToken): Task<EndResponse>"
+      - "+ EndSessionAsync(userId: Guid, sessionId: Guid, ct: CancellationToken): Task<EndResponse>"
+      - "- IsTerminalStatus(status: string): bool"
+      - "- GetEffectivePausedSeconds(session: InterviewSession): int"
+
+  - name: "EndResponse (InterviewAPI)"
+    column: 3
+    w: 300
+    fields:
+      - "+ Status: string"
+      - "+ EndedAt: DateTime?"
+    methods: []
+
+  - name: ISessionRepository
+    column: 4
+    w: 360
+    fields: []
+    methods:
+      - "+ GetByIdAsync(id: Guid, ct: CancellationToken): Task<InterviewSession?>"
+      - "+ GetRoomBySessionAsync(sessionId: Guid, ct: CancellationToken): Task<InterviewRoom?>"
+      - "+ UpdateRoomAsync(room: InterviewRoom, ct: CancellationToken): Task"
+      - "+ HasSubstantiveAnswerAsync(sessionId: Guid, ct: CancellationToken): Task<bool>"
+      - "+ SaveChangesAsync(ct: CancellationToken): Task"
+
+  - name: "SessionRepository (InterviewAPI)"
+    column: 4
+    w: 360
+    fields:
+      - "- _db: InterviewDbContext"
+      - "- _logger: ILogger<SessionRepository>"
+    methods:
+      - "+ GetByIdAsync(id: Guid, ct: CancellationToken): Task<InterviewSession?>"
+      - "+ GetRoomBySessionAsync(sessionId: Guid, ct: CancellationToken): Task<InterviewRoom?>"
+      - "+ UpdateRoomAsync(room: InterviewRoom, ct: CancellationToken): Task"
+      - "+ HasSubstantiveAnswerAsync(sessionId: Guid, ct: CancellationToken): Task<bool>"
+      - "+ SaveChangesAsync(ct: CancellationToken): Task"
+
+relations:
+  - {from: "InterviewController (WebClient)", to: Controller, type: extends}
+  - {from: "InterviewController (WebClient)", to: "IInterviewService (WebClient)", type: use, label: Use}
+  - {from: "InterviewService (WebClient)", to: "IInterviewService (WebClient)", type: implements}
+  - {from: "InterviewService (WebClient)", to: IApiClient, type: use, label: Use}
+  - {from: ApiClient, to: IApiClient, type: implements}
+  - {from: "InterviewService (WebClient)", to: "EndResponse (WebClient)", type: use, label: Use}
+  - {from: "InterviewService (WebClient)", to: "ApiCallResult<T>", type: use, label: Use}
+  - {from: "InterviewService (WebClient)", to: "ApiResponse<T> (WebClient)", type: use, label: Use}
+  - {from: "InterviewSessionController (InterviewAPI)", to: ControllerBase, type: extends}
+  - {from: "InterviewSessionController (InterviewAPI)", to: ISessionService, type: use, label: Use}
+  - {from: "InterviewSessionController (InterviewAPI)", to: "ApiResponse<T> (InterviewAPI)", type: use, label: Use}
+  - {from: "SessionService (InterviewAPI)", to: ISessionService, type: implements}
+  - {from: "SessionService (InterviewAPI)", to: ISessionRepository, type: use, label: Use}
+  - {from: "SessionService (InterviewAPI)", to: "EndResponse (InterviewAPI)", type: use, label: Use}
+  - {from: "SessionRepository (InterviewAPI)", to: ISessionRepository, type: implements}
+  - {from: "SessionRepository (InterviewAPI)", to: InterviewDbContext, type: composition}
+  - {from: InterviewDbContext, to: DbContext, type: extends}
+  - {from: InterviewDbContext, to: InterviewSession, type: composition, label: "1..*"}
+  - {from: InterviewDbContext, to: InterviewRoom, type: composition, label: "1..*"}
+  - {from: InterviewSession, to: SessionQuestion, type: composition, label: "1..*"}
+  - {from: SessionQuestion, to: ChatMessage, type: composition, label: "1..*"}
+  - {from: InterviewSession, to: InterviewRoom, type: composition, label: "1..1"}

@@ -1,0 +1,231 @@
+include:
+  - file: Controller.yaml
+    column: 0
+  - file: ControllerBase.yaml
+    column: 1
+  - file: ApiResponse.yaml
+    name: "ApiResponse<T> (InterviewAPI)"
+    column: 2
+  - file: InterviewDbContext.yaml
+    column: 4
+  - file: DbContext.yaml
+    column: 4
+  - file: InterviewSession.yaml
+    column: 5
+  - file: SessionQuestion.yaml
+    column: 5
+  - file: ChatMessage.yaml
+    column: 5
+  - file: SessionVerificationEvent.yaml
+    column: 5
+
+classes:
+  # ---------- column 0: WebClient ----------
+  - name: "InterviewController (WebClient)"
+    column: 0
+    w: 360
+    fields:
+      - "- interviewService: IInterviewService"
+      - "- biometricsService: IBiometricsService"
+      - "- verificationService: IVerificationService"
+      - "- feedbackService: IFeedbackService"
+      - "- paymentService: IPaymentService"
+    methods:
+      - "+ Room(id: Guid, ct: CancellationToken): Task<IActionResult>"
+
+  - name: "IInterviewService (WebClient)"
+    column: 0
+    w: 380
+    fields: []
+    methods:
+      - "+ GenerateQuestionAsync(sessionId: Guid, ct: CancellationToken): Task<(bool Success, string? Error)>"
+      - "+ GetRoomAsync(sessionId: Guid, ct: CancellationToken): Task<(bool Success, RoomViewModel? Room, string? Error)>"
+
+  - name: "InterviewService (WebClient)"
+    column: 0
+    w: 380
+    fields:
+      - "- apiClient: IApiClient"
+    methods:
+      - "+ GenerateQuestionAsync(sessionId: Guid, ct: CancellationToken): Task<(bool Success, string? Error)>"
+      - "+ GetRoomAsync(sessionId: Guid, ct: CancellationToken): Task<(bool Success, RoomViewModel? Room, string? Error)>"
+      - "- SendAsync<T>(method: HttpMethod, path: string, body: object?, ct: CancellationToken): Task<ApiCallResult<T>>"
+
+  # ---------- column 1: InterviewAPI controller + service ----------
+  - name: "InterviewSessionController (InterviewAPI)"
+    column: 1
+    w: 400
+    fields:
+      - "- _service: ISessionService"
+      - "- _logger: ILogger<InterviewSessionController>"
+    methods:
+      - "+ GenerateQuestion(id: Guid, ct: CancellationToken): Task<IActionResult>"
+
+  - name: ISessionService
+    column: 1
+    w: 420
+    fields: []
+    methods:
+      - "+ GenerateQuestionAsync(userId: Guid, sessionId: Guid, ct: CancellationToken): Task<GenerateQuestionResponse>"
+
+  - name: "SessionService (InterviewAPI)"
+    column: 1
+    w: 420
+    fields:
+      - "- _repo: ISessionRepository"
+      - "- _paymentApiClient: IPaymentApiClient"
+      - "- _verificationEventRepository: ISessionVerificationEventRepository"
+      - "- _db: InterviewDbContext"
+      - "- _configuration: IConfiguration"
+      - "- _logger: ILogger<SessionService>"
+    methods:
+      - "+ GenerateQuestionAsync(userId: Guid, sessionId: Guid, ct: CancellationToken): Task<GenerateQuestionResponse>"
+      - "- RequireIntegrityPolicyAccepted(session: InterviewSession): void"
+      - "- GetIdleThresholds(difficulty: string?): (int Reminder, int Hard)"
+      - "- GetEffectivePausedSeconds(session: InterviewSession): int"
+
+  # ---------- column 2: DTOs, helpers, exceptions ----------
+  - name: GenerateQuestionResponse
+    column: 2
+    w: 300
+    fields:
+      - "+ SessionQuestionId: Guid"
+      - "+ OrderIndex: int"
+      - "+ Content: string"
+      - "+ TotalQuestions: int"
+      - "+ Ended: bool"
+      - "+ IdleReminderSeconds: int"
+      - "+ IdleHardSeconds: int"
+      - "+ IdleElapsedSeconds: int"
+    methods: []
+
+  - name: CreditConfig
+    column: 2
+    w: 340
+    fields:
+      - "- CreditPerMinute: int"
+      - "+ BiometricEnrollmentBonusCredits: int"
+      - "+ DurationToCreditCost: Dictionary<int, int>"
+    methods:
+      - "+ GetCreditCost(durationMinutes: int): int"
+
+  - name: SessionGuardException
+    column: 2
+    w: 340
+    fields:
+      - "+ StatusCode: int"
+      - "+ ErrorCode: string"
+      - "+ RetryAfterSeconds: int?"
+      - "+ ActiveSessionId: Guid?"
+    methods: []
+
+  - name: CreditServiceUnavailableException
+    column: 2
+    w: 340
+    fields: []
+    methods:
+      - "+ CreditServiceUnavailableException()"
+
+  - name: InvalidOperationException
+    column: 2
+    fields: []
+    methods: []
+
+  # ---------- column 3: repositories + payment client ----------
+  - name: ISessionRepository
+    column: 3
+    w: 420
+    fields: []
+    methods:
+      - "+ GetWithQuestionsAsync(sessionId: Guid, ct: CancellationToken): Task<InterviewSession?>"
+      - "+ GetByIdAsync(id: Guid, ct: CancellationToken): Task<InterviewSession?>"
+      - "+ UpdateStatusIfAsync(userId: Guid, sessionId: Guid, currentStatus: string, newStatus: string, ct: CancellationToken): Task<bool>"
+      - "+ AddChatMessageAsync(message: ChatMessage, ct: CancellationToken): Task<ChatMessage>"
+      - "+ SaveChangesAsync(ct: CancellationToken): Task"
+
+  - name: "SessionRepository (InterviewAPI)"
+    column: 3
+    w: 420
+    fields:
+      - "- _db: InterviewDbContext"
+      - "- _logger: ILogger<SessionRepository>"
+    methods:
+      - "+ GetWithQuestionsAsync(sessionId: Guid, ct: CancellationToken): Task<InterviewSession?>"
+      - "+ GetByIdAsync(id: Guid, ct: CancellationToken): Task<InterviewSession?>"
+      - "+ UpdateStatusIfAsync(userId: Guid, sessionId: Guid, currentStatus: string, newStatus: string, ct: CancellationToken): Task<bool>"
+      - "+ AddChatMessageAsync(message: ChatMessage, ct: CancellationToken): Task<ChatMessage>"
+      - "+ SaveChangesAsync(ct: CancellationToken): Task"
+
+  - name: ISessionVerificationEventRepository
+    column: 3
+    w: 420
+    fields: []
+    methods:
+      - "+ ListBySessionAsync(sessionId: Guid, phase: string?, ct: CancellationToken): Task<List<SessionVerificationEvent>>"
+
+  - name: "SessionVerificationEventRepository (InterviewAPI)"
+    column: 3
+    w: 420
+    fields:
+      - "- _db: InterviewDbContext"
+    methods:
+      - "+ ListBySessionAsync(sessionId: Guid, phase: string?, ct: CancellationToken): Task<List<SessionVerificationEvent>>"
+
+  - name: IPaymentApiClient
+    column: 3
+    w: 420
+    fields: []
+    methods:
+      - "+ DeductCreditAsync(userId: Guid, amount: int, sessionId: Guid, description: string, ct: CancellationToken): Task<CreditDeductionResponse>"
+      - "+ RefundCreditAsync(userId: Guid, amount: int, sessionId: Guid, description: string, ct: CancellationToken): Task<CreditDeductionResponse>"
+
+  - name: "PaymentApiClient (InterviewAPI)"
+    column: 3
+    w: 420
+    fields:
+      - "- _httpClient: HttpClient"
+      - "- _logger: ILogger<PaymentApiClient>"
+    methods:
+      - "+ DeductCreditAsync(userId: Guid, amount: int, sessionId: Guid, description: string, ct: CancellationToken): Task<CreditDeductionResponse>"
+      - "+ RefundCreditAsync(userId: Guid, amount: int, sessionId: Guid, description: string, ct: CancellationToken): Task<CreditDeductionResponse>"
+
+  - name: CreditDeductionResponse
+    column: 3
+    w: 300
+    fields:
+      - "+ Success: bool"
+      - "+ BalanceAfter: int"
+      - "+ AmountDeducted: int"
+      - "+ Message: string?"
+      - "+ ServiceAvailable: bool"
+    methods: []
+
+relations:
+  - {from: "InterviewController (WebClient)", to: Controller, type: extends}
+  - {from: "InterviewController (WebClient)", to: "IInterviewService (WebClient)", type: use, label: Use}
+  - {from: "InterviewService (WebClient)", to: "IInterviewService (WebClient)", type: implements}
+  - {from: "InterviewSessionController (InterviewAPI)", to: ControllerBase, type: extends}
+  - {from: "InterviewSessionController (InterviewAPI)", to: ISessionService, type: use, label: Use}
+  - {from: "InterviewSessionController (InterviewAPI)", to: "ApiResponse<T> (InterviewAPI)", type: use, label: Use}
+  - {from: "InterviewSessionController (InterviewAPI)", to: SessionGuardException, type: use, label: catch}
+  - {from: "InterviewSessionController (InterviewAPI)", to: CreditServiceUnavailableException, type: use, label: catch}
+  - {from: "SessionService (InterviewAPI)", to: ISessionService, type: implements}
+  - {from: "SessionService (InterviewAPI)", to: ISessionRepository, type: use, label: Use}
+  - {from: "SessionService (InterviewAPI)", to: ISessionVerificationEventRepository, type: use, label: Use}
+  - {from: "SessionService (InterviewAPI)", to: IPaymentApiClient, type: use, label: Use}
+  - {from: "SessionService (InterviewAPI)", to: CreditConfig, type: use, label: Use}
+  - {from: "SessionService (InterviewAPI)", to: GenerateQuestionResponse, type: use, label: Use}
+  - {from: "SessionService (InterviewAPI)", to: SessionGuardException, type: use, label: throw}
+  - {from: "SessionService (InterviewAPI)", to: CreditServiceUnavailableException, type: use, label: throw}
+  - {from: SessionGuardException, to: InvalidOperationException, type: extends}
+  - {from: "SessionRepository (InterviewAPI)", to: ISessionRepository, type: implements}
+  - {from: "SessionVerificationEventRepository (InterviewAPI)", to: ISessionVerificationEventRepository, type: implements}
+  - {from: "PaymentApiClient (InterviewAPI)", to: IPaymentApiClient, type: implements}
+  - {from: "PaymentApiClient (InterviewAPI)", to: CreditDeductionResponse, type: use, label: Use}
+  - {from: "SessionRepository (InterviewAPI)", to: InterviewDbContext, type: composition}
+  - {from: "SessionVerificationEventRepository (InterviewAPI)", to: InterviewDbContext, type: composition}
+  - {from: InterviewDbContext, to: DbContext, type: extends}
+  - {from: InterviewDbContext, to: InterviewSession, type: composition, label: "1..*"}
+  - {from: InterviewDbContext, to: SessionQuestion, type: composition, label: "1..*"}
+  - {from: InterviewDbContext, to: ChatMessage, type: composition, label: "1..*"}
+  - {from: InterviewDbContext, to: SessionVerificationEvent, type: composition, label: "1..*"}

@@ -1,0 +1,277 @@
+include:
+  - file: ApiResponse.yaml
+    name: "ApiResponse<T> (InterviewAPI)"
+    column: 3
+  - file: InterviewSession.yaml
+    column: 6
+  - file: InterviewRoom.yaml
+    column: 6
+  - file: SessionVerificationEvent.yaml
+    column: 6
+  - file: ControllerBase.yaml
+    column: 2
+  - file: AiServiceClient.yaml
+    name: "AiServiceClient (InterviewAPI)"
+    column: 5
+    w: 460
+  - file: BiometricQualityException.yaml
+    column: 3
+    w: 340
+  - file: CheatingStrikeHelper.yaml
+    column: 3
+    w: 340
+
+classes:
+  - name: "VerificationController (WebClient)"
+    column: 0
+    w: 340
+    fields:
+      - "- verificationService: IVerificationService"
+    methods:
+      - "+ VerifyInSession(sessionId: Guid, checkId: Guid, frame: IFormFile, ct: CancellationToken): Task<IActionResult>"
+
+  - name: Controller
+    column: 0
+    fields: []
+    methods: []
+
+  - name: "IVerificationService (WebClient)"
+    column: 0
+    w: 380
+    fields: []
+    methods:
+      - "+ GetChallengeAsync(sessionId: Guid, modality: string, ct: CancellationToken): Task<(bool Success, VerificationChallengeModel? Challenge, string? Error)>"
+      - "+ VerifyFaceAsync(sessionId: Guid, frames: IReadOnlyList<(byte[] Data, string FileName, string ContentType)>, ct: CancellationToken): Task<(bool Success, VerificationResultModel? Result, string? Error)>"
+      - "+ VerifyVoiceAsync(sessionId: Guid, audio: byte[], fileName: string, contentType: string, ct: CancellationToken): Task<(bool Success, VerificationResultModel? Result, string? Error)>"
+      - "+ GetEntryGateAsync(sessionId: Guid, ct: CancellationToken): Task<(bool Success, EntryGateStatusModel? Status, string? Error)>"
+      - "+ VerifyInSessionAsync(sessionId: Guid, checkId: Guid, frame: byte[], fileName: string, contentType: string, ct: CancellationToken): Task<(bool Success, InSessionVerifyResultModel? Result, string? Error)>"
+      - "+ GetInSessionCheckAsync(sessionId: Guid, sessionQuestionId: Guid, ct: CancellationToken): Task<(bool Success, InSessionCheckDueModel? Check, string? Error)>"
+
+  - name: "VerificationService (WebClient)"
+    column: 0
+    w: 380
+    fields:
+      - "- JsonOptions: JsonSerializerOptions"
+    methods:
+      - "+ GetChallengeAsync(sessionId: Guid, modality: string, ct: CancellationToken): Task<(bool Success, VerificationChallengeModel? Challenge, string? Error)>"
+      - "+ VerifyFaceAsync(sessionId: Guid, frames: IReadOnlyList<(byte[] Data, string FileName, string ContentType)>, ct: CancellationToken): Task<(bool Success, VerificationResultModel? Result, string? Error)>"
+      - "+ VerifyVoiceAsync(sessionId: Guid, audio: byte[], fileName: string, contentType: string, ct: CancellationToken): Task<(bool Success, VerificationResultModel? Result, string? Error)>"
+      - "+ GetEntryGateAsync(sessionId: Guid, ct: CancellationToken): Task<(bool Success, EntryGateStatusModel? Status, string? Error)>"
+      - "+ GetInSessionCheckAsync(sessionId: Guid, sessionQuestionId: Guid, ct: CancellationToken): Task<(bool Success, InSessionCheckDueModel? Check, string? Error)>"
+      - "+ VerifyInSessionAsync(sessionId: Guid, checkId: Guid, frame: byte[], fileName: string, contentType: string, ct: CancellationToken): Task<(bool Success, InSessionVerifyResultModel? Result, string? Error)>"
+      - "- ReadResultAsync(response: HttpResponseMessage, ct: CancellationToken): Task<(bool, VerificationResultModel?, string?)>"
+      - "- ReadEnvelopeAsync<T>(response: HttpResponseMessage, ct: CancellationToken): Task<ApiResponse<T>?>"
+
+  - name: InSessionVerifyResponse
+    column: 1
+    w: 320
+    fields:
+      - "+ Passed: bool"
+      - "+ NoFaceDetected: bool"
+      - "+ WarningType: string"
+      - "+ StrikeCount: int"
+      - "+ MaxStrikes: int"
+      - "+ NoFaceCount: int"
+      - "+ NoFaceStrikeThreshold: int"
+      - "+ NoFaceJustBecameStrike: bool"
+      - "+ ShouldEndSession: bool"
+      - "+ Message: string"
+    methods: []
+
+  - name: "SessionVerificationController (InterviewAPI)"
+    column: 2
+    w: 380
+    fields:
+      - "- _service: IBiometricVerificationService"
+      - "- _sessionService: ISessionService"
+    methods:
+      - "+ VerifyInSession(sessionId: Guid, checkId: Guid, frame: IFormFile, ct: CancellationToken): Task<IActionResult>"
+
+  - name: IBiometricVerificationService
+    column: 2
+    w: 420
+    fields: []
+    methods:
+      - "+ VerifyInSessionAsync(userId: Guid, sessionId: Guid, checkId: Guid, frame: IFormFile, ct: CancellationToken): Task<InSessionVerifyResponse>"
+
+  - name: "BiometricVerificationService (InterviewAPI)"
+    column: 2
+    w: 420
+    fields:
+      - "- _eventRepository: ISessionVerificationEventRepository"
+      - "- _biometricsRepository: IProfileBiometricsRepository"
+      - "- _sessionRepository: ISessionRepository"
+      - "- _aiServiceClient: IAiServiceClient"
+      - "- _configuration: IConfiguration"
+    methods:
+      - "+ VerifyInSessionAsync(userId: Guid, sessionId: Guid, checkId: Guid, frame: IFormFile, ct: CancellationToken): Task<InSessionVerifyResponse>"
+      - "- EndSessionForCheatingAsync(sessionId: Guid, ct: CancellationToken): Task"
+      - "- RecordEventAsync(sessionId: Guid, userId: Guid, phase: string, modality: string, score: double?, livenessPassed: bool?, matched: bool, decision: string, detail: object, ct: CancellationToken): Task"
+      - "- GetStoredEmbeddingAsync(userId: Guid, modality: string, ct: CancellationToken): Task<float[]>"
+
+  - name: ISessionRepository
+    column: 4
+    w: 340
+    fields: []
+    methods:
+      - "+ GetByIdAsync(id: Guid, ct: CancellationToken): Task<InterviewSession?>"
+      - "+ GetRoomBySessionAsync(sessionId: Guid, ct: CancellationToken): Task<InterviewRoom?>"
+      - "+ UpdateRoomAsync(room: InterviewRoom, ct: CancellationToken): Task"
+      - "+ SaveChangesAsync(ct: CancellationToken): Task"
+
+  - name: "SessionRepository (InterviewAPI)"
+    column: 4
+    w: 340
+    fields: []
+    methods:
+      - "+ GetByIdAsync(id: Guid, ct: CancellationToken): Task<InterviewSession?>"
+      - "+ GetRoomBySessionAsync(sessionId: Guid, ct: CancellationToken): Task<InterviewRoom?>"
+      - "+ UpdateRoomAsync(room: InterviewRoom, ct: CancellationToken): Task"
+      - "+ SaveChangesAsync(ct: CancellationToken): Task"
+
+  - name: ISessionVerificationEventRepository
+    column: 4
+    w: 420
+    fields: []
+    methods:
+      - "+ AddAsync(evt: SessionVerificationEvent, ct: CancellationToken): Task"
+      - "+ TryAddIncidentAsync(evt: SessionVerificationEvent, ct: CancellationToken): Task<bool>"
+      - "+ GetIncidentAsync(incidentId: Guid, ct: CancellationToken): Task<SessionVerificationEvent?>"
+      - "+ ListBySessionAsync(sessionId: Guid, phase: string?, ct: CancellationToken): Task<List<SessionVerificationEvent>>"
+      - "+ GetQuestionCheckAsync(sessionId: Guid, sessionQuestionId: Guid, ct: CancellationToken): Task<SessionVerificationEvent?>"
+      - "+ TryConsumeQuestionCheckAsync(incidentId: Guid, sessionId: Guid, userId: Guid, consumedAt: DateTime, ct: CancellationToken): Task<bool>"
+      - "+ ListExpiredPendingChecksAsync(sessionId: Guid, now: DateTime, ct: CancellationToken): Task<List<SessionVerificationEvent>>"
+      - "+ TryMarkCheckMissedAsync(eventId: long, ct: CancellationToken): Task<bool>"
+
+  - name: "SessionVerificationEventRepository (InterviewAPI)"
+    column: 4
+    w: 420
+    fields:
+      - "- _db: InterviewDbContext"
+    methods:
+      - "+ AddAsync(evt: SessionVerificationEvent, ct: CancellationToken): Task"
+      - "+ TryAddIncidentAsync(evt: SessionVerificationEvent, ct: CancellationToken): Task<bool>"
+      - "+ GetIncidentAsync(incidentId: Guid, ct: CancellationToken): Task<SessionVerificationEvent?>"
+      - "+ ListBySessionAsync(sessionId: Guid, phase: string?, ct: CancellationToken): Task<List<SessionVerificationEvent>>"
+      - "+ GetQuestionCheckAsync(sessionId: Guid, sessionQuestionId: Guid, ct: CancellationToken): Task<SessionVerificationEvent?>"
+      - "+ TryConsumeQuestionCheckAsync(incidentId: Guid, sessionId: Guid, userId: Guid, consumedAt: DateTime, ct: CancellationToken): Task<bool>"
+      - "+ ListExpiredPendingChecksAsync(sessionId: Guid, now: DateTime, ct: CancellationToken): Task<List<SessionVerificationEvent>>"
+      - "+ TryMarkCheckMissedAsync(eventId: long, ct: CancellationToken): Task<bool>"
+
+  - name: IProfileBiometricsRepository
+    column: 4
+    w: 380
+    fields: []
+    methods:
+      - "+ GetAsync(userId: Guid, modality: string, ct: CancellationToken): Task<ProfileBiometric?>"
+      - "+ ListByUserAsync(userId: Guid, ct: CancellationToken): Task<List<ProfileBiometric>>"
+      - "+ ListByModalityAsync(modality: string, ct: CancellationToken): Task<List<ProfileBiometric>>"
+      - "+ AddAsync(entity: ProfileBiometric, ct: CancellationToken): Task"
+      - "+ SaveChangesAsync(ct: CancellationToken): Task"
+
+  - name: "ProfileBiometricsRepository (InterviewAPI)"
+    column: 4
+    w: 380
+    fields:
+      - "- _db: InterviewDbContext"
+    methods:
+      - "+ GetAsync(userId: Guid, modality: string, ct: CancellationToken): Task<ProfileBiometric?>"
+      - "+ ListByUserAsync(userId: Guid, ct: CancellationToken): Task<List<ProfileBiometric>>"
+      - "+ ListByModalityAsync(modality: string, ct: CancellationToken): Task<List<ProfileBiometric>>"
+      - "+ AddAsync(entity: ProfileBiometric, ct: CancellationToken): Task"
+      - "+ SaveChangesAsync(ct: CancellationToken): Task"
+
+  - name: ProfileBiometric
+    column: 6
+    w: 300
+    fields:
+      - "+ Id: long"
+      - "+ UserId: Guid"
+      - "+ Modality: string"
+      - "+ Embedding: byte[]"
+      - "+ Dim: int"
+      - "+ ModelVersion: string"
+      - "+ Quality: double?"
+      - "+ CreatedAt: DateTime"
+      - "+ UpdatedAt: DateTime"
+    methods: []
+
+  - name: IAiServiceClient
+    column: 5
+    w: 460
+    fields: []
+    methods:
+      - "+ PlanQuestionsAsync(request: AiQuestionPlanRequest, ct: CancellationToken): Task<AiQuestionPlanResponse>"
+      - "+ EvaluateAnswerAsync(request: AiEvaluateAnswerRequest, ct: CancellationToken): Task<AiEvaluateAnswerResponse>"
+      - "+ BuildReportAsync(request: AiBuildReportRequest, ct: CancellationToken): Task<AiBuildReportResponse>"
+      - "+ SynthesizeSpeechAsync(text: string, ct: CancellationToken): Task<byte[]>"
+      - "+ TranscribeAsync(audio: byte[], fileName: string, contentType: string, ct: CancellationToken): Task<string>"
+      - "+ GetHintAsync(question: string, ct: CancellationToken): Task<string>"
+      - "+ GetCatalogAsync(ct: CancellationToken): Task<AiCatalogResponse>"
+      - "+ EmbedFaceAsync(file: IFormFile, ct: CancellationToken): Task<BiometricEmbeddingResult>"
+      - "+ EmbedVoiceAsync(file: IFormFile, ct: CancellationToken): Task<BiometricEmbeddingResult>"
+      - "+ VerifyFaceLiveAsync(frames: IReadOnlyList<IFormFile>, storedEmbedding: float[], challengeJson: string, ct: CancellationToken): Task<AiFaceVerifyLiveResponse>"
+      - "+ VerifyFaceAsync(frame: IFormFile, storedEmbedding: float[], ct: CancellationToken): Task<AiFaceVerifyResponse>"
+      - "+ VerifyVoiceAsync(audio: IFormFile, storedEmbedding: float[], ct: CancellationToken): Task<AiFaceVerifyResponse>"
+      - "+ VerifyVoiceChallengeAsync(file: IFormFile, storedEmbedding: float[], expectedPhrase: string, ct: CancellationToken): Task<AiVoiceVerifyChallengeResponse>"
+
+  - name: AiFaceVerifyResponse
+    column: 5
+    w: 300
+    fields:
+      - "+ Match: bool"
+      - "+ Score: double"
+      - "+ Threshold: double"
+    methods: []
+
+  - name: InterviewDbContext
+    column: 6
+    w: 360
+    fields:
+      - "+ ChatMessages: DbSet<ChatMessage>"
+      - "+ InterviewRooms: DbSet<InterviewRoom>"
+      - "+ InterviewSessions: DbSet<InterviewSession>"
+      - "+ SessionQuestions: DbSet<SessionQuestion>"
+      - "+ UserRoomTourStatuses: DbSet<UserRoomTourStatus>"
+      - "+ ProfileBiometrics: DbSet<ProfileBiometric>"
+      - "+ SessionVerificationChallenges: DbSet<SessionVerificationChallenge>"
+      - "+ SessionVerificationEvents: DbSet<SessionVerificationEvent>"
+    methods:
+      - "+ InterviewDbContext()"
+      - "+ InterviewDbContext(options: DbContextOptions<InterviewDbContext>)"
+
+  - name: DbContext
+    column: 6
+    fields: []
+    methods: []
+
+relations:
+  - {from: "VerificationController (WebClient)", to: Controller, type: extends}
+  - {from: "VerificationController (WebClient)", to: "IVerificationService (WebClient)", type: use, label: Use}
+  - {from: "VerificationService (WebClient)", to: "IVerificationService (WebClient)", type: implements}
+  - {from: "VerificationService (WebClient)", to: InSessionVerifyResponse, type: use, label: "T = InSessionVerifyResultModel"}
+  - {from: "SessionVerificationController (InterviewAPI)", to: ControllerBase, type: extends}
+  - {from: "SessionVerificationController (InterviewAPI)", to: IBiometricVerificationService, type: use, label: Use}
+  - {from: "BiometricVerificationService (InterviewAPI)", to: IBiometricVerificationService, type: implements}
+  - {from: "BiometricVerificationService (InterviewAPI)", to: ISessionRepository, type: use, label: Use}
+  - {from: "BiometricVerificationService (InterviewAPI)", to: ISessionVerificationEventRepository, type: use, label: Use}
+  - {from: "BiometricVerificationService (InterviewAPI)", to: IProfileBiometricsRepository, type: use, label: Use}
+  - {from: "BiometricVerificationService (InterviewAPI)", to: IAiServiceClient, type: use, label: Use}
+  - {from: "BiometricVerificationService (InterviewAPI)", to: CheatingStrikeHelper, type: use, label: Use}
+  - {from: "BiometricVerificationService (InterviewAPI)", to: BiometricQualityException, type: use, label: "throw (catch)"}
+  - {from: "BiometricVerificationService (InterviewAPI)", to: InSessionVerifyResponse, type: use, label: Use}
+  - {from: "SessionRepository (InterviewAPI)", to: ISessionRepository, type: implements}
+  - {from: "SessionVerificationEventRepository (InterviewAPI)", to: ISessionVerificationEventRepository, type: implements}
+  - {from: "ProfileBiometricsRepository (InterviewAPI)", to: IProfileBiometricsRepository, type: implements}
+  - {from: "AiServiceClient (InterviewAPI)", to: IAiServiceClient, type: implements}
+  - {from: "AiServiceClient (InterviewAPI)", to: AiFaceVerifyResponse, type: use, label: Use}
+  - {from: "AiServiceClient (InterviewAPI)", to: BiometricQualityException, type: use, label: throw}
+  - {from: "SessionRepository (InterviewAPI)", to: InterviewDbContext, type: composition}
+  - {from: "SessionVerificationEventRepository (InterviewAPI)", to: InterviewDbContext, type: composition}
+  - {from: "ProfileBiometricsRepository (InterviewAPI)", to: InterviewDbContext, type: composition}
+  - {from: InterviewDbContext, to: DbContext, type: extends}
+  - {from: InterviewDbContext, to: InterviewSession, type: composition, label: "1..*"}
+  - {from: InterviewDbContext, to: InterviewRoom, type: composition, label: "1..*"}
+  - {from: InterviewDbContext, to: ProfileBiometric, type: composition, label: "1..*"}
+  - {from: InterviewDbContext, to: SessionVerificationEvent, type: composition, label: "1..*"}
+  - {from: InterviewSession, to: InterviewRoom, type: composition, label: "1..1"}
