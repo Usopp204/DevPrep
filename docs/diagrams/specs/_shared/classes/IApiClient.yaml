@@ -1,0 +1,6 @@
+# Shared class body — source/WebClient/Services/Shared/IApiClient.cs (FULL, 1 member).
+# Interface, so no private fields; the implementation lives in ApiClient.yaml.
+name: IApiClient
+fields: []
+methods:
+  - "+ HttpClient: HttpClient"

@@ -1,0 +1,288 @@
+include:
+  - file: Controller.yaml
+    column: 0
+  - file: IApiClient.yaml
+    column: 0
+  - file: ApiClient.yaml
+    column: 0
+  - file: ControllerBase.yaml
+    column: 2
+  - file: ApiResponse.yaml
+    name: "ApiResponse<T> (InterviewAPI)"
+    column: 4
+  - file: AiServiceClient.yaml
+    name: "AiServiceClient (InterviewAPI)"
+    column: 5
+    w: 460
+  - file: InterviewSession.yaml
+    column: 7
+  - file: InterviewDbContext.yaml
+    column: 7
+  - file: DbContext.yaml
+    column: 7
+
+classes:
+  - name: "InterviewController (WebClient)"
+    column: 0
+    w: 380
+    fields:
+      - "- interviewService: IInterviewService"
+      - "- biometricsService: IBiometricsService"
+    methods:
+      - "+ Catalog(cancellationToken: CancellationToken): Task<IActionResult>"
+      - "+ Start(model: DashboardViewModel, cancellationToken: CancellationToken): Task<IActionResult>"
+
+  - name: "IInterviewService (WebClient)"
+    column: 0
+    w: 400
+    fields: []
+    methods:
+      - "+ GetCatalogAsync(cancellationToken: CancellationToken): Task<(bool Success, CatalogResponse? Catalog, string? Error)>"
+      - "+ StartInterviewAsync(durationMinutes: int, level: string, position: string, jd: string?, focusAreas: List<string>, cancellationToken: CancellationToken): Task<StartInterviewResult>"
+
+  - name: "InterviewService (WebClient)"
+    column: 0
+    w: 400
+    fields:
+      - "- JsonOptions: JsonSerializerOptions"
+      - "- InteractionMode: string"
+      - "- apiClient: IApiClient"
+    methods:
+      - "+ GetCatalogAsync(cancellationToken: CancellationToken): Task<(bool Success, CatalogResponse? Catalog, string? Error)>"
+      - "+ StartInterviewAsync(durationMinutes: int, level: string, position: string, jd: string?, focusAreas: List<string>, cancellationToken: CancellationToken): Task<StartInterviewResult>"
+      - "- SendAsync<T>(method: HttpMethod, path: string, body: object?, cancellationToken: CancellationToken): Task<ApiCallResult<T>>"
+      - "- ParseErrorBody(raw: string): (string? Code, string? Message)"
+
+  - name: "IBiometricsService (WebClient)"
+    column: 0
+    w: 400
+    fields: []
+    methods:
+      - "+ GetStatusAsync(cancellationToken: CancellationToken): Task<(bool Success, BiometricStatusModel? Status, string? Error)>"
+      - "+ EnrollAsync(modality: string, data: byte[], fileName: string, contentType: string, cancellationToken: CancellationToken): Task<(bool Success, BiometricEnrollModel? Result, string? Error)>"
+
+  - name: DashboardViewModel
+    column: 1
+    w: 340
+    fields:
+      - "+ DurationMinutes: int"
+      - "+ Level: string"
+      - "+ Position: string"
+      - "+ Jd: string?"
+      - "+ FocusAreas: List<string>"
+      - "+ RecentSessions: List<SessionHistoryItemDto>"
+      - "+ Sidebar: InterviewSidebarViewModel"
+      - "+ CreditBalance: int"
+      - "+ ActiveSession: ActiveSessionResponse?"
+      - "+ ErrorMessage: string?"
+    methods: []
+
+  - name: StartInterviewResult
+    column: 1
+    w: 340
+    fields:
+      - "+ Success: bool"
+      - "+ ErrorMessage: string?"
+      - "+ SessionId: Guid"
+      - "+ ActiveSessionId: Guid?"
+    methods:
+      - "+ Failure(message: string): StartInterviewResult"
+      - "+ ActiveSessionConflict(activeSessionId: Guid): StartInterviewResult"
+      - "+ Ok(sessionId: Guid): StartInterviewResult"
+
+  - name: "CatalogResponse (WebClient)"
+    column: 1
+    w: 340
+    fields:
+      - "+ Roles: List<string>"
+      - "+ Technologies: Dictionary<string, List<string>>"
+    methods: []
+
+  - name: "ConfigResponse (WebClient)"
+    column: 1
+    w: 340
+    fields:
+      - "+ SessionId: Guid"
+      - "+ UpdatedField: string"
+      - "+ UpdatedValue: string"
+    methods: []
+
+  - name: "ApiResponse<T> (WebClient)"
+    column: 1
+    w: 340
+    fields:
+      - "+ Success: bool"
+      - "+ Message: string?"
+      - "+ Data: T?"
+    methods: []
+
+  - name: "InterviewSessionController (InterviewAPI)"
+    column: 2
+    w: 400
+    fields:
+      - "- _service: ISessionService"
+      - "- _aiServiceClient: IAiServiceClient"
+      - "- _paymentApiClient: IPaymentApiClient"
+    methods:
+      - "+ GetCatalog(cancellationToken: CancellationToken): Task<IActionResult>"
+      - "+ ConfigDuration(req: ConfigDurationRequest, cancellationToken: CancellationToken): Task<IActionResult>"
+      - "+ ConfigLevel(req: ConfigLevelRequest, cancellationToken: CancellationToken): Task<IActionResult>"
+      - "+ ConfigInteraction(req: ConfigInteractionRequest, cancellationToken: CancellationToken): Task<IActionResult>"
+
+  - name: ISessionService
+    column: 2
+    w: 430
+    fields: []
+    methods:
+      - "+ ConfigDurationAsync(userId: Guid, req: ConfigDurationRequest, ct: CancellationToken): Task<ConfigResponse>"
+      - "+ ConfigLevelAsync(userId: Guid, req: ConfigLevelRequest, ct: CancellationToken): Task<ConfigResponse>"
+      - "+ ConfigInteractionAsync(userId: Guid, req: ConfigInteractionRequest, ct: CancellationToken): Task<ConfigResponse>"
+      - "+ GetActiveSessionAsync(userId: Guid, ct: CancellationToken): Task<ActiveSessionResponse?>"
+
+  - name: "SessionService (InterviewAPI)"
+    column: 2
+    w: 430
+    fields:
+      - "- ValidDurations: int[]"
+      - "- ValidLevels: string[]"
+      - "- ValidModes: string[]"
+      - "- _repo: ISessionRepository"
+      - "- _aiServiceClient: IAiServiceClient"
+      - "- _paymentApiClient: IPaymentApiClient"
+      - "- _db: InterviewDbContext"
+      - "- _logger: ILogger<SessionService>"
+      - "- _scopeFactory: IServiceScopeFactory"
+      - "- _httpContextAccessor: IHttpContextAccessor"
+      - "- _biometricsRepository: IProfileBiometricsRepository"
+      - "- _verificationEventRepository: ISessionVerificationEventRepository"
+      - "- _configuration: IConfiguration"
+    methods:
+      - "+ ConfigDurationAsync(userId: Guid, req: ConfigDurationRequest, ct: CancellationToken): Task<ConfigResponse>"
+      - "+ ConfigLevelAsync(userId: Guid, req: ConfigLevelRequest, ct: CancellationToken): Task<ConfigResponse>"
+      - "+ ConfigInteractionAsync(userId: Guid, req: ConfigInteractionRequest, ct: CancellationToken): Task<ConfigResponse>"
+      - "+ GetActiveSessionAsync(userId: Guid, ct: CancellationToken): Task<ActiveSessionResponse?>"
+      - "- ResolveSessionAsync(sessionId: Guid?, userId: Guid, ct: CancellationToken, factory: Func<InterviewSession>): Task<InterviewSession>"
+
+  - name: SessionGuardException
+    column: 3
+    w: 400
+    fields:
+      - "+ StatusCode: int"
+      - "+ ErrorCode: string"
+      - "+ RetryAfterSeconds: int?"
+      - "+ ActiveSessionId: Guid?"
+    methods:
+      - "+ SessionGuardException(statusCode: int, errorCode: string, message: string, retryAfterSeconds: int?, activeSessionId: Guid?)"
+
+  - name: ConfigDurationRequest
+    column: 4
+    w: 340
+    fields:
+      - "+ SessionId: Guid?"
+      - "+ DurationMinutes: int"
+    methods: []
+
+  - name: ConfigLevelRequest
+    column: 4
+    w: 340
+    fields:
+      - "+ SessionId: Guid?"
+      - "+ Level: string"
+    methods: []
+
+  - name: ConfigInteractionRequest
+    column: 4
+    w: 340
+    fields:
+      - "+ SessionId: Guid?"
+      - "+ Mode: string"
+    methods: []
+
+  - name: ConfigResponse
+    column: 4
+    w: 340
+    fields:
+      - "+ SessionId: Guid"
+      - "+ UpdatedField: string"
+      - "+ UpdatedValue: string"
+    methods: []
+
+  - name: IAiServiceClient
+    column: 5
+    w: 460
+    fields: []
+    methods:
+      - "+ PlanQuestionsAsync(request: AiQuestionPlanRequest, ct: CancellationToken): Task<AiQuestionPlanResponse>"
+      - "+ EvaluateAnswerAsync(request: AiEvaluateAnswerRequest, ct: CancellationToken): Task<AiEvaluateAnswerResponse>"
+      - "+ BuildReportAsync(request: AiBuildReportRequest, ct: CancellationToken): Task<AiBuildReportResponse>"
+      - "+ SynthesizeSpeechAsync(text: string, ct: CancellationToken): Task<byte[]>"
+      - "+ TranscribeAsync(audio: byte[], fileName: string, contentType: string, ct: CancellationToken): Task<string>"
+      - "+ GetHintAsync(question: string, ct: CancellationToken): Task<string>"
+      - "+ GetCatalogAsync(ct: CancellationToken): Task<AiCatalogResponse>"
+      - "+ EmbedFaceAsync(file: IFormFile, ct: CancellationToken): Task<BiometricEmbeddingResult>"
+      - "+ EmbedVoiceAsync(file: IFormFile, ct: CancellationToken): Task<BiometricEmbeddingResult>"
+      - "+ VerifyFaceLiveAsync(frames: IReadOnlyList<IFormFile>, storedEmbedding: float[], challengeJson: string, ct: CancellationToken): Task<AiFaceVerifyLiveResponse>"
+      - "+ VerifyFaceAsync(frame: IFormFile, storedEmbedding: float[], ct: CancellationToken): Task<AiFaceVerifyResponse>"
+      - "+ VerifyVoiceAsync(audio: IFormFile, storedEmbedding: float[], ct: CancellationToken): Task<AiFaceVerifyResponse>"
+      - "+ VerifyVoiceChallengeAsync(file: IFormFile, storedEmbedding: float[], expectedPhrase: string, ct: CancellationToken): Task<AiVoiceVerifyChallengeResponse>"
+
+  - name: AiCatalogResponse
+    column: 5
+    w: 460
+    fields:
+      - "+ Roles: List<string>"
+      - "+ Technologies: Dictionary<string, List<string>>"
+    methods: []
+
+  - name: ISessionRepository
+    column: 6
+    w: 400
+    fields: []
+    methods:
+      - "+ GetByIdAsync(id: Guid, ct: CancellationToken): Task<InterviewSession?>"
+      - "+ GetActiveSessionAsync(userId: Guid, ct: CancellationToken): Task<InterviewSession?>"
+      - "+ CreateAsync(session: InterviewSession, ct: CancellationToken): Task<InterviewSession>"
+      - "+ SaveChangesAsync(ct: CancellationToken): Task"
+
+  - name: "SessionRepository (InterviewAPI)"
+    column: 6
+    w: 400
+    fields:
+      - "- _db: InterviewDbContext"
+      - "- _logger: ILogger<SessionRepository>"
+    methods:
+      - "+ GetByIdAsync(id: Guid, ct: CancellationToken): Task<InterviewSession?>"
+      - "+ GetActiveSessionAsync(userId: Guid, ct: CancellationToken): Task<InterviewSession?>"
+      - "+ CreateAsync(session: InterviewSession, ct: CancellationToken): Task<InterviewSession>"
+      - "+ SaveChangesAsync(ct: CancellationToken): Task"
+
+relations:
+  - {from: "InterviewController (WebClient)", to: Controller, type: extends}
+  - {from: "InterviewController (WebClient)", to: "IInterviewService (WebClient)", type: use, label: Use}
+  - {from: "InterviewController (WebClient)", to: "IBiometricsService (WebClient)", type: use, label: Use}
+  - {from: "InterviewController (WebClient)", to: DashboardViewModel, type: use, label: Use}
+  - {from: "IInterviewService (WebClient)", to: StartInterviewResult, type: use, label: Use}
+  - {from: "IInterviewService (WebClient)", to: "CatalogResponse (WebClient)", type: use, label: Use}
+  - {from: "InterviewService (WebClient)", to: "IInterviewService (WebClient)", type: implements}
+  - {from: "InterviewService (WebClient)", to: IApiClient, type: use, label: Use}
+  - {from: "InterviewService (WebClient)", to: "ConfigResponse (WebClient)", type: use, label: Use}
+  - {from: "InterviewService (WebClient)", to: "ApiResponse<T> (WebClient)", type: use, label: Use}
+  - {from: ApiClient, to: IApiClient, type: implements}
+  - {from: "InterviewSessionController (InterviewAPI)", to: ControllerBase, type: extends}
+  - {from: "InterviewSessionController (InterviewAPI)", to: ISessionService, type: use, label: Use}
+  - {from: "InterviewSessionController (InterviewAPI)", to: IAiServiceClient, type: use, label: Use}
+  - {from: "InterviewSessionController (InterviewAPI)", to: "ApiResponse<T> (InterviewAPI)", type: use, label: Use}
+  - {from: "InterviewSessionController (InterviewAPI)", to: SessionGuardException, type: use, label: catch}
+  - {from: ISessionService, to: ConfigDurationRequest, type: use, label: Use}
+  - {from: ISessionService, to: ConfigLevelRequest, type: use, label: Use}
+  - {from: ISessionService, to: ConfigInteractionRequest, type: use, label: Use}
+  - {from: ISessionService, to: ConfigResponse, type: use, label: Use}
+  - {from: "SessionService (InterviewAPI)", to: ISessionService, type: implements}
+  - {from: "SessionService (InterviewAPI)", to: ISessionRepository, type: use, label: Use}
+  - {from: "SessionService (InterviewAPI)", to: SessionGuardException, type: use, label: throw}
+  - {from: "AiServiceClient (InterviewAPI)", to: IAiServiceClient, type: implements}
+  - {from: "AiServiceClient (InterviewAPI)", to: AiCatalogResponse, type: use, label: Use}
+  - {from: "SessionRepository (InterviewAPI)", to: ISessionRepository, type: implements}
+  - {from: "SessionRepository (InterviewAPI)", to: InterviewDbContext, type: composition}
+  - {from: InterviewDbContext, to: DbContext, type: extends}
+  - {from: InterviewDbContext, to: InterviewSession, type: composition, label: "1..*"}

@@ -1,0 +1,61 @@
+sequenceDiagram
+    participant Browser
+    participant EntryJS as entry-verify.js
+    participant InterviewController as WebClient InterviewController
+    participant VerifyCtrl as WebClient VerificationController
+    participant VerifySvc as WebClient VerificationService
+    participant Gateway as ApiGateway interview-route
+    participant SessionVerifyCtrl as SessionVerificationController
+    participant BioSvc as BiometricVerificationService
+    participant AiClient as AiServiceClient
+    participant AiLive as ai-service face verify-live
+
+    Browser->>InterviewController: GET Verify SessionId after Start
+    InterviewController-->>Browser: render Verify screen entry-verify.js data urls attemptsRemaining
+    EntryJS->>VerifyCtrl: GET Challenge sessionId modality face
+    VerifyCtrl->>VerifySvc: GetChallengeAsync
+    VerifySvc->>Gateway: GET verify challenge modality face
+    Gateway->>SessionVerifyCtrl: GET challenge
+    SessionVerifyCtrl->>BioSvc: IssueChallengeAsync
+    BioSvc-->>SessionVerifyCtrl: turn_head direction stored server side only
+    SessionVerifyCtrl-->>Gateway: 200
+    Gateway-->>VerifySvc: 200
+    VerifySvc-->>EntryJS: challenge issued not shown to user
+
+    EntryJS->>EntryJS: capture eight frames at three hundred ms interval no head turn required client side
+    EntryJS->>VerifyCtrl: POST VerifyFace sessionId frames
+    VerifyCtrl->>VerifySvc: VerifyFaceAsync
+    VerifySvc->>Gateway: POST verify face phase Entry
+    Gateway->>SessionVerifyCtrl: POST face
+    SessionVerifyCtrl->>BioSvc: VerifyFaceAsync phase Entry
+    BioSvc->>BioSvc: check failedAttempts below EntryMaxRetries three
+    BioSvc->>BioSvc: consume challenge fetch stored face embedding
+    BioSvc->>AiClient: VerifyFaceLiveAsync frames storedEmbedding challenge
+    AiClient->>AiLive: POST internal biometrics face verify-live
+    AiLive->>AiLive: compute identity_score live yaw_range moved_enough direction_ok all as diagnostics
+    AiLive-->>AiClient: passed equals identity_score at or above threshold only live is NOT part of the decision
+    AiClient-->>BioSvc: FaceVerifyLiveResponse
+    BioSvc->>BioSvc: RecordEventAsync Phase Entry Modality Face Score LivenessPassed Matched Decision
+    BioSvc-->>SessionVerifyCtrl: VerificationResultResponse Passed Score Live Reason
+    SessionVerifyCtrl-->>Gateway: 200
+    Gateway-->>VerifySvc: 200
+    VerifySvc-->>EntryJS: result
+
+    alt passed true
+        EntryJS-->>Browser: success overlay then redirect to Integrity Policy
+    else passed false
+        EntryJS->>VerifyCtrl: GET EntryGate sessionId authoritative attempts remaining
+        VerifyCtrl->>VerifySvc: GetEntryGateAsync
+        VerifySvc->>Gateway: GET verify entry-gate
+        Gateway->>SessionVerifyCtrl: GET entry-gate
+        SessionVerifyCtrl->>BioSvc: GetEntryGateStatusAsync recomputed fresh from SessionVerificationEvents every time
+        BioSvc-->>SessionVerifyCtrl: Allowed AttemptsRemaining Reason
+        SessionVerifyCtrl-->>Gateway: 200
+        Gateway-->>VerifySvc: 200
+        VerifySvc-->>EntryJS: attemptsRemaining authoritative not client counted
+        alt attempts remaining above zero
+            EntryJS-->>Browser: Try again button re issues a fresh challenge
+        else attempts exhausted
+            EntryJS-->>Browser: redirect to VerifyFailed dashboard credit never charged since GenerateQuestionAsync never ran
+        end
+    end

@@ -1,0 +1,40 @@
+sequenceDiagram
+    participant Browser
+    participant Wizard as biometric-wizard.js
+    participant ProfileCtrl as WebClient ProfileController
+    participant BioSvcWeb as WebClient BiometricsService
+    participant Gateway as ApiGateway profiles-biometrics-route
+    participant BioCtrl as ProfileBiometricsController
+    participant BioSvc as ProfileBiometricsService
+    participant AiClient as AiServiceClient
+    participant AiVoice as ai-service voice embed
+    participant Repo as ProfileBiometricsRepository
+
+    Browser->>Wizard: record voice via MediaRecorder audio webm four to twenty seconds
+    Wizard->>ProfileCtrl: POST EnrollVoice multipart voice webm
+    ProfileCtrl->>BioSvcWeb: EnrollAsync voice bytes
+    BioSvcWeb->>Gateway: POST api profiles me biometrics voice
+    Gateway->>BioCtrl: POST voice
+    BioCtrl->>BioSvc: EnrollAsync userId voice file
+    BioSvc->>AiClient: EmbedVoiceAsync file
+    AiClient->>AiVoice: POST internal biometrics voice embed
+    AiVoice->>AiVoice: load_audio_mono_16k decode webm via ffmpeg fallback resample to sixteen kHz
+    AiVoice->>AiVoice: check duration at least VOICE_MIN_DURATION_SEC three point zero seconds
+    alt too short or cannot decode
+        AiVoice-->>AiClient: 422 detail Audio too short or Cannot decode audio
+        AiClient-->>BioSvc: throw BiometricQualityException message only
+        BioSvc-->>BioCtrl: rethrow
+        BioCtrl-->>Gateway: 422 ApiResponse Fail message
+    else accepted
+        AiVoice->>AiVoice: ECAPA TDNN encode_batch embedding L2 normalized quality heuristic informational not a gate
+        AiVoice-->>AiClient: embedding dim duration_sec quality model_version
+        AiClient-->>BioSvc: BiometricEmbeddingResult
+        BioSvc->>Repo: GetAsync userId voice existing row upsert or re enrollment identity check at VoiceReEnrollmentMatchThreshold
+        BioSvc->>BioSvc: TryAwardEnrollmentBonusAsync as in Face enrollment
+        BioSvc-->>BioCtrl: BiometricEnrollResponse
+        BioCtrl-->>Gateway: 200 Enrolled
+    end
+    Gateway-->>BioSvcWeb: response
+    BioSvcWeb-->>ProfileCtrl: enrolled true or false plus bonusStatus
+    ProfileCtrl-->>Wizard: json enrolled bonusStatus
+    Wizard-->>Browser: voice captured then Done screen with bonus message if applicable

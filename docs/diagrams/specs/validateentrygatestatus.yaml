@@ -1,0 +1,142 @@
+feature: ValidateEntryGateStatus
+title: Validate Entry Gate Status
+uc_id: "UC-10"
+uc_label: "(UC-53 sub-flow)"
+backlog: [49]
+
+participants:
+  - name: Candidate
+    kind: actor
+    w: 30
+  - name: ":Verify UI"
+    kind: box
+    w: 160
+  - name: ":InterviewController\n(WebClient)"
+    kind: box
+    w: 200
+  - name: ":VerificationController\n(WebClient)"
+    kind: box
+    w: 210
+  - name: ":VerificationService\n(WebClient)"
+    kind: box
+    w: 190
+  - name: ":API Gateway"
+    kind: box
+    w: 140
+  - name: ":SessionVerificationController\n(InterviewAPI)"
+    kind: box
+    w: 250
+  - name: ":BiometricVerificationService\n(InterviewAPI)"
+    kind: box
+    w: 240
+  - name: ":SessionRepository\n(InterviewAPI)"
+    kind: box
+    w: 180
+  - name: ":ProfileBiometricsRepository\n(InterviewAPI)"
+    kind: box
+    w: 230
+  - name: ":SessionVerificationEventRepository\n(InterviewAPI)"
+    kind: box
+    w: 280
+  - name: "SQL Server"
+    kind: db
+    w: 70
+
+flow:
+  # ===== Nhánh A — page load (InterviewController.Verify, nguồn CHÍNH) =====
+  - {d: 0, t: 1, k: call, l: "1. Navigate to /Interview/Verify?id={id}"}
+  - {d: 1, t: 2, k: call, l: "2. GET Interview/Verify?id=..."}
+  - {d: 2, t: 4, k: call, l: "3. GetEntryGateAsync(id)"}
+  - {d: 4, t: 5, k: call, l: "4. GET api/interview/sessions/{sessionId}/verify/entry-gate"}
+  - {d: 5, t: 6, k: call, l: "5. Forward request to InterviewAPI (no prefix strip)"}
+  - {d: 6, t: 6, k: call, l: "6. Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier))", self: true}
+  - {d: 6, t: 7, k: call, l: "7. GetEntryGateStatusAsync(userId, sessionId)"}
+  - {d: 7, t: 7, k: call, l: 8. maxRetries = config.GetValue("Biometrics:EntryMaxRetries"), self: true}
+  - frame: opt
+    sections:
+      - guard: "[Biometrics:Enabled == false]"
+        body:
+          - {d: 7, t: 6, k: ret, l: "8.1. Return EntryGateStatusResponse{Allowed=true}"}
+          - {d: 6, t: 5, k: ret, l: "8.2. Return 200 ApiResponse.Ok(result)"}
+          - {d: 5, t: 4, k: ret, l: "8.3. Return 200"}
+          - {d: 4, t: 2, k: ret, l: "8.4. Return (true, gate, null)"}
+          - {d: 2, t: 1, k: ret, l: '8.5. Redirect to Room [see #4]'}
+          - {d: 1, t: 0, k: ret, l: "8.6. Browser follows redirect into the Room"}
+  - {d: 7, t: 8, k: call, l: "9. GetByIdAsync(sessionId) — via EnsureSessionOwnedAsync"}
+  - {d: 8, t: 10, k: call, l: "10. SELECT InterviewSession by SessionId"}
+  - {d: 10, t: 8, k: ret, l: "11. Return session row / null"}
+  - {d: 8, t: 7, k: ret, l: "12. Return InterviewSession?"}
+  - frame: opt
+    sections:
+      - guard: "[session is null OR session.UserId != userId]"
+        body:
+          - {d: 7, t: 6, k: ret, l: '12.1. throw KeyNotFoundException("Session not found.")'}
+          - {d: 6, t: 5, k: ret, l: "12.2. Return 404 ApiResponse.Fail(ex.Message)"}
+          - {d: 5, t: 4, k: ret, l: "12.3. Return 404"}
+          - {d: 4, t: 2, k: ret, l: "12.4. Return (false, null, error)"}
+          - {d: 2, t: 1, k: ret, l: '12.5. TempData["ErrorMessage"] + redirect Index (Dashboard)'}
+          - {d: 1, t: 0, k: ret, l: "12.6. Show Dashboard with error message"}
+  - {d: 7, t: 9, k: call, l: '13. GetAsync(userId, "Face")'}
+  - {d: 9, t: 10, k: call, l: '14. SELECT ProfileBiometric WHERE UserId AND Modality="Face"'}
+  - {d: 10, t: 9, k: ret, l: "15. Return row / null"}
+  - {d: 9, t: 7, k: ret, l: "16. Return ProfileBiometric?"}
+  - frame: alt
+    sections:
+      - guard: "[faceRow is null]"
+        body:
+          - {d: 7, t: 6, k: ret, l: "16.1. Return EntryGateStatusResponse{FaceEnrolled=false}"}
+      - guard: "[faceRow exists]"
+        body:
+          - {d: 7, t: 10, k: call, l: '17. ListBySessionAsync(sessionId, "Entry")'}
+          - {d: 10, t: 11, k: call, l: 18. SELECT SessionVerificationEvents WHERE Phase="Entry"}
+          - {d: 11, t: 10, k: ret, l: "19. Return event list"}
+          - {d: 10, t: 7, k: ret, l: "20. Return List<SessionVerificationEvent>"}
+          - {d: 7, t: 7, k: call, l: "21. Compute facePassed / failedAttempts / attemptsRemaining", self: true}
+          - frame: alt
+            sections:
+              - guard: "[facePassed == true]"
+                body:
+                  - {d: 7, t: 6, k: ret, l: "21.1. Return EntryGateStatusResponse{Allowed=true}"}
+              - guard: "[facePassed == false]"
+                body:
+                  - {d: 7, t: 6, k: ret, l: "21.2. Return EntryGateStatusResponse{Allowed=false}"}
+  - {d: 6, t: 5, k: ret, l: "22. Return 200 ApiResponse.Ok(result)"}
+  - {d: 5, t: 4, k: ret, l: "23. Return 200"}
+  - {d: 4, t: 2, k: ret, l: "24. Return (true, gate, null)"}
+  - frame: alt
+    sections:
+      - guard: "[gate.Allowed == true]"
+        body:
+          - {d: 2, t: 1, k: ret, l: "24.1. Redirect to Room (boundary #4 StartInterviewSession)"}
+      - guard: "[!gate.Allowed AND !gate.FaceEnrolled]"
+        body:
+          - {d: 2, t: 1, k: ret, l: '24.2. Redirect to Profile/Identity [see #1/#2]'}
+      - guard: "[!gate.Allowed AND gate.FaceEnrolled AND gate.AttemptsRemaining <= 0]"
+        body:
+          - {d: 2, t: 1, k: ret, l: 24.3. Redirect to Index}
+      - guard: "[!gate.Allowed AND gate.FaceEnrolled AND gate.AttemptsRemaining > 0]"
+        body:
+          - {d: 2, t: 1, k: ret, l: "24.4. View(VerifyViewModel{SessionId, AttemptsRemaining})"}
+  - {d: 1, t: 0, k: ret, l: 25. Show Verify page or redirect}
+
+  # ===== Nhánh B — JS re-poll (VerificationController.EntryGate), rút gọn theo duyệt =====
+  # Tail giống hệt message 5-24 ở Nhánh A (cùng endpoint InterviewAPI, cùng service/repo/DB) -
+  # KHÔNG vẽ lại 2 khung opt/alt bên trong; chỉ 1 return tóm tắt (message 30) + note giải thích.
+  - {d: 0, t: 1, k: call, l: '26. Re-poll entry-gate status [see #13]'}
+  - {d: 1, t: 3, k: call, l: "27. GET Verification/EntryGate?sessionId=..."}
+  - {d: 3, t: 4, k: call, l: "28. GetEntryGateAsync(sessionId)"}
+  - {d: 4, t: 5, k: call, l: "29. GET api/interview/sessions/{sessionId}/verify/entry-gate"}
+  - {d: 5, t: 4, k: ret, l: 30. Return 200 EntryGateStatusResponse}
+  - {d: 4, t: 3, k: ret, l: "31. Return (true, gate, null)"}
+  - {d: 3, t: 1, k: ret, l: "32. Return 200 JSON {allowed, attemptsRemaining, ...}"}
+  - frame: alt
+    sections:
+      - guard: "[gate.allowed == true]"
+        body:
+          - {d: 1, t: 0, k: ret, l: '32.1. completeSuccessfulVerification() [see #11]'}
+      - guard: "[gate.allowed == false AND attemptsRemaining <= 0]"
+        body:
+          - {d: 1, t: 0, k: ret, l: 32.2. Show "Maximum attempts reached"}
+      - guard: "[gate.allowed == false AND attemptsRemaining > 0]"
+        body:
+          - {d: 1, t: 0, k: ret, l: '32.3. Update "Attempts left: N"'}

@@ -1,0 +1,124 @@
+feature: GetVerificationChallenge
+title: Get Verification Challenge
+uc_id: "UC-10"
+uc_label: "(UC-53 sub-flow)"
+backlog: [66]
+
+participants:
+  - name: Candidate
+    kind: actor
+    w: 30
+  - name: ":Verify UI"
+    kind: box
+    w: 160
+  - name: ":VerificationController\n(WebClient)"
+    kind: box
+    w: 210
+  - name: ":VerificationService\n(WebClient)"
+    kind: box
+    w: 190
+  - name: ":API Gateway"
+    kind: box
+    w: 140
+  - name: ":SessionVerificationController\n(InterviewAPI)"
+    kind: box
+    w: 250
+  - name: ":BiometricVerificationService\n(InterviewAPI)"
+    kind: box
+    w: 240
+  - name: ":SessionRepository\n(InterviewAPI)"
+    kind: box
+    w: 180
+  - name: ":ProfileBiometricsRepository\n(InterviewAPI)"
+    kind: box
+    w: 230
+  - name: ":SessionVerificationChallengeRepository\n(InterviewAPI)"
+    kind: box
+    w: 300
+  - name: "SQL Server"
+    kind: db
+    w: 70
+
+flow:
+  - {d: 0, t: 1, k: call, l: "1. Open Verify page (redirect from Start, or page reload)"}
+  - {d: 1, t: 1, k: call, l: "2. prepare(): auto-fetch challenge before enabling camera", self: true}
+  - {d: 1, t: 2, k: call, l: "3. GET Verification/Challenge?sessionId&modality=face"}
+  - {d: 2, t: 2, k: call, l: "4. validate sessionId != Guid.Empty AND modality not blank", self: true}
+  - frame: opt
+    sections:
+      - guard: "[sessionId == Guid.Empty OR modality is blank]"
+        body:
+          - {d: 2, t: 1, k: ret, l: '4.1. Return 400 {error: "sessionId and modality are required."}'}
+          - {d: 1, t: 0, k: ret, l: '4.2. Show "Challenge unavailable" + "Try again" button'}
+  - {d: 2, t: 3, k: call, l: "5. GetChallengeAsync(sessionId, modality)"}
+  - {d: 3, t: 4, k: call, l: "6. GET api/interview/sessions/{id}/verify/challenge"}
+  - {d: 4, t: 5, k: call, l: "7. Forward request to InterviewAPI (no prefix strip)"}
+  - {d: 5, t: 5, k: call, l: '8. NormalizeModality(modality) -> "face"|"voice"|null', self: true}
+  - frame: opt
+    sections:
+      - guard: "[normalized is null]"
+        body:
+          - {d: 5, t: 4, k: ret, l: "8.1. Return 400 {error}"}
+          - {d: 4, t: 3, k: ret, l: "8.2. Return 400"}
+          - {d: 3, t: 2, k: ret, l: "8.3. Return (false, null, error)"}
+          - {d: 2, t: 1, k: ret, l: "8.4. Return 400 {error}"}
+          - {d: 1, t: 0, k: ret, l: '8.5. Show "Challenge unavailable" + "Try again" button'}
+  - {d: 5, t: 5, k: call, l: "9. Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier))", self: true}
+  - {d: 5, t: 6, k: call, l: "10. IssueChallengeAsync(userId, sessionId, normalized)"}
+  - {d: 6, t: 6, k: call, l: "11. EnsureEnabled()", self: true}
+  - frame: opt
+    sections:
+      - guard: "[Biometrics:Enabled == false]"
+        body:
+          - {d: 6, t: 5, k: ret, l: 11.1. throw InvalidOperationException}
+          - {d: 5, t: 4, k: ret, l: "11.2. Return 400 ApiResponse.Fail(ex.Message)"}
+          - {d: 4, t: 3, k: ret, l: "11.3. Return 400"}
+          - {d: 3, t: 2, k: ret, l: "11.4. Return (false, null, error)"}
+          - {d: 2, t: 1, k: ret, l: "11.5. Return 400 {error}"}
+          - {d: 1, t: 0, k: ret, l: '11.6. Show "Challenge unavailable" + "Try again" button'}
+  - {d: 6, t: 7, k: call, l: "12. GetByIdAsync(sessionId) — via EnsureSessionOwnedAsync"}
+  - {d: 7, t: 10, k: call, l: "13. SELECT InterviewSession by SessionId"}
+  - {d: 10, t: 7, k: ret, l: "14. Return session row / null"}
+  - {d: 7, t: 6, k: ret, l: "15. Return InterviewSession?"}
+  - frame: opt
+    sections:
+      - guard: "[session is null OR session.UserId != userId]"
+        body:
+          - {d: 6, t: 5, k: ret, l: '15.1. throw KeyNotFoundException("Session not found.")'}
+          - {d: 5, t: 4, k: ret, l: "15.2. Return 404 ApiResponse.Fail(ex.Message)"}
+          - {d: 4, t: 3, k: ret, l: "15.3. Return 404"}
+          - {d: 3, t: 2, k: ret, l: "15.4. Return (false, null, error)"}
+          - {d: 2, t: 1, k: ret, l: "15.5. Return 400 {error}"}
+          - {d: 1, t: 0, k: ret, l: '15.6. Show "Challenge unavailable" + "Try again" button'}
+  - {d: 6, t: 8, k: call, l: "16. GetAsync(userId, modality) — via EnsureEnrolledAsync"}
+  - {d: 8, t: 10, k: call, l: "17. SELECT ProfileBiometric WHERE UserId AND Modality"}
+  - {d: 10, t: 8, k: ret, l: "18. Return row / null"}
+  - {d: 8, t: 6, k: ret, l: "19. Return ProfileBiometric?"}
+  - frame: opt
+    sections:
+      - guard: "[no ProfileBiometric enrolled for this modality]"
+        body:
+          - {d: 6, t: 5, k: ret, l: 19.1. throw InvalidOperationException}
+          - {d: 5, t: 4, k: ret, l: "19.2. Return 400 ApiResponse.Fail(ex.Message)"}
+          - {d: 4, t: 3, k: ret, l: "19.3. Return 400"}
+          - {d: 3, t: 2, k: ret, l: "19.4. Return (false, null, error)"}
+          - {d: 2, t: 1, k: ret, l: "19.5. Return 400 {error}"}
+          - {d: 1, t: 0, k: ret, l: '19.6. Show "Enroll your face first" + "Try again" button'}
+  - frame: alt
+    sections:
+      - guard: '[modality == "Face"]'
+        body:
+          - {d: 6, t: 6, k: call, l: "20.1. direction = \"left\"|\"right\"; build {type:\"turn_head\"}", self: true}
+      - guard: '[modality == "Voice"]'
+        body:
+          - {d: 6, t: 6, k: call, l: "20.2. phrase = ChallengePhrases[Random]; build {phrase}", self: true}
+  - {d: 6, t: 9, k: call, l: 21. AddAsync(SessionVerificationChallenge)}
+  - {d: 9, t: 10, k: call, l: "22. INSERT SessionVerificationChallenge"}
+  - {d: 10, t: 9, k: ret, l: "23. Return"}
+  - {d: 9, t: 6, k: ret, l: "24. Return"}
+  - {d: 6, t: 5, k: ret, l: 25. Return VerificationChallengeResponse}
+  - {d: 5, t: 4, k: ret, l: "26. Return 200 ApiResponse.Ok(result)"}
+  - {d: 4, t: 3, k: ret, l: "27. Return 200"}
+  - {d: 3, t: 2, k: ret, l: "28. Return (true, challenge, null)"}
+  - {d: 2, t: 1, k: ret, l: "29. Return 200 JSON challenge"}
+  - {d: 1, t: 0, k: ret, l: 30. Enable camera + "I'm ready" button}

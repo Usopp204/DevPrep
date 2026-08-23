@@ -1,0 +1,21 @@
+sequenceDiagram
+    participant Browser
+    participant ProfileCtrl as WebClient ProfileController
+    participant BioSvcWeb as WebClient BiometricsService
+    participant Gateway as ApiGateway profiles-biometrics-root-route
+    participant BioCtrl as ProfileBiometricsController
+    participant BioSvc as ProfileBiometricsService
+    participant Repo as ProfileBiometricsRepository
+
+    Browser->>ProfileCtrl: GET Profile Identity page load
+    ProfileCtrl->>BioSvcWeb: GetStatusAsync
+    BioSvcWeb->>Gateway: GET api profiles me biometrics
+    Gateway->>BioCtrl: GET status
+    BioCtrl->>BioSvc: GetStatusAsync userId
+    BioSvc->>Repo: ListByUserAsync userId
+    Repo-->>BioSvc: rows for Face and or Voice modality
+    BioSvc-->>BioCtrl: BiometricStatusResponse FaceEnrolled FaceUpdatedAt VoiceEnrolled VoiceUpdatedAt
+    BioCtrl-->>Gateway: 200
+    Gateway-->>BioSvcWeb: response
+    BioSvcWeb-->>ProfileCtrl: status
+    ProfileCtrl-->>Browser: wizard guide screen shows Enrolled check mark or Look at the camera per modality

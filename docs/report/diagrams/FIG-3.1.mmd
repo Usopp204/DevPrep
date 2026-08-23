@@ -1,0 +1,51 @@
+sequenceDiagram
+    participant Browser
+    participant RoomJS as interview-room.js
+    participant InterviewController as WebClient InterviewController
+    participant InterviewSvc as WebClient InterviewService
+    participant Gateway as ApiGateway interview-route
+    participant SessionCtrl as InterviewSessionController
+    participant SessionSvc as SessionService
+    participant Repo as SessionRepository
+    participant Queue as BoundedGradingQueue
+    participant Worker as GradingBackgroundService
+    participant EvalClient as EvaluationApiClient
+    participant EvalAPI as EvaluationAPI
+
+    Browser->>RoomJS: type answer click Send
+    RoomJS->>RoomJS: content filter mirror check DevPrepContentFilter
+    RoomJS->>InterviewController: POST Message SessionQuestionId content
+    InterviewController->>InterviewSvc: SendMessageAsync
+    InterviewSvc->>Gateway: POST sessions SessionId message
+    Gateway->>SessionCtrl: POST message
+    SessionCtrl->>SessionSvc: SendMessageAsync
+    SessionSvc->>SessionSvc: FinalizeIfTimeExpiredAsync deadline check
+    SessionSvc->>SessionSvc: RequireIntegrityPolicyAccepted
+    SessionSvc->>SessionSvc: Skip cooldown check if Reason Skipped
+    SessionSvc->>SessionSvc: ContentModerationHelper IsAcceptable server enforcement
+    SessionSvc->>Repo: HasUserAnswerAsync existence guard
+    SessionSvc->>Repo: IncrementAnsweredIfAsync atomic per turn claim
+    Repo-->>SessionSvc: claimed true only for the winner
+    SessionSvc->>Repo: AddChatMessageAsync persist User Answer
+    SessionSvc->>Queue: EnqueueAsync GradingWorkItem blocking must never drop
+    SessionSvc->>Repo: find next unanswered question and AddChatMessageAsync AI Question
+    SessionSvc-->>SessionCtrl: MessageResponse NextQuestion or Ended
+    SessionCtrl-->>Gateway: 200
+    Gateway-->>InterviewSvc: 200
+    InterviewSvc-->>InterviewController: message result
+    InterviewController-->>RoomJS: json MessageResponse
+    RoomJS-->>Browser: render next question answer already returned before grading finishes
+
+    Note over Queue,Worker: Grading happens asynchronously after the response above was already sent
+    Worker->>Queue: ReadAllAsync one of four workers picks up the work item
+    Worker->>EvalClient: EvaluateAnswerAsync sessionId sessionQuestionId payload bearerToken
+    EvalClient->>EvalAPI: POST api evaluation sessions SessionId answers SessionQuestionId
+    alt success
+        EvalAPI-->>EvalClient: 200 EvaluationId
+        EvalClient-->>Worker: success attempt recorded
+    else retryable failure and attempts remain
+        EvalAPI-->>EvalClient: error category retryable true
+        Worker->>Worker: wait RetryDelays 2s then 5s and try again up to MaximumAttempts three
+    else attempts exhausted or non retryable
+        Worker->>Worker: log and drop this attempt the answer stays ungraded until recovery
+    end

@@ -1,0 +1,8 @@
+name: "BiometricQualityException"
+fields:
+  - "+ QualityCode: string?"
+  - "+ FaceCount: int?"
+methods:
+  - "+ BiometricQualityException(message: string)"
+  - "+ BiometricQualityException(message: string, faceCount: int)"
+  - "+ BiometricQualityException(message: string, qualityCode: string?, faceCount: int? = null)"

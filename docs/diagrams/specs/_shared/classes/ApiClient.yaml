@@ -1,0 +1,7 @@
+# Shared class body — source/WebClient/Services/Shared/ApiClient.cs (FULL).
+# Primary-constructor parameter `httpClient` is the backing store of the property.
+name: ApiClient
+fields: []
+methods:
+  - "+ ApiClient(httpClient: HttpClient)"
+  - "+ HttpClient: HttpClient"

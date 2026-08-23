@@ -1,0 +1,55 @@
+sequenceDiagram
+    participant Browser
+    participant InterviewController as WebClient InterviewController
+    participant InterviewSvc as WebClient InterviewService
+    participant Gateway as ApiGateway interview-route
+    participant SessionCtrl as InterviewSessionController
+    participant SessionSvc as SessionService
+    participant Repo as SessionRepository
+    participant AiClient as AiServiceClient
+    participant AiInternal as ai-service internal.py
+    participant Chroma as chroma_store
+
+    Browser->>InterviewController: POST Interview Start form Position JD FocusAreas
+    InterviewController->>InterviewSvc: StartInterviewAsync
+    InterviewSvc->>Gateway: PUT api interview sessions config duration
+    Gateway->>SessionCtrl: PUT config duration
+    SessionCtrl->>SessionSvc: ConfigDurationAsync
+    SessionSvc->>Repo: CreateAsync new session Status Configured
+    Repo-->>SessionSvc: session with SessionId
+    SessionSvc-->>SessionCtrl: ConfigResponse SessionId
+    SessionCtrl-->>Gateway: 200 ConfigResponse
+    Gateway-->>InterviewSvc: 200 ConfigResponse
+    InterviewSvc->>Gateway: PUT config level SessionId
+    Gateway->>SessionCtrl: PUT config level
+    SessionCtrl->>SessionSvc: ConfigLevelAsync
+    SessionSvc-->>SessionCtrl: ConfigResponse
+    SessionCtrl-->>Gateway: 200
+    Gateway-->>InterviewSvc: 200
+    InterviewSvc->>Gateway: PUT config interaction SessionId
+    Gateway->>SessionCtrl: PUT config interaction
+    SessionCtrl->>SessionSvc: ConfigInteractionAsync
+    SessionSvc-->>SessionCtrl: ConfigResponse
+    SessionCtrl-->>Gateway: 200
+    Gateway-->>InterviewSvc: 200
+    InterviewSvc->>Gateway: POST sessions init SessionId Position Jd FocusAreas
+    Gateway->>SessionCtrl: POST init
+    SessionCtrl->>SessionSvc: InitAsync
+    SessionSvc->>Repo: GetByIdAsync verify Status Configured
+    Repo-->>SessionSvc: session
+    SessionSvc->>SessionSvc: check face enrolled if BiometricsEnabled
+    SessionSvc->>AiClient: PlanQuestionsAsync Position Level FocusAreas DurationMin
+    AiClient->>AiInternal: POST internal questions plan
+    AiInternal->>Chroma: build_question_pool where position difficulty category
+    Chroma-->>AiInternal: pool of questions from question bank
+    AiInternal-->>AiClient: PlanOut list of PlannedQuestion
+    AiClient-->>SessionSvc: AiQuestionPlanResponse
+    SessionSvc->>Repo: AddSessionQuestionsAsync map to SessionQuestion rows
+    SessionSvc->>Repo: SaveChangesAsync Status Initialized
+    SessionSvc->>Repo: CreateRoomAsync InterviewRoom Status Active
+    Repo-->>SessionSvc: room
+    SessionSvc-->>SessionCtrl: InitResponse SessionId RoomId FirstQuestion
+    SessionCtrl-->>Gateway: 200 InitResponse
+    Gateway-->>InterviewSvc: 200 InitResponse
+    InterviewSvc-->>InterviewController: StartInterviewResult Ok SessionId
+    InterviewController-->>Browser: Redirect to Verify SessionId

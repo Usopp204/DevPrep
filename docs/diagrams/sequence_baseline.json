@@ -1,0 +1,148 @@
+{
+  "_passes": {
+    "rename-2026-08-14": {
+      "what": "Page-name pass across all 22 files (44 pages). The <diagram name> attribute of both pages was rewritten to the format 'Sequence|Class - <Name> [UC-xx] [BL#...]', with '(UC-xx sub-flow)' for sub-flows and a comma list for multi-UC pages. This replaced the stale UC-07/09/10/11 numbering, which was present on 18 pages across 9 files.",
+      "scope": "The name attribute of the two <diagram> tags in each file. NOTHING else.",
+      "proof": "For every file: (a) stripping the name attribute from both <diagram> tags makes the before and after bytes identical; (b) every mxCell is identical on id, value, style, parent and geometry; (c) exactly 2 <diagram> tags differ. 0 files showed any change beyond the name attribute.",
+      "why_not_baseline_moved": "A name-only rewrite across 22 files would otherwise produce 22 near-identical baseline_moved paragraphs. baseline_moved stays reserved for content edits (see EvaluateInterviewAnswer, EnterInterviewRoom, EnrollFaceBiometric, ConfigureInterviewSession); a rename records a one-line renamed_by pointer instead.",
+      "files": [
+        "AcceptIntegrityPolicy.drawio",
+        "ChargeAndActivateSession.drawio",
+        "CheckBiometricEnrollment.drawio",
+        "ConductInterviewQA.drawio",
+        "ConfigureInterviewSession.drawio",
+        "EndInterviewSession.drawio",
+        "EnrollFaceBiometric.drawio",
+        "EnrollVoiceBiometric.drawio",
+        "EnterInterviewRoom.drawio",
+        "EvaluateInterviewAnswer.drawio",
+        "GenerateInterviewHint.drawio",
+        "GetVerificationChallenge.drawio",
+        "PauseResumeSession.drawio",
+        "ReportCameraViolation.drawio",
+        "ResumeActiveSession.drawio",
+        "StartInterviewSession.drawio",
+        "ValidateEntryGateStatus.drawio",
+        "VerifyFaceEntryGate.drawio",
+        "VerifyFaceInSession.drawio",
+        "VerifyVoiceAnswer.drawio",
+        "ViewEvaluationReport.drawio",
+        "VoiceInteraction.drawio"
+      ]
+    }
+  },
+  "AcceptIntegrityPolicy.drawio": {
+    "renamed_by": "rename-2026-08-14",
+    "sequence_bytes": 39918,
+    "sequence_sha256": "585e50e48ca72e5a795587c344f9666b6195830b6cd03bb73426d2194360f2b8"
+  },
+  "ChargeAndActivateSession.drawio": {
+    "renamed_by": "rename-2026-08-14",
+    "sequence_bytes": 54370,
+    "sequence_sha256": "9ce9688c7fc4a42e4dba8d1139242ac159a26ab9023eb581b80c1aab1615b9e0"
+  },
+  "CheckBiometricEnrollment.drawio": {
+    "renamed_by": "rename-2026-08-14",
+    "sequence_bytes": 28452,
+    "sequence_sha256": "59c4111840309692346d948a29411f9552d8089e30237fec2fed1c384aa13636"
+  },
+  "ConductInterviewQA.drawio": {
+    "renamed_by": "rename-2026-08-14",
+    "sequence_bytes": 70436,
+    "sequence_sha256": "fcc21e3ce5f50120067637dc7a2d4449160f2af82f20e2415e2a7eae9a1ea8a5"
+  },
+  "ConfigureInterviewSession.drawio": {
+    "baseline_moved": "First baseline for the hand-maintained reference file, captured AFTER a scoped section 6 edit granted by duyentq. One message value changed on the sequence page (cell s-m93): '19. GetStatusAsync(ct) [see #1]' -> '[see #22]'. The reference pointed at #1 EnrollFaceBiometric for the biometric-status read, but that read moved to #22 CheckBiometricEnrollment when #1's Phase 0 was collapsed, so the old target no longer contained the referenced content. An attribute-level diff over all 309 cells confirmed exactly one value attribute changed - no style, parent, geometry or cell added or removed. The second [see #1] on this page (B.2, the redirect to Identity to enroll) is correct and was left alone. The class page was NOT regenerated: this file has no class_specs entry by design and is covered by BASELINE_ONLY in rebuild_all.py.",
+    "renamed_by": "rename-2026-08-14",
+    "sequence_bytes": 68240,
+    "sequence_sha256": "86aa9720303cf56e32f5a985634963ba607d4da57d31207eb142c344a96ee465"
+  },
+  "EndInterviewSession.drawio": {
+    "renamed_by": "rename-2026-08-14",
+    "sequence_bytes": 66267,
+    "sequence_sha256": "319c48b0c52ed54497221c7fdd77afc7118da8bab56f5cdfbf77db41cef381e2"
+  },
+  "EnrollFaceBiometric.drawio": {
+    "baseline_moved": "Re-baselined under the scoped section 6 exception granted by duyentq. Phase 0 (the 23-message GetStatusAsync read, controller -> service -> repository -> SQL plus its alt error branch) was replaced by a 6-message cross-reference to #22 CheckBiometricEnrollment, which now owns that flow. 109 -> 92 messages. No participant was orphaned (Phase 1 uses all 13), so the participant block is unchanged. Message numbers 7-17 are deliberately left unused so Phase 1 keeps its original numbering and stays out of the diff. The class page was NOT touched (byte-identical, verified). Previous sequence_sha256: d4c55a1d12e4a7781cedcd8b817fb8a9e7eb96d52c9ad9fb07943b7c57ecd28b.",
+    "renamed_by": "rename-2026-08-14",
+    "sequence_bytes": 55016,
+    "sequence_sha256": "8061ba3426ae5394d1945c01d89b909f1eec2daf69591d8da39cd10d9aec3e7b"
+  },
+  "EnrollVoiceBiometric.drawio": {
+    "renamed_by": "rename-2026-08-14",
+    "sequence_bytes": 66378,
+    "sequence_sha256": "0fa6fc106ae204fa7cd569ccf853ca55eb2c5ad7c5f5831c0713dec15fb50d35"
+  },
+  "EnterInterviewRoom.drawio": {
+    "baseline_moved": "Re-baselined under the scoped section 6 exception granted by duyentq. Phase 2 (the whole of GenerateQuestionAsync: three guards, the atomic Initialized->InProgress transition, the one-time credit charge, its rollback and refund) was extracted to #20 ChargeAndActivateSession and replaced by one cross-reference call+return plus the two room-entry failure branches, the same pattern message 5 already used for #14. 117 -> 44 messages: 77 removed, 4 retained (the WebClient-level re-fetch and its opt), 4 added. Four participants (SessionRepository, SessionVerificationEventRepository, PaymentApiClient, PaymentAPI) became unreferenced and were removed; SQL Server reindexed 12 -> 8. Phase 1 and Phase 3 are unchanged apart from that reindex. The class page was NOT touched (byte-identical, verified). Previous sequence_sha256: c3d365eae521c0730d5fe63e7a3d2adacd2dc1a221295922be4a085a115ef4f0.",
+    "renamed_by": "rename-2026-08-14",
+    "sequence_bytes": 30650,
+    "sequence_sha256": "1d8687ba1a4a1488fa8de6fd0962de87c363f5f4c4c105187ce1c5b633042ba4"
+  },
+  "EvaluateInterviewAnswer.drawio": {
+    "baseline_moved": "Re-baselined under the scoped section 6 exception granted by duyentq. Two message value attributes were corrected on the sequence page (cells s-m47, s-m48): they described a Task.Run / ScheduleGrading dispatch that no longer exists. Grading is enqueued on IGradingQueue and drained by GradingBackgroundService (SessionService.cs:936-952). No lifeline, cell or coordinate changed - an attribute-level diff confirmed exactly two value attributes differ across all 251 cells. Previous sha256: 07eaf7374674844a026ccb1689f04d51f2740bfed44952ebeca131b9d5ddcff7",
+    "renamed_by": "rename-2026-08-14",
+    "sequence_bytes": 31209,
+    "sequence_sha256": "d2004cf1a45c92666b26039bef5ae270b61491ed2da5ffb7f16a14c6d773c3b3"
+  },
+  "GenerateInterviewHint.drawio": {
+    "renamed_by": "rename-2026-08-14",
+    "sequence_bytes": 58495,
+    "sequence_sha256": "2bcb78b629c688487a6e442e978952dd9a252bf98ce262d050ab63dafb6cd731"
+  },
+  "GetVerificationChallenge.drawio": {
+    "renamed_by": "rename-2026-08-14",
+    "sequence_bytes": 40621,
+    "sequence_sha256": "463cb506193b8ccf308371dfc22fbe908f8bb30c2c70a1dcbe91a322713e0ee0"
+  },
+  "PauseResumeSession.drawio": {
+    "renamed_by": "rename-2026-08-14",
+    "sequence_bytes": 54283,
+    "sequence_sha256": "ff0567eabff95ca5d35086b9a17ce00ee157e4102f84d49a4c5ce8ae7081ddcf"
+  },
+  "ReportCameraViolation.drawio": {
+    "renamed_by": "rename-2026-08-14",
+    "sequence_bytes": 60733,
+    "sequence_sha256": "34bdd7b35a20f0779d556566e0f63559eae9c46d8472793d465b312e23c38b9c"
+  },
+  "ResumeActiveSession.drawio": {
+    "renamed_by": "rename-2026-08-14",
+    "sequence_bytes": 38563,
+    "sequence_sha256": "a381f9d01b124fb6fbc7e5aec184383208a8ee2bc2132d5d740304c4c850f2c1"
+  },
+  "StartInterviewSession.drawio": {
+    "renamed_by": "rename-2026-08-14",
+    "sequence_bytes": 39638,
+    "sequence_sha256": "686ed8f7af2b01230c732f2111bed74d88676836fbe86800c4a17b58c80d63d9"
+  },
+  "ValidateEntryGateStatus.drawio": {
+    "renamed_by": "rename-2026-08-14",
+    "sequence_bytes": 43918,
+    "sequence_sha256": "32614202f2583d6087347619ee7df9559b0504928240d48afc2bcf3b9ec5d28f"
+  },
+  "VerifyFaceEntryGate.drawio": {
+    "renamed_by": "rename-2026-08-14",
+    "sequence_bytes": 58946,
+    "sequence_sha256": "0acb49b013443de2c544b39d3e0a1595673c477687d32d61744cf8a90031fe4c"
+  },
+  "VerifyFaceInSession.drawio": {
+    "renamed_by": "rename-2026-08-14",
+    "sequence_bytes": 70300,
+    "sequence_sha256": "69c2ff02a3cc599e2840aba6a80ad62c51fce7ed791941808746f6e7707d1e3d"
+  },
+  "VerifyVoiceAnswer.drawio": {
+    "renamed_by": "rename-2026-08-14",
+    "sequence_bytes": 70868,
+    "sequence_sha256": "0b07925f1d1f596fe300d587ad7dd39019a599d6029ff23bb90660e39f66cb5f"
+  },
+  "ViewEvaluationReport.drawio": {
+    "renamed_by": "rename-2026-08-14",
+    "sequence_bytes": 73477,
+    "sequence_sha256": "440f406b1b4f9c01e23e4381d6947d10e526a3606b2b099d3e3145569b627c11"
+  },
+  "VoiceInteraction.drawio": {
+    "renamed_by": "rename-2026-08-14",
+    "sequence_bytes": 44180,
+    "sequence_sha256": "526ebeb246e42e44a6d1a12dd391c547673c5c86fb87bee106cd33412a089e8f"
+  }
+}

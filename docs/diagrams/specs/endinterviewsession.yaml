@@ -1,0 +1,204 @@
+feature: EndInterviewSession
+title: End Interview Session
+uc_id: "UC-09"
+uc_label: "[UC-47]"
+backlog: [37, 61]
+
+participants:
+  - name: Candidate
+    kind: actor
+    w: 30
+  - name: ":Interview Room UI"
+    kind: box
+    w: 180
+  - name: ":InterviewController\n(WebClient)"
+    kind: box
+    w: 200
+  - name: ":InterviewService\n(WebClient)"
+    kind: box
+    w: 190
+  - name: ":API Gateway"
+    kind: box
+    w: 140
+  - name: ":InterviewSessionController\n(InterviewAPI)"
+    kind: box
+    w: 250
+  - name: ":SessionService\n(InterviewAPI)"
+    kind: box
+    w: 190
+  - name: ":SessionRepository\n(InterviewAPI)"
+    kind: box
+    w: 200
+  - name: "SQL Server"
+    kind: db
+    w: 70
+
+flow:
+  - frame: alt
+    sections:
+      # =============== A. Auto-complete (BL#37) ===============
+      - guard: "[interview deadline reached OR the server reports the session is over]"
+        body:
+          - {d: 0, t: 1, k: call, l: "1. [auto] countdown hit 0 -> completeInterview()"}
+          - {d: 1, t: 1, k: call, l: "2. completeInterview(): cleanupTransientUi(); ended=true", self: true}
+          - {d: 1, t: 2, k: call, l: "3. POST /Interview/CompleteSession?id={id}"}
+          - {d: 2, t: 3, k: call, l: "4. CompleteSessionAsync(id, ct)"}
+          - {d: 3, t: 4, k: call, l: "5. POST api/interview/sessions/{sessionId}/complete"}
+          - {d: 4, t: 5, k: call, l: "6. Forward (route interview-route, no prefix strip)"}
+          - {d: 5, t: 5, k: call, l: "7. Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier))", self: true}
+          - {d: 5, t: 6, k: call, l: "8. CompleteSessionAsync(userId, sessionId, ct)"}
+          - {d: 6, t: 7, k: call, l: "9. GetByIdAsync(sessionId, ct)"}
+          - {d: 7, t: 8, k: call, l: "10. SELECT InterviewSession WHERE SessionId AND !IsDeleted"}
+          - {d: 8, t: 7, k: ret, l: "11. Return session row / null"}
+          - {d: 7, t: 6, k: ret, l: "12. Return InterviewSession?"}
+          - frame: opt
+            sections:
+              - guard: "[session is null OR session.UserId != userId]"
+                body:
+                  - {d: 6, t: 5, k: ret, l: 'E1.1. throw InvalidOperationException("Session not found.")'}
+                  - {d: 5, t: 4, k: ret, l: "E1.2. Return 400 ApiResponse.Fail(ex.Message)"}
+                  - {d: 4, t: 3, k: ret, l: "E1.3. Return 400"}
+                  - {d: 3, t: 2, k: ret, l: "E1.4. Return ApiCallResult.Fail(message, 400)"}
+                  - {d: 2, t: 1, k: ret, l: "E1.5. Return 400 { error }"}
+                  - {d: 1, t: 0, k: ret, l: "E1.6. appendBubble(\"AI\", \"Could not finalize: ...\")"}
+          - frame: opt
+            sections:
+              - guard: '[session.Status is not terminal AND session.Status != "InProgress"]'
+                body:
+                  - {d: 6, t: 5, k: ret, l: "E2.1. throw InvalidOperationException"}
+                  - {d: 5, t: 4, k: ret, l: "E2.2. Return 400 ApiResponse.Fail(ex.Message)"}
+                  - {d: 4, t: 3, k: ret, l: "E2.3. Return 400"}
+                  - {d: 3, t: 2, k: ret, l: "E2.4. Return ApiCallResult.Fail(message, 400)"}
+                  - {d: 2, t: 1, k: ret, l: "E2.5. Return 400 { error }"}
+                  - {d: 1, t: 0, k: ret, l: "E2.6. appendBubble(\"AI\", \"Could not finalize: ...\")"}
+          - frame: opt
+            sections:
+              - guard: '[session.Status == "InProgress" AND (session.StartedAt is null OR elapsed < DurationMinutes * 60)]'
+                body:
+                  - {d: 6, t: 5, k: ret, l: "E3.1. throw InvalidOperationException"}
+                  - {d: 5, t: 4, k: ret, l: "E3.2. Return 400 ApiResponse.Fail(ex.Message)"}
+                  - {d: 4, t: 3, k: ret, l: "E3.3. Return 400"}
+                  - {d: 3, t: 2, k: ret, l: "E3.4. Return ApiCallResult.Fail(message, 400)"}
+                  - {d: 2, t: 1, k: ret, l: "E3.5. Return 400 { error }"}
+                  - {d: 1, t: 0, k: ret, l: "E3.6. appendBubble(\"AI\", \"Could not finalize: ...\")"}
+          - frame: alt
+            sections:
+              - guard: "[IsTerminalStatus(session.Status) - already Completed / Cancelled / Expired]"
+                body:
+                  - {d: 6, t: 6, k: call, l: "B-a.1. Reuse the stored Status/EndedAt", self: true}
+              - guard: '[session.Status == "InProgress" AND elapsed >= DurationMinutes * 60]'
+                body:
+                  - {d: 6, t: 7, k: call, l: "B-b.1. GetRoomBySessionAsync(sessionId, ct)"}
+                  - {d: 7, t: 8, k: call, l: "B-b.2. SELECT InterviewRoom WHERE SessionId"}
+                  - {d: 8, t: 7, k: ret, l: "B-b.3. Return room row / null"}
+                  - {d: 7, t: 6, k: ret, l: "B-b.4. Return InterviewRoom?"}
+                  - {d: 6, t: 7, k: call, l: "B-b.5. HasSubstantiveAnswerAsync(sessionId, ct)"}
+                  - {d: 7, t: 8, k: call, l: "B-b.6. SELECT EXISTS ChatMessages WHERE MessageType=\"Answer\""}
+                  - {d: 8, t: 7, k: ret, l: "B-b.7. Return bool"}
+                  - {d: 7, t: 6, k: ret, l: "B-b.8. Return bool"}
+                  - {d: 6, t: 6, k: call, l: "B-b.9. candidateWasActiveAtDeadline -> Status \"Completed\"/\"Expired\"", self: true}
+                  - frame: alt
+                    sections:
+                      - guard: "[room is not null]"
+                        body:
+                          - {d: 6, t: 7, k: call, l: "C-a.1. UpdateRoomAsync(room{Status=\"Closed\"}, ct)"}
+                          - {d: 7, t: 8, k: call, l: "C-a.2. UPDATE InterviewSessions SET Status, EndedAt + InterviewRoom"}
+                          - {d: 8, t: 7, k: ret, l: "C-a.3. Return rows affected"}
+                          - {d: 7, t: 6, k: ret, l: "C-a.4. Return"}
+                      - guard: "[room is null]"
+                        body:
+                          - {d: 6, t: 7, k: call, l: "C-b.1. SaveChangesAsync(ct)"}
+                          - {d: 7, t: 8, k: call, l: "C-b.2. UPDATE InterviewSession SET Status, EndedAt, UpdatedAt"}
+                          - {d: 8, t: 7, k: ret, l: "C-b.3. Return rows affected"}
+                          - {d: 7, t: 6, k: ret, l: "C-b.4. Return"}
+          - {d: 6, t: 5, k: ret, l: "13. Return EndResponse{Status, EndedAt}"}
+          - {d: 5, t: 4, k: ret, l: "14. Return 200 ApiResponse.Ok(result)"}
+          - {d: 4, t: 3, k: ret, l: "15. Return 200"}
+          - {d: 3, t: 2, k: ret, l: "16. Return ApiCallResult.Ok(EndResponse, 200)"}
+          - {d: 2, t: 1, k: ret, l: "17. Return 200 { status }"}
+          - frame: alt
+            sections:
+              - guard: '[completion.status == "Completed"]'
+                body:
+                  - {d: 1, t: 1, k: call, l: "D-a.1. appendBubble(\"AI\", closing); setStatusDisplay(\"Completed\")", self: true}
+                  - {d: 1, t: 0, k: ret, l: "D-a.2. Redirect to the Evaluation report page [see #18]"}
+              - guard: '[completion.status != "Completed"]'
+                body:
+                  - {d: 1, t: 1, k: call, l: "D-b.1. appendBubble(\"AI\", expired closing); setStatusDisplay(...)", self: true}
+                  - {d: 1, t: 0, k: ret, l: "D-b.2. Redirect to the Session details page"}
+
+      # =============== B. Candidate cancels (BL#61) ===============
+      - guard: "[candidate ends the interview from the Cancel Interview button]"
+        body:
+          - {d: 0, t: 1, k: call, l: "18. Click Cancel Interview (cancel-interview-btn)"}
+          - {d: 1, t: 1, k: call, l: "19. openCancelConfirmation(): cancelInterviewDialog.showModal()", self: true}
+          - frame: opt
+            sections:
+              - guard: "[user clicks Continue Interview, presses Esc, or clicks the backdrop]"
+                body:
+                  - {d: 1, t: 1, k: call, l: "F.1. closeCancelConfirmation(): cancelInterviewDialog.close()", self: true}
+                  - {d: 1, t: 0, k: ret, l: "F.2. Dialog closed - the interview continues unchanged"}
+          - {d: 1, t: 1, k: call, l: "20. cancelInterview(): cleanupTransientUi(); ended=true", self: true}
+          - {d: 1, t: 2, k: call, l: "21. POST /Interview/EndSession?id={sessionId} (postProxy fetch)"}
+          - {d: 2, t: 3, k: call, l: "22. EndSessionAsync(id, ct)"}
+          - {d: 3, t: 4, k: call, l: "23. POST api/interview/sessions/{sessionId}/end"}
+          - {d: 4, t: 5, k: call, l: "24. Forward (route interview-route, no prefix strip)"}
+          - {d: 5, t: 5, k: call, l: "25. Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier))", self: true}
+          - {d: 5, t: 6, k: call, l: "26. EndSessionAsync(userId, sessionId, ct)"}
+          - {d: 6, t: 7, k: call, l: "27. GetByIdAsync(sessionId, ct)"}
+          - {d: 7, t: 8, k: call, l: "28. SELECT InterviewSession WHERE SessionId AND !IsDeleted"}
+          - {d: 8, t: 7, k: ret, l: "29. Return session row / null"}
+          - {d: 7, t: 6, k: ret, l: "30. Return InterviewSession?"}
+          - frame: opt
+            sections:
+              - guard: "[session is null OR session.UserId != userId]"
+                body:
+                  - {d: 6, t: 5, k: ret, l: 'G1.1. throw InvalidOperationException("Session not found.")'}
+                  - {d: 5, t: 4, k: ret, l: "G1.2. Return 400 ApiResponse.Fail(ex.Message)"}
+                  - {d: 4, t: 3, k: ret, l: "G1.3. Return 400"}
+                  - {d: 3, t: 2, k: ret, l: "G1.4. Return ApiCallResult.Fail(message, 400)"}
+                  - {d: 2, t: 1, k: ret, l: "G1.5. Return 400 { error }"}
+                  - {d: 1, t: 0, k: ret, l: "G1.6. ended=false; appendBubble(\"AI\", \"Could not cancel: ...\")"}
+          - frame: opt
+            sections:
+              - guard: '[session.Status is not terminal AND session.Status not in ("Initialized","InProgress","Paused")]'
+                body:
+                  - {d: 6, t: 5, k: ret, l: "G2.1. throw InvalidOperationException"}
+                  - {d: 5, t: 4, k: ret, l: "G2.2. Return 400 ApiResponse.Fail(ex.Message)"}
+                  - {d: 4, t: 3, k: ret, l: "G2.3. Return 400"}
+                  - {d: 3, t: 2, k: ret, l: "G2.4. Return ApiCallResult.Fail(message, 400)"}
+                  - {d: 2, t: 1, k: ret, l: "G2.5. Return 400 { error }"}
+                  - {d: 1, t: 0, k: ret, l: "G2.6. ended=false; appendBubble(\"AI\", \"Could not cancel: ...\")"}
+          - frame: alt
+            sections:
+              - guard: "[IsTerminalStatus(session.Status) - already Completed / Cancelled / Expired]"
+                body:
+                  - {d: 6, t: 6, k: call, l: "H-a.1. Reuse the stored Status/EndedAt", self: true}
+              - guard: '[session.Status in ("Initialized","InProgress","Paused")]'
+                body:
+                  - {d: 6, t: 6, k: call, l: 'H-b.1. session.Status="Cancelled"; EndedAt=now; UpdatedAt=now', self: true}
+                  - {d: 6, t: 7, k: call, l: "H-b.2. GetRoomBySessionAsync(sessionId, ct)"}
+                  - {d: 7, t: 8, k: call, l: "H-b.3. SELECT InterviewRoom WHERE SessionId"}
+                  - {d: 8, t: 7, k: ret, l: "H-b.4. Return room row / null"}
+                  - {d: 7, t: 6, k: ret, l: "H-b.5. Return InterviewRoom?"}
+                  - frame: alt
+                    sections:
+                      - guard: "[room is not null]"
+                        body:
+                          - {d: 6, t: 7, k: call, l: 'J-a.1. UpdateRoomAsync(room{Status="Closed", ClosedAt=now}, ct)'}
+                          - {d: 7, t: 8, k: call, l: "J-a.2. UPDATE InterviewSessions SET Status, EndedAt + InterviewRoom"}
+                          - {d: 8, t: 7, k: ret, l: "J-a.3. Return rows affected"}
+                          - {d: 7, t: 6, k: ret, l: "J-a.4. Return"}
+                      - guard: "[room is null]"
+                        body:
+                          - {d: 6, t: 7, k: call, l: "J-b.1. SaveChangesAsync(ct)"}
+                          - {d: 7, t: 8, k: call, l: "J-b.2. UPDATE InterviewSession SET Status, EndedAt, UpdatedAt"}
+                          - {d: 8, t: 7, k: ret, l: "J-b.3. Return rows affected"}
+                          - {d: 7, t: 6, k: ret, l: "J-b.4. Return"}
+          - {d: 6, t: 5, k: ret, l: "31. Return EndResponse{Status, EndedAt}"}
+          - {d: 5, t: 4, k: ret, l: "32. Return 200 ApiResponse.Ok(result)"}
+          - {d: 4, t: 3, k: ret, l: "33. Return 200"}
+          - {d: 3, t: 2, k: ret, l: "34. Return ApiCallResult.Ok(EndResponse, 200)"}
+          - {d: 2, t: 1, k: ret, l: "35. Return 200 { status }"}
+          - {d: 1, t: 1, k: call, l: "36. setStatusDisplay(completion.status)", self: true}
+          - {d: 1, t: 0, k: ret, l: "37. Redirect to the Session details page"}

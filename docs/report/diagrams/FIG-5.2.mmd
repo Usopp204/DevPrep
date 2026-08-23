@@ -1,0 +1,63 @@
+sequenceDiagram
+    participant Browser
+    participant RoomJS as interview-room.js
+    participant VerifyCtrl as WebClient VerificationController
+    participant VerifySvc as WebClient VerificationService
+    participant Gateway as ApiGateway interview-route
+    participant SessionVerifyCtrl as SessionVerificationController
+    participant SessionSvc as SessionService
+    participant BioSvc as BiometricVerificationService
+    participant Repo as SessionVerificationEventRepository
+    participant AiClient as AiServiceClient
+    participant AiVerify as ai-service internal biometrics verify
+
+    Note over RoomJS: a new question is applied question two or later never the first
+    RoomJS->>VerifyCtrl: GET InSessionCheck sessionId sessionQuestionId poll
+    VerifyCtrl->>VerifySvc: GetInSessionCheckAsync
+    VerifySvc->>Gateway: GET verify in-session-check
+    Gateway->>SessionVerifyCtrl: GET in-session-check
+    SessionVerifyCtrl->>SessionSvc: GetInSessionCheckAsync
+    SessionSvc->>Repo: GetQuestionCheckAsync existing pending token for this question
+    alt no token yet
+        SessionSvc->>Repo: TryAddIncidentAsync new Pending token ExpiresAt now plus InSessionCheckTtlSeconds twenty
+    end
+    SessionSvc-->>SessionVerifyCtrl: Due true CheckId ExpiresAt
+    SessionVerifyCtrl-->>Gateway: 200
+    Gateway-->>VerifySvc: 200
+    VerifySvc-->>RoomJS: due checkId expiresAt
+
+    RoomJS->>RoomJS: grab single frame from already running camera stream canvas toBlob
+    RoomJS->>VerifyCtrl: POST VerifyInSession checkId frame
+    VerifyCtrl->>VerifySvc: VerifyInSessionAsync
+    VerifySvc->>Gateway: POST verify in-session
+    Gateway->>SessionVerifyCtrl: POST in-session
+    SessionVerifyCtrl->>BioSvc: VerifyInSessionAsync checkId frame
+    BioSvc->>Repo: TryConsumeQuestionCheckAsync atomic one time claim WHERE Decision Pending AND ConsumedAt null AND ExpiresAt not yet passed
+    alt claim fails token invalid expired or already used
+        Repo-->>BioSvc: false
+        BioSvc-->>SessionVerifyCtrl: throw InvalidOperationException
+    else claim succeeds
+        BioSvc->>AiClient: VerifyFaceAsync single frame plus stored embedding no challenge no liveness
+        AiClient->>AiVerify: POST internal biometrics verify modality face
+        alt identity mismatch
+            AiVerify-->>AiClient: match false score threshold
+        else multiple faces
+            AiVerify-->>AiClient: 422 code multiple_faces face_count
+        else no face or quality issue
+            AiVerify-->>AiClient: 422 code no_face or blur or small or low_confidence
+        else identity confirmed
+            AiVerify-->>AiClient: match true score threshold
+        end
+        AiClient-->>BioSvc: result or BiometricQualityException with QualityCode
+        BioSvc->>Repo: AddAsync SessionVerificationEvent Phase InSession Modality Face Decision Pass or Flag or NoFace or Quality
+        BioSvc->>Repo: ListBySessionAsync recompute CheatingStrikeHelper ComputeEffectiveStrikeCount
+        BioSvc->>BioSvc: ShouldEndSession strikeJustHappened Strictness Strict and count at or above InSessionMaxStrikes three
+        alt should end session
+            BioSvc->>SessionSvc: EndSessionForCheatingAsync Status Cancelled TerminationReason IntegrityViolation no refund
+        end
+        BioSvc-->>SessionVerifyCtrl: InSessionVerifyResponse Passed StrikeCount MaxStrikes ShouldEndSession Message
+    end
+    SessionVerifyCtrl-->>Gateway: 200 or 404 or 503
+    Gateway-->>VerifySvc: response
+    VerifySvc-->>RoomJS: json
+    RoomJS-->>Browser: silent when passed gentle notice for NoFace or quality strike banner and possible forced end otherwise

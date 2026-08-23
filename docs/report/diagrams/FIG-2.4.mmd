@@ -1,0 +1,44 @@
+sequenceDiagram
+    participant Browser
+    participant InterviewController as WebClient InterviewController
+    participant InterviewSvc as WebClient InterviewService
+    participant Gateway as ApiGateway interview-route
+    participant SessionCtrl as InterviewSessionController
+    participant SessionSvc as SessionService
+    participant Repo as SessionRepository
+
+    Browser->>InterviewController: GET Interview Index dashboard
+    InterviewController->>InterviewSvc: GetActiveSessionAsync
+    InterviewSvc->>Gateway: GET sessions active
+    Gateway->>SessionCtrl: GET active
+    SessionCtrl->>SessionSvc: GetActiveSessionAsync
+    SessionSvc->>Repo: GetActiveSessionAsync newest InProgress or Paused session
+    Repo-->>SessionSvc: session or null
+    SessionSvc->>SessionSvc: AutoResumeIfPauseExpiredAsync then FinalizeIfTimeExpiredAsync
+    alt session finalized just now
+        SessionSvc-->>SessionCtrl: null treated as no active session
+    else session still active
+        SessionSvc-->>SessionCtrl: ActiveSessionResponse SessionId RemainingSeconds
+    end
+    SessionCtrl-->>Gateway: 200
+    Gateway-->>InterviewSvc: 200
+    InterviewSvc-->>InterviewController: ActiveSession or null
+    InterviewController-->>Browser: dashboard shows resume banner if ActiveSession not null
+
+    Browser->>InterviewController: click resume banner GET Room SessionId
+    InterviewController->>InterviewSvc: GetRoomAsync calls resume
+    InterviewSvc->>Gateway: GET sessions SessionId resume
+    Gateway->>SessionCtrl: GET resume
+    SessionCtrl->>SessionSvc: ResumeSessionAsync
+    SessionSvc->>Repo: GetWithFullHistoryAsync session with questions and chat messages
+    Repo-->>SessionSvc: session
+    SessionSvc->>SessionSvc: AutoResumeIfPauseExpiredAsync
+    SessionSvc->>SessionSvc: FinalizeIfTimeExpiredAsync lazy close if deadline already passed
+    SessionSvc->>SessionSvc: SettleExpiredVerificationChecksAsync
+    SessionSvc->>SessionSvc: compute RemainingSeconds from StartedAt DurationMinutes and paused seconds
+    SessionSvc->>SessionSvc: find first unanswered SessionQuestion as CurrentQuestion only if InProgress or Paused and IntegrityPolicyAccepted
+    SessionSvc-->>SessionCtrl: ResumeResponse Status RemainingSeconds CurrentQuestion ChatHistory PauseCount PausesRemaining
+    SessionCtrl-->>Gateway: 200
+    Gateway-->>InterviewSvc: 200
+    InterviewSvc-->>InterviewController: room state
+    InterviewController-->>Browser: render Room reconstructed exactly where the candidate left off

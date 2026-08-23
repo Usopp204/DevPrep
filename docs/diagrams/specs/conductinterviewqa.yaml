@@ -1,0 +1,211 @@
+feature: ConductInterviewQA
+title: Conduct Interview QA
+uc_id: ""
+uc_label: "[UC-42]"
+backlog: [56, 57, 47, 59, 60]
+
+participants:
+  - name: Candidate
+    kind: actor
+    w: 30
+  - name: ":Interview Room UI"
+    kind: box
+    w: 180
+  - name: ":InterviewController\n(WebClient)"
+    kind: box
+    w: 200
+  - name: ":InterviewService\n(WebClient)"
+    kind: box
+    w: 190
+  - name: ":API Gateway"
+    kind: box
+    w: 140
+  - name: ":InterviewSessionController\n(InterviewAPI)"
+    kind: box
+    w: 250
+  - name: ":SessionService\n(InterviewAPI)"
+    kind: box
+    w: 190
+  - name: ":SessionRepository\n(InterviewAPI)"
+    kind: box
+    w: 200
+  - name: ":SessionVerificationEventRepository\n(InterviewAPI)"
+    kind: box
+    w: 280
+  - name: ":EvaluationApiClient\n(InterviewAPI)"
+    kind: box
+    w: 210
+  - name: "SQL Server"
+    kind: db
+    w: 70
+
+flow:
+  # ---------------- Phase 0: three entry points ----------------
+  - frame: alt
+    sections:
+      - guard: "[the candidate types an answer and clicks Send]"
+        body:
+          - {d: 0, t: 1, k: call, l: "Z-a.1. Type an answer and click Send (or press Enter)"}
+          - {d: 1, t: 1, k: call, l: "Z-a.2. sendAnswer(): DevPrepContentFilter.isAcceptable(content)", self: true}
+          - frame: opt
+            sections:
+              - guard: "[no content OR no current question OR the session already ended OR the client content filter rejects the text]"
+                body:
+                  - {d: 1, t: 1, k: call, l: "A.1. showContentWarning(...)", self: true}
+                  - {d: 1, t: 0, k: ret, l: "A.2. Nothing is sent; the text stays in the box"}
+          - {d: 1, t: 1, k: call, l: "Z-a.3. Clear the box; appendBubble(\"User\", content)", self: true}
+      - guard: "[the candidate clicks Skip]"
+        body:
+          - {d: 0, t: 1, k: call, l: "Z-b.1. Click Skip"}
+          - {d: 1, t: 1, k: call, l: "Z-b.2. skipQuestion(): append the \"Question skipped\" note", self: true}
+      - guard: "[the idle countdown reaches the server-verified hard deadline]"
+        body:
+          - {d: 0, t: 1, k: call, l: "Z-c.1. [auto] Idle countdown reaches the hard deadline"}
+          - {d: 1, t: 1, k: call, l: "Z-c.2. autoAdvance(): append the \"Auto-advanced\" note", self: true}
+
+  # ---------------- Phase 1: POST /message and the server-side guards ----------------
+  - {d: 1, t: 2, k: call, l: "1. POST /Interview/Message?id={id}"}
+  - {d: 2, t: 3, k: call, l: "2. SendMessageAsync(id, request, ct)"}
+  - {d: 3, t: 4, k: call, l: "3. POST api/interview/sessions/{id}/message"}
+  - {d: 4, t: 5, k: call, l: "4. Forward (route interview-route, no prefix strip)"}
+  - {d: 5, t: 5, k: call, l: "5. Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier))", self: true}
+  - {d: 5, t: 6, k: call, l: "6. SendMessageAsync(userId, sessionId, req, ct)"}
+  - {d: 6, t: 7, k: call, l: "7. GetByIdAsync(sessionId, ct) - Step A"}
+  - {d: 7, t: 10, k: call, l: "8. SELECT InterviewSession WHERE SessionId AND !IsDeleted"}
+  - {d: 10, t: 7, k: ret, l: "9. Return row / null"}
+  - {d: 7, t: 6, k: ret, l: "10. Return InterviewSession?"}
+  - {d: 6, t: 8, k: call, l: "11. SettleExpiredVerificationChecksAsync(session) [see #15]"}
+  - {d: 8, t: 6, k: ret, l: "12. Return"}
+  - {d: 6, t: 7, k: call, l: "13. GetQuestionByIdAsync(req.SessionQuestionId, ct)"}
+  - {d: 7, t: 10, k: call, l: "14. SELECT SessionQuestion WHERE SessionQuestionId"}
+  - {d: 10, t: 7, k: ret, l: "15. Return row / null"}
+  - {d: 7, t: 6, k: ret, l: "16. Return SessionQuestion?"}
+  - frame: opt
+    sections:
+      - guard: '[session is null / not owned OR session.Status != "InProgress" OR the question does not belong to this session OR the server content filter rejects a non-skip answer]'
+        body:
+          - {d: 6, t: 5, k: ret, l: "C.1. throw InvalidOperationException"}
+          - {d: 5, t: 4, k: ret, l: "C.2. Return 400 {error}"}
+          - {d: 4, t: 3, k: ret, l: "C.3. Return 400"}
+          - {d: 3, t: 2, k: ret, l: "C.4. Return (false, null, message, null, null, 400)"}
+          - {d: 2, t: 1, k: ret, l: "C.5. Return 400 {error, message}"}
+          - {d: 1, t: 0, k: ret, l: "C.6. appendBubble(\"AI\", \"Error: <message>.\")"}
+  - {d: 6, t: 6, k: call, l: "17. FinalizeIfTimeExpiredAsync(session)", self: true}
+  - frame: opt
+    sections:
+      - guard: "[the session's time already ran out - remaining < -5s grace]"
+        body:
+          - {d: 6, t: 7, k: call, l: "E.1. Finalize inline: Status = Completed / Expired [see #9]"}
+          - {d: 7, t: 10, k: call, l: "E.2. UPDATE InterviewSessions SET Status, EndedAt + InterviewRoom"}
+          - {d: 10, t: 7, k: ret, l: "E.3. Return rows affected"}
+          - {d: 7, t: 6, k: ret, l: "E.4. Return"}
+          - {d: 6, t: 5, k: ret, l: "E.5. throw SessionGuardException(409, \"session_time_expired\")"}
+          - {d: 5, t: 4, k: ret, l: 'E.6. Return 409 { error: "session_time_expired", message }'}
+          - {d: 4, t: 3, k: ret, l: "E.7. Return 409"}
+          - {d: 3, t: 2, k: ret, l: "E.8. Return 409 \"session_time_expired\""}
+          - {d: 2, t: 1, k: ret, l: 'E.9. Return 409 { error: "session_time_expired", message }'}
+          - {d: 1, t: 0, k: ret, l: "E.10. handleSessionExpired() -> completeInterview() [see #9]"}
+  - frame: opt
+    sections:
+      - guard: "[!session.IntegrityPolicyAccepted]"
+        body:
+          - {d: 6, t: 5, k: ret, l: "F.1. throw SessionGuardException(403, ...)"}
+          - {d: 5, t: 4, k: ret, l: "F.2. Return 403 {error, message}"}
+          - {d: 4, t: 3, k: ret, l: "F.3. Return 403"}
+          - {d: 3, t: 2, k: ret, l: "F.4. Return 403 \"integrity_policy_not_accepted\""}
+          - {d: 2, t: 1, k: ret, l: "F.5. Return 403 { error, message }"}
+          - {d: 1, t: 0, k: ret, l: "F.6. appendBubble(\"AI\", \"Error: <message>.\")"}
+  - frame: opt
+    sections:
+      - guard: '[req.Reason == "Skipped"]'
+        body:
+          - {d: 6, t: 7, k: call, l: "G.1. TryConsumeSkipCooldownAsync(...)"}
+          - {d: 7, t: 10, k: call, l: "G.2. UPDATE InterviewSessions SET LastSkipAtUtc"}
+          - {d: 10, t: 7, k: ret, l: "G.3. Return rows affected"}
+          - {d: 7, t: 6, k: ret, l: "G.4. Return (Allowed, RetryAfterSeconds)"}
+          - frame: opt
+            sections:
+              - guard: "[the skip cooldown has not elapsed - Allowed == false]"
+                body:
+                  - {d: 6, t: 5, k: ret, l: "H.1. throw SessionGuardException(429, \"skip_cooldown\", ...)"}
+                  - {d: 5, t: 4, k: ret, l: "H.2. Return 429 {error, message} + Retry-After"}
+                  - {d: 4, t: 3, k: ret, l: "H.3. Return 429"}
+                  - {d: 3, t: 2, k: ret, l: "H.4. Return 429 \"skip_cooldown\""}
+                  - {d: 2, t: 1, k: ret, l: "H.5. Return 429 {error, message, retryAfterSeconds} + Retry-After"}
+                  - {d: 1, t: 0, k: ret, l: "H.6. startSkipCooldown(retryAfterSeconds)"}
+
+  # ---------------- Phase 2: idempotency, store the answer, background grading ----------------
+  - {d: 6, t: 7, k: call, l: "18. HasUserAnswerAsync(req.SessionQuestionId, ct)"}
+  - {d: 7, t: 10, k: call, l: "19. SELECT EXISTS ChatMessages WHERE MessageType=\"Answer\""}
+  - {d: 10, t: 7, k: ret, l: "20. Return bool"}
+  - {d: 7, t: 6, k: ret, l: "21. Return bool"}
+  - {d: 6, t: 7, k: call, l: "22. IncrementAnsweredIfAsync(...)"}
+  - {d: 7, t: 10, k: call, l: "23. UPDATE InterviewSessions SET AnsweredQuestions + 1"}
+  - {d: 10, t: 7, k: ret, l: "24. Return rows affected"}
+  - {d: 7, t: 6, k: ret, l: "25. Return claimed (rowsAffected > 0)"}
+  - frame: opt
+    sections:
+      - guard: "[this question already has a User/Answer message (a late duplicate) OR the atomic claim was lost (a truly concurrent duplicate)]"
+        body:
+          - {d: 6, t: 7, k: call, l: "L.1. BuildCurrentTurnResponseAsync(sessionId, currentOrderIndex)"}
+          - {d: 7, t: 10, k: call, l: "L.2. SELECT InterviewSession + next unanswered SessionQuestion"}
+          - {d: 10, t: 7, k: ret, l: "L.3. Return the rows"}
+          - {d: 7, t: 6, k: ret, l: "L.4. Return the session + next question"}
+          - {d: 6, t: 5, k: ret, l: "L.5. Return MessageResponse"}
+          - {d: 5, t: 4, k: ret, l: "L.6. Return 200 ApiResponse.Ok(result)"}
+          - {d: 4, t: 3, k: ret, l: "L.7. Return 200"}
+          - {d: 3, t: 2, k: ret, l: "L.8. Return (true, MessageResponse, null, null, null, 200)"}
+          - {d: 2, t: 1, k: ret, l: "L.9. Return 200 JSON (MessageResponse)"}
+          - {d: 1, t: 0, k: ret, l: "L.10. Same screen state as the winning request"}
+  - {d: 6, t: 7, k: call, l: "26. AddChatMessageAsync(ChatMessage{SenderType=\"User\"})"}
+  - {d: 7, t: 10, k: call, l: "27. INSERT ChatMessage (SaveChangesAsync)"}
+  - {d: 10, t: 7, k: ret, l: "28. Return rows affected"}
+  - {d: 7, t: 6, k: ret, l: "29. Return ChatMessage"}
+  - {d: 6, t: 9, k: call, l: "30. ScheduleGrading(...) -> Task.Run [see #17] [best-effort]"}
+  - {d: 9, t: 6, k: ret, l: "31. Return immediately"}
+  - {d: 6, t: 7, k: call, l: "32. GetNextUnansweredQuestionAsync(...)"}
+  - {d: 7, t: 10, k: call, l: "33. SELECT the next SessionQuestion with no User answer"}
+  - {d: 10, t: 7, k: ret, l: "34. Return row / null"}
+  - {d: 7, t: 6, k: ret, l: "35. Return SessionQuestion?"}
+
+  # ---------------- Phase 3: next question, or close the session ----------------
+  - frame: alt
+    sections:
+      - guard: "[there is a next unanswered question - Step G]"
+        body:
+          - {d: 6, t: 7, k: call, l: "N-a.1. AddChatMessageAsync(ChatMessage{SenderType=\"AI\"})"}
+          - {d: 7, t: 10, k: call, l: "N-a.2. INSERT ChatMessage (SaveChangesAsync)"}
+          - {d: 10, t: 7, k: ret, l: "N-a.3. Return rows affected"}
+          - {d: 7, t: 6, k: ret, l: "N-a.4. Return ChatMessage"}
+          - {d: 6, t: 7, k: call, l: "N-a.5. SaveChangesAsync(ct) after nextQuestion.AskedAt = now"}
+          - {d: 7, t: 10, k: call, l: "N-a.6. UPDATE SessionQuestion SET AskedAt"}
+          - {d: 10, t: 7, k: ret, l: "N-a.7. Return rows affected"}
+          - {d: 7, t: 6, k: ret, l: "N-a.8. Return"}
+          - {d: 6, t: 8, k: call, l: "N-a.9. AttachVerificationCheckAsync(...) [see #15]"}
+          - {d: 8, t: 6, k: ret, l: "N-a.10. Return InSessionCheckDueResponse{CheckId, ExpiresAt}"}
+          - {d: 6, t: 5, k: ret, l: "N-a.11. Return MessageResponse{Ended=false, NextQuestion}"}
+          - {d: 5, t: 4, k: ret, l: "N-a.12. Return 200 ApiResponse.Ok(result)"}
+          - {d: 4, t: 3, k: ret, l: "N-a.13. Return 200"}
+          - {d: 3, t: 2, k: ret, l: "N-a.14. Return (true, MessageResponse, null, null, null, 200)"}
+          - {d: 2, t: 1, k: ret, l: "N-a.15. Return 200 JSON (MessageResponse)"}
+          - {d: 1, t: 0, k: ret, l: "N-a.16. applyNextQuestion() [see #6]"}
+      - guard: "[every question has been answered - Step H]"
+        body:
+          - {d: 6, t: 7, k: call, l: "N-b.1. HasSubstantiveAnswerAsync(sessionId, ct) - Step H"}
+          - {d: 7, t: 10, k: call, l: "N-b.2. SELECT EXISTS substantive answer"}
+          - {d: 10, t: 7, k: ret, l: "N-b.3. Return bool"}
+          - {d: 7, t: 6, k: ret, l: "N-b.4. Return bool"}
+          - {d: 6, t: 7, k: call, l: "N-b.5. GetRoomBySessionAsync(sessionId, ct)"}
+          - {d: 7, t: 10, k: call, l: "N-b.6. SELECT InterviewRoom WHERE SessionId"}
+          - {d: 10, t: 7, k: ret, l: "N-b.7. Return row / null"}
+          - {d: 7, t: 6, k: ret, l: "N-b.8. Return InterviewRoom?"}
+          - {d: 6, t: 7, k: call, l: "N-b.9. UpdateRoomAsync(room{Status=\"Closed\"}) [see #9]"}
+          - {d: 7, t: 10, k: call, l: "N-b.10. UPDATE InterviewSessions SET Status, EndedAt + InterviewRoom"}
+          - {d: 10, t: 7, k: ret, l: "N-b.11. Return rows affected"}
+          - {d: 7, t: 6, k: ret, l: "N-b.12. Return"}
+          - {d: 6, t: 5, k: ret, l: "N-b.13. Return MessageResponse{Ended=true, NextQuestion=null}"}
+          - {d: 5, t: 4, k: ret, l: "N-b.14. Return 200 ApiResponse.Ok(result)"}
+          - {d: 4, t: 3, k: ret, l: "N-b.15. Return 200"}
+          - {d: 3, t: 2, k: ret, l: "N-b.16. Return (true, MessageResponse, null, null, null, 200)"}
+          - {d: 2, t: 1, k: ret, l: "N-b.17. Return 200 JSON (Ended = true)"}
+          - {d: 1, t: 0, k: ret, l: "N-b.18. data.ended -> completeInterview() [see #9]"}

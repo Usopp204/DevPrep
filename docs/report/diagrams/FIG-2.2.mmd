@@ -1,0 +1,44 @@
+sequenceDiagram
+    participant Browser
+    participant RoomJS as interview-room.js
+    participant InterviewController as WebClient InterviewController
+    participant InterviewSvc as WebClient InterviewService
+    participant Gateway as ApiGateway interview-route
+    participant SessionCtrl as InterviewSessionController
+    participant SessionSvc as SessionService
+    participant Repo as SessionRepository
+
+    Browser->>RoomJS: click Pause button
+    RoomJS->>InterviewController: POST Pause SessionId
+    InterviewController->>InterviewSvc: PauseSessionAsync
+    InterviewSvc->>Gateway: POST sessions SessionId pause
+    Gateway->>SessionCtrl: POST pause
+    SessionCtrl->>SessionSvc: PauseSessionAsync
+    SessionSvc->>SessionSvc: check Status InProgress and PauseCount below MaxPauseCount and TotalPausedSeconds below MaxTotalPausedSeconds
+    SessionSvc->>Repo: set Status Paused PausedAt now PauseCount plus one
+    Repo-->>SessionSvc: saved
+    SessionSvc-->>SessionCtrl: PauseResponse PausesRemaining PausedSecondsRemaining
+    SessionCtrl-->>Gateway: 200
+    Gateway-->>InterviewSvc: 200
+    InterviewSvc-->>InterviewController: pause result
+    InterviewController-->>RoomJS: json PauseResponse
+    RoomJS-->>Browser: show pause overlay start local quota countdown
+
+    Browser->>RoomJS: click Resume button
+    RoomJS->>InterviewController: POST Unpause SessionId
+    InterviewController->>InterviewSvc: UnpauseSessionAsync
+    InterviewSvc->>Gateway: POST sessions SessionId unpause
+    Gateway->>SessionCtrl: POST unpause
+    SessionCtrl->>SessionSvc: UnpauseSessionAsync
+    SessionSvc->>SessionSvc: check Status Paused and PausedAt not null
+    SessionSvc->>SessionSvc: TotalPausedSeconds plus elapsed since PausedAt PausedAt set null Status InProgress
+    SessionSvc->>Repo: save
+    Repo-->>SessionSvc: saved
+    SessionSvc-->>SessionCtrl: UnpauseResponse RemainingSeconds
+    SessionCtrl-->>Gateway: 200
+    Gateway-->>InterviewSvc: 200
+    InterviewSvc-->>InterviewController: unpause result
+    InterviewController-->>RoomJS: json UnpauseResponse
+    RoomJS-->>Browser: hide pause overlay resume timer
+
+    Note over SessionSvc,Repo: If PausedAt outlives MaxTotalPausedSeconds before an explicit Unpause call, the next read path GetActiveSession GetTimer or Resume auto resumes via TryAutoResumeExpiredPauseAsync an atomic conditional update keyed on the exact PausedAt read

@@ -1,0 +1,32 @@
+sequenceDiagram
+    participant Browser
+    participant RoomJS as interview-room.js
+    participant InterviewController as WebClient InterviewController
+    participant InterviewSvc as WebClient InterviewService
+    participant Gateway as ApiGateway interview-route
+    participant SessionCtrl as InterviewSessionController
+    participant SessionSvc as SessionService
+    participant Repo as SessionRepository
+
+    Note over RoomJS: local countdown timer reaches zero
+    RoomJS->>InterviewController: POST CompleteSession SessionId
+    InterviewController->>InterviewSvc: CompleteSessionAsync
+    InterviewSvc->>Gateway: POST sessions SessionId complete
+    Gateway->>SessionCtrl: POST complete
+    SessionCtrl->>SessionSvc: CompleteSessionAsync
+    SessionSvc->>Repo: GetByIdAsync SessionId
+    Repo-->>SessionSvc: session
+    SessionSvc->>SessionSvc: check Status InProgress and elapsed at least DurationMinutes times sixty seconds
+    SessionSvc->>Repo: HasSubstantiveAnswerAsync
+    Repo-->>SessionSvc: true or false
+    alt hasSubstantiveAnswer true
+        SessionSvc->>SessionSvc: Status Completed TerminationReason null
+    else hasSubstantiveAnswer false
+        SessionSvc->>SessionSvc: Status Expired TerminationReason TimeExpired
+    end
+    SessionSvc->>Repo: close InterviewRoom and save
+    SessionSvc-->>SessionCtrl: EndResponse Status CanGeneratePerformanceReport CanSubmitInterviewFeedback
+    SessionCtrl-->>Gateway: 200
+    Gateway-->>InterviewSvc: 200
+    InterviewSvc-->>InterviewController: completion
+    InterviewController-->>Browser: navigate to Evaluation Report or Details depending on CanGeneratePerformanceReport

@@ -1,0 +1,5 @@
+# Shared class body — EF Core framework base class.
+# Empty body on purpose: target of the InterviewDbContext extends arrow.
+name: DbContext
+fields: []
+methods: []

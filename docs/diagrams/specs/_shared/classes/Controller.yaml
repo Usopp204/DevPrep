@@ -1,0 +1,6 @@
+# Shared class body — ASP.NET Core MVC framework base class (WebClient controllers).
+# Empty body on purpose: it only exists so the extends arrow has a target
+# (QUY_TAC_VE_DIAGRAM.md 2.1). No x/y/column — the including file places it.
+name: Controller
+fields: []
+methods: []
