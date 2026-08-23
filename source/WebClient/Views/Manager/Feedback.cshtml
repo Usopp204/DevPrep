@@ -533,16 +533,14 @@
             return `<span class="px-xs py-0.5 rounded bg-tertiary-container/10 border border-tertiary-container/30 text-tertiary font-code-label text-[10px] uppercase">${escapeHtml(type || 'System')}</span>`;
         }
 
+        // FeedbackAPI chỉ ghi ra đúng hai trạng thái: New (lúc tạo, và khi xoá reply cuối) và
+        // Replied (khi admin trả lời). Giá trị nào khác thì hiển thị NGUYÊN VĂN với style trung
+        // tính, không đoán. Nhánh catch-all cũ gán mọi thứ lạ thành "New" nên badge đếm ra 4
+        // trong khi lọc theo New chỉ trả về 2.
         function getStatusBadge(status) {
-            const s = normalizeStatus(status).toLowerCase();
-            if (s === 'resolved') return `<span class="px-xs py-1 rounded-full bg-success/10 border border-success/30 text-success text-[10px] font-bold uppercase tracking-tighter">Resolved</span>`;
-            if (s === 'replied') return `<span class="px-xs py-1 rounded-full bg-success/10 border border-success/30 text-success text-[10px] font-bold uppercase tracking-tighter">Replied</span>`;
-            return `<span class="px-xs py-1 rounded-full bg-warning/10 border border-warning/30 text-warning text-[10px] font-bold uppercase tracking-tighter">New</span>`;
-        }
-
-        function normalizeStatus(status) {
-            if (!status || status.toLowerCase() === 'new' || status.toLowerCase() === 'inreview') return 'New';
-            return status;
+            if (status === 'Replied') return `<span class="px-xs py-1 rounded-full bg-success/10 border border-success/30 text-success text-[10px] font-bold uppercase tracking-tighter">Replied</span>`;
+            if (status === 'New') return `<span class="px-xs py-1 rounded-full bg-warning/10 border border-warning/30 text-warning text-[10px] font-bold uppercase tracking-tighter">New</span>`;
+            return `<span class="px-xs py-1 rounded-full bg-surface-container border border-border-subtle text-on-surface-variant text-[10px] font-bold uppercase tracking-tighter">${escapeHtml(status) || 'Unknown'}</span>`;
         }
 
         function userLabel(item) {

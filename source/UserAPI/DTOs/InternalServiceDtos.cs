@@ -25,6 +25,14 @@ public class InternalSessionSummaryDto
     public int TotalSessions { get; set; }
 }
 
+// DTO nhận từ InterviewAPI — trạng thái enroll sinh trắc học, nguồn thật thay cho
+// Accounts.IsFaceVerified/IsVoiceVerified bên AuthAPI (hai cột đó không bao giờ được ghi).
+public class InternalBiometricStatusDto
+{
+    public bool FaceEnrolled { get; set; }
+    public bool VoiceEnrolled { get; set; }
+}
+
 // DTO nhận từ PaymentAPI (Port 7008)
 public class InternalWalletDto
 {

@@ -259,13 +259,17 @@ public class AdminUserService : IAdminUserService
 
         List<AdminUserSessionDto> sessions = new();
         InternalWalletDto? wallet = null;
+        InternalBiometricStatusDto? biometrics = null;
 
         var sessionsTask = interviewClient.GetAsync($"/api/internal/interviews/sessions?userId={accountId}");
         var walletTask = paymentClient.GetAsync($"/api/internal/payments/wallets?userId={userId}");
+        // AccountId chứ không phải userId: ProfileBiometrics bên InterviewAPI khoá theo AccountId,
+        // giống endpoint sessions ngay trên.
+        var biometricsTask = interviewClient.GetAsync($"/api/internal/interviews/biometrics?userId={accountId}");
 
         try
         {
-            await Task.WhenAll(sessionsTask, walletTask);
+            await Task.WhenAll(sessionsTask, walletTask, biometricsTask);
 
             var resSession = await sessionsTask;
             if (resSession.IsSuccessStatusCode)
@@ -288,6 +292,17 @@ public class AdminUserService : IAdminUserService
                 var errContent = await resWallet.Content.ReadAsStringAsync();
                 _logger.LogWarning("Không thể lấy thông tin ví của User {UserId}. Chi tiết: {Err}", userId, errContent);
             }
+
+            var resBiometrics = await biometricsTask;
+            if (resBiometrics.IsSuccessStatusCode)
+            {
+                biometrics = await resBiometrics.Content.ReadFromJsonAsync<InternalBiometricStatusDto>();
+            }
+            else
+            {
+                var errContent = await resBiometrics.Content.ReadAsStringAsync();
+                _logger.LogWarning("Không thể lấy trạng thái sinh trắc học của User {UserId}. Chi tiết: {Err}", userId, errContent);
+            }
         }
         catch (Exception ex)
         {
@@ -304,8 +319,10 @@ public class AdminUserService : IAdminUserService
             Role = acc.Role,
             Status = acc.Status,
             IsEmailVerified = acc.IsEmailVerified,
-            IsFaceVerified = acc.IsFaceVerified,
-            IsVoiceVerified = acc.IsVoiceVerified,
+            // Lấy từ InterviewAPI, không dùng acc.IsFaceVerified/IsVoiceVerified: hai cột đó
+            // bên AuthAPI không có code nào ghi vào nên luôn trả về false.
+            IsFaceVerified = biometrics?.FaceEnrolled ?? false,
+            IsVoiceVerified = biometrics?.VoiceEnrolled ?? false,
             CreatedAt = acc.CreatedAt,
             UpdatedAt = acc.UpdatedAt,
             LastLoginAt = acc.LastLoginAt,

@@ -388,11 +388,28 @@
     </div>
 </div>
 
-<!-- ── Restore form (hidden, submitted via restorePackage()) ────── -->
-<form method="post" id="restoreForm" style="display:none;">
-    @Html.AntiForgeryToken()
-    <input type="hidden" name="name" id="restorePkgNameHidden" />
-</form>
+<!-- ── Restore confirmation — same modal pattern as delModal above ────── -->
+<div class="modal-overlay" id="restoreModal">
+    <div class="pm-modal del-modal">
+        <span class="material-symbols-outlined del-icon"
+              style="font-variation-settings:'FILL' 1; color: var(--success);">restore_from_trash</span>
+        <p class="del-title">Restore Package?</p>
+        <p class="del-desc">
+            Package <strong id="restorePkgName"></strong> will become active and visible to users again.
+        </p>
+        <form method="post" id="restoreForm">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="name" id="restorePkgNameHidden" />
+            <div class="pm-modal-footer" style="justify-content:center;">
+                <button type="button" class="btn btn-ghost" onclick="closeModal('restoreModal')">Cancel</button>
+                <button type="submit" class="btn btn-success">
+                    <span class="material-symbols-outlined">restore_from_trash</span>
+                    Restore
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 
 <script>
     function openCreateModal() {
@@ -438,11 +455,10 @@
     }
 
     function restorePackage(id, name) {
-        if (!confirm(`Restore package "${name}"? It will become active and visible to users again.`)) return;
-        const form = document.getElementById('restoreForm');
-        form.action = '/Admin/Payment/Packages/Restore/' + id;
+        document.getElementById('restorePkgName').textContent = name;
         document.getElementById('restorePkgNameHidden').value = name;
-        form.submit();
+        document.getElementById('restoreForm').action = '/Admin/Payment/Packages/Restore/' + id;
+        document.getElementById('restoreModal').classList.add('open');
     }
 
     document.querySelectorAll('.modal-overlay').forEach(el => {

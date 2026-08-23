@@ -177,7 +177,7 @@
     <!-- Confirm modal (OK / Cancel) -->
     <div id="confirm-modal" class="fixed inset-0 z-[80] hidden items-center justify-center bg-black/50 backdrop-blur-sm">
         <div class="glass-card rounded-2xl p-lg w-[360px]">
-            <h3 class="font-headline-md text-primary mb-2">Confirm</h3>
+            <h3 id="confirm-title" class="font-headline-md text-primary mb-2">Confirm</h3>
             <p id="confirm-msg" class="text-on-surface-variant font-body-sm mb-lg">Are you sure?</p>
             <div class="flex justify-end gap-sm">
                 <button id="confirm-cancel" class="px-lg py-sm rounded-xl border border-border-subtle text-on-surface hover:bg-surface-container-high transition-colors">Cancel</button>
@@ -218,8 +218,22 @@
         });
 
         function showConfirm(msg, cb) {
+            document.getElementById('confirm-title').innerText = 'Confirm';
+            document.getElementById('confirm-cancel').classList.remove('hidden');
             document.getElementById('confirm-msg').innerText = msg;
             confirmCb = cb;
+            const m = document.getElementById('confirm-modal');
+            m.classList.remove('hidden'); m.classList.add('flex');
+        }
+
+        // Thông báo một chiều, thay cho alert() của trình duyệt. Dùng lại đúng modal ở trên,
+        // chỉ giấu nút Cancel và bỏ callback nên bấm OK là đóng. showConfirm() ở trên tự bật
+        // lại nút Cancel, nên hai kiểu gọi không giẫm lên nhau.
+        function showNotice(msg, title) {
+            document.getElementById('confirm-title').innerText = title || 'Notice';
+            document.getElementById('confirm-cancel').classList.add('hidden');
+            document.getElementById('confirm-msg').innerText = msg;
+            confirmCb = null;
             const m = document.getElementById('confirm-modal');
             m.classList.remove('hidden'); m.classList.add('flex');
         }
@@ -385,20 +399,20 @@
                 const opts = { method, headers: { 'Authorization': `Bearer ${token}` } };
                 if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
                 const res = await fetch(url, opts);
-                if (res.status === 403) { alert('Only Admin can reply/delete.'); return false; }
+                if (res.status === 403) { showNotice('Only Admin can reply/delete.', 'Not allowed'); return false; }
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 return true;
-            } catch (e) { alert('Operation failed. Check permissions / connection.'); return false; }
+            } catch (e) { showNotice('Operation failed. Check permissions / connection.', 'Error'); return false; }
         }
 
         function deleteFeedback(id) {
             showConfirm('Delete this feedback? (soft delete)', async () => {
                 try {
                     const res = await fetch(`${API_BASE}/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
-                    if (res.status === 403) { alert('Only Admin can delete.'); return; }
+                    if (res.status === 403) { showNotice('Only Admin can delete.', 'Not allowed'); return; }
                     if (!res.ok) throw new Error(`HTTP ${res.status}`);
                     currentId = null; toggleDrawer(false); fetchList();
-                } catch (e) { alert('Delete failed.'); }
+                } catch (e) { showNotice('Delete failed.', 'Error'); }
             });
         }
 
@@ -406,24 +420,29 @@
             showConfirm('Restore this deleted feedback?', async () => {
                 try {
                     const res = await fetch(`${API_BASE}/${id}/restore`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
-                    if (res.status === 403) { alert('Only Admin can restore.'); return; }
+                    if (res.status === 403) { showNotice('Only Admin can restore.', 'Not allowed'); return; }
                     if (res.status === 409) {
                         const payload = await res.json().catch(() => null);
-                        alert(payload?.message || 'This feedback cannot be restored because an active replacement already exists.');
+                        showNotice(payload?.message || 'This feedback cannot be restored because an active replacement already exists.', 'Cannot restore');
                         return;
                     }
                     if (!res.ok) throw new Error(`HTTP ${res.status}`);
                     currentId = null; toggleDrawer(false); fetchList();
-                } catch (e) { alert('Restore failed.'); }
+                } catch (e) { showNotice('Restore failed.', 'Error'); }
             });
         }
 
         function deletedBadge() { return ` <span class="px-xs py-0.5 rounded-full border text-[9px] font-bold uppercase bg-error/15 border-error/40 text-error">Deleted</span>`; }        function userLabel(it) { return it.userFullName || (it.userId ? 'User ' + String(it.userId).substring(0, 5) : 'Unknown'); }
         function initial(name) { return name && name.trim() ? name.trim()[0].toUpperCase() : 'U'; }
         function categoryBadge(c) { return `<span class="px-xs py-0.5 rounded bg-tertiary-container/10 border border-tertiary-container/30 text-tertiary font-code-label text-[10px] uppercase">${escapeHtml(c || 'General')}</span>`; }
+        // FeedbackAPI chỉ ghi ra đúng hai trạng thái: New (lúc tạo, và khi xoá reply cuối) và
+        // Replied (khi admin trả lời). Giá trị nào khác thì hiển thị NGUYÊN VĂN với style trung
+        // tính, không đoán. Nhánh catch-all cũ gán mọi thứ lạ thành "New" nên badge đếm ra 4
+        // trong khi lọc theo New chỉ trả về 2.
         function statusBadge(s) {
             if (s === 'Replied') return `<span class="px-xs py-1 rounded-full bg-success/10 border border-success/30 text-success text-[10px] font-bold uppercase">Replied</span>`;
-            return `<span class="px-xs py-1 rounded-full bg-warning/10 border border-warning/30 text-warning text-[10px] font-bold uppercase">New</span>`;
+            if (s === 'New') return `<span class="px-xs py-1 rounded-full bg-warning/10 border border-warning/30 text-warning text-[10px] font-bold uppercase">New</span>`;
+            return `<span class="px-xs py-1 rounded-full bg-surface-container border border-border-subtle text-on-surface-variant text-[10px] font-bold uppercase">${escapeHtml(s) || 'Unknown'}</span>`;
         }
         function renderPagination(data) {
             totalPages = Math.max(data.totalPages || 1, 1);

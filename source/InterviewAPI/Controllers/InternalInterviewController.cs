@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using InterviewAPI.Models; 
+using InterviewAPI.Models;
+using InterviewAPI.Services; 
 
 namespace InterviewAPI.Controllers;
 
@@ -47,6 +48,36 @@ public class InternalInterviewController : ControllerBase
                 .ToListAsync(ct);
 
             return Ok(sessions);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    // Trang admin user detail hỏi trạng thái enroll khuôn mặt/giọng nói.
+    //
+    // Nguồn duy nhất đáng tin là bảng ProfileBiometrics ở đây. Hai cột
+    // Accounts.IsFaceVerified/IsVoiceVerified bên AuthAPI KHÔNG có code nào ghi vào — chúng
+    // luôn bằng 0 — nên admin phải đọc thẳng chỗ này thay vì nhân bản cờ sang AuthAPI.
+    //
+    // userId nhận vào là AccountId, khớp với cột ProfileBiometrics.UserId mà luồng enroll
+    // đang ghi (xem endpoint sessions ở trên cũng nhận AccountId).
+    [HttpGet("biometrics")]
+    public async Task<IActionResult> GetBiometricsByUserId([FromQuery] Guid userId, CancellationToken ct)
+    {
+        try
+        {
+            var modalities = await _db.ProfileBiometrics
+                .Where(b => b.UserId == userId)
+                .Select(b => b.Modality)
+                .ToListAsync(ct);
+
+            return Ok(new
+            {
+                FaceEnrolled = modalities.Contains(ProfileBiometricsService.ModalityFace),
+                VoiceEnrolled = modalities.Contains(ProfileBiometricsService.ModalityVoice)
+            });
         }
         catch (Exception ex)
         {

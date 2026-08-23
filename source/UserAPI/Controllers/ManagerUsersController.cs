@@ -163,8 +163,18 @@ public class ManagerUsersController : ControllerBase
                     a.Role,
                     a.Status,
                     a.IsEmailVerified,
-                    a.IsFaceVerified,
-                    a.IsVoiceVerified,
+                    -- Trạng thái sinh trắc học đọc thẳng từ nguồn thật là bảng ProfileBiometrics
+                    -- của InterviewAPI. KHÔNG dùng a.IsFaceVerified/a.IsVoiceVerified: hai cột đó
+                    -- bên Accounts không có code nào ghi vào nên luôn bằng 0.
+                    -- Join theo AccountId vì ProfileBiometrics.UserId lưu chính AccountId.
+                    CAST(CASE WHEN EXISTS (
+                            SELECT 1 FROM DevPrep_Interview.dbo.ProfileBiometrics b
+                            WHERE b.UserId = a.AccountId AND b.Modality = N'Face'
+                        ) THEN 1 ELSE 0 END AS bit) AS IsFaceVerified,
+                    CAST(CASE WHEN EXISTS (
+                            SELECT 1 FROM DevPrep_Interview.dbo.ProfileBiometrics b
+                            WHERE b.UserId = a.AccountId AND b.Modality = N'Voice'
+                        ) THEN 1 ELSE 0 END AS bit) AS IsVoiceVerified,
                     a.CreatedAt AS RegistrationTimestamp,
                     a.UpdatedAt,
                     a.LastLoginAt,
