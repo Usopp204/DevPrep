@@ -216,27 +216,40 @@ public sealed class EvaluationService(IApiClient apiClient) : IEvaluationService
             // enum value, different message, on purpose — a separate state would have to propagate
             // through the enum, the mapping and the view for one call site's worth of distinction.
             viewModel.RecoveryInProgress = true;
+            // Zero of this session's answers have an evaluation yet — that is the definition of
+            // this branch (coveredEvaluations.Count == 0 on the server) — so the count is known
+            // without an extra call: 0 graded out of every substantive question in the transcript.
+            viewModel.GradedCount = 0;
+            viewModel.TotalGradableCount = context.Questions.Count(q => q.HasSubstantiveAnswer);
             SetState(
                 viewModel,
                 state,
                 "Evaluation is still processing",
-                "Grading for this interview did not complete. It has been restarted automatically — refresh in a moment to check again.");
+                $"Grading for this interview did not complete and has been restarted automatically. " +
+                $"{viewModel.GradedCount} of {viewModel.TotalGradableCount} answers graded so far — this page refreshes automatically.");
             return viewModel;
         }
 
         if (state == EvaluationReportState.EvaluationIncomplete)
         {
             await LoadQuestionEvaluationsAsync(viewModel, context, cancellationToken);
+            // LoadQuestionEvaluationsAsync just populated viewModel.Questions with the real,
+            // current per-question scores — count directly off it rather than trusting a second
+            // source, so this can never drift from what the page actually renders below.
+            var gradable = viewModel.Questions.Where(q => q.HasSubstantiveAnswer).ToList();
+            viewModel.GradedCount = gradable.Count(q => q.Score is not null);
+            viewModel.TotalGradableCount = gradable.Count;
             // Wording is deliberately true in BOTH cases the server can be in here: grading that is
             // genuinely still in flight, and grading that had died and has just been re-queued
             // (EvaluationAPI asks InterviewAPI to recover missing evaluations before returning this
-            // state). The user's action is identical either way — wait and refresh — so one message
-            // covers both rather than exposing a distinction they cannot act on differently.
+            // state). The user's action is identical either way — wait — so one message covers both
+            // rather than exposing a distinction they cannot act on differently.
             SetState(
                 viewModel,
                 state,
                 "Evaluation is still processing",
-                "Some answers are still being graded. Grading resumes automatically — refresh in a moment to check again.");
+                $"{viewModel.GradedCount} of {viewModel.TotalGradableCount} answers graded so far. " +
+                "Grading resumes automatically — this page refreshes automatically.");
             return viewModel;
         }
 

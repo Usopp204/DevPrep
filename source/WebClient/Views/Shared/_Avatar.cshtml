@@ -1,0 +1,23 @@
+@model WebClient.Models.Shared.AvatarViewModel
+@*
+    Renders the CONTENTS of an avatar circle — the uploaded picture, or the caller's fallback
+    character. Not the surrounding <button>/<span>: each navbar has its own element, classes and
+    id, and this exists to share the image-or-character decision, not to merge the navbars.
+
+    Sizing is deliberately NOT set here. Each container styles its own `img` child
+    (.hm-avatar img / .hm-dropdown-avatar img in home.css, .pf-avatar-btn img in profile.css),
+    which is where it belongs and where profile.css already had it. An earlier version inlined
+    the sizing on this element instead; that hid the real defect, which was a missing padding:0
+    on .hm-avatar — see the comment there.
+
+    Used by the two candidate navbars only. _AdminTopbar and _ManagerTopbar render their "A"/"M"
+    letters directly and never call this.
+*@
+@if (!string.IsNullOrWhiteSpace(Model.AvatarUrl))
+{
+    <img src="@Model.AvatarUrl" alt="" />
+}
+else
+{
+    @Model.Initial
+}

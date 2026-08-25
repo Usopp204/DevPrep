@@ -4,6 +4,9 @@
 *@
 @{
     var adEmail = Context.Request.Cookies["user_email"];
+    // Letter only, deliberately — the admin navbar never shows the account's uploaded avatar,
+    // whatever AvatarUrl that account happens to have. NavbarAvatarProvider skips the lookup
+    // entirely for the Admin role, so no profile call is made for this page either.
     var adInitial = string.IsNullOrWhiteSpace(adEmail) ? "A" : adEmail.Trim().Substring(0, 1).ToUpper();
 }
 <header class="ad-topbar">

@@ -33,6 +33,13 @@ public class ReportViewModel
     // a single call site's distinction.
     public bool RecoveryInProgress { get; set; }
     public bool QuestionEvaluationsUnavailable { get; set; }
+
+    // Populated only alongside EvaluationIncomplete and the RecoveryInProgress flavour of
+    // EvaluationUnavailable — the two "grading is still running" states. Lets the view show
+    // "X of Y answers graded" instead of a bare "still processing" message, and lets the
+    // auto-refresh script know it has something to poll for.
+    public int GradedCount { get; set; }
+    public int TotalGradableCount { get; set; }
     public ReportResponse? Report { get; set; }
     public List<ReportQuestionViewModel> Questions { get; set; } = new();
     public SubmitInterviewFeedbackRequest FeedbackForm { get; set; } = new();

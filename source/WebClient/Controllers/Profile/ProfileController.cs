@@ -11,7 +11,8 @@ public class ProfileController(
     IProfileService profileService,
     IPaymentService paymentService,
     IBiometricsService biometricsService,
-    IInterviewService interviewService) : Controller
+    IInterviewService interviewService,
+    INavbarAvatarProvider navbarAvatarProvider) : Controller
 {
     // ============================ View Profile ============================
     [HttpGet]
@@ -73,6 +74,14 @@ public class ProfileController(
 
         if (result.Success)
         {
+            // This is the ONE place a user's avatar can change, so it is the one place the
+            // navbar's cached copy has to be dropped. Invalidate rather than write the new URL:
+            // UpdateMyProfileAsync discards the AvatarUrl it receives, and re-reading on the next
+            // render cannot drift from what UserAPI actually stored. The redirect below is that
+            // next render, so the new picture is already showing when the user lands on Index —
+            // there is no page on which they see the old one.
+            navbarAvatarProvider.Invalidate();
+
             TempData["Message"] = result.Message;
             return RedirectToAction(nameof(Index));
         }

@@ -1,5 +1,7 @@
 @{
     var managerEmail = Context.Request.Cookies["user_email"];
+    // Letter only, deliberately — see _AdminTopbar. NavbarAvatarProvider skips the lookup for
+    // the Manager role, so this page makes no profile call for a value it would never render.
     var managerInitial = string.IsNullOrWhiteSpace(managerEmail) ? "M" : managerEmail.Trim().Substring(0, 1).ToUpper();
 }
 <header class="ad-topbar">

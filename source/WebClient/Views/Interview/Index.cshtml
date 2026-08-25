@@ -166,11 +166,30 @@
                     </select>
                     @{
                         var cheapestCost = WebClient.Helpers.CreditPricing.DurationToCreditCost.Values.Min();
+                        // Cost of the duration currently selected — after a blocked Start the
+                        // controller re-renders this page with DurationMinutes preserved, so this
+                        // is the duration the user actually tried to buy.
+                        WebClient.Helpers.CreditPricing.DurationToCreditCost
+                            .TryGetValue(Model.DurationMinutes, out var selectedCost);
                     }
+                    @* Two separate cases, both needing the same top-up link. The first is the
+                       pre-existing "cannot afford ANY duration" banner. The second is the case a
+                       blocked Start lands in: the balance covers some shorter interview but not
+                       the one that was selected, so the first banner stays silent and the user
+                       would otherwise be told "you need N credits" with no way to buy them.
+                       Derived from the balance and the selected duration rather than from the
+                       error text, so it cannot drift out of sync with the server's wording. *@
                     @if (Model.CreditBalance is int knownBalance && knownBalance < cheapestCost)
                     {
                         <div class="dash-alert">
                             Not enough credit for any interview duration.
+                            <a asp-controller="Payment" asp-action="Index">Top up credits</a>.
+                        </div>
+                    }
+                    else if (Model.CreditBalance is int balance && selectedCost > 0 && balance < selectedCost)
+                    {
+                        <div class="dash-alert">
+                            This @Model.DurationMinutes-minute interview needs @selectedCost credits — you have @balance.
                             <a asp-controller="Payment" asp-action="Index">Top up credits</a>.
                         </div>
                     }
