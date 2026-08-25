@@ -200,6 +200,20 @@ services:
       - Jwt__Key=${JWT_KEY}
       - Jwt__Issuer=${JWT_ISSUER}
       - Jwt__Audience=${JWT_AUDIENCE}
+    volumes:
+      # Uploaded avatar images — same problem and same fix as cvjdapi's cv-uploads below.
+      # Without this they live only in the container's writable layer and are destroyed
+      # whenever the container is recreated (`down`/`up`, or a rebuild), while the
+      # UserProfiles.AvatarUrl rows survive still pointing at them — the profile card then
+      # renders a broken image and DeleteAvatar silently skips the missing file.
+      # A plain `restart` never showed this, which is why it looked intermittent.
+      #
+      # No data migration is needed for rows already written: AvatarUrl stores an absolute
+      # URL, but only its HOST half is baked in (FILE_PUBLIC_BASE_URL above) and the path
+      # half — /avatars/{guid}.{ext} — is exactly what ApiGateway's avatars-route forwards
+      # here. Existing rows keep resolving as soon as their file exists again; files lost
+      # before this volume existed are simply gone.
+      - user-avatars:/app/wwwroot/avatars
     networks: [devprep-internal-net]
 
   cvjdapi:
@@ -425,3 +439,4 @@ volumes:
   hf-cache:
   tts-cache:
   cv-uploads:
+  user-avatars:
