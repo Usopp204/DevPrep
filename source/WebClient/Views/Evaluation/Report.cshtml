@@ -479,5 +479,59 @@
 
     <script src="~/js/components/feedback-content.js" asp-append-version="true"></script>
     <script src="~/js/components/star-rating.js" asp-append-version="true"></script>
+    @{
+        var gradingStillRunning = Model.DisplayState == EvaluationReportState.EvaluationIncomplete
+            || (Model.DisplayState == EvaluationReportState.EvaluationUnavailable && Model.RecoveryInProgress);
+    }
+    @if (gradingStillRunning)
+    {
+        <script>
+            // Auto-refresh while grading is still in flight (EvaluationIncomplete, or
+            // EvaluationUnavailable with a recovery in progress). Reloads the page rather than
+            // fetching partial data — this is a plain server-rendered view, and a reload re-runs
+            // the exact same server logic a manual refresh already did, so there is no separate
+            // code path to keep in sync.
+            //
+            // Interval matches InterviewAPI's per-session regrade cooldown (60s, see
+            // SessionService.RegradeCooldownSeconds) on purpose: every reload re-requests
+            // /performance, which re-triggers the regrade check. Polling faster than the cooldown
+            // window doesn't get the answer any sooner — it just gets suppressed server-side and
+            // logs a warning each time. At 60s, a reload should always land just past the previous
+            // attempt's cooldown, so this should not spam the log in the normal single-tab case.
+            //
+            // sessionStorage (not a plain in-memory counter) because a JS reload wipes the page's
+            // memory — the attempt count has to survive the reload to ever stop.
+            (function () {
+                var STORAGE_KEY = 'devprep-report-poll-@Model.SessionId';
+                var POLL_INTERVAL_MS = 60000;
+                var MAX_ATTEMPTS = 20; // ~20 minutes of auto-refresh before giving up silently
+
+                var stored = parseInt(sessionStorage.getItem(STORAGE_KEY) || '0', 10);
+                var attempts = isNaN(stored) ? 0 : stored;
+                if (attempts >= MAX_ATTEMPTS) {
+                    return; // grading has taken too long to keep polling; state text + manual refresh still work
+                }
+
+                var timerId = setTimeout(function () {
+                    sessionStorage.setItem(STORAGE_KEY, String(attempts + 1));
+                    window.location.reload();
+                }, POLL_INTERVAL_MS);
+
+                window.addEventListener('pagehide', function () {
+                    clearTimeout(timerId);
+                });
+            })();
+        </script>
+    }
+    else
+    {
+        <script>
+            // Grading finished (or this session was never in a "still processing" state) — drop
+            // any leftover poll-attempt counter so a later session reusing this tab's sessionStorage
+            // (same key namespace, different SessionId, so unlikely, but cheap to be sure) never
+            // inherits a stale count.
+            sessionStorage.removeItem('devprep-report-poll-@Model.SessionId');
+        </script>
+    }
 </body>
 </html>

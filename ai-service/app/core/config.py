@@ -65,3 +65,11 @@ INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY", "")
 
 # --- API ---
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
+
+# --- Logging ---
+# Level for THIS project's own loggers (the "app" and "biometrics" namespaces — see
+# app/main.py's _configure_logging). Does not touch root or third-party loggers (torch,
+# speechbrain, transformers, httpx, ...), which stay at Python's default and would otherwise
+# drown our own lines in library chatter at INFO. Configurable so a noisy-in-practice level
+# can be dropped without a rebuild — see _configure_logging for why this matters here.
+LOG_LEVEL = os.getenv("LOG_LEVEL") or "INFO"

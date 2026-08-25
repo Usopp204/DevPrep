@@ -767,7 +767,10 @@
     // integrity strings in this file ("Attention needed", "We couldn't see your face...").
     function tabEventNotice(eventType) {
         if (eventType === "Paste") {
-            return "We noticed content was pasted into your answer.";
+            // Must state the OUTCOME, not just the observation. The paste handler now cancels the
+            // insertion, so a user whose text never appears needs to be told that was deliberate —
+            // "we noticed content was pasted" alongside an empty textarea reads as a broken app.
+            return "Pasting is not allowed — the content was not inserted into your answer.";
         }
         if (eventType === "WindowBlur") {
             return "The interview window lost focus for a moment — please stay on this screen.";
@@ -894,7 +897,24 @@
         beginAway(document.visibilityState === "hidden");
     });
     window.addEventListener("focus", endAway);
-    inputEl?.addEventListener("paste", function () {
+    inputEl?.addEventListener("paste", function (event) {
+        // Gate the block on the SAME condition that decides whether a warning can be shown, so
+        // blocking and explaining always travel together. When monitoring is off or the session
+        // is paused/ended, tabGuardActive() is false and sendTabEvent would no-op — blocking
+        // there would swallow the paste with no message at all, which is precisely the "the app
+        // looks broken" failure this change exists to avoid.
+        if (!tabGuardActive()) return;
+
+        // Cancel the insertion FIRST, before the coalescing check below. That check returns early
+        // for repeat pastes inside PASTE_COALESCE_MS, so a preventDefault placed after it would
+        // let the second and every later paste of a burst land in the textarea — the exact bug
+        // being fixed, still present for anyone pasting twice in five seconds.
+        //
+        // Blocking is unconditional within an active session; REPORTING keeps its existing
+        // coalescing untouched. Those are deliberately two different rules: every paste must be
+        // stopped, but a burst must still cost only one strike.
+        event.preventDefault();
+
         const now = Date.now();
         if (now - lastPasteSentAt < PASTE_COALESCE_MS) return;
         lastPasteSentAt = now;

@@ -1,4 +1,8 @@
+@inject WebClient.Services.Profile.INavbarAvatarProvider NavbarAvatar
 @{
+    // Never throws and is bounded to a short wait — see NavbarAvatarProvider. Null simply means
+    // "draw the initial", which is exactly what this partial did before avatars existed.
+    var accountAvatarUrl = await NavbarAvatar.GetAvatarUrlAsync();
     var accountEmail = Context.Request.Cookies["user_email"];
     var accountInitial = string.IsNullOrWhiteSpace(accountEmail)
         ? "U"
@@ -16,11 +20,13 @@
             aria-controls="hm-dropdown"
             aria-expanded="false"
             title="@accountEmail">
-        @accountInitial
+        <partial name="_Avatar" model="new WebClient.Models.Shared.AvatarViewModel { AvatarUrl = accountAvatarUrl, Initial = accountInitial }" />
     </button>
     <div class="hm-dropdown" id="hm-dropdown" role="menu">
         <div class="hm-dropdown-head">
-            <span class="hm-dropdown-avatar">@accountInitial</span>
+            <span class="hm-dropdown-avatar">
+                <partial name="_Avatar" model="new WebClient.Models.Shared.AvatarViewModel { AvatarUrl = accountAvatarUrl, Initial = accountInitial }" />
+            </span>
             <span class="hm-dropdown-email">@accountEmail</span>
         </div>
         @if (!accountIsAdmin)

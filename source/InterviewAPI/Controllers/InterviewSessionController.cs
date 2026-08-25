@@ -631,6 +631,15 @@ public class InterviewSessionController : ControllerBase
                 StatusCodes.Status503ServiceUnavailable,
                 ApiResponse<object>.Fail("The payment service is temporarily unavailable. Please try again shortly."));
         }
+        // KEEP ex.Message — real business-rule copy: "Session not found.", "Session not
+        // available.", the integrity-policy/entry-gate messages, and RequireSufficientCreditsAsync's
+        // "This interview needs N credits, but you have M." Without this catch, all of those fell
+        // through to the generic 503 below — which is wrong for a business rule (insufficient
+        // credits is not a dependency failure) and told the user nothing they could act on.
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Generating the next question failed for session {SessionId}.", id);

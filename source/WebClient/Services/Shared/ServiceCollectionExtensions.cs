@@ -82,6 +82,9 @@ public static class ServiceCollectionExtensions
 
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IProfileService, ProfileService>();
+        // Scoped, so one page render performs at most one avatar lookup no matter how many
+        // navbar partials ask for it.
+        services.AddScoped<INavbarAvatarProvider, NavbarAvatarProvider>();
         services.AddScoped<IBiometricsService, BiometricsService>();
         services.AddScoped<ICvJdService, CvJdService>();
         services.AddScoped<IInterviewService, InterviewService>();

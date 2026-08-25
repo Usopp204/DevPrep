@@ -108,6 +108,26 @@ body.home-page {
     color: #fff; font-family: 'Geist', sans-serif; font-weight: 700; font-size: 16px; line-height: 25.6px; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
     transition: box-shadow .2s, transform .1s;
+    /* padding:0 is load-bearing, not tidying. This is a <button>, and the browser's default
+       button padding (1px 6px in Chrome) is invisible behind a centred letter but shrinks the
+       CONTENT box asymmetrically: with border-box it left 40-12-2 = 26px of width against
+       40-2-2 = 36px of height, so an avatar sized at 100%/100% rendered as a 26x36 oval inside
+       a round button. .pf-avatar-btn and .ad-avatar already carry padding:0, which is why
+       neither of them ever showed this. overflow:hidden matches them too and keeps the picture
+       clipped to the circle even if border-radius is ever removed from the image itself. */
+    padding: 0;
+    overflow: hidden;
+}
+
+/* Avatar image sizing lives here rather than inline on the <img>, mirroring the rule
+   profile.css already had for .pf-avatar-btn img. Both containers have an explicit square size,
+   so 100%/100% + object-fit:cover fills the circle without distorting a non-square photo. */
+.hm-avatar img,
+.hm-dropdown-avatar img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    display: block;
 }
 .hm-avatar:hover { box-shadow: 0 0 0 3px rgba(79, 70, 229, .35); }
 .hm-avatar:active { transform: scale(.95); }

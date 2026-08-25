@@ -2,7 +2,9 @@
     Topbar dùng chung cho khu vực Profile. Include:  @await Html.PartialAsync("_ProfileTopbar")
     Cần nạp ~/css/profile.css. Hiện avatar (chữ đầu email) + dropdown View Profile / Logout.
 *@
+@inject WebClient.Services.Profile.INavbarAvatarProvider NavbarAvatar
 @{
+    var tbAvatarUrl = await NavbarAvatar.GetAvatarUrlAsync();
     var tbEmail = Context.Request.Cookies["user_email"];
     var tbInitial = string.IsNullOrWhiteSpace(tbEmail) ? "U" : tbEmail.Trim().Substring(0, 1).ToUpper();
     var tbRole = Context.Request.Cookies["user_role"] ?? string.Empty;
@@ -13,7 +15,9 @@
     <a class="pf-brand" asp-controller="Home" asp-action="Index">DevPrep AI</a>
     <div class="pf-topbar-actions">
         <div class="pf-user-menu" id="pf-user-menu">
-            <button class="pf-avatar-btn" id="pf-avatar-btn" type="button" aria-haspopup="true" aria-expanded="false" title="@tbEmail">@tbInitial</button>
+            <button class="pf-avatar-btn" id="pf-avatar-btn" type="button" aria-haspopup="true" aria-expanded="false" title="@tbEmail">
+                <partial name="_Avatar" model="new WebClient.Models.Shared.AvatarViewModel { AvatarUrl = tbAvatarUrl, Initial = tbInitial }" />
+            </button>
             <div class="pf-dropdown" role="menu">
                 <div class="pf-dropdown-head">
                     <span class="pf-dropdown-email">@tbEmail</span>

@@ -85,7 +85,7 @@
 
         function renderDetail(d) {
             const meta = [
-                ['Level', badge(d.level)], ['Mode', badge(d.interactionMode)], ['Type', badge(d.questionType)],
+                ['Level', badge(d.level)],
                 ['Planned', `${d.durationMinutes} min`], ['Started', fmtDateTime(d.startedAt)], ['Ended', fmtDateTime(d.endedAt)],
                 ['Actual', actualDuration(d.startedAt, d.endedAt)], ['Credit', String(d.creditCost)],
                 ['Questions', `${d.answeredQuestions}/${d.totalQuestions}`], ['Avg response', msToSec(d.avgResponseTimeMs)],
