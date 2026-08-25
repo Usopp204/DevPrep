@@ -188,7 +188,27 @@ public class PaymentApiClient : IPaymentApiClient
 
             using var stream = await response.Content.ReadAsStreamAsync(ct);
             var jsonDoc = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
-            return CreditBalanceResult.Known(jsonDoc.RootElement.GetProperty("Balance").GetInt32());
+
+            // Case-INSENSITIVE lookup. PaymentAPI's GET /credits/balance is a minimal-API
+            // endpoint returning `new { Balance = ... }`, and ASP.NET Core's default web
+            // serializer camel-cases that on the wire: the body is {"balance":0,...}.
+            // JsonElement.GetProperty("Balance") is case-SENSITIVE, so it threw
+            // KeyNotFoundException on every single call — swallowed by the catch-all below and
+            // reported as Unknown ("balance not known right now"). Every caller then treated a
+            // perfectly healthy PaymentAPI as an outage; for the credit gates in SessionService
+            // that meant Available=false, which those gates deliberately do NOT block on, so a
+            // user with 0 credits walked through the enrolment/policy steps unchallenged.
+            // Nothing distinguished this from a real outage because the failure mode is
+            // identical, which is why it survived. Do not "simplify" this back to GetProperty.
+            foreach (var property in jsonDoc.RootElement.EnumerateObject())
+            {
+                if (property.Name.Equals("balance", StringComparison.OrdinalIgnoreCase))
+                    return CreditBalanceResult.Known(property.Value.GetInt32());
+            }
+
+            _logger.LogError(
+                "GetBalance: PaymentAPI response had no 'balance' property, userId={UserId}", userId);
+            return CreditBalanceResult.Unknown("Credit service returned an unexpected response.");
         }
         // A caller-cancelled request is not a PaymentAPI failure; let it propagate so it is not
         // reported as "balance unavailable" to a user who simply navigated away.

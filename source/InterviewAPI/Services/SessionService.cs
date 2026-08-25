@@ -378,6 +378,23 @@ public class SessionService : ISessionService
         if (!ValidDurations.Contains(req.DurationMinutes))
             throw new InvalidOperationException("Invalid duration. Must be 15, 30, 45, or 60.");
 
+        // Credit gate 1 of 3 — the EARLIEST point on the Start path where the price is knowable,
+        // because the price depends on duration and this is the first server-side call that has
+        // it (WebClient's Start form posts DurationMinutes, and StartInterviewAsync sends it here
+        // before anything else). Checking here is purely a user-experience gate: it stops someone
+        // who cannot afford the session before they sit through Face Verify and the integrity
+        // policy, which is what the other two gates alone left them doing.
+        //
+        // Runs AFTER the duration whitelist above (an invalid duration should still say so rather
+        // than quote a price for a duration that does not exist), and is handed to
+        // ResolveSessionAsync as beforeCreate rather than called here directly so it lands in the
+        // one correct window: after the active-session 409 (so a user who is out of credits but
+        // has an interview RUNNING still gets redirected back to it instead of being told to buy
+        // credits) and before _repo.CreateAsync (so a blocked attempt persists no session row at
+        // all — not even an abandoned "Configured" one). Nothing is charged either way; the only
+        // deduction lives in GenerateQuestionAsync, far later.
+        //
+        // Still not a reservation, same as the other two: see RequireSufficientCreditsAsync.
         var session = await ResolveSessionAsync(req.SessionId, userId, ct,
             factory: () => new InterviewSession
             {
@@ -390,7 +407,8 @@ public class SessionService : ISessionService
                 DurationMinutes = req.DurationMinutes,
                 CreatedAt = VietnamTime.Now,
                 UpdatedAt = VietnamTime.Now
-            });
+            },
+            beforeCreate: () => RequireSufficientCreditsAsync(userId, req.DurationMinutes, ct));
 
         if (req.SessionId.HasValue && req.SessionId != Guid.Empty)
         {
@@ -707,6 +725,17 @@ public class SessionService : ISessionService
         bool isFirstEntry = session.Status == "Initialized";
         _logger.LogInformation("GenerateQuestion: session {SessionId}, isFirstEntry={isFirstEntry}, sessionStatus={Status}, userId={UserId}",
             sessionId, isFirstEntry, session.Status, userId);
+
+        // Credit gate 3 of 3 — the last one, immediately before the status transition the
+        // deduction below is keyed on. A balance read at Start or policy-accept time does not
+        // reserve credits, so checking again here — right before the charge — is what actually
+        // protects this specific attempt. Still advisory, not a lock: see the
+        // race note on DeductCreditAsync's own refusal below, which is what makes any single
+        // deduction correct even when this check races against another request for the same
+        // balance.
+        if (isFirstEntry)
+            await RequireSufficientCreditsAsync(userId, session.DurationMinutes, ct);
+
         bool statusChanged = await _repo.UpdateStatusIfAsync(userId, sessionId, "Initialized", "InProgress", ct);
         _logger.LogInformation("GenerateQuestion: UpdateStatusIfAsync returned {StatusChanged}", statusChanged);
 
@@ -1796,8 +1825,15 @@ public class SessionService : ISessionService
 
     // Nếu sessionId rỗng: tạo mới (gọi factory để build entity với trường đã set sẵn, lưu một lần).
     // Nếu có sessionId: load, kiểm tra quyền sở hữu và trạng thái.
+    // beforeCreate: optional async guard run ONLY on the brand-new-session path, after the
+    // active-session check and immediately before the row is created. Exists so ConfigDurationAsync
+    // can put its credit check in exactly that window: any earlier and a user who is out of credits
+    // but HAS an interview running would be told to buy credits instead of being redirected back
+    // to their session (the 409 below); any later and a session row would already be persisted for
+    // an attempt that gets rejected. Null for every other caller, whose ordering is unchanged.
     private async Task<InterviewSession> ResolveSessionAsync(
-        Guid? sessionId, Guid userId, CancellationToken ct, Func<InterviewSession> factory)
+        Guid? sessionId, Guid userId, CancellationToken ct, Func<InterviewSession> factory,
+        Func<Task>? beforeCreate = null)
     {
         if (!sessionId.HasValue || sessionId == Guid.Empty)
         {
@@ -1811,6 +1847,9 @@ public class SessionService : ISessionService
                 throw new SessionGuardException(409, "active_session_exists",
                     "You already have an interview in progress.",
                     activeSessionId: activeSession.SessionId);
+
+            if (beforeCreate is not null)
+                await beforeCreate();
 
             return await _repo.CreateAsync(factory(), ct);
         }
@@ -2014,6 +2053,16 @@ public class SessionService : ISessionService
         if (session.Status != "Initialized")
             throw new InvalidOperationException("Session cannot accept policy at this status.");
 
+        // Credit gate 2 of 3 — after ConfigDurationAsync's early check, before
+        // GenerateQuestionAsync's deduction. Kept even though gate 1 now catches this case
+        // earlier on the normal path: gate 1 only runs when the session is configured through
+        // Start, and a caller hitting this endpoint directly with an already-configured
+        // SessionId never passes through it. This alone is NOT sufficient either: a balance read
+        // here does not reserve credits, so it cannot by itself stop two concurrent requests from
+        // both reading "enough" before either actually deducts (see GenerateQuestionAsync for why
+        // that gate is the authoritative one and for the race this project accepted, not closed).
+        await RequireSufficientCreditsAsync(userId, session.DurationMinutes, ct);
+
         bool updated = await _repo.AcceptIntegrityPolicyIfAsync(sessionId, ct);
         if (updated)
         {
@@ -2026,6 +2075,35 @@ public class SessionService : ISessionService
             Accepted = session.IntegrityPolicyAccepted,
             AcceptedAt = session.IntegrityPolicyAcceptedAt
         };
+    }
+
+    // Shared by all three credit gates on the Start->Room path, in the order a user meets them:
+    // ConfigDurationAsync (earliest, before any session row exists), AcceptIntegrityPolicyAsync,
+    // and GenerateQuestionAsync (immediately before the charge). Three checks is deliberate — the
+    // first is for user experience, the later two so no entry path can bypass the rule, including
+    // a caller driving the API directly rather than through the Start form.
+    // A plain balance read via GetBalanceAsync, not a
+    // reservation: nothing stops the balance from moving between this call and the moment it
+    // matters. DeductCreditAsync (still called afterwards in GenerateQuestionAsync) is what
+    // actually locks the ledger row and is the only correct authority; this exists purely to give
+    // the user a clear, specific refusal well before that point instead of a generic failure once
+    // they have already sat through Face Verify.
+    //
+    // balance.Available == false means PaymentAPI did not answer — GetBalanceAsync's Unknown
+    // case. Deliberately does NOT block on that: an infrastructure failure must not read as "you
+    // can't afford this." The caller falls through to its normal flow, and for GenerateQuestionAsync
+    // that means DeductCreditAsync gets to try for real and throws CreditServiceUnavailableException
+    // on its own if PaymentAPI is still unreachable when the actual charge is attempted.
+    private async Task RequireSufficientCreditsAsync(Guid userId, int durationMinutes, CancellationToken ct)
+    {
+        var requiredCredits = CreditConfig.GetCreditCost(durationMinutes);
+        var balance = await _paymentApiClient.GetBalanceAsync(userId, ct);
+        if (balance.Available && balance.Balance < requiredCredits)
+        {
+            throw new InvalidOperationException(
+                $"This interview needs {requiredCredits} credits, but you have {balance.Balance}. " +
+                "Please purchase more credits to continue.");
+        }
     }
 
     public async Task<HintResponse> HintAsync(Guid userId, Guid sessionId, Guid sessionQuestionId, CancellationToken ct)
