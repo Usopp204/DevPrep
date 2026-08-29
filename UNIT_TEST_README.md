@@ -56,12 +56,12 @@ The latest full-solution coverage run is under `TestResults/Final1253`. Discover
 
 ## Commit and clean checkout
 
-The implementation is published on branch `test/unit-tests-1253`. Resolve the immutable commit SHA with `git rev-parse origin/test/unit-tests-1253` after fetching, then use:
+The implementation is published on branch `unit-tests-1253`. Resolve the immutable commit SHA with `git rev-parse origin/unit-tests-1253` after fetching, then use:
 
 ```powershell
 git clone https://github.com/Usopp204/DevPrep.git
 cd DevPrep
-git checkout origin/test/unit-tests-1253
+git checkout origin/unit-tests-1253
 dotnet restore source\DevPrep.sln
 dotnet build source\DevPrep.sln --no-restore
 dotnet test tests\AuthAPI.Tests\AuthAPI.Tests.csproj --collect:"XPlat Code Coverage"
