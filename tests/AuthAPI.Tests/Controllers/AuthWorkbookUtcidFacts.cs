@@ -1,0 +1,66 @@
+using Xunit;
+
+namespace AuthAPI.Tests.Controllers;
+
+public class AuthWorkbookUtcidFacts
+{
+    [Fact(DisplayName="FUNC001-USR-UTCID01")] public Task FUNC001_USR_Case01() => AuthWorkbookCaseTests.Execute("FUNC001-USR-UTCID01");
+    [Fact(DisplayName="FUNC001-USR-UTCID02")] public Task FUNC001_USR_Case02() => AuthWorkbookCaseTests.Execute("FUNC001-USR-UTCID02");
+    [Fact(DisplayName="FUNC001-USR-UTCID03")] public Task FUNC001_USR_Case03() => AuthWorkbookCaseTests.Execute("FUNC001-USR-UTCID03");
+    [Fact(DisplayName="FUNC001-USR-UTCID04")] public Task FUNC001_USR_Case04() => AuthWorkbookCaseTests.Execute("FUNC001-USR-UTCID04");
+    [Fact(DisplayName="FUNC001-USR-UTCID05")] public Task FUNC001_USR_Case05() => AuthWorkbookCaseTests.Execute("FUNC001-USR-UTCID05");
+    [Fact(DisplayName="FUNC001-USR-UTCID06")] public Task FUNC001_USR_Case06() => AuthWorkbookCaseTests.Execute("FUNC001-USR-UTCID06");
+    [Fact(DisplayName="FUNC002-USR-UTCID01")] public Task FUNC002_USR_Case01() => AuthWorkbookCaseTests.Execute("FUNC002-USR-UTCID01");
+    [Fact(DisplayName="FUNC002-USR-UTCID02")] public Task FUNC002_USR_Case02() => AuthWorkbookCaseTests.Execute("FUNC002-USR-UTCID02");
+    [Fact(DisplayName="FUNC002-USR-UTCID03")] public Task FUNC002_USR_Case03() => AuthWorkbookCaseTests.Execute("FUNC002-USR-UTCID03");
+    [Fact(DisplayName="FUNC002-USR-UTCID04")] public Task FUNC002_USR_Case04() => AuthWorkbookCaseTests.Execute("FUNC002-USR-UTCID04");
+    [Fact(DisplayName="FUNC002-USR-UTCID05")] public Task FUNC002_USR_Case05() => AuthWorkbookCaseTests.Execute("FUNC002-USR-UTCID05");
+    [Fact(DisplayName="FUNC003-USR-UTCID01")] public Task FUNC003_USR_Case01() => AuthWorkbookCaseTests.Execute("FUNC003-USR-UTCID01");
+    [Fact(DisplayName="FUNC003-USR-UTCID02")] public Task FUNC003_USR_Case02() => AuthWorkbookCaseTests.Execute("FUNC003-USR-UTCID02");
+    [Fact(DisplayName="FUNC003-USR-UTCID03")] public Task FUNC003_USR_Case03() => AuthWorkbookCaseTests.Execute("FUNC003-USR-UTCID03");
+    [Fact(DisplayName="FUNC003-USR-UTCID04")] public Task FUNC003_USR_Case04() => AuthWorkbookCaseTests.Execute("FUNC003-USR-UTCID04");
+    [Fact(DisplayName="FUNC003-USR-UTCID05")] public Task FUNC003_USR_Case05() => AuthWorkbookCaseTests.Execute("FUNC003-USR-UTCID05");
+    [Fact(DisplayName="FUNC003-USR-UTCID06")] public Task FUNC003_USR_Case06() => AuthWorkbookCaseTests.Execute("FUNC003-USR-UTCID06");
+    [Fact(DisplayName="FUNC004-USR-UTCID01")] public Task FUNC004_USR_Case01() => AuthWorkbookCaseTests.Execute("FUNC004-USR-UTCID01");
+    [Fact(DisplayName="FUNC004-USR-UTCID02")] public Task FUNC004_USR_Case02() => AuthWorkbookCaseTests.Execute("FUNC004-USR-UTCID02");
+    [Fact(DisplayName="FUNC004-USR-UTCID03")] public Task FUNC004_USR_Case03() => AuthWorkbookCaseTests.Execute("FUNC004-USR-UTCID03");
+    [Fact(DisplayName="FUNC004-USR-UTCID04")] public Task FUNC004_USR_Case04() => AuthWorkbookCaseTests.Execute("FUNC004-USR-UTCID04");
+    [Fact(DisplayName="FUNC004-USR-UTCID05")] public Task FUNC004_USR_Case05() => AuthWorkbookCaseTests.Execute("FUNC004-USR-UTCID05");
+    [Fact(DisplayName="FUNC004-USR-UTCID06")] public Task FUNC004_USR_Case06() => AuthWorkbookCaseTests.Execute("FUNC004-USR-UTCID06");
+    [Fact(DisplayName="FUNC005-USR-UTCID01")] public Task FUNC005_USR_Case01() => AuthWorkbookCaseTests.Execute("FUNC005-USR-UTCID01");
+    [Fact(DisplayName="FUNC005-USR-UTCID02")] public Task FUNC005_USR_Case02() => AuthWorkbookCaseTests.Execute("FUNC005-USR-UTCID02");
+    [Fact(DisplayName="FUNC005-USR-UTCID03")] public Task FUNC005_USR_Case03() => AuthWorkbookCaseTests.Execute("FUNC005-USR-UTCID03");
+    [Fact(DisplayName="FUNC005-USR-UTCID04")] public Task FUNC005_USR_Case04() => AuthWorkbookCaseTests.Execute("FUNC005-USR-UTCID04");
+    [Fact(DisplayName="FUNC005-USR-UTCID05")] public Task FUNC005_USR_Case05() => AuthWorkbookCaseTests.Execute("FUNC005-USR-UTCID05");
+    [Fact(DisplayName="FUNC005-USR-UTCID06")] public Task FUNC005_USR_Case06() => AuthWorkbookCaseTests.Execute("FUNC005-USR-UTCID06");
+    [Fact(DisplayName="FUNC006-USR-UTCID01")] public Task FUNC006_USR_Case01() => AuthWorkbookCaseTests.Execute("FUNC006-USR-UTCID01");
+    [Fact(DisplayName="FUNC006-USR-UTCID02")] public Task FUNC006_USR_Case02() => AuthWorkbookCaseTests.Execute("FUNC006-USR-UTCID02");
+    [Fact(DisplayName="FUNC006-USR-UTCID03")] public Task FUNC006_USR_Case03() => AuthWorkbookCaseTests.Execute("FUNC006-USR-UTCID03");
+    [Fact(DisplayName="FUNC006-USR-UTCID04")] public Task FUNC006_USR_Case04() => AuthWorkbookCaseTests.Execute("FUNC006-USR-UTCID04");
+    [Fact(DisplayName="FUNC006-USR-UTCID05")] public Task FUNC006_USR_Case05() => AuthWorkbookCaseTests.Execute("FUNC006-USR-UTCID05");
+    [Fact(DisplayName="FUNC006-USR-UTCID06")] public Task FUNC006_USR_Case06() => AuthWorkbookCaseTests.Execute("FUNC006-USR-UTCID06");
+    [Fact(DisplayName="FUNC007-USR-UTCID01")] public Task FUNC007_USR_Case01() => AuthWorkbookCaseTests.Execute("FUNC007-USR-UTCID01");
+    [Fact(DisplayName="FUNC007-USR-UTCID02")] public Task FUNC007_USR_Case02() => AuthWorkbookCaseTests.Execute("FUNC007-USR-UTCID02");
+    [Fact(DisplayName="FUNC007-USR-UTCID03")] public Task FUNC007_USR_Case03() => AuthWorkbookCaseTests.Execute("FUNC007-USR-UTCID03");
+    [Fact(DisplayName="FUNC007-USR-UTCID04")] public Task FUNC007_USR_Case04() => AuthWorkbookCaseTests.Execute("FUNC007-USR-UTCID04");
+    [Fact(DisplayName="FUNC007-USR-UTCID05")] public Task FUNC007_USR_Case05() => AuthWorkbookCaseTests.Execute("FUNC007-USR-UTCID05");
+    [Fact(DisplayName="FUNC007-USR-UTCID06")] public Task FUNC007_USR_Case06() => AuthWorkbookCaseTests.Execute("FUNC007-USR-UTCID06");
+    [Fact(DisplayName="FUNC010-USR-UTCID01")] public Task FUNC010_USR_Case01() => AuthWorkbookCaseTests.Execute("FUNC010-USR-UTCID01");
+    [Fact(DisplayName="FUNC010-USR-UTCID02")] public Task FUNC010_USR_Case02() => AuthWorkbookCaseTests.Execute("FUNC010-USR-UTCID02");
+    [Fact(DisplayName="FUNC010-USR-UTCID03")] public Task FUNC010_USR_Case03() => AuthWorkbookCaseTests.Execute("FUNC010-USR-UTCID03");
+    [Fact(DisplayName="FUNC010-USR-UTCID04")] public Task FUNC010_USR_Case04() => AuthWorkbookCaseTests.Execute("FUNC010-USR-UTCID04");
+    [Fact(DisplayName="FUNC010-USR-UTCID05")] public Task FUNC010_USR_Case05() => AuthWorkbookCaseTests.Execute("FUNC010-USR-UTCID05");
+    [Fact(DisplayName="FUNC010-USR-UTCID06")] public Task FUNC010_USR_Case06() => AuthWorkbookCaseTests.Execute("FUNC010-USR-UTCID06");
+    [Fact(DisplayName="FUNC016-USR-UTCID01")] public Task FUNC016_USR_Case01() => AuthWorkbookCaseTests.Execute("FUNC016-USR-UTCID01");
+    [Fact(DisplayName="FUNC016-USR-UTCID02")] public Task FUNC016_USR_Case02() => AuthWorkbookCaseTests.Execute("FUNC016-USR-UTCID02");
+    [Fact(DisplayName="FUNC016-USR-UTCID03")] public Task FUNC016_USR_Case03() => AuthWorkbookCaseTests.Execute("FUNC016-USR-UTCID03");
+    [Fact(DisplayName="FUNC016-USR-UTCID04")] public Task FUNC016_USR_Case04() => AuthWorkbookCaseTests.Execute("FUNC016-USR-UTCID04");
+    [Fact(DisplayName="FUNC016-USR-UTCID05")] public Task FUNC016_USR_Case05() => AuthWorkbookCaseTests.Execute("FUNC016-USR-UTCID05");
+    [Fact(DisplayName="FUNC016-USR-UTCID06")] public Task FUNC016_USR_Case06() => AuthWorkbookCaseTests.Execute("FUNC016-USR-UTCID06");
+    [Fact(DisplayName="FUNC083-ADM-UTCID01")] public Task FUNC083_ADM_Case01() => AuthWorkbookCaseTests.Execute("FUNC083-ADM-UTCID01");
+    [Fact(DisplayName="FUNC083-ADM-UTCID02")] public Task FUNC083_ADM_Case02() => AuthWorkbookCaseTests.Execute("FUNC083-ADM-UTCID02");
+    [Fact(DisplayName="FUNC083-ADM-UTCID03")] public Task FUNC083_ADM_Case03() => AuthWorkbookCaseTests.Execute("FUNC083-ADM-UTCID03");
+    [Fact(DisplayName="FUNC083-ADM-UTCID04")] public Task FUNC083_ADM_Case04() => AuthWorkbookCaseTests.Execute("FUNC083-ADM-UTCID04");
+    [Fact(DisplayName="FUNC083-ADM-UTCID05")] public Task FUNC083_ADM_Case05() => AuthWorkbookCaseTests.Execute("FUNC083-ADM-UTCID05");
+    [Fact(DisplayName="FUNC083-ADM-UTCID06")] public Task FUNC083_ADM_Case06() => AuthWorkbookCaseTests.Execute("FUNC083-ADM-UTCID06");
+}

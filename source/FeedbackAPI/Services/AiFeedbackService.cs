@@ -84,6 +84,24 @@ public class AiFeedbackService : IAiFeedbackService
         return ToPaged(items, page, pageSize, total);
     }
 
+    public async Task<AiFeedbackListItemDto?> GetByIdAsync(Guid id)
+    {
+        var feedback = await _repository.GetByIdAsync(id);
+        if (feedback is null) return null;
+        var item = new AiFeedbackListItemDto
+        {
+            Id = feedback.InterviewFeedbackId, SessionId = feedback.SessionId, UserId = feedback.UserId,
+            Rating = feedback.Rating, QuestionQualityRating = feedback.QuestionQualityRating,
+            AiAccuracyRating = feedback.AiAccuracyRating, ScoringFairnessRating = feedback.ScoringFairnessRating,
+            FeedbackUsefulnessRating = feedback.FeedbackUsefulnessRating, Content = feedback.Content,
+            IsHelpful = feedback.IsHelpful, IsVisible = feedback.IsVisible, IsDeleted = feedback.IsDeleted,
+            CreatedAt = feedback.CreatedAt
+        };
+        var items = new List<AiFeedbackListItemDto> { item };
+        await ResolveUsersAsync(items);
+        return item;
+    }
+
     public async Task<PagedResult<PublicAiFeedbackDto>> GetPublicReviewsAsync(
         PublicFeedbackQuery query,
         Guid? viewerUserId,

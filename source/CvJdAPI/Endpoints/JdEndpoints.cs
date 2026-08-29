@@ -12,13 +12,7 @@ public static class JdEndpoints
     public static void MapJdEndpoints(this WebApplication app)
     {
         // GET latest JD
-        app.MapGet("/jd/me", async (string userId, DocumentDbContext db) =>
-        {
-            if (!Guid.TryParse(userId, out var uid)) return Results.BadRequest(new { error = "Invalid userId" });
-            var jd = await db.JobDescriptions.Where(j => j.UserId == uid)
-                .OrderByDescending(j => j.CreatedAt).FirstOrDefaultAsync();
-            return jd is null ? Results.NotFound() : Results.Ok(jd);
-        }).WithName("GetMyJd").WithOpenApi();
+        app.MapGet("/jd/me", GetMyJdAsync).WithName("GetMyJd").WithOpenApi();
 
         // POST save JD from text — supports AI parse or Normal mode
         app.MapPost("/jd", async (HttpContext ctx, DocumentDbContext db, IHttpClientFactory factory, IConfiguration config) =>
@@ -133,6 +127,13 @@ public static class JdEndpoints
             return Results.Ok(new { clarifiedJson });
         }).WithName("UploadJdFile").WithOpenApi().DisableAntiforgery();
 
+        app.MapPut("/jd", async (HttpContext ctx, DocumentDbContext db) =>
+        {
+            var body = await JsonSerializer.DeserializeAsync<JdUpdateRequest>(ctx.Request.Body,
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            return await UpdateJdAsync(body?.UserId, body?.Text, body?.Position, db);
+        }).WithName("UpdateJd").WithOpenApi();
+
         // DELETE current JD
         app.MapDelete("/jd/me", async (string userId, DocumentDbContext db) =>
         {
@@ -162,5 +163,77 @@ public static class JdEndpoints
         }).WithName("DeleteMyJd").WithOpenApi();
     }
 
+    public static async Task<IResult> GetMyJdAsync(string? userId, DocumentDbContext db)
+    {
+        if (!Guid.TryParse(userId, out var uid)) return Results.BadRequest(new { error = "Invalid userId" });
+        var jd = await db.JobDescriptions.Where(j => j.UserId == uid)
+            .OrderByDescending(j => j.CreatedAt).FirstOrDefaultAsync();
+        return jd is null ? Results.NotFound() : Results.Ok(jd);
+    }
+
+    public static async Task<IResult> DeleteMyJdAsync(string? userId, DocumentDbContext db)
+    {
+        if (!Guid.TryParse(userId, out var uid)) return Results.BadRequest(new { error = "Invalid userId" });
+        var jd = await db.JobDescriptions.Where(j => j.UserId == uid).OrderByDescending(j => j.CreatedAt).FirstOrDefaultAsync();
+        if (jd is null) return Results.NotFound(new { error = "No JD found" });
+        var matches = await db.MatchingScores.Where(m => m.JdId == jd.JdId).ToListAsync();
+        await using var tx = await db.Database.BeginTransactionAsync();
+        if (matches.Count > 0) { db.MatchingScores.RemoveRange(matches); await db.SaveChangesAsync(); }
+        db.JobDescriptions.Remove(jd); await db.SaveChangesAsync(); await tx.CommitAsync();
+        return Results.Ok(new { success = true });
+    }
+
+    public static async Task<IResult> SaveJdAsync(
+        string? userIdValue, string? text, string? position, string? parseMode,
+        DocumentDbContext db, IHttpClientFactory factory, IConfiguration config)
+    {
+        if (string.IsNullOrWhiteSpace(userIdValue) || string.IsNullOrWhiteSpace(text))
+            return Results.BadRequest(new { error = "UserId and Text required" });
+        if (!Guid.TryParse(userIdValue, out var userId))
+            return Results.BadRequest(new { error = "Invalid UserId" });
+
+        string? clarifiedJson = null;
+        if (parseMode != "normal")
+        {
+            var aiUrl = config.GetValue<string>("AI_SERVICE_URL")
+                ?? throw new InvalidOperationException("AI_SERVICE_URL is not configured.");
+            try
+            {
+                var payload = JsonSerializer.Serialize(new { text });
+                var resp = await factory.CreateClient("ai").PostAsync($"{aiUrl}/parse/jd", new StringContent(payload, Encoding.UTF8, "application/json"));
+                if (resp.IsSuccessStatusCode) clarifiedJson = await resp.Content.ReadAsStringAsync();
+            }
+            catch { }
+        }
+        else
+        {
+            clarifiedJson = JsonSerializer.Serialize(new { position = position ?? "Unknown", description = text, required_skills = Array.Empty<string>(), nice_to_have = Array.Empty<string>(), mode = "normal" });
+        }
+
+        db.JobDescriptions.Add(new JobDescription
+        {
+            JdId = Guid.NewGuid(), UserId = userId, Title = position ?? "Job Description", Position = position,
+            RawText = text, ClarifiedJson = clarifiedJson, CreatedAt = DateTime.UtcNow,
+        });
+        await db.SaveChangesAsync();
+        return Results.Ok(new { clarifiedJson });
+    }
+
+    public static async Task<IResult> UpdateJdAsync(string? userIdValue, string? text, string? position, DocumentDbContext db)
+    {
+        if (string.IsNullOrWhiteSpace(userIdValue) || string.IsNullOrWhiteSpace(text))
+            return Results.BadRequest(new { error = "UserId and Text required" });
+        if (!Guid.TryParse(userIdValue, out var userId)) return Results.BadRequest(new { error = "Invalid UserId" });
+        var jd = await db.JobDescriptions.Where(x => x.UserId == userId).OrderByDescending(x => x.CreatedAt).FirstOrDefaultAsync();
+        if (jd is null) return Results.NotFound(new { error = "No JD found" });
+        jd.RawText = text;
+        jd.Position = position;
+        jd.Title = position ?? "Job Description";
+        jd.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+        return Results.Ok(new { success = true });
+    }
+
     private record JdSaveRequest(string UserId, string Text, string? Position, string? ParseMode);
+    private record JdUpdateRequest(string UserId, string Text, string? Position);
 }

@@ -10,13 +10,7 @@ public static class CvEndpoints
     public static void MapCvEndpoints(this WebApplication app)
     {
         // GET current CV info
-        app.MapGet("/cv/me", async (string userId, DocumentDbContext db) =>
-        {
-            if (!Guid.TryParse(userId, out var uid)) return Results.BadRequest(new { error = "Invalid userId" });
-            var cv = await db.Cvs.Where(c => c.UserId == uid && c.IsCurrent)
-                .OrderByDescending(c => c.UploadedAt).FirstOrDefaultAsync();
-            return cv is null ? Results.NotFound() : Results.Ok(cv);
-        }).WithName("GetMyCv").WithOpenApi();
+        app.MapGet("/cv/me", GetMyCvAsync).WithName("GetMyCv").WithOpenApi();
 
         // POST upload + parse CV file
         app.MapPost("/cv", async (HttpRequest request, DocumentDbContext db, IHttpClientFactory factory, IConfiguration config) =>
@@ -100,17 +94,7 @@ public static class CvEndpoints
         {
             var body = await JsonSerializer.DeserializeAsync<CvJsonUpdateRequest>(ctx.Request.Body,
                 new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-            if (body is null || !Guid.TryParse(body.UserId, out var userId))
-                return Results.BadRequest(new { error = "Invalid request" });
-
-            var cv = await db.Cvs.Where(c => c.UserId == userId && c.IsCurrent)
-                .OrderByDescending(c => c.UploadedAt).FirstOrDefaultAsync();
-            if (cv is null) return Results.NotFound(new { error = "No CV found" });
-
-            cv.ParsedJson = body.ParsedJson;
-            cv.UpdatedAt = DateTime.UtcNow;
-            await db.SaveChangesAsync();
-            return Results.Ok(new { success = true });
+            return await UpdateCvJsonAsync(body?.UserId, body?.ParsedJson, db);
         }).WithName("UpdateCvJson").WithOpenApi();
 
         // DELETE current CV — removes the DB record and the uploaded file.
@@ -157,6 +141,98 @@ public static class CvEndpoints
 
             return Results.Ok(new { success = true });
         }).WithName("DeleteMyCv").WithOpenApi();
+    }
+
+    public static async Task<IResult> GetMyCvAsync(string? userId, DocumentDbContext db)
+    {
+        if (!Guid.TryParse(userId, out var uid)) return Results.BadRequest(new { error = "Invalid userId" });
+        var cv = await db.Cvs.Where(c => c.UserId == uid && c.IsCurrent)
+            .OrderByDescending(c => c.UploadedAt).FirstOrDefaultAsync();
+        return cv is null ? Results.NotFound() : Results.Ok(cv);
+    }
+
+    public static async Task<IResult> UpdateCvJsonAsync(string? userId, string? parsedJson, DocumentDbContext db)
+    {
+        if (!Guid.TryParse(userId, out var uid) || parsedJson is null)
+            return Results.BadRequest(new { error = "Invalid request" });
+
+        var cv = await db.Cvs.Where(c => c.UserId == uid && c.IsCurrent)
+            .OrderByDescending(c => c.UploadedAt).FirstOrDefaultAsync();
+        if (cv is null) return Results.NotFound(new { error = "No CV found" });
+
+        cv.ParsedJson = parsedJson;
+        cv.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+        return Results.Ok(new { success = true });
+    }
+
+    public static async Task<IResult> DeleteMyCvAsync(string? userId, DocumentDbContext db, IConfiguration config)
+    {
+        if (!Guid.TryParse(userId, out var uid)) return Results.BadRequest(new { error = "Invalid userId" });
+        var cv = await db.Cvs.Where(c => c.UserId == uid && c.IsCurrent).OrderByDescending(c => c.UploadedAt).FirstOrDefaultAsync();
+        if (cv is null) return Results.NotFound(new { error = "No CV found" });
+        var matches = await db.MatchingScores.Where(m => m.CvId == cv.CvId).ToListAsync();
+        await using var tx = await db.Database.BeginTransactionAsync();
+        if (matches.Count > 0) { db.MatchingScores.RemoveRange(matches); await db.SaveChangesAsync(); }
+        db.Cvs.Remove(cv); await db.SaveChangesAsync(); await tx.CommitAsync();
+        try
+        {
+            var uploadPath = config.GetValue<string>("CV_UPLOADS_PATH");
+            if (string.IsNullOrEmpty(uploadPath)) uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "uploads", "cvs");
+            var fullPath = Path.Combine(uploadPath, Path.GetFileName(cv.FileUrl));
+            if (File.Exists(fullPath)) File.Delete(fullPath);
+        }
+        catch { }
+        return Results.Ok(new { success = true });
+    }
+
+    public static async Task<IResult> UploadCvAsync(
+        IFormFile? file, string? userIdValue, DocumentDbContext db,
+        IHttpClientFactory factory, IConfiguration config)
+    {
+        if (file is null) return Results.BadRequest(new { error = "No file uploaded" });
+        if (!Guid.TryParse(userIdValue, out var userId)) return Results.BadRequest(new { error = "Invalid userId" });
+        var ext = Path.GetExtension(file.FileName ?? string.Empty).ToLowerInvariant();
+        if (ext is not (".pdf" or ".doc" or ".docx")) return Results.BadRequest(new { error = "Only PDF/DOC/DOCX allowed" });
+
+        var startedAt = DateTime.UtcNow;
+        var uploadPath = config.GetValue<string>("CV_UPLOADS_PATH");
+        if (string.IsNullOrEmpty(uploadPath)) uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "uploads", "cvs");
+        Directory.CreateDirectory(uploadPath);
+        var savedName = $"{userId:N}_{DateTime.UtcNow:yyyyMMddHHmmss}{ext}";
+        var savedPath = Path.Combine(uploadPath, savedName);
+        await using (var stream = File.Create(savedPath)) await file.CopyToAsync(stream);
+
+        var aiUrl = config.GetValue<string>("AI_SERVICE_URL")
+            ?? throw new InvalidOperationException("AI_SERVICE_URL is not configured.");
+        string? parsedJson = null;
+        try
+        {
+            var client = factory.CreateClient("ai");
+            using var form = new MultipartFormDataContent();
+            await using var fs = File.OpenRead(savedPath);
+            var content = new StreamContent(fs);
+            content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(string.IsNullOrEmpty(file.ContentType) ? "application/octet-stream" : file.ContentType);
+            form.Add(content, "file", file.FileName ?? savedName);
+            var response = await client.PostAsync($"{aiUrl}/parse/cv", form);
+            if (response.IsSuccessStatusCode) parsedJson = await response.Content.ReadAsStringAsync();
+        }
+        catch { }
+
+        var hasNewer = await db.Cvs.AnyAsync(c => c.UserId == userId && c.IsCurrent && c.UploadedAt > startedAt);
+        if (!hasNewer)
+        {
+            var previous = await db.Cvs.Where(c => c.UserId == userId && c.IsCurrent).ToListAsync();
+            foreach (var item in previous) item.IsCurrent = false;
+        }
+        db.Cvs.Add(new Cv
+        {
+            CvId = Guid.NewGuid(), UserId = userId, FileName = file.FileName ?? savedName,
+            FileUrl = $"/uploads/cvs/{savedName}", FileType = ext.TrimStart('.'), FileSizeKb = (int)(file.Length / 1024),
+            ParsedJson = parsedJson, ParseStatus = parsedJson is null ? "Failed" : "Parsed", UploadedAt = startedAt, IsCurrent = !hasNewer,
+        });
+        await db.SaveChangesAsync();
+        return Results.Ok(new { parsedJson });
     }
 
     private record CvJsonUpdateRequest(string UserId, string ParsedJson);
