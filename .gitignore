@@ -17,6 +17,7 @@ obj/
 *.cache
 *.userosscache
 *.sln.docstates
+TestResults/
 
 # User secrets and local app settings
 secrets.json

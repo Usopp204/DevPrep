@@ -29,6 +29,14 @@ public class AdminAiFeedbackController : ControllerBase
         return Ok(ApiResponse<PagedResult<AiFeedbackListItemDto>>.Ok(result));
     }
 
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> GetById(Guid id)
+    {
+        var item = await _service.GetByIdAsync(id);
+        if (item is null) return NotFound(ApiResponse<AiFeedbackListItemDto>.Fail("AI feedback not found."));
+        return Ok(ApiResponse<AiFeedbackListItemDto>.Ok(item));
+    }
+
     /// <summary>Xoá mềm một AI feedback. Chỉ Admin.</summary>
     [HttpDelete("{id:guid}")]
     [Authorize(Roles = "Admin")]

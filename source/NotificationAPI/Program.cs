@@ -3,6 +3,7 @@ using DotNetEnv;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using NotificationAPI.Endpoints;
 using NotificationAPI.Models;
 using NotificationAPI.Repositories;
 using NotificationAPI.Repositories.Interfaces;
@@ -62,7 +63,6 @@ if (string.IsNullOrWhiteSpace(connectionString))
 {
     throw new InvalidOperationException("NOTIFICATION_DB_CONNECTION_STRING is missing in .env.");
 }
-
 builder.Services.AddDbContext<NotificationDbContext>(options =>
     options.UseSqlServer(connectionString, sql => sql.EnableRetryOnFailure(maxRetryCount: 5)));
 
@@ -135,61 +135,7 @@ app.MapGet("/admin/announcements", async (IAnnouncementRepository repo, bool onl
 })
 .RequireAuthorization("AnnouncementReader");
 
-app.MapPost("/admin/announcements", async (AnnouncementRequest req, IAnnouncementRepository repo) =>
-{
-    var error = ValidateAnnouncement(req);
-    if (error is not null) return Results.BadRequest(new { Message = error });
-
-    var now = NotificationAPI.Helpers.VietnamTime.Now;
-    var announcement = new Announcement
-    {
-        AnnouncementId = Guid.NewGuid(),
-        Title = req.Title.Trim(),
-        Content = req.Content.Trim(),
-        IsActive = req.IsActive,
-        IsDeleted = false,
-        CreatedAt = now,
-        UpdatedAt = now
-    };
-    await repo.AddAsync(announcement);
-    await repo.SaveChangesAsync();
-    return Results.Ok(new { announcement.AnnouncementId });
-})
-.RequireAuthorization("AnnouncementAdmin");
-
-app.MapPut("/admin/announcements/{id:guid}", async (Guid id, AnnouncementRequest req, IAnnouncementRepository repo) =>
-{
-    var error = ValidateAnnouncement(req);
-    if (error is not null) return Results.BadRequest(new { Message = error });
-
-    var announcement = await repo.GetTrackedByIdAsync(id);
-    if (announcement is null || announcement.IsDeleted)
-        return Results.NotFound(new { Message = "Announcement not found." });
-
-    announcement.Title = req.Title.Trim();
-    announcement.Content = req.Content.Trim();
-    announcement.IsActive = req.IsActive;
-    announcement.UpdatedAt = NotificationAPI.Helpers.VietnamTime.Now;
-    await repo.SaveChangesAsync();
-    return Results.Ok(new { announcement.AnnouncementId });
-})
-.RequireAuthorization("AnnouncementAdmin");
-
-app.MapDelete("/admin/announcements/{id:guid}", async (Guid id, IAnnouncementRepository repo) =>
-{
-    var announcement = await repo.GetTrackedByIdAsync(id);
-    if (announcement is null) return Results.NotFound(new { Message = "Announcement not found." });
-    if (!announcement.IsDeleted)
-    {
-        var now = NotificationAPI.Helpers.VietnamTime.Now;
-        announcement.IsDeleted = true;
-        announcement.DeletedAt = now;
-        announcement.UpdatedAt = now;
-        await repo.SaveChangesAsync();
-    }
-    return Results.NoContent();
-})
-.RequireAuthorization("AnnouncementAdmin");
+app.MapAnnouncementWriteEndpoints();
 
 app.MapPost("/admin/announcements/{id:guid}/restore", async (Guid id, IAnnouncementRepository repo) =>
 {
@@ -226,16 +172,6 @@ app.MapPost("/internal/notifications/password-reset",
     .ExcludeFromDescription();
 
 app.Run();
-
-// Validate chung cho create/update announcement. Trả message lỗi hoặc null nếu hợp lệ.
-static string? ValidateAnnouncement(AnnouncementRequest req)
-{
-    if (string.IsNullOrWhiteSpace(req.Title)) return "Title is required.";
-    if (req.Title.Trim().Length > 200) return "Title must not exceed 200 characters.";
-    if (string.IsNullOrWhiteSpace(req.Content)) return "Content is required.";
-    if (req.Content.Trim().Length > 2000) return "Content must not exceed 2000 characters.";
-    return null;
-}
 
 // So khớp header X-Internal-Api-Key với khoá cấu hình.
 //
@@ -319,6 +255,3 @@ static async Task SeedEmailTemplatesAsync(WebApplication app)
         await templates.SaveChangesAsync();
     }
 }
-
-/// <summary>Body tạo/sửa announcement từ trang admin.</summary>
-record AnnouncementRequest(string Title, string Content, bool IsActive = true);

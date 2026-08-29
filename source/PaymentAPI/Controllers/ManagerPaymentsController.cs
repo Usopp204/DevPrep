@@ -187,7 +187,7 @@ public class ManagerPaymentsController : ControllerBase
         return Ok(ApiResponse<ManagerPaymentDetailDto>.Ok(detail));
     }
 
-    private async Task EnrichWithUserNamesAsync(List<ManagerPaymentListItemDto> items, CancellationToken ct)
+    protected virtual async Task EnrichWithUserNamesAsync(List<ManagerPaymentListItemDto> items, CancellationToken ct)
     {
         if (items.Count == 0) return;
         try

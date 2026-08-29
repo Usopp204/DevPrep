@@ -8,6 +8,7 @@ namespace FeedbackAPI.Services.Interfaces;
 public interface IAiFeedbackService
 {
     Task<PagedResult<AiFeedbackListItemDto>> GetListAsync(AiFeedbackQuery query);
+    Task<AiFeedbackListItemDto?> GetByIdAsync(Guid id);
     Task<PagedResult<PublicAiFeedbackDto>> GetPublicReviewsAsync(
         PublicFeedbackQuery query,
         Guid? viewerUserId,

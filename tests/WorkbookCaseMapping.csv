@@ -1,0 +1,1254 @@
+FunctionCode,FunctionName,SheetName,TestCaseId,Category,Status
+FUNC001-USR,Register Account,Register Account,FUNC001-USR-UTCID01,N,IMPLEMENTED
+FUNC001-USR,Register Account,Register Account,FUNC001-USR-UTCID02,N,IMPLEMENTED
+FUNC001-USR,Register Account,Register Account,FUNC001-USR-UTCID03,N,IMPLEMENTED
+FUNC001-USR,Register Account,Register Account,FUNC001-USR-UTCID04,A,IMPLEMENTED
+FUNC001-USR,Register Account,Register Account,FUNC001-USR-UTCID05,B,IMPLEMENTED
+FUNC001-USR,Register Account,Register Account,FUNC001-USR-UTCID06,N,IMPLEMENTED
+FUNC002-USR,User Login,User Login,FUNC002-USR-UTCID01,N,IMPLEMENTED
+FUNC002-USR,User Login,User Login,FUNC002-USR-UTCID02,N,IMPLEMENTED
+FUNC002-USR,User Login,User Login,FUNC002-USR-UTCID03,N,IMPLEMENTED
+FUNC002-USR,User Login,User Login,FUNC002-USR-UTCID04,A,IMPLEMENTED
+FUNC002-USR,User Login,User Login,FUNC002-USR-UTCID05,B,IMPLEMENTED
+FUNC003-USR,Google SSO Login,Google SSO Login,FUNC003-USR-UTCID01,N,IMPLEMENTED
+FUNC003-USR,Google SSO Login,Google SSO Login,FUNC003-USR-UTCID02,N,IMPLEMENTED
+FUNC003-USR,Google SSO Login,Google SSO Login,FUNC003-USR-UTCID03,N,IMPLEMENTED
+FUNC003-USR,Google SSO Login,Google SSO Login,FUNC003-USR-UTCID04,A,IMPLEMENTED
+FUNC003-USR,Google SSO Login,Google SSO Login,FUNC003-USR-UTCID05,B,IMPLEMENTED
+FUNC003-USR,Google SSO Login,Google SSO Login,FUNC003-USR-UTCID06,N,IMPLEMENTED
+FUNC004-USR,Github SSO Login,Github SSO Login,FUNC004-USR-UTCID01,N,IMPLEMENTED
+FUNC004-USR,Github SSO Login,Github SSO Login,FUNC004-USR-UTCID02,N,IMPLEMENTED
+FUNC004-USR,Github SSO Login,Github SSO Login,FUNC004-USR-UTCID03,N,IMPLEMENTED
+FUNC004-USR,Github SSO Login,Github SSO Login,FUNC004-USR-UTCID04,A,IMPLEMENTED
+FUNC004-USR,Github SSO Login,Github SSO Login,FUNC004-USR-UTCID05,B,IMPLEMENTED
+FUNC004-USR,Github SSO Login,Github SSO Login,FUNC004-USR-UTCID06,N,IMPLEMENTED
+FUNC005-USR,Verify Email OTP,Verify Email OTP,FUNC005-USR-UTCID01,N,IMPLEMENTED
+FUNC005-USR,Verify Email OTP,Verify Email OTP,FUNC005-USR-UTCID02,N,IMPLEMENTED
+FUNC005-USR,Verify Email OTP,Verify Email OTP,FUNC005-USR-UTCID03,N,IMPLEMENTED
+FUNC005-USR,Verify Email OTP,Verify Email OTP,FUNC005-USR-UTCID04,A,IMPLEMENTED
+FUNC005-USR,Verify Email OTP,Verify Email OTP,FUNC005-USR-UTCID05,B,IMPLEMENTED
+FUNC005-USR,Verify Email OTP,Verify Email OTP,FUNC005-USR-UTCID06,N,IMPLEMENTED
+FUNC006-USR,Resend Email Verification OTP,Resend Email Verification OTP,FUNC006-USR-UTCID01,N,IMPLEMENTED
+FUNC006-USR,Resend Email Verification OTP,Resend Email Verification OTP,FUNC006-USR-UTCID02,N,IMPLEMENTED
+FUNC006-USR,Resend Email Verification OTP,Resend Email Verification OTP,FUNC006-USR-UTCID03,N,IMPLEMENTED
+FUNC006-USR,Resend Email Verification OTP,Resend Email Verification OTP,FUNC006-USR-UTCID04,A,IMPLEMENTED
+FUNC006-USR,Resend Email Verification OTP,Resend Email Verification OTP,FUNC006-USR-UTCID05,B,IMPLEMENTED
+FUNC006-USR,Resend Email Verification OTP,Resend Email Verification OTP,FUNC006-USR-UTCID06,N,IMPLEMENTED
+FUNC007-USR,Forget Password,Forget Password,FUNC007-USR-UTCID01,N,IMPLEMENTED
+FUNC007-USR,Forget Password,Forget Password,FUNC007-USR-UTCID02,N,IMPLEMENTED
+FUNC007-USR,Forget Password,Forget Password,FUNC007-USR-UTCID03,N,IMPLEMENTED
+FUNC007-USR,Forget Password,Forget Password,FUNC007-USR-UTCID04,A,IMPLEMENTED
+FUNC007-USR,Forget Password,Forget Password,FUNC007-USR-UTCID05,B,IMPLEMENTED
+FUNC007-USR,Forget Password,Forget Password,FUNC007-USR-UTCID06,N,IMPLEMENTED
+FUNC008-USR,View Profile,View Profile,FUNC008-USR-UTCID01,N,IMPLEMENTED
+FUNC008-USR,View Profile,View Profile,FUNC008-USR-UTCID02,N,IMPLEMENTED
+FUNC008-USR,View Profile,View Profile,FUNC008-USR-UTCID03,N,IMPLEMENTED
+FUNC008-USR,View Profile,View Profile,FUNC008-USR-UTCID04,A,IMPLEMENTED
+FUNC008-USR,View Profile,View Profile,FUNC008-USR-UTCID05,B,IMPLEMENTED
+FUNC008-USR,View Profile,View Profile,FUNC008-USR-UTCID06,N,IMPLEMENTED
+FUNC009-USR,Update Profile,Update Profile,FUNC009-USR-UTCID01,N,IMPLEMENTED
+FUNC009-USR,Update Profile,Update Profile,FUNC009-USR-UTCID02,N,IMPLEMENTED
+FUNC009-USR,Update Profile,Update Profile,FUNC009-USR-UTCID03,N,IMPLEMENTED
+FUNC009-USR,Update Profile,Update Profile,FUNC009-USR-UTCID04,A,IMPLEMENTED
+FUNC009-USR,Update Profile,Update Profile,FUNC009-USR-UTCID05,B,IMPLEMENTED
+FUNC009-USR,Update Profile,Update Profile,FUNC009-USR-UTCID06,N,IMPLEMENTED
+FUNC010-USR,Change Password,Change Password,FUNC010-USR-UTCID01,N,IMPLEMENTED
+FUNC010-USR,Change Password,Change Password,FUNC010-USR-UTCID02,N,IMPLEMENTED
+FUNC010-USR,Change Password,Change Password,FUNC010-USR-UTCID03,N,IMPLEMENTED
+FUNC010-USR,Change Password,Change Password,FUNC010-USR-UTCID04,A,IMPLEMENTED
+FUNC010-USR,Change Password,Change Password,FUNC010-USR-UTCID05,B,IMPLEMENTED
+FUNC010-USR,Change Password,Change Password,FUNC010-USR-UTCID06,N,IMPLEMENTED
+FUNC011-USR,Enroll Face Biometric,Enroll Face Biometric,FUNC011-USR-UTCID01,N,IMPLEMENTED
+FUNC011-USR,Enroll Face Biometric,Enroll Face Biometric,FUNC011-USR-UTCID02,N,IMPLEMENTED
+FUNC011-USR,Enroll Face Biometric,Enroll Face Biometric,FUNC011-USR-UTCID03,N,IMPLEMENTED
+FUNC011-USR,Enroll Face Biometric,Enroll Face Biometric,FUNC011-USR-UTCID04,A,IMPLEMENTED
+FUNC011-USR,Enroll Face Biometric,Enroll Face Biometric,FUNC011-USR-UTCID05,B,IMPLEMENTED
+FUNC011-USR,Enroll Face Biometric,Enroll Face Biometric,FUNC011-USR-UTCID06,N,IMPLEMENTED
+FUNC012-USR,Get Biometric Enrollment Status,Get Biometric Enrollment Status,FUNC012-USR-UTCID01,N,IMPLEMENTED
+FUNC012-USR,Get Biometric Enrollment Status,Get Biometric Enrollment Status,FUNC012-USR-UTCID02,N,IMPLEMENTED
+FUNC012-USR,Get Biometric Enrollment Status,Get Biometric Enrollment Status,FUNC012-USR-UTCID03,N,IMPLEMENTED
+FUNC012-USR,Get Biometric Enrollment Status,Get Biometric Enrollment Status,FUNC012-USR-UTCID04,A,IMPLEMENTED
+FUNC012-USR,Get Biometric Enrollment Status,Get Biometric Enrollment Status,FUNC012-USR-UTCID05,B,IMPLEMENTED
+FUNC012-USR,Get Biometric Enrollment Status,Get Biometric Enrollment Status,FUNC012-USR-UTCID06,N,IMPLEMENTED
+FUNC013-USR,Enroll Voice Biometric,Enroll Voice Biometric,FUNC013-USR-UTCID01,N,IMPLEMENTED
+FUNC013-USR,Enroll Voice Biometric,Enroll Voice Biometric,FUNC013-USR-UTCID02,N,IMPLEMENTED
+FUNC013-USR,Enroll Voice Biometric,Enroll Voice Biometric,FUNC013-USR-UTCID03,N,IMPLEMENTED
+FUNC013-USR,Enroll Voice Biometric,Enroll Voice Biometric,FUNC013-USR-UTCID04,A,IMPLEMENTED
+FUNC013-USR,Enroll Voice Biometric,Enroll Voice Biometric,FUNC013-USR-UTCID05,B,IMPLEMENTED
+FUNC013-USR,Enroll Voice Biometric,Enroll Voice Biometric,FUNC013-USR-UTCID06,N,IMPLEMENTED
+FUNC014-USR,View News,View News,FUNC014-USR-UTCID01,N,IMPLEMENTED
+FUNC014-USR,View News,View News,FUNC014-USR-UTCID02,N,IMPLEMENTED
+FUNC014-USR,View News,View News,FUNC014-USR-UTCID03,N,IMPLEMENTED
+FUNC014-USR,View News,View News,FUNC014-USR-UTCID04,A,IMPLEMENTED
+FUNC014-USR,View News,View News,FUNC014-USR-UTCID05,B,IMPLEMENTED
+FUNC014-USR,View News,View News,FUNC014-USR-UTCID06,N,IMPLEMENTED
+FUNC015-USR,View News Details,View News Details Candidate Use,FUNC015-USR-UTCID01,N,IMPLEMENTED
+FUNC015-USR,View News Details,View News Details Candidate Use,FUNC015-USR-UTCID02,N,IMPLEMENTED
+FUNC015-USR,View News Details,View News Details Candidate Use,FUNC015-USR-UTCID03,N,IMPLEMENTED
+FUNC015-USR,View News Details,View News Details Candidate Use,FUNC015-USR-UTCID04,A,IMPLEMENTED
+FUNC015-USR,View News Details,View News Details Candidate Use,FUNC015-USR-UTCID05,B,IMPLEMENTED
+FUNC015-USR,View News Details,View News Details Candidate Use,FUNC015-USR-UTCID06,N,IMPLEMENTED
+FUNC016-USR,Logout,Logout,FUNC016-USR-UTCID01,N,IMPLEMENTED
+FUNC016-USR,Logout,Logout,FUNC016-USR-UTCID02,N,IMPLEMENTED
+FUNC016-USR,Logout,Logout,FUNC016-USR-UTCID03,N,IMPLEMENTED
+FUNC016-USR,Logout,Logout,FUNC016-USR-UTCID04,A,IMPLEMENTED
+FUNC016-USR,Logout,Logout,FUNC016-USR-UTCID05,B,IMPLEMENTED
+FUNC016-USR,Logout,Logout,FUNC016-USR-UTCID06,N,IMPLEMENTED
+FUNC017-USR,View Credit History,View Credit History,FUNC017-USR-UTCID01,N,IMPLEMENTED
+FUNC017-USR,View Credit History,View Credit History,FUNC017-USR-UTCID02,N,IMPLEMENTED
+FUNC017-USR,View Credit History,View Credit History,FUNC017-USR-UTCID03,N,IMPLEMENTED
+FUNC017-USR,View Credit History,View Credit History,FUNC017-USR-UTCID04,A,IMPLEMENTED
+FUNC017-USR,View Credit History,View Credit History,FUNC017-USR-UTCID05,B,IMPLEMENTED
+FUNC017-USR,View Credit History,View Credit History,FUNC017-USR-UTCID06,N,IMPLEMENTED
+FUNC018-USR,Filter Credit History,Filter Credit History,FUNC018-USR-UTCID01,N,IMPLEMENTED
+FUNC018-USR,Filter Credit History,Filter Credit History,FUNC018-USR-UTCID02,N,IMPLEMENTED
+FUNC018-USR,Filter Credit History,Filter Credit History,FUNC018-USR-UTCID03,N,IMPLEMENTED
+FUNC018-USR,Filter Credit History,Filter Credit History,FUNC018-USR-UTCID04,A,IMPLEMENTED
+FUNC018-USR,Filter Credit History,Filter Credit History,FUNC018-USR-UTCID05,B,IMPLEMENTED
+FUNC018-USR,Filter Credit History,Filter Credit History,FUNC018-USR-UTCID06,N,IMPLEMENTED
+FUNC019-USR,View Announcement,View Announcement Candidate Use,FUNC019-USR-UTCID01,N,IMPLEMENTED
+FUNC019-USR,View Announcement,View Announcement Candidate Use,FUNC019-USR-UTCID02,N,IMPLEMENTED
+FUNC019-USR,View Announcement,View Announcement Candidate Use,FUNC019-USR-UTCID03,N,IMPLEMENTED
+FUNC019-USR,View Announcement,View Announcement Candidate Use,FUNC019-USR-UTCID04,A,IMPLEMENTED
+FUNC019-USR,View Announcement,View Announcement Candidate Use,FUNC019-USR-UTCID05,B,IMPLEMENTED
+FUNC019-USR,View Announcement,View Announcement Candidate Use,FUNC019-USR-UTCID06,N,IMPLEMENTED
+FUNC020-USR,View Current CV,View Current CV,FUNC020-USR-UTCID01,N,IMPLEMENTED
+FUNC020-USR,View Current CV,View Current CV,FUNC020-USR-UTCID02,N,IMPLEMENTED
+FUNC020-USR,View Current CV,View Current CV,FUNC020-USR-UTCID03,N,IMPLEMENTED
+FUNC020-USR,View Current CV,View Current CV,FUNC020-USR-UTCID04,A,IMPLEMENTED
+FUNC020-USR,View Current CV,View Current CV,FUNC020-USR-UTCID05,B,IMPLEMENTED
+FUNC020-USR,View Current CV,View Current CV,FUNC020-USR-UTCID06,N,IMPLEMENTED
+FUNC021-USR,Upload New CV,Upload New CV,FUNC021-USR-UTCID01,N,IMPLEMENTED
+FUNC021-USR,Upload New CV,Upload New CV,FUNC021-USR-UTCID02,N,IMPLEMENTED
+FUNC021-USR,Upload New CV,Upload New CV,FUNC021-USR-UTCID03,N,IMPLEMENTED
+FUNC021-USR,Upload New CV,Upload New CV,FUNC021-USR-UTCID04,A,IMPLEMENTED
+FUNC021-USR,Upload New CV,Upload New CV,FUNC021-USR-UTCID05,B,IMPLEMENTED
+FUNC021-USR,Upload New CV,Upload New CV,FUNC021-USR-UTCID06,N,IMPLEMENTED
+FUNC022-USR,Update CV File,Update CV File,FUNC022-USR-UTCID01,N,IMPLEMENTED
+FUNC022-USR,Update CV File,Update CV File,FUNC022-USR-UTCID02,N,IMPLEMENTED
+FUNC022-USR,Update CV File,Update CV File,FUNC022-USR-UTCID03,N,IMPLEMENTED
+FUNC022-USR,Update CV File,Update CV File,FUNC022-USR-UTCID04,A,IMPLEMENTED
+FUNC022-USR,Update CV File,Update CV File,FUNC022-USR-UTCID05,B,IMPLEMENTED
+FUNC022-USR,Update CV File,Update CV File,FUNC022-USR-UTCID06,N,IMPLEMENTED
+FUNC023-USR,Delete CV,Delete CV,FUNC023-USR-UTCID01,N,IMPLEMENTED
+FUNC023-USR,Delete CV,Delete CV,FUNC023-USR-UTCID02,N,IMPLEMENTED
+FUNC023-USR,Delete CV,Delete CV,FUNC023-USR-UTCID03,N,IMPLEMENTED
+FUNC023-USR,Delete CV,Delete CV,FUNC023-USR-UTCID04,A,IMPLEMENTED
+FUNC023-USR,Delete CV,Delete CV,FUNC023-USR-UTCID05,B,IMPLEMENTED
+FUNC023-USR,Delete CV,Delete CV,FUNC023-USR-UTCID06,N,IMPLEMENTED
+FUNC024-USR,Extract CV Keywords,Extract CV Keywords,FUNC024-USR-UTCID01,N,IMPLEMENTED
+FUNC024-USR,Extract CV Keywords,Extract CV Keywords,FUNC024-USR-UTCID02,N,IMPLEMENTED
+FUNC024-USR,Extract CV Keywords,Extract CV Keywords,FUNC024-USR-UTCID03,N,IMPLEMENTED
+FUNC024-USR,Extract CV Keywords,Extract CV Keywords,FUNC024-USR-UTCID04,A,IMPLEMENTED
+FUNC024-USR,Extract CV Keywords,Extract CV Keywords,FUNC024-USR-UTCID05,B,IMPLEMENTED
+FUNC024-USR,Extract CV Keywords,Extract CV Keywords,FUNC024-USR-UTCID06,N,IMPLEMENTED
+FUNC025-USR,Extract JD Keywords,Extract JD Keywords,FUNC025-USR-UTCID01,N,IMPLEMENTED
+FUNC025-USR,Extract JD Keywords,Extract JD Keywords,FUNC025-USR-UTCID02,N,IMPLEMENTED
+FUNC025-USR,Extract JD Keywords,Extract JD Keywords,FUNC025-USR-UTCID03,N,IMPLEMENTED
+FUNC025-USR,Extract JD Keywords,Extract JD Keywords,FUNC025-USR-UTCID04,A,IMPLEMENTED
+FUNC025-USR,Extract JD Keywords,Extract JD Keywords,FUNC025-USR-UTCID05,B,IMPLEMENTED
+FUNC025-USR,Extract JD Keywords,Extract JD Keywords,FUNC025-USR-UTCID06,N,IMPLEMENTED
+FUNC026-USR,View Current JD,View Current JD,FUNC026-USR-UTCID01,N,IMPLEMENTED
+FUNC026-USR,View Current JD,View Current JD,FUNC026-USR-UTCID02,N,IMPLEMENTED
+FUNC026-USR,View Current JD,View Current JD,FUNC026-USR-UTCID03,N,IMPLEMENTED
+FUNC026-USR,View Current JD,View Current JD,FUNC026-USR-UTCID04,A,IMPLEMENTED
+FUNC026-USR,View Current JD,View Current JD,FUNC026-USR-UTCID05,B,IMPLEMENTED
+FUNC026-USR,View Current JD,View Current JD,FUNC026-USR-UTCID06,N,IMPLEMENTED
+FUNC027-USR,Upload JD,Upload JD,FUNC027-USR-UTCID01,N,IMPLEMENTED
+FUNC027-USR,Upload JD,Upload JD,FUNC027-USR-UTCID02,N,IMPLEMENTED
+FUNC027-USR,Upload JD,Upload JD,FUNC027-USR-UTCID03,N,IMPLEMENTED
+FUNC027-USR,Upload JD,Upload JD,FUNC027-USR-UTCID04,A,IMPLEMENTED
+FUNC027-USR,Upload JD,Upload JD,FUNC027-USR-UTCID05,B,IMPLEMENTED
+FUNC027-USR,Upload JD,Upload JD,FUNC027-USR-UTCID06,N,IMPLEMENTED
+FUNC028-USR,Update JD,Update JD,FUNC028-USR-UTCID01,N,IMPLEMENTED
+FUNC028-USR,Update JD,Update JD,FUNC028-USR-UTCID02,N,IMPLEMENTED
+FUNC028-USR,Update JD,Update JD,FUNC028-USR-UTCID03,N,IMPLEMENTED
+FUNC028-USR,Update JD,Update JD,FUNC028-USR-UTCID04,A,IMPLEMENTED
+FUNC028-USR,Update JD,Update JD,FUNC028-USR-UTCID05,B,IMPLEMENTED
+FUNC028-USR,Update JD,Update JD,FUNC028-USR-UTCID06,N,IMPLEMENTED
+FUNC029-USR,Delete JD,Delete JD,FUNC029-USR-UTCID01,N,IMPLEMENTED
+FUNC029-USR,Delete JD,Delete JD,FUNC029-USR-UTCID02,N,IMPLEMENTED
+FUNC029-USR,Delete JD,Delete JD,FUNC029-USR-UTCID03,N,IMPLEMENTED
+FUNC029-USR,Delete JD,Delete JD,FUNC029-USR-UTCID04,A,IMPLEMENTED
+FUNC029-USR,Delete JD,Delete JD,FUNC029-USR-UTCID05,B,IMPLEMENTED
+FUNC029-USR,Delete JD,Delete JD,FUNC029-USR-UTCID06,N,IMPLEMENTED
+FUNC030-USR,Calculate CV-JD Matching Score,Calculate CV-JD Matching Score,FUNC030-USR-UTCID01,N,IMPLEMENTED
+FUNC030-USR,Calculate CV-JD Matching Score,Calculate CV-JD Matching Score,FUNC030-USR-UTCID02,N,IMPLEMENTED
+FUNC030-USR,Calculate CV-JD Matching Score,Calculate CV-JD Matching Score,FUNC030-USR-UTCID03,N,IMPLEMENTED
+FUNC030-USR,Calculate CV-JD Matching Score,Calculate CV-JD Matching Score,FUNC030-USR-UTCID04,A,IMPLEMENTED
+FUNC030-USR,Calculate CV-JD Matching Score,Calculate CV-JD Matching Score,FUNC030-USR-UTCID05,B,IMPLEMENTED
+FUNC030-USR,Calculate CV-JD Matching Score,Calculate CV-JD Matching Score,FUNC030-USR-UTCID06,N,IMPLEMENTED
+FUNC031-USR,Configure Session Duration,Configure Session Duration,FUNC031-USR-UTCID01,N,IMPLEMENTED
+FUNC031-USR,Configure Session Duration,Configure Session Duration,FUNC031-USR-UTCID02,N,IMPLEMENTED
+FUNC031-USR,Configure Session Duration,Configure Session Duration,FUNC031-USR-UTCID03,N,IMPLEMENTED
+FUNC031-USR,Configure Session Duration,Configure Session Duration,FUNC031-USR-UTCID04,A,IMPLEMENTED
+FUNC031-USR,Configure Session Duration,Configure Session Duration,FUNC031-USR-UTCID05,B,IMPLEMENTED
+FUNC031-USR,Configure Session Duration,Configure Session Duration,FUNC031-USR-UTCID06,N,IMPLEMENTED
+FUNC032-USR,Configure Session Level,Configure Session Level,FUNC032-USR-UTCID01,N,IMPLEMENTED
+FUNC032-USR,Configure Session Level,Configure Session Level,FUNC032-USR-UTCID02,N,IMPLEMENTED
+FUNC032-USR,Configure Session Level,Configure Session Level,FUNC032-USR-UTCID03,N,IMPLEMENTED
+FUNC032-USR,Configure Session Level,Configure Session Level,FUNC032-USR-UTCID04,A,IMPLEMENTED
+FUNC032-USR,Configure Session Level,Configure Session Level,FUNC032-USR-UTCID05,B,IMPLEMENTED
+FUNC032-USR,Configure Session Level,Configure Session Level,FUNC032-USR-UTCID06,N,IMPLEMENTED
+FUNC033-USR,Get Interview Catalog,Get Interview Catalog,FUNC033-USR-UTCID01,N,IMPLEMENTED
+FUNC033-USR,Get Interview Catalog,Get Interview Catalog,FUNC033-USR-UTCID02,N,IMPLEMENTED
+FUNC033-USR,Get Interview Catalog,Get Interview Catalog,FUNC033-USR-UTCID03,N,IMPLEMENTED
+FUNC033-USR,Get Interview Catalog,Get Interview Catalog,FUNC033-USR-UTCID04,A,IMPLEMENTED
+FUNC033-USR,Get Interview Catalog,Get Interview Catalog,FUNC033-USR-UTCID05,B,IMPLEMENTED
+FUNC033-USR,Get Interview Catalog,Get Interview Catalog,FUNC033-USR-UTCID06,N,IMPLEMENTED
+FUNC034-USR,List User Interview Sessions,List User Interview Sessions,FUNC034-USR-UTCID01,N,IMPLEMENTED
+FUNC034-USR,List User Interview Sessions,List User Interview Sessions,FUNC034-USR-UTCID02,N,IMPLEMENTED
+FUNC034-USR,List User Interview Sessions,List User Interview Sessions,FUNC034-USR-UTCID03,N,IMPLEMENTED
+FUNC034-USR,List User Interview Sessions,List User Interview Sessions,FUNC034-USR-UTCID04,A,IMPLEMENTED
+FUNC034-USR,List User Interview Sessions,List User Interview Sessions,FUNC034-USR-UTCID05,B,IMPLEMENTED
+FUNC034-USR,List User Interview Sessions,List User Interview Sessions,FUNC034-USR-UTCID06,N,IMPLEMENTED
+FUNC035-USR,Get Interview Transcript,Get Interview Transcript,FUNC035-USR-UTCID01,N,IMPLEMENTED
+FUNC035-USR,Get Interview Transcript,Get Interview Transcript,FUNC035-USR-UTCID02,N,IMPLEMENTED
+FUNC035-USR,Get Interview Transcript,Get Interview Transcript,FUNC035-USR-UTCID03,N,IMPLEMENTED
+FUNC035-USR,Get Interview Transcript,Get Interview Transcript,FUNC035-USR-UTCID04,A,IMPLEMENTED
+FUNC035-USR,Get Interview Transcript,Get Interview Transcript,FUNC035-USR-UTCID05,B,IMPLEMENTED
+FUNC035-USR,Get Interview Transcript,Get Interview Transcript,FUNC035-USR-UTCID06,N,IMPLEMENTED
+FUNC036-USR,Configure Session Interaction,Configure Session Interaction,FUNC036-USR-UTCID01,N,IMPLEMENTED
+FUNC036-USR,Configure Session Interaction,Configure Session Interaction,FUNC036-USR-UTCID02,N,IMPLEMENTED
+FUNC036-USR,Configure Session Interaction,Configure Session Interaction,FUNC036-USR-UTCID03,N,IMPLEMENTED
+FUNC036-USR,Configure Session Interaction,Configure Session Interaction,FUNC036-USR-UTCID04,A,IMPLEMENTED
+FUNC036-USR,Configure Session Interaction,Configure Session Interaction,FUNC036-USR-UTCID05,B,IMPLEMENTED
+FUNC036-USR,Configure Session Interaction,Configure Session Interaction,FUNC036-USR-UTCID06,N,IMPLEMENTED
+FUNC037-USR,Complete Interview Session,Complete Interview Session,FUNC037-USR-UTCID01,N,IMPLEMENTED
+FUNC037-USR,Complete Interview Session,Complete Interview Session,FUNC037-USR-UTCID02,N,IMPLEMENTED
+FUNC037-USR,Complete Interview Session,Complete Interview Session,FUNC037-USR-UTCID03,N,IMPLEMENTED
+FUNC037-USR,Complete Interview Session,Complete Interview Session,FUNC037-USR-UTCID04,A,IMPLEMENTED
+FUNC037-USR,Complete Interview Session,Complete Interview Session,FUNC037-USR-UTCID05,B,IMPLEMENTED
+FUNC037-USR,Complete Interview Session,Complete Interview Session,FUNC037-USR-UTCID06,N,IMPLEMENTED
+FUNC038-USR,Save Room Tour Completion,Save Room Tour Completion,FUNC038-USR-UTCID01,N,IMPLEMENTED
+FUNC038-USR,Save Room Tour Completion,Save Room Tour Completion,FUNC038-USR-UTCID02,N,IMPLEMENTED
+FUNC038-USR,Save Room Tour Completion,Save Room Tour Completion,FUNC038-USR-UTCID03,N,IMPLEMENTED
+FUNC038-USR,Save Room Tour Completion,Save Room Tour Completion,FUNC038-USR-UTCID04,A,IMPLEMENTED
+FUNC038-USR,Save Room Tour Completion,Save Room Tour Completion,FUNC038-USR-UTCID05,B,IMPLEMENTED
+FUNC038-USR,Save Room Tour Completion,Save Room Tour Completion,FUNC038-USR-UTCID06,N,IMPLEMENTED
+FUNC039-USR,Pause / Resume Interview Session,Pause Resume Interview Session,FUNC039-USR-UTCID01,N,IMPLEMENTED
+FUNC039-USR,Pause / Resume Interview Session,Pause Resume Interview Session,FUNC039-USR-UTCID02,N,IMPLEMENTED
+FUNC039-USR,Pause / Resume Interview Session,Pause Resume Interview Session,FUNC039-USR-UTCID03,N,IMPLEMENTED
+FUNC039-USR,Pause / Resume Interview Session,Pause Resume Interview Session,FUNC039-USR-UTCID04,A,IMPLEMENTED
+FUNC039-USR,Pause / Resume Interview Session,Pause Resume Interview Session,FUNC039-USR-UTCID05,B,IMPLEMENTED
+FUNC039-USR,Pause / Resume Interview Session,Pause Resume Interview Session,FUNC039-USR-UTCID06,N,IMPLEMENTED
+FUNC040-USR,Report Camera Violation,Report Camera Violation,FUNC040-USR-UTCID01,N,IMPLEMENTED
+FUNC040-USR,Report Camera Violation,Report Camera Violation,FUNC040-USR-UTCID02,N,IMPLEMENTED
+FUNC040-USR,Report Camera Violation,Report Camera Violation,FUNC040-USR-UTCID03,N,IMPLEMENTED
+FUNC040-USR,Report Camera Violation,Report Camera Violation,FUNC040-USR-UTCID04,A,IMPLEMENTED
+FUNC040-USR,Report Camera Violation,Report Camera Violation,FUNC040-USR-UTCID05,B,IMPLEMENTED
+FUNC040-USR,Report Camera Violation,Report Camera Violation,FUNC040-USR-UTCID06,N,IMPLEMENTED
+FUNC041-USR,Generate Interview Speech,Generate Interview Speech,FUNC041-USR-UTCID01,N,IMPLEMENTED
+FUNC041-USR,Generate Interview Speech,Generate Interview Speech,FUNC041-USR-UTCID02,N,IMPLEMENTED
+FUNC041-USR,Generate Interview Speech,Generate Interview Speech,FUNC041-USR-UTCID03,N,IMPLEMENTED
+FUNC041-USR,Generate Interview Speech,Generate Interview Speech,FUNC041-USR-UTCID04,A,IMPLEMENTED
+FUNC041-USR,Generate Interview Speech,Generate Interview Speech,FUNC041-USR-UTCID05,B,IMPLEMENTED
+FUNC041-USR,Generate Interview Speech,Generate Interview Speech,FUNC041-USR-UTCID06,N,IMPLEMENTED
+FUNC042-USR,Transcribe Interview Answer,Transcribe Interview Answer,FUNC042-USR-UTCID01,N,IMPLEMENTED
+FUNC042-USR,Transcribe Interview Answer,Transcribe Interview Answer,FUNC042-USR-UTCID02,N,IMPLEMENTED
+FUNC042-USR,Transcribe Interview Answer,Transcribe Interview Answer,FUNC042-USR-UTCID03,N,IMPLEMENTED
+FUNC042-USR,Transcribe Interview Answer,Transcribe Interview Answer,FUNC042-USR-UTCID04,A,IMPLEMENTED
+FUNC042-USR,Transcribe Interview Answer,Transcribe Interview Answer,FUNC042-USR-UTCID05,B,IMPLEMENTED
+FUNC042-USR,Transcribe Interview Answer,Transcribe Interview Answer,FUNC042-USR-UTCID06,N,IMPLEMENTED
+FUNC043-USR,Generate Interview Hint,Generate Interview Hint,FUNC043-USR-UTCID01,N,IMPLEMENTED
+FUNC043-USR,Generate Interview Hint,Generate Interview Hint,FUNC043-USR-UTCID02,N,IMPLEMENTED
+FUNC043-USR,Generate Interview Hint,Generate Interview Hint,FUNC043-USR-UTCID03,N,IMPLEMENTED
+FUNC043-USR,Generate Interview Hint,Generate Interview Hint,FUNC043-USR-UTCID04,A,IMPLEMENTED
+FUNC043-USR,Generate Interview Hint,Generate Interview Hint,FUNC043-USR-UTCID05,B,IMPLEMENTED
+FUNC043-USR,Generate Interview Hint,Generate Interview Hint,FUNC043-USR-UTCID06,N,IMPLEMENTED
+FUNC044-USR,Get Interview Credit Balance,Get Interview Credit Balance,FUNC044-USR-UTCID01,N,IMPLEMENTED
+FUNC044-USR,Get Interview Credit Balance,Get Interview Credit Balance,FUNC044-USR-UTCID02,N,IMPLEMENTED
+FUNC044-USR,Get Interview Credit Balance,Get Interview Credit Balance,FUNC044-USR-UTCID03,N,IMPLEMENTED
+FUNC044-USR,Get Interview Credit Balance,Get Interview Credit Balance,FUNC044-USR-UTCID04,A,IMPLEMENTED
+FUNC044-USR,Get Interview Credit Balance,Get Interview Credit Balance,FUNC044-USR-UTCID05,B,IMPLEMENTED
+FUNC044-USR,Get Interview Credit Balance,Get Interview Credit Balance,FUNC044-USR-UTCID06,N,IMPLEMENTED
+FUNC045-USR,Charge Interview Credits,Charge Interview Credits,FUNC045-USR-UTCID01,N,IMPLEMENTED
+FUNC045-USR,Charge Interview Credits,Charge Interview Credits,FUNC045-USR-UTCID02,N,IMPLEMENTED
+FUNC045-USR,Charge Interview Credits,Charge Interview Credits,FUNC045-USR-UTCID03,N,IMPLEMENTED
+FUNC045-USR,Charge Interview Credits,Charge Interview Credits,FUNC045-USR-UTCID04,A,IMPLEMENTED
+FUNC045-USR,Charge Interview Credits,Charge Interview Credits,FUNC045-USR-UTCID05,B,IMPLEMENTED
+FUNC045-USR,Charge Interview Credits,Charge Interview Credits,FUNC045-USR-UTCID06,N,IMPLEMENTED
+FUNC046-USR,Validate Interview Answer Content,Validate Interview Answer Conte,FUNC046-USR-UTCID01,N,IMPLEMENTED
+FUNC046-USR,Validate Interview Answer Content,Validate Interview Answer Conte,FUNC046-USR-UTCID02,N,IMPLEMENTED
+FUNC046-USR,Validate Interview Answer Content,Validate Interview Answer Conte,FUNC046-USR-UTCID03,N,IMPLEMENTED
+FUNC046-USR,Validate Interview Answer Content,Validate Interview Answer Conte,FUNC046-USR-UTCID04,A,IMPLEMENTED
+FUNC046-USR,Validate Interview Answer Content,Validate Interview Answer Conte,FUNC046-USR-UTCID05,B,IMPLEMENTED
+FUNC046-USR,Validate Interview Answer Content,Validate Interview Answer Conte,FUNC046-USR-UTCID06,N,IMPLEMENTED
+FUNC047-USR,Verify Face Biometrics at Session Entry,Verify Face Biometrics at Sessi,FUNC047-USR-UTCID01,N,IMPLEMENTED
+FUNC047-USR,Verify Face Biometrics at Session Entry,Verify Face Biometrics at Sessi,FUNC047-USR-UTCID02,N,IMPLEMENTED
+FUNC047-USR,Verify Face Biometrics at Session Entry,Verify Face Biometrics at Sessi,FUNC047-USR-UTCID03,N,IMPLEMENTED
+FUNC047-USR,Verify Face Biometrics at Session Entry,Verify Face Biometrics at Sessi,FUNC047-USR-UTCID04,A,IMPLEMENTED
+FUNC047-USR,Verify Face Biometrics at Session Entry,Verify Face Biometrics at Sessi,FUNC047-USR-UTCID05,B,IMPLEMENTED
+FUNC047-USR,Verify Face Biometrics at Session Entry,Verify Face Biometrics at Sessi,FUNC047-USR-UTCID06,N,IMPLEMENTED
+FUNC048-USR,Validate Interview Entry,Validate Interview Entry,FUNC048-USR-UTCID01,N,IMPLEMENTED
+FUNC048-USR,Validate Interview Entry,Validate Interview Entry,FUNC048-USR-UTCID02,N,IMPLEMENTED
+FUNC048-USR,Validate Interview Entry,Validate Interview Entry,FUNC048-USR-UTCID03,N,IMPLEMENTED
+FUNC048-USR,Validate Interview Entry,Validate Interview Entry,FUNC048-USR-UTCID04,A,IMPLEMENTED
+FUNC048-USR,Validate Interview Entry,Validate Interview Entry,FUNC048-USR-UTCID05,B,IMPLEMENTED
+FUNC048-USR,Validate Interview Entry,Validate Interview Entry,FUNC048-USR-UTCID06,N,IMPLEMENTED
+FUNC049-USR,Monitor In-Session Face Verification,Monitor In-Session Face Verific,FUNC049-USR-UTCID01,N,IMPLEMENTED
+FUNC049-USR,Monitor In-Session Face Verification,Monitor In-Session Face Verific,FUNC049-USR-UTCID02,N,IMPLEMENTED
+FUNC049-USR,Monitor In-Session Face Verification,Monitor In-Session Face Verific,FUNC049-USR-UTCID03,N,IMPLEMENTED
+FUNC049-USR,Monitor In-Session Face Verification,Monitor In-Session Face Verific,FUNC049-USR-UTCID04,A,IMPLEMENTED
+FUNC049-USR,Monitor In-Session Face Verification,Monitor In-Session Face Verific,FUNC049-USR-UTCID05,B,IMPLEMENTED
+FUNC049-USR,Monitor In-Session Face Verification,Monitor In-Session Face Verific,FUNC049-USR-UTCID06,N,IMPLEMENTED
+FUNC050-USR,Verify Voice Answer Identity,Verify Voice Answer Identity,FUNC050-USR-UTCID01,N,IMPLEMENTED
+FUNC050-USR,Verify Voice Answer Identity,Verify Voice Answer Identity,FUNC050-USR-UTCID02,N,IMPLEMENTED
+FUNC050-USR,Verify Voice Answer Identity,Verify Voice Answer Identity,FUNC050-USR-UTCID03,N,IMPLEMENTED
+FUNC050-USR,Verify Voice Answer Identity,Verify Voice Answer Identity,FUNC050-USR-UTCID04,A,IMPLEMENTED
+FUNC050-USR,Verify Voice Answer Identity,Verify Voice Answer Identity,FUNC050-USR-UTCID05,B,IMPLEMENTED
+FUNC050-USR,Verify Voice Answer Identity,Verify Voice Answer Identity,FUNC050-USR-UTCID06,N,IMPLEMENTED
+FUNC051-USR,Award Biometric Enrollment Bonus,Award Biometric Enrollment Bonu,FUNC051-USR-UTCID01,N,IMPLEMENTED
+FUNC051-USR,Award Biometric Enrollment Bonus,Award Biometric Enrollment Bonu,FUNC051-USR-UTCID02,N,IMPLEMENTED
+FUNC051-USR,Award Biometric Enrollment Bonus,Award Biometric Enrollment Bonu,FUNC051-USR-UTCID03,N,IMPLEMENTED
+FUNC051-USR,Award Biometric Enrollment Bonus,Award Biometric Enrollment Bonu,FUNC051-USR-UTCID04,A,IMPLEMENTED
+FUNC051-USR,Award Biometric Enrollment Bonus,Award Biometric Enrollment Bonu,FUNC051-USR-UTCID05,B,IMPLEMENTED
+FUNC051-USR,Award Biometric Enrollment Bonus,Award Biometric Enrollment Bonu,FUNC051-USR-UTCID06,N,IMPLEMENTED
+FUNC052-USR,Refund Interview Credits,Refund Interview Credits,FUNC052-USR-UTCID01,N,IMPLEMENTED
+FUNC052-USR,Refund Interview Credits,Refund Interview Credits,FUNC052-USR-UTCID02,N,IMPLEMENTED
+FUNC052-USR,Refund Interview Credits,Refund Interview Credits,FUNC052-USR-UTCID03,N,IMPLEMENTED
+FUNC052-USR,Refund Interview Credits,Refund Interview Credits,FUNC052-USR-UTCID04,A,IMPLEMENTED
+FUNC052-USR,Refund Interview Credits,Refund Interview Credits,FUNC052-USR-UTCID05,B,IMPLEMENTED
+FUNC052-USR,Refund Interview Credits,Refund Interview Credits,FUNC052-USR-UTCID06,N,IMPLEMENTED
+FUNC053-USR,Initialize Interview Session,Initialize Interview Session,FUNC053-USR-UTCID01,N,IMPLEMENTED
+FUNC053-USR,Initialize Interview Session,Initialize Interview Session,FUNC053-USR-UTCID02,N,IMPLEMENTED
+FUNC053-USR,Initialize Interview Session,Initialize Interview Session,FUNC053-USR-UTCID03,N,IMPLEMENTED
+FUNC053-USR,Initialize Interview Session,Initialize Interview Session,FUNC053-USR-UTCID04,A,IMPLEMENTED
+FUNC053-USR,Initialize Interview Session,Initialize Interview Session,FUNC053-USR-UTCID05,B,IMPLEMENTED
+FUNC053-USR,Initialize Interview Session,Initialize Interview Session,FUNC053-USR-UTCID06,N,IMPLEMENTED
+FUNC054-USR,Generate Contextual Question,Generate Contextual Question,FUNC054-USR-UTCID01,N,IMPLEMENTED
+FUNC054-USR,Generate Contextual Question,Generate Contextual Question,FUNC054-USR-UTCID02,N,IMPLEMENTED
+FUNC054-USR,Generate Contextual Question,Generate Contextual Question,FUNC054-USR-UTCID03,N,IMPLEMENTED
+FUNC054-USR,Generate Contextual Question,Generate Contextual Question,FUNC054-USR-UTCID04,A,IMPLEMENTED
+FUNC054-USR,Generate Contextual Question,Generate Contextual Question,FUNC054-USR-UTCID05,B,IMPLEMENTED
+FUNC054-USR,Generate Contextual Question,Generate Contextual Question,FUNC054-USR-UTCID06,N,IMPLEMENTED
+FUNC055-USR,Send/Receive Chat Message,Send Receive Chat Message,FUNC055-USR-UTCID01,N,IMPLEMENTED
+FUNC055-USR,Send/Receive Chat Message,Send Receive Chat Message,FUNC055-USR-UTCID02,N,IMPLEMENTED
+FUNC055-USR,Send/Receive Chat Message,Send Receive Chat Message,FUNC055-USR-UTCID03,N,IMPLEMENTED
+FUNC055-USR,Send/Receive Chat Message,Send Receive Chat Message,FUNC055-USR-UTCID04,A,IMPLEMENTED
+FUNC055-USR,Send/Receive Chat Message,Send Receive Chat Message,FUNC055-USR-UTCID05,B,IMPLEMENTED
+FUNC055-USR,Send/Receive Chat Message,Send Receive Chat Message,FUNC055-USR-UTCID06,N,IMPLEMENTED
+FUNC056-USR,Delete Interview Session,Delete Interview Session,FUNC056-USR-UTCID01,N,IMPLEMENTED
+FUNC056-USR,Delete Interview Session,Delete Interview Session,FUNC056-USR-UTCID02,N,IMPLEMENTED
+FUNC056-USR,Delete Interview Session,Delete Interview Session,FUNC056-USR-UTCID03,N,IMPLEMENTED
+FUNC056-USR,Delete Interview Session,Delete Interview Session,FUNC056-USR-UTCID04,A,IMPLEMENTED
+FUNC056-USR,Delete Interview Session,Delete Interview Session,FUNC056-USR-UTCID05,B,IMPLEMENTED
+FUNC056-USR,Delete Interview Session,Delete Interview Session,FUNC056-USR-UTCID06,N,IMPLEMENTED
+FUNC057-USR,Display Countdown Timer,Display Countdown Timer,FUNC057-USR-UTCID01,N,IMPLEMENTED
+FUNC057-USR,Display Countdown Timer,Display Countdown Timer,FUNC057-USR-UTCID02,N,IMPLEMENTED
+FUNC057-USR,Display Countdown Timer,Display Countdown Timer,FUNC057-USR-UTCID03,N,IMPLEMENTED
+FUNC057-USR,Display Countdown Timer,Display Countdown Timer,FUNC057-USR-UTCID04,A,IMPLEMENTED
+FUNC057-USR,Display Countdown Timer,Display Countdown Timer,FUNC057-USR-UTCID05,B,IMPLEMENTED
+FUNC057-USR,Display Countdown Timer,Display Countdown Timer,FUNC057-USR-UTCID06,N,IMPLEMENTED
+FUNC058-USR,Track Response Time,Track Response Time,FUNC058-USR-UTCID01,N,IMPLEMENTED
+FUNC058-USR,Track Response Time,Track Response Time,FUNC058-USR-UTCID02,N,IMPLEMENTED
+FUNC058-USR,Track Response Time,Track Response Time,FUNC058-USR-UTCID03,N,IMPLEMENTED
+FUNC058-USR,Track Response Time,Track Response Time,FUNC058-USR-UTCID04,A,IMPLEMENTED
+FUNC058-USR,Track Response Time,Track Response Time,FUNC058-USR-UTCID05,B,IMPLEMENTED
+FUNC058-USR,Track Response Time,Track Response Time,FUNC058-USR-UTCID06,N,IMPLEMENTED
+FUNC059-USR,End Interview Session,End Interview Session,FUNC059-USR-UTCID01,N,IMPLEMENTED
+FUNC059-USR,End Interview Session,End Interview Session,FUNC059-USR-UTCID02,N,IMPLEMENTED
+FUNC059-USR,End Interview Session,End Interview Session,FUNC059-USR-UTCID03,N,IMPLEMENTED
+FUNC059-USR,End Interview Session,End Interview Session,FUNC059-USR-UTCID04,A,IMPLEMENTED
+FUNC059-USR,End Interview Session,End Interview Session,FUNC059-USR-UTCID05,B,IMPLEMENTED
+FUNC059-USR,End Interview Session,End Interview Session,FUNC059-USR-UTCID06,N,IMPLEMENTED
+FUNC060-USR,Resume Active Interview Session,Resume Active Interview Session,FUNC060-USR-UTCID01,N,IMPLEMENTED
+FUNC060-USR,Resume Active Interview Session,Resume Active Interview Session,FUNC060-USR-UTCID02,N,IMPLEMENTED
+FUNC060-USR,Resume Active Interview Session,Resume Active Interview Session,FUNC060-USR-UTCID03,N,IMPLEMENTED
+FUNC060-USR,Resume Active Interview Session,Resume Active Interview Session,FUNC060-USR-UTCID04,A,IMPLEMENTED
+FUNC060-USR,Resume Active Interview Session,Resume Active Interview Session,FUNC060-USR-UTCID05,B,IMPLEMENTED
+FUNC060-USR,Resume Active Interview Session,Resume Active Interview Session,FUNC060-USR-UTCID06,N,IMPLEMENTED
+FUNC061-USR,Evaluate Interview Answer,Evaluate Interview Answer,FUNC061-USR-UTCID01,N,IMPLEMENTED
+FUNC061-USR,Evaluate Interview Answer,Evaluate Interview Answer,FUNC061-USR-UTCID02,N,IMPLEMENTED
+FUNC061-USR,Evaluate Interview Answer,Evaluate Interview Answer,FUNC061-USR-UTCID03,N,IMPLEMENTED
+FUNC061-USR,Evaluate Interview Answer,Evaluate Interview Answer,FUNC061-USR-UTCID04,A,IMPLEMENTED
+FUNC061-USR,Evaluate Interview Answer,Evaluate Interview Answer,FUNC061-USR-UTCID05,B,IMPLEMENTED
+FUNC061-USR,Evaluate Interview Answer,Evaluate Interview Answer,FUNC061-USR-UTCID06,N,IMPLEMENTED
+FUNC062-USR,Generate Evaluation Report,Generate Evaluation Report,FUNC062-USR-UTCID01,N,IMPLEMENTED
+FUNC062-USR,Generate Evaluation Report,Generate Evaluation Report,FUNC062-USR-UTCID02,N,IMPLEMENTED
+FUNC062-USR,Generate Evaluation Report,Generate Evaluation Report,FUNC062-USR-UTCID03,N,IMPLEMENTED
+FUNC062-USR,Generate Evaluation Report,Generate Evaluation Report,FUNC062-USR-UTCID04,A,IMPLEMENTED
+FUNC062-USR,Generate Evaluation Report,Generate Evaluation Report,FUNC062-USR-UTCID05,B,IMPLEMENTED
+FUNC062-USR,Generate Evaluation Report,Generate Evaluation Report,FUNC062-USR-UTCID06,N,IMPLEMENTED
+FUNC063-USR,View Session History,View Session History,FUNC063-USR-UTCID01,N,IMPLEMENTED
+FUNC063-USR,View Session History,View Session History,FUNC063-USR-UTCID02,N,IMPLEMENTED
+FUNC063-USR,View Session History,View Session History,FUNC063-USR-UTCID03,N,IMPLEMENTED
+FUNC063-USR,View Session History,View Session History,FUNC063-USR-UTCID04,A,IMPLEMENTED
+FUNC063-USR,View Session History,View Session History,FUNC063-USR-UTCID05,B,IMPLEMENTED
+FUNC063-USR,View Session History,View Session History,FUNC063-USR-UTCID06,N,IMPLEMENTED
+FUNC064-USR,View Session Details,View Session Details,FUNC064-USR-UTCID01,N,IMPLEMENTED
+FUNC064-USR,View Session Details,View Session Details,FUNC064-USR-UTCID02,N,IMPLEMENTED
+FUNC064-USR,View Session Details,View Session Details,FUNC064-USR-UTCID03,N,IMPLEMENTED
+FUNC064-USR,View Session Details,View Session Details,FUNC064-USR-UTCID04,A,IMPLEMENTED
+FUNC064-USR,View Session Details,View Session Details,FUNC064-USR-UTCID05,B,IMPLEMENTED
+FUNC064-USR,View Session Details,View Session Details,FUNC064-USR-UTCID06,N,IMPLEMENTED
+FUNC065-USR,Search Sessions,Search Sessions,FUNC065-USR-UTCID01,N,IMPLEMENTED
+FUNC065-USR,Search Sessions,Search Sessions,FUNC065-USR-UTCID02,N,IMPLEMENTED
+FUNC065-USR,Search Sessions,Search Sessions,FUNC065-USR-UTCID03,N,IMPLEMENTED
+FUNC065-USR,Search Sessions,Search Sessions,FUNC065-USR-UTCID04,A,IMPLEMENTED
+FUNC065-USR,Search Sessions,Search Sessions,FUNC065-USR-UTCID05,B,IMPLEMENTED
+FUNC065-USR,Search Sessions,Search Sessions,FUNC065-USR-UTCID06,N,IMPLEMENTED
+FUNC066-USR,Filter Sessions,Filter Sessions,FUNC066-USR-UTCID01,N,IMPLEMENTED
+FUNC066-USR,Filter Sessions,Filter Sessions,FUNC066-USR-UTCID02,N,IMPLEMENTED
+FUNC066-USR,Filter Sessions,Filter Sessions,FUNC066-USR-UTCID03,N,IMPLEMENTED
+FUNC066-USR,Filter Sessions,Filter Sessions,FUNC066-USR-UTCID04,A,IMPLEMENTED
+FUNC066-USR,Filter Sessions,Filter Sessions,FUNC066-USR-UTCID05,B,IMPLEMENTED
+FUNC066-USR,Filter Sessions,Filter Sessions,FUNC066-USR-UTCID06,N,IMPLEMENTED
+FUNC067-USR,View Performance Report,View Performance Report,FUNC067-USR-UTCID01,N,IMPLEMENTED
+FUNC067-USR,View Performance Report,View Performance Report,FUNC067-USR-UTCID02,N,IMPLEMENTED
+FUNC067-USR,View Performance Report,View Performance Report,FUNC067-USR-UTCID03,N,IMPLEMENTED
+FUNC067-USR,View Performance Report,View Performance Report,FUNC067-USR-UTCID04,A,IMPLEMENTED
+FUNC067-USR,View Performance Report,View Performance Report,FUNC067-USR-UTCID05,B,IMPLEMENTED
+FUNC067-USR,View Performance Report,View Performance Report,FUNC067-USR-UTCID06,N,IMPLEMENTED
+FUNC068-USR,View Chat Log Details,View Chat Log Details,FUNC068-USR-UTCID01,N,IMPLEMENTED
+FUNC068-USR,View Chat Log Details,View Chat Log Details,FUNC068-USR-UTCID02,N,IMPLEMENTED
+FUNC068-USR,View Chat Log Details,View Chat Log Details,FUNC068-USR-UTCID03,N,IMPLEMENTED
+FUNC068-USR,View Chat Log Details,View Chat Log Details,FUNC068-USR-UTCID04,A,IMPLEMENTED
+FUNC068-USR,View Chat Log Details,View Chat Log Details,FUNC068-USR-UTCID05,B,IMPLEMENTED
+FUNC068-USR,View Chat Log Details,View Chat Log Details,FUNC068-USR-UTCID06,N,IMPLEMENTED
+FUNC069-USR,View System Feedback,View System Feedback,FUNC069-USR-UTCID01,N,IMPLEMENTED
+FUNC069-USR,View System Feedback,View System Feedback,FUNC069-USR-UTCID02,N,IMPLEMENTED
+FUNC069-USR,View System Feedback,View System Feedback,FUNC069-USR-UTCID03,N,IMPLEMENTED
+FUNC069-USR,View System Feedback,View System Feedback,FUNC069-USR-UTCID04,A,IMPLEMENTED
+FUNC069-USR,View System Feedback,View System Feedback,FUNC069-USR-UTCID05,B,IMPLEMENTED
+FUNC069-USR,View System Feedback,View System Feedback,FUNC069-USR-UTCID06,N,IMPLEMENTED
+FUNC070-USR,Edit System Feedback,Edit System Feedback,FUNC070-USR-UTCID01,N,IMPLEMENTED
+FUNC070-USR,Edit System Feedback,Edit System Feedback,FUNC070-USR-UTCID02,N,IMPLEMENTED
+FUNC070-USR,Edit System Feedback,Edit System Feedback,FUNC070-USR-UTCID03,N,IMPLEMENTED
+FUNC070-USR,Edit System Feedback,Edit System Feedback,FUNC070-USR-UTCID04,A,IMPLEMENTED
+FUNC070-USR,Edit System Feedback,Edit System Feedback,FUNC070-USR-UTCID05,B,IMPLEMENTED
+FUNC070-USR,Edit System Feedback,Edit System Feedback,FUNC070-USR-UTCID06,N,IMPLEMENTED
+FUNC071-USR,Delete System Feedback,Delete System Feedback Candidat,FUNC071-USR-UTCID01,N,IMPLEMENTED
+FUNC071-USR,Delete System Feedback,Delete System Feedback Candidat,FUNC071-USR-UTCID02,N,IMPLEMENTED
+FUNC071-USR,Delete System Feedback,Delete System Feedback Candidat,FUNC071-USR-UTCID03,N,IMPLEMENTED
+FUNC071-USR,Delete System Feedback,Delete System Feedback Candidat,FUNC071-USR-UTCID04,A,IMPLEMENTED
+FUNC071-USR,Delete System Feedback,Delete System Feedback Candidat,FUNC071-USR-UTCID05,B,IMPLEMENTED
+FUNC071-USR,Delete System Feedback,Delete System Feedback Candidat,FUNC071-USR-UTCID06,N,IMPLEMENTED
+FUNC072-USR,View AI Feedback,View AI Feedback,FUNC072-USR-UTCID01,N,IMPLEMENTED
+FUNC072-USR,View AI Feedback,View AI Feedback,FUNC072-USR-UTCID02,N,IMPLEMENTED
+FUNC072-USR,View AI Feedback,View AI Feedback,FUNC072-USR-UTCID03,N,IMPLEMENTED
+FUNC072-USR,View AI Feedback,View AI Feedback,FUNC072-USR-UTCID04,A,IMPLEMENTED
+FUNC072-USR,View AI Feedback,View AI Feedback,FUNC072-USR-UTCID05,B,IMPLEMENTED
+FUNC072-USR,View AI Feedback,View AI Feedback,FUNC072-USR-UTCID06,N,IMPLEMENTED
+FUNC073-USR,Edit AI Feedback,Edit AI Feedback,FUNC073-USR-UTCID01,N,IMPLEMENTED
+FUNC073-USR,Edit AI Feedback,Edit AI Feedback,FUNC073-USR-UTCID02,N,IMPLEMENTED
+FUNC073-USR,Edit AI Feedback,Edit AI Feedback,FUNC073-USR-UTCID03,N,IMPLEMENTED
+FUNC073-USR,Edit AI Feedback,Edit AI Feedback,FUNC073-USR-UTCID04,A,IMPLEMENTED
+FUNC073-USR,Edit AI Feedback,Edit AI Feedback,FUNC073-USR-UTCID05,B,IMPLEMENTED
+FUNC073-USR,Edit AI Feedback,Edit AI Feedback,FUNC073-USR-UTCID06,N,IMPLEMENTED
+FUNC074-USR,Delete AI Feedback,Delete AI Feedback Candidate Us,FUNC074-USR-UTCID01,N,IMPLEMENTED
+FUNC074-USR,Delete AI Feedback,Delete AI Feedback Candidate Us,FUNC074-USR-UTCID02,N,IMPLEMENTED
+FUNC074-USR,Delete AI Feedback,Delete AI Feedback Candidate Us,FUNC074-USR-UTCID03,N,IMPLEMENTED
+FUNC074-USR,Delete AI Feedback,Delete AI Feedback Candidate Us,FUNC074-USR-UTCID04,A,IMPLEMENTED
+FUNC074-USR,Delete AI Feedback,Delete AI Feedback Candidate Us,FUNC074-USR-UTCID05,B,IMPLEMENTED
+FUNC074-USR,Delete AI Feedback,Delete AI Feedback Candidate Us,FUNC074-USR-UTCID06,N,IMPLEMENTED
+FUNC075-USR,Submit System Feedback,Submit System Feedback,FUNC075-USR-UTCID01,N,IMPLEMENTED
+FUNC075-USR,Submit System Feedback,Submit System Feedback,FUNC075-USR-UTCID02,N,IMPLEMENTED
+FUNC075-USR,Submit System Feedback,Submit System Feedback,FUNC075-USR-UTCID03,N,IMPLEMENTED
+FUNC075-USR,Submit System Feedback,Submit System Feedback,FUNC075-USR-UTCID04,A,IMPLEMENTED
+FUNC075-USR,Submit System Feedback,Submit System Feedback,FUNC075-USR-UTCID05,B,IMPLEMENTED
+FUNC075-USR,Submit System Feedback,Submit System Feedback,FUNC075-USR-UTCID06,N,IMPLEMENTED
+FUNC076-USR,Submit Interview Feedback,Submit Interview Feedback,FUNC076-USR-UTCID01,N,IMPLEMENTED
+FUNC076-USR,Submit Interview Feedback,Submit Interview Feedback,FUNC076-USR-UTCID02,N,IMPLEMENTED
+FUNC076-USR,Submit Interview Feedback,Submit Interview Feedback,FUNC076-USR-UTCID03,N,IMPLEMENTED
+FUNC076-USR,Submit Interview Feedback,Submit Interview Feedback,FUNC076-USR-UTCID04,A,IMPLEMENTED
+FUNC076-USR,Submit Interview Feedback,Submit Interview Feedback,FUNC076-USR-UTCID05,B,IMPLEMENTED
+FUNC076-USR,Submit Interview Feedback,Submit Interview Feedback,FUNC076-USR-UTCID06,N,IMPLEMENTED
+FUNC077-USR,View Current Credit Balance,View Current Credit Balance,FUNC077-USR-UTCID01,N,IMPLEMENTED
+FUNC077-USR,View Current Credit Balance,View Current Credit Balance,FUNC077-USR-UTCID02,N,IMPLEMENTED
+FUNC077-USR,View Current Credit Balance,View Current Credit Balance,FUNC077-USR-UTCID03,N,IMPLEMENTED
+FUNC077-USR,View Current Credit Balance,View Current Credit Balance,FUNC077-USR-UTCID04,A,IMPLEMENTED
+FUNC077-USR,View Current Credit Balance,View Current Credit Balance,FUNC077-USR-UTCID05,B,IMPLEMENTED
+FUNC077-USR,View Current Credit Balance,View Current Credit Balance,FUNC077-USR-UTCID06,N,IMPLEMENTED
+FUNC078-USR,View Credit Packages,View Credit Packages,FUNC078-USR-UTCID01,N,IMPLEMENTED
+FUNC078-USR,View Credit Packages,View Credit Packages,FUNC078-USR-UTCID02,N,IMPLEMENTED
+FUNC078-USR,View Credit Packages,View Credit Packages,FUNC078-USR-UTCID03,N,IMPLEMENTED
+FUNC078-USR,View Credit Packages,View Credit Packages,FUNC078-USR-UTCID04,A,IMPLEMENTED
+FUNC078-USR,View Credit Packages,View Credit Packages,FUNC078-USR-UTCID05,B,IMPLEMENTED
+FUNC078-USR,View Credit Packages,View Credit Packages,FUNC078-USR-UTCID06,N,IMPLEMENTED
+FUNC079-USR,Create VNPay Order,Create VNPay Order,FUNC079-USR-UTCID01,N,IMPLEMENTED
+FUNC079-USR,Create VNPay Order,Create VNPay Order,FUNC079-USR-UTCID02,N,IMPLEMENTED
+FUNC079-USR,Create VNPay Order,Create VNPay Order,FUNC079-USR-UTCID03,N,IMPLEMENTED
+FUNC079-USR,Create VNPay Order,Create VNPay Order,FUNC079-USR-UTCID04,A,IMPLEMENTED
+FUNC079-USR,Create VNPay Order,Create VNPay Order,FUNC079-USR-UTCID05,B,IMPLEMENTED
+FUNC079-USR,Create VNPay Order,Create VNPay Order,FUNC079-USR-UTCID06,N,IMPLEMENTED
+FUNC080-USR,Process VNPay IPN Callback,Process VNPay IPN Callback,FUNC080-USR-UTCID01,N,IMPLEMENTED
+FUNC080-USR,Process VNPay IPN Callback,Process VNPay IPN Callback,FUNC080-USR-UTCID02,N,IMPLEMENTED
+FUNC080-USR,Process VNPay IPN Callback,Process VNPay IPN Callback,FUNC080-USR-UTCID03,N,IMPLEMENTED
+FUNC080-USR,Process VNPay IPN Callback,Process VNPay IPN Callback,FUNC080-USR-UTCID04,A,IMPLEMENTED
+FUNC080-USR,Process VNPay IPN Callback,Process VNPay IPN Callback,FUNC080-USR-UTCID05,B,IMPLEMENTED
+FUNC080-USR,Process VNPay IPN Callback,Process VNPay IPN Callback,FUNC080-USR-UTCID06,N,IMPLEMENTED
+FUNC081-USR,Handle VNPay Return,Handle VNPay Return,FUNC081-USR-UTCID01,N,IMPLEMENTED
+FUNC081-USR,Handle VNPay Return,Handle VNPay Return,FUNC081-USR-UTCID02,N,IMPLEMENTED
+FUNC081-USR,Handle VNPay Return,Handle VNPay Return,FUNC081-USR-UTCID03,N,IMPLEMENTED
+FUNC081-USR,Handle VNPay Return,Handle VNPay Return,FUNC081-USR-UTCID04,A,IMPLEMENTED
+FUNC081-USR,Handle VNPay Return,Handle VNPay Return,FUNC081-USR-UTCID05,B,IMPLEMENTED
+FUNC081-USR,Handle VNPay Return,Handle VNPay Return,FUNC081-USR-UTCID06,N,IMPLEMENTED
+FUNC082-USR,View Transaction History,View Transaction History,FUNC082-USR-UTCID01,N,IMPLEMENTED
+FUNC082-USR,View Transaction History,View Transaction History,FUNC082-USR-UTCID02,N,IMPLEMENTED
+FUNC082-USR,View Transaction History,View Transaction History,FUNC082-USR-UTCID03,N,IMPLEMENTED
+FUNC082-USR,View Transaction History,View Transaction History,FUNC082-USR-UTCID04,A,IMPLEMENTED
+FUNC082-USR,View Transaction History,View Transaction History,FUNC082-USR-UTCID05,B,IMPLEMENTED
+FUNC082-USR,View Transaction History,View Transaction History,FUNC082-USR-UTCID06,N,IMPLEMENTED
+FUNC083-ADM,Admin Login,Admin Login,FUNC083-ADM-UTCID01,N,IMPLEMENTED
+FUNC083-ADM,Admin Login,Admin Login,FUNC083-ADM-UTCID02,N,IMPLEMENTED
+FUNC083-ADM,Admin Login,Admin Login,FUNC083-ADM-UTCID03,N,IMPLEMENTED
+FUNC083-ADM,Admin Login,Admin Login,FUNC083-ADM-UTCID04,A,IMPLEMENTED
+FUNC083-ADM,Admin Login,Admin Login,FUNC083-ADM-UTCID05,B,IMPLEMENTED
+FUNC083-ADM,Admin Login,Admin Login,FUNC083-ADM-UTCID06,N,IMPLEMENTED
+FUNC084-ADM,View Question Bank List,View Question Bank List Admin,FUNC084-ADM-UTCID01,N,IMPLEMENTED
+FUNC084-ADM,View Question Bank List,View Question Bank List Admin,FUNC084-ADM-UTCID02,N,IMPLEMENTED
+FUNC084-ADM,View Question Bank List,View Question Bank List Admin,FUNC084-ADM-UTCID03,N,IMPLEMENTED
+FUNC084-ADM,View Question Bank List,View Question Bank List Admin,FUNC084-ADM-UTCID04,A,IMPLEMENTED
+FUNC084-ADM,View Question Bank List,View Question Bank List Admin,FUNC084-ADM-UTCID05,B,IMPLEMENTED
+FUNC084-ADM,View Question Bank List,View Question Bank List Admin,FUNC084-ADM-UTCID06,N,IMPLEMENTED
+FUNC085-ADM,View Question Details,View Question Details Admin,FUNC085-ADM-UTCID01,N,IMPLEMENTED
+FUNC085-ADM,View Question Details,View Question Details Admin,FUNC085-ADM-UTCID02,N,IMPLEMENTED
+FUNC085-ADM,View Question Details,View Question Details Admin,FUNC085-ADM-UTCID03,N,IMPLEMENTED
+FUNC085-ADM,View Question Details,View Question Details Admin,FUNC085-ADM-UTCID04,A,IMPLEMENTED
+FUNC085-ADM,View Question Details,View Question Details Admin,FUNC085-ADM-UTCID05,B,IMPLEMENTED
+FUNC085-ADM,View Question Details,View Question Details Admin,FUNC085-ADM-UTCID06,N,IMPLEMENTED
+FUNC086-ADM,Add New Question,Add New Question,FUNC086-ADM-UTCID01,N,IMPLEMENTED
+FUNC086-ADM,Add New Question,Add New Question,FUNC086-ADM-UTCID02,N,IMPLEMENTED
+FUNC086-ADM,Add New Question,Add New Question,FUNC086-ADM-UTCID03,N,IMPLEMENTED
+FUNC086-ADM,Add New Question,Add New Question,FUNC086-ADM-UTCID04,A,IMPLEMENTED
+FUNC086-ADM,Add New Question,Add New Question,FUNC086-ADM-UTCID05,B,IMPLEMENTED
+FUNC086-ADM,Add New Question,Add New Question,FUNC086-ADM-UTCID06,N,IMPLEMENTED
+FUNC087-ADM,Update Question,Update Question,FUNC087-ADM-UTCID01,N,IMPLEMENTED
+FUNC087-ADM,Update Question,Update Question,FUNC087-ADM-UTCID02,N,IMPLEMENTED
+FUNC087-ADM,Update Question,Update Question,FUNC087-ADM-UTCID03,N,IMPLEMENTED
+FUNC087-ADM,Update Question,Update Question,FUNC087-ADM-UTCID04,A,IMPLEMENTED
+FUNC087-ADM,Update Question,Update Question,FUNC087-ADM-UTCID05,B,IMPLEMENTED
+FUNC087-ADM,Update Question,Update Question,FUNC087-ADM-UTCID06,N,IMPLEMENTED
+FUNC088-ADM,Delete Question,Delete Question,FUNC088-ADM-UTCID01,N,IMPLEMENTED
+FUNC088-ADM,Delete Question,Delete Question,FUNC088-ADM-UTCID02,N,IMPLEMENTED
+FUNC088-ADM,Delete Question,Delete Question,FUNC088-ADM-UTCID03,N,IMPLEMENTED
+FUNC088-ADM,Delete Question,Delete Question,FUNC088-ADM-UTCID04,A,IMPLEMENTED
+FUNC088-ADM,Delete Question,Delete Question,FUNC088-ADM-UTCID05,B,IMPLEMENTED
+FUNC088-ADM,Delete Question,Delete Question,FUNC088-ADM-UTCID06,N,IMPLEMENTED
+FUNC089-ADM,Search Question,Search Question Admin,FUNC089-ADM-UTCID01,N,IMPLEMENTED
+FUNC089-ADM,Search Question,Search Question Admin,FUNC089-ADM-UTCID02,N,IMPLEMENTED
+FUNC089-ADM,Search Question,Search Question Admin,FUNC089-ADM-UTCID03,N,IMPLEMENTED
+FUNC089-ADM,Search Question,Search Question Admin,FUNC089-ADM-UTCID04,A,IMPLEMENTED
+FUNC089-ADM,Search Question,Search Question Admin,FUNC089-ADM-UTCID05,B,IMPLEMENTED
+FUNC089-ADM,Search Question,Search Question Admin,FUNC089-ADM-UTCID06,N,IMPLEMENTED
+FUNC090-ADM,Restore Question,Restore Question,FUNC090-ADM-UTCID01,N,IMPLEMENTED
+FUNC090-ADM,Restore Question,Restore Question,FUNC090-ADM-UTCID02,N,IMPLEMENTED
+FUNC090-ADM,Restore Question,Restore Question,FUNC090-ADM-UTCID03,N,IMPLEMENTED
+FUNC090-ADM,Restore Question,Restore Question,FUNC090-ADM-UTCID04,A,IMPLEMENTED
+FUNC090-ADM,Restore Question,Restore Question,FUNC090-ADM-UTCID05,B,IMPLEMENTED
+FUNC090-ADM,Restore Question,Restore Question,FUNC090-ADM-UTCID06,N,IMPLEMENTED
+FUNC091-ADM,Filter Question,Filter Question Admin,FUNC091-ADM-UTCID01,N,IMPLEMENTED
+FUNC091-ADM,Filter Question,Filter Question Admin,FUNC091-ADM-UTCID02,N,IMPLEMENTED
+FUNC091-ADM,Filter Question,Filter Question Admin,FUNC091-ADM-UTCID03,N,IMPLEMENTED
+FUNC091-ADM,Filter Question,Filter Question Admin,FUNC091-ADM-UTCID04,A,IMPLEMENTED
+FUNC091-ADM,Filter Question,Filter Question Admin,FUNC091-ADM-UTCID05,B,IMPLEMENTED
+FUNC091-ADM,Filter Question,Filter Question Admin,FUNC091-ADM-UTCID06,N,IMPLEMENTED
+FUNC092-ADM,View Tech Stack List,View Tech Stack List Admin,FUNC092-ADM-UTCID01,N,IMPLEMENTED
+FUNC092-ADM,View Tech Stack List,View Tech Stack List Admin,FUNC092-ADM-UTCID02,N,IMPLEMENTED
+FUNC092-ADM,View Tech Stack List,View Tech Stack List Admin,FUNC092-ADM-UTCID03,N,IMPLEMENTED
+FUNC092-ADM,View Tech Stack List,View Tech Stack List Admin,FUNC092-ADM-UTCID04,A,IMPLEMENTED
+FUNC092-ADM,View Tech Stack List,View Tech Stack List Admin,FUNC092-ADM-UTCID05,B,IMPLEMENTED
+FUNC092-ADM,View Tech Stack List,View Tech Stack List Admin,FUNC092-ADM-UTCID06,N,IMPLEMENTED
+FUNC093-ADM,Add Tech Stack,Add Tech Stack,FUNC093-ADM-UTCID01,N,IMPLEMENTED
+FUNC093-ADM,Add Tech Stack,Add Tech Stack,FUNC093-ADM-UTCID02,N,IMPLEMENTED
+FUNC093-ADM,Add Tech Stack,Add Tech Stack,FUNC093-ADM-UTCID03,N,IMPLEMENTED
+FUNC093-ADM,Add Tech Stack,Add Tech Stack,FUNC093-ADM-UTCID04,A,IMPLEMENTED
+FUNC093-ADM,Add Tech Stack,Add Tech Stack,FUNC093-ADM-UTCID05,B,IMPLEMENTED
+FUNC093-ADM,Add Tech Stack,Add Tech Stack,FUNC093-ADM-UTCID06,N,IMPLEMENTED
+FUNC094-ADM,Update Tech Stack,Update Tech Stack,FUNC094-ADM-UTCID01,N,IMPLEMENTED
+FUNC094-ADM,Update Tech Stack,Update Tech Stack,FUNC094-ADM-UTCID02,N,IMPLEMENTED
+FUNC094-ADM,Update Tech Stack,Update Tech Stack,FUNC094-ADM-UTCID03,N,IMPLEMENTED
+FUNC094-ADM,Update Tech Stack,Update Tech Stack,FUNC094-ADM-UTCID04,A,IMPLEMENTED
+FUNC094-ADM,Update Tech Stack,Update Tech Stack,FUNC094-ADM-UTCID05,B,IMPLEMENTED
+FUNC094-ADM,Update Tech Stack,Update Tech Stack,FUNC094-ADM-UTCID06,N,IMPLEMENTED
+FUNC095-ADM,Delete Tech Stack,Delete Tech Stack,FUNC095-ADM-UTCID01,N,IMPLEMENTED
+FUNC095-ADM,Delete Tech Stack,Delete Tech Stack,FUNC095-ADM-UTCID02,N,IMPLEMENTED
+FUNC095-ADM,Delete Tech Stack,Delete Tech Stack,FUNC095-ADM-UTCID03,N,IMPLEMENTED
+FUNC095-ADM,Delete Tech Stack,Delete Tech Stack,FUNC095-ADM-UTCID04,A,IMPLEMENTED
+FUNC095-ADM,Delete Tech Stack,Delete Tech Stack,FUNC095-ADM-UTCID05,B,IMPLEMENTED
+FUNC095-ADM,Delete Tech Stack,Delete Tech Stack,FUNC095-ADM-UTCID06,N,IMPLEMENTED
+FUNC096-ADM,Search Tech Stack,Search Tech Stack Admin,FUNC096-ADM-UTCID01,N,IMPLEMENTED
+FUNC096-ADM,Search Tech Stack,Search Tech Stack Admin,FUNC096-ADM-UTCID02,N,IMPLEMENTED
+FUNC096-ADM,Search Tech Stack,Search Tech Stack Admin,FUNC096-ADM-UTCID03,N,IMPLEMENTED
+FUNC096-ADM,Search Tech Stack,Search Tech Stack Admin,FUNC096-ADM-UTCID04,A,IMPLEMENTED
+FUNC096-ADM,Search Tech Stack,Search Tech Stack Admin,FUNC096-ADM-UTCID05,B,IMPLEMENTED
+FUNC096-ADM,Search Tech Stack,Search Tech Stack Admin,FUNC096-ADM-UTCID06,N,IMPLEMENTED
+FUNC097-ADM,Filter Tech Stack,Filter Tech Stack Admin,FUNC097-ADM-UTCID01,N,IMPLEMENTED
+FUNC097-ADM,Filter Tech Stack,Filter Tech Stack Admin,FUNC097-ADM-UTCID02,N,IMPLEMENTED
+FUNC097-ADM,Filter Tech Stack,Filter Tech Stack Admin,FUNC097-ADM-UTCID03,N,IMPLEMENTED
+FUNC097-ADM,Filter Tech Stack,Filter Tech Stack Admin,FUNC097-ADM-UTCID04,A,IMPLEMENTED
+FUNC097-ADM,Filter Tech Stack,Filter Tech Stack Admin,FUNC097-ADM-UTCID05,B,IMPLEMENTED
+FUNC097-ADM,Filter Tech Stack,Filter Tech Stack Admin,FUNC097-ADM-UTCID06,N,IMPLEMENTED
+FUNC098-ADM,View User List,View User List Admin,FUNC098-ADM-UTCID01,N,IMPLEMENTED
+FUNC098-ADM,View User List,View User List Admin,FUNC098-ADM-UTCID02,N,IMPLEMENTED
+FUNC098-ADM,View User List,View User List Admin,FUNC098-ADM-UTCID03,N,IMPLEMENTED
+FUNC098-ADM,View User List,View User List Admin,FUNC098-ADM-UTCID04,A,IMPLEMENTED
+FUNC098-ADM,View User List,View User List Admin,FUNC098-ADM-UTCID05,B,IMPLEMENTED
+FUNC098-ADM,View User List,View User List Admin,FUNC098-ADM-UTCID06,N,IMPLEMENTED
+FUNC099-ADM,View User Details,View User Details Admin,FUNC099-ADM-UTCID01,N,IMPLEMENTED
+FUNC099-ADM,View User Details,View User Details Admin,FUNC099-ADM-UTCID02,N,IMPLEMENTED
+FUNC099-ADM,View User Details,View User Details Admin,FUNC099-ADM-UTCID03,N,IMPLEMENTED
+FUNC099-ADM,View User Details,View User Details Admin,FUNC099-ADM-UTCID04,A,IMPLEMENTED
+FUNC099-ADM,View User Details,View User Details Admin,FUNC099-ADM-UTCID05,B,IMPLEMENTED
+FUNC099-ADM,View User Details,View User Details Admin,FUNC099-ADM-UTCID06,N,IMPLEMENTED
+FUNC100-ADM,Block User,Block User,FUNC100-ADM-UTCID01,N,IMPLEMENTED
+FUNC100-ADM,Block User,Block User,FUNC100-ADM-UTCID02,N,IMPLEMENTED
+FUNC100-ADM,Block User,Block User,FUNC100-ADM-UTCID03,N,IMPLEMENTED
+FUNC100-ADM,Block User,Block User,FUNC100-ADM-UTCID04,A,IMPLEMENTED
+FUNC100-ADM,Block User,Block User,FUNC100-ADM-UTCID05,B,IMPLEMENTED
+FUNC100-ADM,Block User,Block User,FUNC100-ADM-UTCID06,N,IMPLEMENTED
+FUNC101-ADM,Search User,Search User Admin,FUNC101-ADM-UTCID01,N,IMPLEMENTED
+FUNC101-ADM,Search User,Search User Admin,FUNC101-ADM-UTCID02,N,IMPLEMENTED
+FUNC101-ADM,Search User,Search User Admin,FUNC101-ADM-UTCID03,N,IMPLEMENTED
+FUNC101-ADM,Search User,Search User Admin,FUNC101-ADM-UTCID04,A,IMPLEMENTED
+FUNC101-ADM,Search User,Search User Admin,FUNC101-ADM-UTCID05,B,IMPLEMENTED
+FUNC101-ADM,Search User,Search User Admin,FUNC101-ADM-UTCID06,N,IMPLEMENTED
+FUNC102-ADM,Filter User,Filter User Admin,FUNC102-ADM-UTCID01,N,IMPLEMENTED
+FUNC102-ADM,Filter User,Filter User Admin,FUNC102-ADM-UTCID02,N,IMPLEMENTED
+FUNC102-ADM,Filter User,Filter User Admin,FUNC102-ADM-UTCID03,N,IMPLEMENTED
+FUNC102-ADM,Filter User,Filter User Admin,FUNC102-ADM-UTCID04,A,IMPLEMENTED
+FUNC102-ADM,Filter User,Filter User Admin,FUNC102-ADM-UTCID05,B,IMPLEMENTED
+FUNC102-ADM,Filter User,Filter User Admin,FUNC102-ADM-UTCID06,N,IMPLEMENTED
+FUNC103-ADM,Unblock User,Unblock User,FUNC103-ADM-UTCID01,N,IMPLEMENTED
+FUNC103-ADM,Unblock User,Unblock User,FUNC103-ADM-UTCID02,N,IMPLEMENTED
+FUNC103-ADM,Unblock User,Unblock User,FUNC103-ADM-UTCID03,N,IMPLEMENTED
+FUNC103-ADM,Unblock User,Unblock User,FUNC103-ADM-UTCID04,A,IMPLEMENTED
+FUNC103-ADM,Unblock User,Unblock User,FUNC103-ADM-UTCID05,B,IMPLEMENTED
+FUNC103-ADM,Unblock User,Unblock User,FUNC103-ADM-UTCID06,N,IMPLEMENTED
+FUNC104-ADM,Edit Role User,Edit Role User,FUNC104-ADM-UTCID01,N,IMPLEMENTED
+FUNC104-ADM,Edit Role User,Edit Role User,FUNC104-ADM-UTCID02,N,IMPLEMENTED
+FUNC104-ADM,Edit Role User,Edit Role User,FUNC104-ADM-UTCID03,N,IMPLEMENTED
+FUNC104-ADM,Edit Role User,Edit Role User,FUNC104-ADM-UTCID04,A,IMPLEMENTED
+FUNC104-ADM,Edit Role User,Edit Role User,FUNC104-ADM-UTCID05,B,IMPLEMENTED
+FUNC104-ADM,Edit Role User,Edit Role User,FUNC104-ADM-UTCID06,N,IMPLEMENTED
+FUNC105-ADM,View System Statistics,View System Statistics Admin,FUNC105-ADM-UTCID01,N,IMPLEMENTED
+FUNC105-ADM,View System Statistics,View System Statistics Admin,FUNC105-ADM-UTCID02,N,IMPLEMENTED
+FUNC105-ADM,View System Statistics,View System Statistics Admin,FUNC105-ADM-UTCID03,N,IMPLEMENTED
+FUNC105-ADM,View System Statistics,View System Statistics Admin,FUNC105-ADM-UTCID04,A,IMPLEMENTED
+FUNC105-ADM,View System Statistics,View System Statistics Admin,FUNC105-ADM-UTCID05,B,IMPLEMENTED
+FUNC105-ADM,View System Statistics,View System Statistics Admin,FUNC105-ADM-UTCID06,N,IMPLEMENTED
+FUNC106-ADM,Filter System Statistics,Filter System Statistics Admin,FUNC106-ADM-UTCID01,N,IMPLEMENTED
+FUNC106-ADM,Filter System Statistics,Filter System Statistics Admin,FUNC106-ADM-UTCID02,N,IMPLEMENTED
+FUNC106-ADM,Filter System Statistics,Filter System Statistics Admin,FUNC106-ADM-UTCID03,N,IMPLEMENTED
+FUNC106-ADM,Filter System Statistics,Filter System Statistics Admin,FUNC106-ADM-UTCID04,A,IMPLEMENTED
+FUNC106-ADM,Filter System Statistics,Filter System Statistics Admin,FUNC106-ADM-UTCID05,B,IMPLEMENTED
+FUNC106-ADM,Filter System Statistics,Filter System Statistics Admin,FUNC106-ADM-UTCID06,N,IMPLEMENTED
+FUNC107-ADM,View AI Feedback List,View AI Feedback List Admin,FUNC107-ADM-UTCID01,N,IMPLEMENTED
+FUNC107-ADM,View AI Feedback List,View AI Feedback List Admin,FUNC107-ADM-UTCID02,N,IMPLEMENTED
+FUNC107-ADM,View AI Feedback List,View AI Feedback List Admin,FUNC107-ADM-UTCID03,N,IMPLEMENTED
+FUNC107-ADM,View AI Feedback List,View AI Feedback List Admin,FUNC107-ADM-UTCID04,A,IMPLEMENTED
+FUNC107-ADM,View AI Feedback List,View AI Feedback List Admin,FUNC107-ADM-UTCID05,B,IMPLEMENTED
+FUNC107-ADM,View AI Feedback List,View AI Feedback List Admin,FUNC107-ADM-UTCID06,N,IMPLEMENTED
+FUNC108-ADM,Search AI Feedback,Search AI Feedback Admin,FUNC108-ADM-UTCID01,N,IMPLEMENTED
+FUNC108-ADM,Search AI Feedback,Search AI Feedback Admin,FUNC108-ADM-UTCID02,N,IMPLEMENTED
+FUNC108-ADM,Search AI Feedback,Search AI Feedback Admin,FUNC108-ADM-UTCID03,N,IMPLEMENTED
+FUNC108-ADM,Search AI Feedback,Search AI Feedback Admin,FUNC108-ADM-UTCID04,A,IMPLEMENTED
+FUNC108-ADM,Search AI Feedback,Search AI Feedback Admin,FUNC108-ADM-UTCID05,B,IMPLEMENTED
+FUNC108-ADM,Search AI Feedback,Search AI Feedback Admin,FUNC108-ADM-UTCID06,N,IMPLEMENTED
+FUNC109-ADM,Filter AI Feedback,Filter AI Feedback Admin,FUNC109-ADM-UTCID01,N,IMPLEMENTED
+FUNC109-ADM,Filter AI Feedback,Filter AI Feedback Admin,FUNC109-ADM-UTCID02,N,IMPLEMENTED
+FUNC109-ADM,Filter AI Feedback,Filter AI Feedback Admin,FUNC109-ADM-UTCID03,N,IMPLEMENTED
+FUNC109-ADM,Filter AI Feedback,Filter AI Feedback Admin,FUNC109-ADM-UTCID04,A,IMPLEMENTED
+FUNC109-ADM,Filter AI Feedback,Filter AI Feedback Admin,FUNC109-ADM-UTCID05,B,IMPLEMENTED
+FUNC109-ADM,Filter AI Feedback,Filter AI Feedback Admin,FUNC109-ADM-UTCID06,N,IMPLEMENTED
+FUNC110-ADM,Delete AI Feedback,Delete AI Feedback Admin,FUNC110-ADM-UTCID01,N,IMPLEMENTED
+FUNC110-ADM,Delete AI Feedback,Delete AI Feedback Admin,FUNC110-ADM-UTCID02,N,IMPLEMENTED
+FUNC110-ADM,Delete AI Feedback,Delete AI Feedback Admin,FUNC110-ADM-UTCID03,N,IMPLEMENTED
+FUNC110-ADM,Delete AI Feedback,Delete AI Feedback Admin,FUNC110-ADM-UTCID04,A,IMPLEMENTED
+FUNC110-ADM,Delete AI Feedback,Delete AI Feedback Admin,FUNC110-ADM-UTCID05,B,IMPLEMENTED
+FUNC110-ADM,Delete AI Feedback,Delete AI Feedback Admin,FUNC110-ADM-UTCID06,N,IMPLEMENTED
+FUNC111-ADM,Restore Deleted AI Feedback,Restore Deleted AI Feedback,FUNC111-ADM-UTCID01,N,IMPLEMENTED
+FUNC111-ADM,Restore Deleted AI Feedback,Restore Deleted AI Feedback,FUNC111-ADM-UTCID02,N,IMPLEMENTED
+FUNC111-ADM,Restore Deleted AI Feedback,Restore Deleted AI Feedback,FUNC111-ADM-UTCID03,N,IMPLEMENTED
+FUNC111-ADM,Restore Deleted AI Feedback,Restore Deleted AI Feedback,FUNC111-ADM-UTCID04,A,IMPLEMENTED
+FUNC111-ADM,Restore Deleted AI Feedback,Restore Deleted AI Feedback,FUNC111-ADM-UTCID05,B,IMPLEMENTED
+FUNC111-ADM,Restore Deleted AI Feedback,Restore Deleted AI Feedback,FUNC111-ADM-UTCID06,N,IMPLEMENTED
+FUNC112-ADM,View System Feedback List,View System Feedback List Admin,FUNC112-ADM-UTCID01,N,IMPLEMENTED
+FUNC112-ADM,View System Feedback List,View System Feedback List Admin,FUNC112-ADM-UTCID02,N,IMPLEMENTED
+FUNC112-ADM,View System Feedback List,View System Feedback List Admin,FUNC112-ADM-UTCID03,N,IMPLEMENTED
+FUNC112-ADM,View System Feedback List,View System Feedback List Admin,FUNC112-ADM-UTCID04,A,IMPLEMENTED
+FUNC112-ADM,View System Feedback List,View System Feedback List Admin,FUNC112-ADM-UTCID05,B,IMPLEMENTED
+FUNC112-ADM,View System Feedback List,View System Feedback List Admin,FUNC112-ADM-UTCID06,N,IMPLEMENTED
+FUNC113-ADM,Reply Feedback,Reply Feedback,FUNC113-ADM-UTCID01,N,IMPLEMENTED
+FUNC113-ADM,Reply Feedback,Reply Feedback,FUNC113-ADM-UTCID02,N,IMPLEMENTED
+FUNC113-ADM,Reply Feedback,Reply Feedback,FUNC113-ADM-UTCID03,N,IMPLEMENTED
+FUNC113-ADM,Reply Feedback,Reply Feedback,FUNC113-ADM-UTCID04,A,IMPLEMENTED
+FUNC113-ADM,Reply Feedback,Reply Feedback,FUNC113-ADM-UTCID05,B,IMPLEMENTED
+FUNC113-ADM,Reply Feedback,Reply Feedback,FUNC113-ADM-UTCID06,N,IMPLEMENTED
+FUNC114-ADM,Edit Reply System Feedback,Edit Reply System Feedback,FUNC114-ADM-UTCID01,N,IMPLEMENTED
+FUNC114-ADM,Edit Reply System Feedback,Edit Reply System Feedback,FUNC114-ADM-UTCID02,N,IMPLEMENTED
+FUNC114-ADM,Edit Reply System Feedback,Edit Reply System Feedback,FUNC114-ADM-UTCID03,N,IMPLEMENTED
+FUNC114-ADM,Edit Reply System Feedback,Edit Reply System Feedback,FUNC114-ADM-UTCID04,A,IMPLEMENTED
+FUNC114-ADM,Edit Reply System Feedback,Edit Reply System Feedback,FUNC114-ADM-UTCID05,B,IMPLEMENTED
+FUNC114-ADM,Edit Reply System Feedback,Edit Reply System Feedback,FUNC114-ADM-UTCID06,N,IMPLEMENTED
+FUNC115-ADM,Delete Reply System Feedback,Delete Reply System Feedback,FUNC115-ADM-UTCID01,N,IMPLEMENTED
+FUNC115-ADM,Delete Reply System Feedback,Delete Reply System Feedback,FUNC115-ADM-UTCID02,N,IMPLEMENTED
+FUNC115-ADM,Delete Reply System Feedback,Delete Reply System Feedback,FUNC115-ADM-UTCID03,N,IMPLEMENTED
+FUNC115-ADM,Delete Reply System Feedback,Delete Reply System Feedback,FUNC115-ADM-UTCID04,A,IMPLEMENTED
+FUNC115-ADM,Delete Reply System Feedback,Delete Reply System Feedback,FUNC115-ADM-UTCID05,B,IMPLEMENTED
+FUNC115-ADM,Delete Reply System Feedback,Delete Reply System Feedback,FUNC115-ADM-UTCID06,N,IMPLEMENTED
+FUNC116-ADM,Filter System Feedback,Filter System Feedback Admin,FUNC116-ADM-UTCID01,N,IMPLEMENTED
+FUNC116-ADM,Filter System Feedback,Filter System Feedback Admin,FUNC116-ADM-UTCID02,N,IMPLEMENTED
+FUNC116-ADM,Filter System Feedback,Filter System Feedback Admin,FUNC116-ADM-UTCID03,N,IMPLEMENTED
+FUNC116-ADM,Filter System Feedback,Filter System Feedback Admin,FUNC116-ADM-UTCID04,A,IMPLEMENTED
+FUNC116-ADM,Filter System Feedback,Filter System Feedback Admin,FUNC116-ADM-UTCID05,B,IMPLEMENTED
+FUNC116-ADM,Filter System Feedback,Filter System Feedback Admin,FUNC116-ADM-UTCID06,N,IMPLEMENTED
+FUNC117-ADM,Search System Feedback,Search System Feedback Admin,FUNC117-ADM-UTCID01,N,IMPLEMENTED
+FUNC117-ADM,Search System Feedback,Search System Feedback Admin,FUNC117-ADM-UTCID02,N,IMPLEMENTED
+FUNC117-ADM,Search System Feedback,Search System Feedback Admin,FUNC117-ADM-UTCID03,N,IMPLEMENTED
+FUNC117-ADM,Search System Feedback,Search System Feedback Admin,FUNC117-ADM-UTCID04,A,IMPLEMENTED
+FUNC117-ADM,Search System Feedback,Search System Feedback Admin,FUNC117-ADM-UTCID05,B,IMPLEMENTED
+FUNC117-ADM,Search System Feedback,Search System Feedback Admin,FUNC117-ADM-UTCID06,N,IMPLEMENTED
+FUNC118-ADM,Delete System Feedback,Delete System Feedback Admin,FUNC118-ADM-UTCID01,N,IMPLEMENTED
+FUNC118-ADM,Delete System Feedback,Delete System Feedback Admin,FUNC118-ADM-UTCID02,N,IMPLEMENTED
+FUNC118-ADM,Delete System Feedback,Delete System Feedback Admin,FUNC118-ADM-UTCID03,N,IMPLEMENTED
+FUNC118-ADM,Delete System Feedback,Delete System Feedback Admin,FUNC118-ADM-UTCID04,A,IMPLEMENTED
+FUNC118-ADM,Delete System Feedback,Delete System Feedback Admin,FUNC118-ADM-UTCID05,B,IMPLEMENTED
+FUNC118-ADM,Delete System Feedback,Delete System Feedback Admin,FUNC118-ADM-UTCID06,N,IMPLEMENTED
+FUNC119-ADM,Restore Deleted System Feedback,Restore Deleted System Feedback,FUNC119-ADM-UTCID01,N,IMPLEMENTED
+FUNC119-ADM,Restore Deleted System Feedback,Restore Deleted System Feedback,FUNC119-ADM-UTCID02,N,IMPLEMENTED
+FUNC119-ADM,Restore Deleted System Feedback,Restore Deleted System Feedback,FUNC119-ADM-UTCID03,N,IMPLEMENTED
+FUNC119-ADM,Restore Deleted System Feedback,Restore Deleted System Feedback,FUNC119-ADM-UTCID04,A,IMPLEMENTED
+FUNC119-ADM,Restore Deleted System Feedback,Restore Deleted System Feedback,FUNC119-ADM-UTCID05,B,IMPLEMENTED
+FUNC119-ADM,Restore Deleted System Feedback,Restore Deleted System Feedback,FUNC119-ADM-UTCID06,N,IMPLEMENTED
+FUNC120-ADM,View Reported Feedback,View Reported Feedback,FUNC120-ADM-UTCID01,N,IMPLEMENTED
+FUNC120-ADM,View Reported Feedback,View Reported Feedback,FUNC120-ADM-UTCID02,N,IMPLEMENTED
+FUNC120-ADM,View Reported Feedback,View Reported Feedback,FUNC120-ADM-UTCID03,N,IMPLEMENTED
+FUNC120-ADM,View Reported Feedback,View Reported Feedback,FUNC120-ADM-UTCID04,A,IMPLEMENTED
+FUNC120-ADM,View Reported Feedback,View Reported Feedback,FUNC120-ADM-UTCID05,B,IMPLEMENTED
+FUNC120-ADM,View Reported Feedback,View Reported Feedback,FUNC120-ADM-UTCID06,N,IMPLEMENTED
+FUNC121-ADM,View Reported Feedback Details,View Reported Feedback Details,FUNC121-ADM-UTCID01,N,IMPLEMENTED
+FUNC121-ADM,View Reported Feedback Details,View Reported Feedback Details,FUNC121-ADM-UTCID02,N,IMPLEMENTED
+FUNC121-ADM,View Reported Feedback Details,View Reported Feedback Details,FUNC121-ADM-UTCID03,N,IMPLEMENTED
+FUNC121-ADM,View Reported Feedback Details,View Reported Feedback Details,FUNC121-ADM-UTCID04,A,IMPLEMENTED
+FUNC121-ADM,View Reported Feedback Details,View Reported Feedback Details,FUNC121-ADM-UTCID05,B,IMPLEMENTED
+FUNC121-ADM,View Reported Feedback Details,View Reported Feedback Details,FUNC121-ADM-UTCID06,N,IMPLEMENTED
+FUNC122-ADM,Dismiss Reported Feedback,Dismiss Reported Feedback,FUNC122-ADM-UTCID01,N,IMPLEMENTED
+FUNC122-ADM,Dismiss Reported Feedback,Dismiss Reported Feedback,FUNC122-ADM-UTCID02,N,IMPLEMENTED
+FUNC122-ADM,Dismiss Reported Feedback,Dismiss Reported Feedback,FUNC122-ADM-UTCID03,N,IMPLEMENTED
+FUNC122-ADM,Dismiss Reported Feedback,Dismiss Reported Feedback,FUNC122-ADM-UTCID04,A,IMPLEMENTED
+FUNC122-ADM,Dismiss Reported Feedback,Dismiss Reported Feedback,FUNC122-ADM-UTCID05,B,IMPLEMENTED
+FUNC122-ADM,Dismiss Reported Feedback,Dismiss Reported Feedback,FUNC122-ADM-UTCID06,N,IMPLEMENTED
+FUNC123-ADM,Delete Reported Feedback,Delete Reported Feedback,FUNC123-ADM-UTCID01,N,IMPLEMENTED
+FUNC123-ADM,Delete Reported Feedback,Delete Reported Feedback,FUNC123-ADM-UTCID02,N,IMPLEMENTED
+FUNC123-ADM,Delete Reported Feedback,Delete Reported Feedback,FUNC123-ADM-UTCID03,N,IMPLEMENTED
+FUNC123-ADM,Delete Reported Feedback,Delete Reported Feedback,FUNC123-ADM-UTCID04,A,IMPLEMENTED
+FUNC123-ADM,Delete Reported Feedback,Delete Reported Feedback,FUNC123-ADM-UTCID05,B,IMPLEMENTED
+FUNC123-ADM,Delete Reported Feedback,Delete Reported Feedback,FUNC123-ADM-UTCID06,N,IMPLEMENTED
+FUNC124-ADM,Search Reported Feedback,Search Reported Feedback,FUNC124-ADM-UTCID01,N,IMPLEMENTED
+FUNC124-ADM,Search Reported Feedback,Search Reported Feedback,FUNC124-ADM-UTCID02,N,IMPLEMENTED
+FUNC124-ADM,Search Reported Feedback,Search Reported Feedback,FUNC124-ADM-UTCID03,N,IMPLEMENTED
+FUNC124-ADM,Search Reported Feedback,Search Reported Feedback,FUNC124-ADM-UTCID04,A,IMPLEMENTED
+FUNC124-ADM,Search Reported Feedback,Search Reported Feedback,FUNC124-ADM-UTCID05,B,IMPLEMENTED
+FUNC124-ADM,Search Reported Feedback,Search Reported Feedback,FUNC124-ADM-UTCID06,N,IMPLEMENTED
+FUNC125-ADM,Filter Reported Feedback,Filter Reported Feedback,FUNC125-ADM-UTCID01,N,IMPLEMENTED
+FUNC125-ADM,Filter Reported Feedback,Filter Reported Feedback,FUNC125-ADM-UTCID02,N,IMPLEMENTED
+FUNC125-ADM,Filter Reported Feedback,Filter Reported Feedback,FUNC125-ADM-UTCID03,N,IMPLEMENTED
+FUNC125-ADM,Filter Reported Feedback,Filter Reported Feedback,FUNC125-ADM-UTCID04,A,IMPLEMENTED
+FUNC125-ADM,Filter Reported Feedback,Filter Reported Feedback,FUNC125-ADM-UTCID05,B,IMPLEMENTED
+FUNC125-ADM,Filter Reported Feedback,Filter Reported Feedback,FUNC125-ADM-UTCID06,N,IMPLEMENTED
+FUNC126-ADM,View News List,View News List Admin,FUNC126-ADM-UTCID01,N,IMPLEMENTED
+FUNC126-ADM,View News List,View News List Admin,FUNC126-ADM-UTCID02,N,IMPLEMENTED
+FUNC126-ADM,View News List,View News List Admin,FUNC126-ADM-UTCID03,N,IMPLEMENTED
+FUNC126-ADM,View News List,View News List Admin,FUNC126-ADM-UTCID04,A,IMPLEMENTED
+FUNC126-ADM,View News List,View News List Admin,FUNC126-ADM-UTCID05,B,IMPLEMENTED
+FUNC126-ADM,View News List,View News List Admin,FUNC126-ADM-UTCID06,N,IMPLEMENTED
+FUNC127-ADM,View News Details,View News Details Admin,FUNC127-ADM-UTCID01,N,IMPLEMENTED
+FUNC127-ADM,View News Details,View News Details Admin,FUNC127-ADM-UTCID02,N,IMPLEMENTED
+FUNC127-ADM,View News Details,View News Details Admin,FUNC127-ADM-UTCID03,N,IMPLEMENTED
+FUNC127-ADM,View News Details,View News Details Admin,FUNC127-ADM-UTCID04,A,IMPLEMENTED
+FUNC127-ADM,View News Details,View News Details Admin,FUNC127-ADM-UTCID05,B,IMPLEMENTED
+FUNC127-ADM,View News Details,View News Details Admin,FUNC127-ADM-UTCID06,N,IMPLEMENTED
+FUNC128-ADM,Create News,Create News,FUNC128-ADM-UTCID01,N,IMPLEMENTED
+FUNC128-ADM,Create News,Create News,FUNC128-ADM-UTCID02,N,IMPLEMENTED
+FUNC128-ADM,Create News,Create News,FUNC128-ADM-UTCID03,N,IMPLEMENTED
+FUNC128-ADM,Create News,Create News,FUNC128-ADM-UTCID04,A,IMPLEMENTED
+FUNC128-ADM,Create News,Create News,FUNC128-ADM-UTCID05,B,IMPLEMENTED
+FUNC128-ADM,Create News,Create News,FUNC128-ADM-UTCID06,N,IMPLEMENTED
+FUNC129-ADM,Update News,Update News,FUNC129-ADM-UTCID01,N,IMPLEMENTED
+FUNC129-ADM,Update News,Update News,FUNC129-ADM-UTCID02,N,IMPLEMENTED
+FUNC129-ADM,Update News,Update News,FUNC129-ADM-UTCID03,N,IMPLEMENTED
+FUNC129-ADM,Update News,Update News,FUNC129-ADM-UTCID04,A,IMPLEMENTED
+FUNC129-ADM,Update News,Update News,FUNC129-ADM-UTCID05,B,IMPLEMENTED
+FUNC129-ADM,Update News,Update News,FUNC129-ADM-UTCID06,N,IMPLEMENTED
+FUNC130-ADM,Delete News,Delete News,FUNC130-ADM-UTCID01,N,IMPLEMENTED
+FUNC130-ADM,Delete News,Delete News,FUNC130-ADM-UTCID02,N,IMPLEMENTED
+FUNC130-ADM,Delete News,Delete News,FUNC130-ADM-UTCID03,N,IMPLEMENTED
+FUNC130-ADM,Delete News,Delete News,FUNC130-ADM-UTCID04,A,IMPLEMENTED
+FUNC130-ADM,Delete News,Delete News,FUNC130-ADM-UTCID05,B,IMPLEMENTED
+FUNC130-ADM,Delete News,Delete News,FUNC130-ADM-UTCID06,N,IMPLEMENTED
+FUNC131-ADM,Filter News,Filter News Admin,FUNC131-ADM-UTCID01,N,IMPLEMENTED
+FUNC131-ADM,Filter News,Filter News Admin,FUNC131-ADM-UTCID02,N,IMPLEMENTED
+FUNC131-ADM,Filter News,Filter News Admin,FUNC131-ADM-UTCID03,N,IMPLEMENTED
+FUNC131-ADM,Filter News,Filter News Admin,FUNC131-ADM-UTCID04,A,IMPLEMENTED
+FUNC131-ADM,Filter News,Filter News Admin,FUNC131-ADM-UTCID05,B,IMPLEMENTED
+FUNC131-ADM,Filter News,Filter News Admin,FUNC131-ADM-UTCID06,N,IMPLEMENTED
+FUNC132-ADM,Search News,Search News Admin,FUNC132-ADM-UTCID01,N,IMPLEMENTED
+FUNC132-ADM,Search News,Search News Admin,FUNC132-ADM-UTCID02,N,IMPLEMENTED
+FUNC132-ADM,Search News,Search News Admin,FUNC132-ADM-UTCID03,N,IMPLEMENTED
+FUNC132-ADM,Search News,Search News Admin,FUNC132-ADM-UTCID04,A,IMPLEMENTED
+FUNC132-ADM,Search News,Search News Admin,FUNC132-ADM-UTCID05,B,IMPLEMENTED
+FUNC132-ADM,Search News,Search News Admin,FUNC132-ADM-UTCID06,N,IMPLEMENTED
+FUNC133-ADM,Restore News,Restore News,FUNC133-ADM-UTCID01,N,IMPLEMENTED
+FUNC133-ADM,Restore News,Restore News,FUNC133-ADM-UTCID02,N,IMPLEMENTED
+FUNC133-ADM,Restore News,Restore News,FUNC133-ADM-UTCID03,N,IMPLEMENTED
+FUNC133-ADM,Restore News,Restore News,FUNC133-ADM-UTCID04,A,IMPLEMENTED
+FUNC133-ADM,Restore News,Restore News,FUNC133-ADM-UTCID05,B,IMPLEMENTED
+FUNC133-ADM,Restore News,Restore News,FUNC133-ADM-UTCID06,N,IMPLEMENTED
+FUNC134-ADM,View Interview Session List,View Interview Session List Adm,FUNC134-ADM-UTCID01,N,IMPLEMENTED
+FUNC134-ADM,View Interview Session List,View Interview Session List Adm,FUNC134-ADM-UTCID02,N,IMPLEMENTED
+FUNC134-ADM,View Interview Session List,View Interview Session List Adm,FUNC134-ADM-UTCID03,N,IMPLEMENTED
+FUNC134-ADM,View Interview Session List,View Interview Session List Adm,FUNC134-ADM-UTCID04,A,IMPLEMENTED
+FUNC134-ADM,View Interview Session List,View Interview Session List Adm,FUNC134-ADM-UTCID05,B,IMPLEMENTED
+FUNC134-ADM,View Interview Session List,View Interview Session List Adm,FUNC134-ADM-UTCID06,N,IMPLEMENTED
+FUNC135-ADM,View Interview Session Detail,View Interview Session Detail A,FUNC135-ADM-UTCID01,N,IMPLEMENTED
+FUNC135-ADM,View Interview Session Detail,View Interview Session Detail A,FUNC135-ADM-UTCID02,N,IMPLEMENTED
+FUNC135-ADM,View Interview Session Detail,View Interview Session Detail A,FUNC135-ADM-UTCID03,N,IMPLEMENTED
+FUNC135-ADM,View Interview Session Detail,View Interview Session Detail A,FUNC135-ADM-UTCID04,A,IMPLEMENTED
+FUNC135-ADM,View Interview Session Detail,View Interview Session Detail A,FUNC135-ADM-UTCID05,B,IMPLEMENTED
+FUNC135-ADM,View Interview Session Detail,View Interview Session Detail A,FUNC135-ADM-UTCID06,N,IMPLEMENTED
+FUNC136-ADM,Search Interview,Search Interview Admin,FUNC136-ADM-UTCID01,N,IMPLEMENTED
+FUNC136-ADM,Search Interview,Search Interview Admin,FUNC136-ADM-UTCID02,N,IMPLEMENTED
+FUNC136-ADM,Search Interview,Search Interview Admin,FUNC136-ADM-UTCID03,N,IMPLEMENTED
+FUNC136-ADM,Search Interview,Search Interview Admin,FUNC136-ADM-UTCID04,A,IMPLEMENTED
+FUNC136-ADM,Search Interview,Search Interview Admin,FUNC136-ADM-UTCID05,B,IMPLEMENTED
+FUNC136-ADM,Search Interview,Search Interview Admin,FUNC136-ADM-UTCID06,N,IMPLEMENTED
+FUNC137-ADM,Filter Interview,Filter Interview Admin,FUNC137-ADM-UTCID01,N,IMPLEMENTED
+FUNC137-ADM,Filter Interview,Filter Interview Admin,FUNC137-ADM-UTCID02,N,IMPLEMENTED
+FUNC137-ADM,Filter Interview,Filter Interview Admin,FUNC137-ADM-UTCID03,N,IMPLEMENTED
+FUNC137-ADM,Filter Interview,Filter Interview Admin,FUNC137-ADM-UTCID04,A,IMPLEMENTED
+FUNC137-ADM,Filter Interview,Filter Interview Admin,FUNC137-ADM-UTCID05,B,IMPLEMENTED
+FUNC137-ADM,Filter Interview,Filter Interview Admin,FUNC137-ADM-UTCID06,N,IMPLEMENTED
+FUNC138-ADM,View Payment List,View Payment List Admin,FUNC138-ADM-UTCID01,N,IMPLEMENTED
+FUNC138-ADM,View Payment List,View Payment List Admin,FUNC138-ADM-UTCID02,N,IMPLEMENTED
+FUNC138-ADM,View Payment List,View Payment List Admin,FUNC138-ADM-UTCID03,N,IMPLEMENTED
+FUNC138-ADM,View Payment List,View Payment List Admin,FUNC138-ADM-UTCID04,A,IMPLEMENTED
+FUNC138-ADM,View Payment List,View Payment List Admin,FUNC138-ADM-UTCID05,B,IMPLEMENTED
+FUNC138-ADM,View Payment List,View Payment List Admin,FUNC138-ADM-UTCID06,N,IMPLEMENTED
+FUNC139-ADM,View Payment Details,View Payment Details Admin,FUNC139-ADM-UTCID01,N,IMPLEMENTED
+FUNC139-ADM,View Payment Details,View Payment Details Admin,FUNC139-ADM-UTCID02,N,IMPLEMENTED
+FUNC139-ADM,View Payment Details,View Payment Details Admin,FUNC139-ADM-UTCID03,N,IMPLEMENTED
+FUNC139-ADM,View Payment Details,View Payment Details Admin,FUNC139-ADM-UTCID04,A,IMPLEMENTED
+FUNC139-ADM,View Payment Details,View Payment Details Admin,FUNC139-ADM-UTCID05,B,IMPLEMENTED
+FUNC139-ADM,View Payment Details,View Payment Details Admin,FUNC139-ADM-UTCID06,N,IMPLEMENTED
+FUNC140-ADM,View Credit Package List,View Credit Package List Admin,FUNC140-ADM-UTCID01,N,IMPLEMENTED
+FUNC140-ADM,View Credit Package List,View Credit Package List Admin,FUNC140-ADM-UTCID02,N,IMPLEMENTED
+FUNC140-ADM,View Credit Package List,View Credit Package List Admin,FUNC140-ADM-UTCID03,N,IMPLEMENTED
+FUNC140-ADM,View Credit Package List,View Credit Package List Admin,FUNC140-ADM-UTCID04,A,IMPLEMENTED
+FUNC140-ADM,View Credit Package List,View Credit Package List Admin,FUNC140-ADM-UTCID05,B,IMPLEMENTED
+FUNC140-ADM,View Credit Package List,View Credit Package List Admin,FUNC140-ADM-UTCID06,N,IMPLEMENTED
+FUNC141-ADM,View Credit Package Details,View Credit Package Details Adm,FUNC141-ADM-UTCID01,N,IMPLEMENTED
+FUNC141-ADM,View Credit Package Details,View Credit Package Details Adm,FUNC141-ADM-UTCID02,N,IMPLEMENTED
+FUNC141-ADM,View Credit Package Details,View Credit Package Details Adm,FUNC141-ADM-UTCID03,N,IMPLEMENTED
+FUNC141-ADM,View Credit Package Details,View Credit Package Details Adm,FUNC141-ADM-UTCID04,A,IMPLEMENTED
+FUNC141-ADM,View Credit Package Details,View Credit Package Details Adm,FUNC141-ADM-UTCID05,B,IMPLEMENTED
+FUNC141-ADM,View Credit Package Details,View Credit Package Details Adm,FUNC141-ADM-UTCID06,N,IMPLEMENTED
+FUNC142-ADM,Add Credit Package,Add Credit Package,FUNC142-ADM-UTCID01,N,IMPLEMENTED
+FUNC142-ADM,Add Credit Package,Add Credit Package,FUNC142-ADM-UTCID02,N,IMPLEMENTED
+FUNC142-ADM,Add Credit Package,Add Credit Package,FUNC142-ADM-UTCID03,N,IMPLEMENTED
+FUNC142-ADM,Add Credit Package,Add Credit Package,FUNC142-ADM-UTCID04,A,IMPLEMENTED
+FUNC142-ADM,Add Credit Package,Add Credit Package,FUNC142-ADM-UTCID05,B,IMPLEMENTED
+FUNC142-ADM,Add Credit Package,Add Credit Package,FUNC142-ADM-UTCID06,N,IMPLEMENTED
+FUNC143-ADM,Update Credit Package,Update Credit Package,FUNC143-ADM-UTCID01,N,IMPLEMENTED
+FUNC143-ADM,Update Credit Package,Update Credit Package,FUNC143-ADM-UTCID02,N,IMPLEMENTED
+FUNC143-ADM,Update Credit Package,Update Credit Package,FUNC143-ADM-UTCID03,N,IMPLEMENTED
+FUNC143-ADM,Update Credit Package,Update Credit Package,FUNC143-ADM-UTCID04,A,IMPLEMENTED
+FUNC143-ADM,Update Credit Package,Update Credit Package,FUNC143-ADM-UTCID05,B,IMPLEMENTED
+FUNC143-ADM,Update Credit Package,Update Credit Package,FUNC143-ADM-UTCID06,N,IMPLEMENTED
+FUNC144-ADM,Delete Credit Package,Delete Credit Package,FUNC144-ADM-UTCID01,N,IMPLEMENTED
+FUNC144-ADM,Delete Credit Package,Delete Credit Package,FUNC144-ADM-UTCID02,N,IMPLEMENTED
+FUNC144-ADM,Delete Credit Package,Delete Credit Package,FUNC144-ADM-UTCID03,N,IMPLEMENTED
+FUNC144-ADM,Delete Credit Package,Delete Credit Package,FUNC144-ADM-UTCID04,A,IMPLEMENTED
+FUNC144-ADM,Delete Credit Package,Delete Credit Package,FUNC144-ADM-UTCID05,B,IMPLEMENTED
+FUNC144-ADM,Delete Credit Package,Delete Credit Package,FUNC144-ADM-UTCID06,N,IMPLEMENTED
+FUNC145-ADM,View Position,View Position Admin,FUNC145-ADM-UTCID01,N,IMPLEMENTED
+FUNC145-ADM,View Position,View Position Admin,FUNC145-ADM-UTCID02,N,IMPLEMENTED
+FUNC145-ADM,View Position,View Position Admin,FUNC145-ADM-UTCID03,N,IMPLEMENTED
+FUNC145-ADM,View Position,View Position Admin,FUNC145-ADM-UTCID04,A,IMPLEMENTED
+FUNC145-ADM,View Position,View Position Admin,FUNC145-ADM-UTCID05,B,IMPLEMENTED
+FUNC145-ADM,View Position,View Position Admin,FUNC145-ADM-UTCID06,N,IMPLEMENTED
+FUNC146-ADM,Create Position,Create Position,FUNC146-ADM-UTCID01,N,IMPLEMENTED
+FUNC146-ADM,Create Position,Create Position,FUNC146-ADM-UTCID02,N,IMPLEMENTED
+FUNC146-ADM,Create Position,Create Position,FUNC146-ADM-UTCID03,N,IMPLEMENTED
+FUNC146-ADM,Create Position,Create Position,FUNC146-ADM-UTCID04,A,IMPLEMENTED
+FUNC146-ADM,Create Position,Create Position,FUNC146-ADM-UTCID05,B,IMPLEMENTED
+FUNC146-ADM,Create Position,Create Position,FUNC146-ADM-UTCID06,N,IMPLEMENTED
+FUNC147-ADM,Update Position,Update Position,FUNC147-ADM-UTCID01,N,IMPLEMENTED
+FUNC147-ADM,Update Position,Update Position,FUNC147-ADM-UTCID02,N,IMPLEMENTED
+FUNC147-ADM,Update Position,Update Position,FUNC147-ADM-UTCID03,N,IMPLEMENTED
+FUNC147-ADM,Update Position,Update Position,FUNC147-ADM-UTCID04,A,IMPLEMENTED
+FUNC147-ADM,Update Position,Update Position,FUNC147-ADM-UTCID05,B,IMPLEMENTED
+FUNC147-ADM,Update Position,Update Position,FUNC147-ADM-UTCID06,N,IMPLEMENTED
+FUNC148-ADM,Delete Position,Delete Position,FUNC148-ADM-UTCID01,N,IMPLEMENTED
+FUNC148-ADM,Delete Position,Delete Position,FUNC148-ADM-UTCID02,N,IMPLEMENTED
+FUNC148-ADM,Delete Position,Delete Position,FUNC148-ADM-UTCID03,N,IMPLEMENTED
+FUNC148-ADM,Delete Position,Delete Position,FUNC148-ADM-UTCID04,A,IMPLEMENTED
+FUNC148-ADM,Delete Position,Delete Position,FUNC148-ADM-UTCID05,B,IMPLEMENTED
+FUNC148-ADM,Delete Position,Delete Position,FUNC148-ADM-UTCID06,N,IMPLEMENTED
+FUNC149-ADM,Add Credit,Add Credit,FUNC149-ADM-UTCID01,N,IMPLEMENTED
+FUNC149-ADM,Add Credit,Add Credit,FUNC149-ADM-UTCID02,N,IMPLEMENTED
+FUNC149-ADM,Add Credit,Add Credit,FUNC149-ADM-UTCID03,N,IMPLEMENTED
+FUNC149-ADM,Add Credit,Add Credit,FUNC149-ADM-UTCID04,A,IMPLEMENTED
+FUNC149-ADM,Add Credit,Add Credit,FUNC149-ADM-UTCID05,B,IMPLEMENTED
+FUNC149-ADM,Add Credit,Add Credit,FUNC149-ADM-UTCID06,N,IMPLEMENTED
+FUNC150-ADM,Deduct Credit,Deduct Credit,FUNC150-ADM-UTCID01,N,IMPLEMENTED
+FUNC150-ADM,Deduct Credit,Deduct Credit,FUNC150-ADM-UTCID02,N,IMPLEMENTED
+FUNC150-ADM,Deduct Credit,Deduct Credit,FUNC150-ADM-UTCID03,N,IMPLEMENTED
+FUNC150-ADM,Deduct Credit,Deduct Credit,FUNC150-ADM-UTCID04,A,IMPLEMENTED
+FUNC150-ADM,Deduct Credit,Deduct Credit,FUNC150-ADM-UTCID05,B,IMPLEMENTED
+FUNC150-ADM,Deduct Credit,Deduct Credit,FUNC150-ADM-UTCID06,N,IMPLEMENTED
+FUNC151-ADM,View Announcement,View Announcement Admin,FUNC151-ADM-UTCID01,N,IMPLEMENTED
+FUNC151-ADM,View Announcement,View Announcement Admin,FUNC151-ADM-UTCID02,N,IMPLEMENTED
+FUNC151-ADM,View Announcement,View Announcement Admin,FUNC151-ADM-UTCID03,N,IMPLEMENTED
+FUNC151-ADM,View Announcement,View Announcement Admin,FUNC151-ADM-UTCID04,A,IMPLEMENTED
+FUNC151-ADM,View Announcement,View Announcement Admin,FUNC151-ADM-UTCID05,B,IMPLEMENTED
+FUNC151-ADM,View Announcement,View Announcement Admin,FUNC151-ADM-UTCID06,N,IMPLEMENTED
+FUNC152-ADM,Create Announcement,Create Announcement,FUNC152-ADM-UTCID01,N,IMPLEMENTED
+FUNC152-ADM,Create Announcement,Create Announcement,FUNC152-ADM-UTCID02,N,IMPLEMENTED
+FUNC152-ADM,Create Announcement,Create Announcement,FUNC152-ADM-UTCID03,N,IMPLEMENTED
+FUNC152-ADM,Create Announcement,Create Announcement,FUNC152-ADM-UTCID04,A,IMPLEMENTED
+FUNC152-ADM,Create Announcement,Create Announcement,FUNC152-ADM-UTCID05,B,IMPLEMENTED
+FUNC152-ADM,Create Announcement,Create Announcement,FUNC152-ADM-UTCID06,N,IMPLEMENTED
+FUNC153-ADM,Update Announcement,Update Announcement,FUNC153-ADM-UTCID01,N,IMPLEMENTED
+FUNC153-ADM,Update Announcement,Update Announcement,FUNC153-ADM-UTCID02,N,IMPLEMENTED
+FUNC153-ADM,Update Announcement,Update Announcement,FUNC153-ADM-UTCID03,N,IMPLEMENTED
+FUNC153-ADM,Update Announcement,Update Announcement,FUNC153-ADM-UTCID04,A,IMPLEMENTED
+FUNC153-ADM,Update Announcement,Update Announcement,FUNC153-ADM-UTCID05,B,IMPLEMENTED
+FUNC153-ADM,Update Announcement,Update Announcement,FUNC153-ADM-UTCID06,N,IMPLEMENTED
+FUNC154-ADM,Delete Announcement,Delete Announcement,FUNC154-ADM-UTCID01,N,IMPLEMENTED
+FUNC154-ADM,Delete Announcement,Delete Announcement,FUNC154-ADM-UTCID02,N,IMPLEMENTED
+FUNC154-ADM,Delete Announcement,Delete Announcement,FUNC154-ADM-UTCID03,N,IMPLEMENTED
+FUNC154-ADM,Delete Announcement,Delete Announcement,FUNC154-ADM-UTCID04,A,IMPLEMENTED
+FUNC154-ADM,Delete Announcement,Delete Announcement,FUNC154-ADM-UTCID05,B,IMPLEMENTED
+FUNC154-ADM,Delete Announcement,Delete Announcement,FUNC154-ADM-UTCID06,N,IMPLEMENTED
+FUNC155-MGR,View System Statistics,View System Statistics Manager,FUNC155-MGR-UTCID01,N,IMPLEMENTED
+FUNC155-MGR,View System Statistics,View System Statistics Manager,FUNC155-MGR-UTCID02,N,IMPLEMENTED
+FUNC155-MGR,View System Statistics,View System Statistics Manager,FUNC155-MGR-UTCID03,N,IMPLEMENTED
+FUNC155-MGR,View System Statistics,View System Statistics Manager,FUNC155-MGR-UTCID04,A,IMPLEMENTED
+FUNC155-MGR,View System Statistics,View System Statistics Manager,FUNC155-MGR-UTCID05,B,IMPLEMENTED
+FUNC155-MGR,View System Statistics,View System Statistics Manager,FUNC155-MGR-UTCID06,N,IMPLEMENTED
+FUNC156-MGR,Filter System Statistics,Filter System Statistics Manage,FUNC156-MGR-UTCID01,N,IMPLEMENTED
+FUNC156-MGR,Filter System Statistics,Filter System Statistics Manage,FUNC156-MGR-UTCID02,N,IMPLEMENTED
+FUNC156-MGR,Filter System Statistics,Filter System Statistics Manage,FUNC156-MGR-UTCID03,N,IMPLEMENTED
+FUNC156-MGR,Filter System Statistics,Filter System Statistics Manage,FUNC156-MGR-UTCID04,A,IMPLEMENTED
+FUNC156-MGR,Filter System Statistics,Filter System Statistics Manage,FUNC156-MGR-UTCID05,B,IMPLEMENTED
+FUNC156-MGR,Filter System Statistics,Filter System Statistics Manage,FUNC156-MGR-UTCID06,N,IMPLEMENTED
+FUNC157-MGR,View Question Bank List,View Question Bank List Manager,FUNC157-MGR-UTCID01,N,IMPLEMENTED
+FUNC157-MGR,View Question Bank List,View Question Bank List Manager,FUNC157-MGR-UTCID02,N,IMPLEMENTED
+FUNC157-MGR,View Question Bank List,View Question Bank List Manager,FUNC157-MGR-UTCID03,N,IMPLEMENTED
+FUNC157-MGR,View Question Bank List,View Question Bank List Manager,FUNC157-MGR-UTCID04,A,IMPLEMENTED
+FUNC157-MGR,View Question Bank List,View Question Bank List Manager,FUNC157-MGR-UTCID05,B,IMPLEMENTED
+FUNC157-MGR,View Question Bank List,View Question Bank List Manager,FUNC157-MGR-UTCID06,N,IMPLEMENTED
+FUNC158-MGR,View Question Details,View Question Details Manager,FUNC158-MGR-UTCID01,N,IMPLEMENTED
+FUNC158-MGR,View Question Details,View Question Details Manager,FUNC158-MGR-UTCID02,N,IMPLEMENTED
+FUNC158-MGR,View Question Details,View Question Details Manager,FUNC158-MGR-UTCID03,N,IMPLEMENTED
+FUNC158-MGR,View Question Details,View Question Details Manager,FUNC158-MGR-UTCID04,A,IMPLEMENTED
+FUNC158-MGR,View Question Details,View Question Details Manager,FUNC158-MGR-UTCID05,B,IMPLEMENTED
+FUNC158-MGR,View Question Details,View Question Details Manager,FUNC158-MGR-UTCID06,N,IMPLEMENTED
+FUNC159-MGR,Search Question,Search Question Manager,FUNC159-MGR-UTCID01,N,IMPLEMENTED
+FUNC159-MGR,Search Question,Search Question Manager,FUNC159-MGR-UTCID02,N,IMPLEMENTED
+FUNC159-MGR,Search Question,Search Question Manager,FUNC159-MGR-UTCID03,N,IMPLEMENTED
+FUNC159-MGR,Search Question,Search Question Manager,FUNC159-MGR-UTCID04,A,IMPLEMENTED
+FUNC159-MGR,Search Question,Search Question Manager,FUNC159-MGR-UTCID05,B,IMPLEMENTED
+FUNC159-MGR,Search Question,Search Question Manager,FUNC159-MGR-UTCID06,N,IMPLEMENTED
+FUNC160-MGR,Filter Question,Filter Question Manager,FUNC160-MGR-UTCID01,N,IMPLEMENTED
+FUNC160-MGR,Filter Question,Filter Question Manager,FUNC160-MGR-UTCID02,N,IMPLEMENTED
+FUNC160-MGR,Filter Question,Filter Question Manager,FUNC160-MGR-UTCID03,N,IMPLEMENTED
+FUNC160-MGR,Filter Question,Filter Question Manager,FUNC160-MGR-UTCID04,A,IMPLEMENTED
+FUNC160-MGR,Filter Question,Filter Question Manager,FUNC160-MGR-UTCID05,B,IMPLEMENTED
+FUNC160-MGR,Filter Question,Filter Question Manager,FUNC160-MGR-UTCID06,N,IMPLEMENTED
+FUNC161-MGR,View User List,View User List Manager,FUNC161-MGR-UTCID01,N,IMPLEMENTED
+FUNC161-MGR,View User List,View User List Manager,FUNC161-MGR-UTCID02,N,IMPLEMENTED
+FUNC161-MGR,View User List,View User List Manager,FUNC161-MGR-UTCID03,N,IMPLEMENTED
+FUNC161-MGR,View User List,View User List Manager,FUNC161-MGR-UTCID04,A,IMPLEMENTED
+FUNC161-MGR,View User List,View User List Manager,FUNC161-MGR-UTCID05,B,IMPLEMENTED
+FUNC161-MGR,View User List,View User List Manager,FUNC161-MGR-UTCID06,N,IMPLEMENTED
+FUNC162-MGR,View User Details,View User Details Manager,FUNC162-MGR-UTCID01,N,IMPLEMENTED
+FUNC162-MGR,View User Details,View User Details Manager,FUNC162-MGR-UTCID02,N,IMPLEMENTED
+FUNC162-MGR,View User Details,View User Details Manager,FUNC162-MGR-UTCID03,N,IMPLEMENTED
+FUNC162-MGR,View User Details,View User Details Manager,FUNC162-MGR-UTCID04,A,IMPLEMENTED
+FUNC162-MGR,View User Details,View User Details Manager,FUNC162-MGR-UTCID05,B,IMPLEMENTED
+FUNC162-MGR,View User Details,View User Details Manager,FUNC162-MGR-UTCID06,N,IMPLEMENTED
+FUNC163-MGR,Search User,Search User Manager,FUNC163-MGR-UTCID01,N,IMPLEMENTED
+FUNC163-MGR,Search User,Search User Manager,FUNC163-MGR-UTCID02,N,IMPLEMENTED
+FUNC163-MGR,Search User,Search User Manager,FUNC163-MGR-UTCID03,N,IMPLEMENTED
+FUNC163-MGR,Search User,Search User Manager,FUNC163-MGR-UTCID04,A,IMPLEMENTED
+FUNC163-MGR,Search User,Search User Manager,FUNC163-MGR-UTCID05,B,IMPLEMENTED
+FUNC163-MGR,Search User,Search User Manager,FUNC163-MGR-UTCID06,N,IMPLEMENTED
+FUNC164-MGR,Filter User,Filter User Manager,FUNC164-MGR-UTCID01,N,IMPLEMENTED
+FUNC164-MGR,Filter User,Filter User Manager,FUNC164-MGR-UTCID02,N,IMPLEMENTED
+FUNC164-MGR,Filter User,Filter User Manager,FUNC164-MGR-UTCID03,N,IMPLEMENTED
+FUNC164-MGR,Filter User,Filter User Manager,FUNC164-MGR-UTCID04,A,IMPLEMENTED
+FUNC164-MGR,Filter User,Filter User Manager,FUNC164-MGR-UTCID05,B,IMPLEMENTED
+FUNC164-MGR,Filter User,Filter User Manager,FUNC164-MGR-UTCID06,N,IMPLEMENTED
+FUNC165-MGR,View AI Feedback List,View AI Feedback List Manager,FUNC165-MGR-UTCID01,N,IMPLEMENTED
+FUNC165-MGR,View AI Feedback List,View AI Feedback List Manager,FUNC165-MGR-UTCID02,N,IMPLEMENTED
+FUNC165-MGR,View AI Feedback List,View AI Feedback List Manager,FUNC165-MGR-UTCID03,N,IMPLEMENTED
+FUNC165-MGR,View AI Feedback List,View AI Feedback List Manager,FUNC165-MGR-UTCID04,A,IMPLEMENTED
+FUNC165-MGR,View AI Feedback List,View AI Feedback List Manager,FUNC165-MGR-UTCID05,B,IMPLEMENTED
+FUNC165-MGR,View AI Feedback List,View AI Feedback List Manager,FUNC165-MGR-UTCID06,N,IMPLEMENTED
+FUNC166-MGR,View AI Feedback Details,View AI Feedback Details Manage,FUNC166-MGR-UTCID01,N,IMPLEMENTED
+FUNC166-MGR,View AI Feedback Details,View AI Feedback Details Manage,FUNC166-MGR-UTCID02,N,IMPLEMENTED
+FUNC166-MGR,View AI Feedback Details,View AI Feedback Details Manage,FUNC166-MGR-UTCID03,N,IMPLEMENTED
+FUNC166-MGR,View AI Feedback Details,View AI Feedback Details Manage,FUNC166-MGR-UTCID04,A,IMPLEMENTED
+FUNC166-MGR,View AI Feedback Details,View AI Feedback Details Manage,FUNC166-MGR-UTCID05,B,IMPLEMENTED
+FUNC166-MGR,View AI Feedback Details,View AI Feedback Details Manage,FUNC166-MGR-UTCID06,N,IMPLEMENTED
+FUNC167-MGR,Search AI Feedback,Search AI Feedback Manager,FUNC167-MGR-UTCID01,N,IMPLEMENTED
+FUNC167-MGR,Search AI Feedback,Search AI Feedback Manager,FUNC167-MGR-UTCID02,N,IMPLEMENTED
+FUNC167-MGR,Search AI Feedback,Search AI Feedback Manager,FUNC167-MGR-UTCID03,N,IMPLEMENTED
+FUNC167-MGR,Search AI Feedback,Search AI Feedback Manager,FUNC167-MGR-UTCID04,A,IMPLEMENTED
+FUNC167-MGR,Search AI Feedback,Search AI Feedback Manager,FUNC167-MGR-UTCID05,B,IMPLEMENTED
+FUNC167-MGR,Search AI Feedback,Search AI Feedback Manager,FUNC167-MGR-UTCID06,N,IMPLEMENTED
+FUNC168-MGR,Filter AI Feedback,Filter AI Feedback Manager,FUNC168-MGR-UTCID01,N,IMPLEMENTED
+FUNC168-MGR,Filter AI Feedback,Filter AI Feedback Manager,FUNC168-MGR-UTCID02,N,IMPLEMENTED
+FUNC168-MGR,Filter AI Feedback,Filter AI Feedback Manager,FUNC168-MGR-UTCID03,N,IMPLEMENTED
+FUNC168-MGR,Filter AI Feedback,Filter AI Feedback Manager,FUNC168-MGR-UTCID04,A,IMPLEMENTED
+FUNC168-MGR,Filter AI Feedback,Filter AI Feedback Manager,FUNC168-MGR-UTCID05,B,IMPLEMENTED
+FUNC168-MGR,Filter AI Feedback,Filter AI Feedback Manager,FUNC168-MGR-UTCID06,N,IMPLEMENTED
+FUNC169-MGR,View System Feedback List,View System Feedback List Manag,FUNC169-MGR-UTCID01,N,IMPLEMENTED
+FUNC169-MGR,View System Feedback List,View System Feedback List Manag,FUNC169-MGR-UTCID02,N,IMPLEMENTED
+FUNC169-MGR,View System Feedback List,View System Feedback List Manag,FUNC169-MGR-UTCID03,N,IMPLEMENTED
+FUNC169-MGR,View System Feedback List,View System Feedback List Manag,FUNC169-MGR-UTCID04,A,IMPLEMENTED
+FUNC169-MGR,View System Feedback List,View System Feedback List Manag,FUNC169-MGR-UTCID05,B,IMPLEMENTED
+FUNC169-MGR,View System Feedback List,View System Feedback List Manag,FUNC169-MGR-UTCID06,N,IMPLEMENTED
+FUNC170-MGR,View System Feedback Details,View System Feedback Details Ma,FUNC170-MGR-UTCID01,N,IMPLEMENTED
+FUNC170-MGR,View System Feedback Details,View System Feedback Details Ma,FUNC170-MGR-UTCID02,N,IMPLEMENTED
+FUNC170-MGR,View System Feedback Details,View System Feedback Details Ma,FUNC170-MGR-UTCID03,N,IMPLEMENTED
+FUNC170-MGR,View System Feedback Details,View System Feedback Details Ma,FUNC170-MGR-UTCID04,A,IMPLEMENTED
+FUNC170-MGR,View System Feedback Details,View System Feedback Details Ma,FUNC170-MGR-UTCID05,B,IMPLEMENTED
+FUNC170-MGR,View System Feedback Details,View System Feedback Details Ma,FUNC170-MGR-UTCID06,N,IMPLEMENTED
+FUNC171-MGR,Search System Feedback,Search System Feedback Manager,FUNC171-MGR-UTCID01,N,IMPLEMENTED
+FUNC171-MGR,Search System Feedback,Search System Feedback Manager,FUNC171-MGR-UTCID02,N,IMPLEMENTED
+FUNC171-MGR,Search System Feedback,Search System Feedback Manager,FUNC171-MGR-UTCID03,N,IMPLEMENTED
+FUNC171-MGR,Search System Feedback,Search System Feedback Manager,FUNC171-MGR-UTCID04,A,IMPLEMENTED
+FUNC171-MGR,Search System Feedback,Search System Feedback Manager,FUNC171-MGR-UTCID05,B,IMPLEMENTED
+FUNC171-MGR,Search System Feedback,Search System Feedback Manager,FUNC171-MGR-UTCID06,N,IMPLEMENTED
+FUNC172-MGR,Filter System Feedback,Filter System Feedback Manager,FUNC172-MGR-UTCID01,N,IMPLEMENTED
+FUNC172-MGR,Filter System Feedback,Filter System Feedback Manager,FUNC172-MGR-UTCID02,N,IMPLEMENTED
+FUNC172-MGR,Filter System Feedback,Filter System Feedback Manager,FUNC172-MGR-UTCID03,N,IMPLEMENTED
+FUNC172-MGR,Filter System Feedback,Filter System Feedback Manager,FUNC172-MGR-UTCID04,A,IMPLEMENTED
+FUNC172-MGR,Filter System Feedback,Filter System Feedback Manager,FUNC172-MGR-UTCID05,B,IMPLEMENTED
+FUNC172-MGR,Filter System Feedback,Filter System Feedback Manager,FUNC172-MGR-UTCID06,N,IMPLEMENTED
+FUNC173-MGR,View News List,View News List Manager,FUNC173-MGR-UTCID01,N,IMPLEMENTED
+FUNC173-MGR,View News List,View News List Manager,FUNC173-MGR-UTCID02,N,IMPLEMENTED
+FUNC173-MGR,View News List,View News List Manager,FUNC173-MGR-UTCID03,N,IMPLEMENTED
+FUNC173-MGR,View News List,View News List Manager,FUNC173-MGR-UTCID04,A,IMPLEMENTED
+FUNC173-MGR,View News List,View News List Manager,FUNC173-MGR-UTCID05,B,IMPLEMENTED
+FUNC173-MGR,View News List,View News List Manager,FUNC173-MGR-UTCID06,N,IMPLEMENTED
+FUNC174-MGR,View News Details,View News Details Manager,FUNC174-MGR-UTCID01,N,IMPLEMENTED
+FUNC174-MGR,View News Details,View News Details Manager,FUNC174-MGR-UTCID02,N,IMPLEMENTED
+FUNC174-MGR,View News Details,View News Details Manager,FUNC174-MGR-UTCID03,N,IMPLEMENTED
+FUNC174-MGR,View News Details,View News Details Manager,FUNC174-MGR-UTCID04,A,IMPLEMENTED
+FUNC174-MGR,View News Details,View News Details Manager,FUNC174-MGR-UTCID05,B,IMPLEMENTED
+FUNC174-MGR,View News Details,View News Details Manager,FUNC174-MGR-UTCID06,N,IMPLEMENTED
+FUNC175-MGR,Filter News,Filter News Manager,FUNC175-MGR-UTCID01,N,IMPLEMENTED
+FUNC175-MGR,Filter News,Filter News Manager,FUNC175-MGR-UTCID02,N,IMPLEMENTED
+FUNC175-MGR,Filter News,Filter News Manager,FUNC175-MGR-UTCID03,N,IMPLEMENTED
+FUNC175-MGR,Filter News,Filter News Manager,FUNC175-MGR-UTCID04,A,IMPLEMENTED
+FUNC175-MGR,Filter News,Filter News Manager,FUNC175-MGR-UTCID05,B,IMPLEMENTED
+FUNC175-MGR,Filter News,Filter News Manager,FUNC175-MGR-UTCID06,N,IMPLEMENTED
+FUNC176-MGR,Search News,Search News Manager,FUNC176-MGR-UTCID01,N,IMPLEMENTED
+FUNC176-MGR,Search News,Search News Manager,FUNC176-MGR-UTCID02,N,IMPLEMENTED
+FUNC176-MGR,Search News,Search News Manager,FUNC176-MGR-UTCID03,N,IMPLEMENTED
+FUNC176-MGR,Search News,Search News Manager,FUNC176-MGR-UTCID04,A,IMPLEMENTED
+FUNC176-MGR,Search News,Search News Manager,FUNC176-MGR-UTCID05,B,IMPLEMENTED
+FUNC176-MGR,Search News,Search News Manager,FUNC176-MGR-UTCID06,N,IMPLEMENTED
+FUNC177-MGR,View Interview Session List,View Interview Session List Man,FUNC177-MGR-UTCID01,N,IMPLEMENTED
+FUNC177-MGR,View Interview Session List,View Interview Session List Man,FUNC177-MGR-UTCID02,N,IMPLEMENTED
+FUNC177-MGR,View Interview Session List,View Interview Session List Man,FUNC177-MGR-UTCID03,N,IMPLEMENTED
+FUNC177-MGR,View Interview Session List,View Interview Session List Man,FUNC177-MGR-UTCID04,A,IMPLEMENTED
+FUNC177-MGR,View Interview Session List,View Interview Session List Man,FUNC177-MGR-UTCID05,B,IMPLEMENTED
+FUNC177-MGR,View Interview Session List,View Interview Session List Man,FUNC177-MGR-UTCID06,N,IMPLEMENTED
+FUNC178-MGR,View Interview Session Detail,View Interview Session Detail M,FUNC178-MGR-UTCID01,N,IMPLEMENTED
+FUNC178-MGR,View Interview Session Detail,View Interview Session Detail M,FUNC178-MGR-UTCID02,N,IMPLEMENTED
+FUNC178-MGR,View Interview Session Detail,View Interview Session Detail M,FUNC178-MGR-UTCID03,N,IMPLEMENTED
+FUNC178-MGR,View Interview Session Detail,View Interview Session Detail M,FUNC178-MGR-UTCID04,A,IMPLEMENTED
+FUNC178-MGR,View Interview Session Detail,View Interview Session Detail M,FUNC178-MGR-UTCID05,B,IMPLEMENTED
+FUNC178-MGR,View Interview Session Detail,View Interview Session Detail M,FUNC178-MGR-UTCID06,N,IMPLEMENTED
+FUNC179-MGR,Search Interview,Search Interview Manager,FUNC179-MGR-UTCID01,N,IMPLEMENTED
+FUNC179-MGR,Search Interview,Search Interview Manager,FUNC179-MGR-UTCID02,N,IMPLEMENTED
+FUNC179-MGR,Search Interview,Search Interview Manager,FUNC179-MGR-UTCID03,N,IMPLEMENTED
+FUNC179-MGR,Search Interview,Search Interview Manager,FUNC179-MGR-UTCID04,A,IMPLEMENTED
+FUNC179-MGR,Search Interview,Search Interview Manager,FUNC179-MGR-UTCID05,B,IMPLEMENTED
+FUNC179-MGR,Search Interview,Search Interview Manager,FUNC179-MGR-UTCID06,N,IMPLEMENTED
+FUNC180-MGR,Filter Interview,Filter Interview Manager,FUNC180-MGR-UTCID01,N,IMPLEMENTED
+FUNC180-MGR,Filter Interview,Filter Interview Manager,FUNC180-MGR-UTCID02,N,IMPLEMENTED
+FUNC180-MGR,Filter Interview,Filter Interview Manager,FUNC180-MGR-UTCID03,N,IMPLEMENTED
+FUNC180-MGR,Filter Interview,Filter Interview Manager,FUNC180-MGR-UTCID04,A,IMPLEMENTED
+FUNC180-MGR,Filter Interview,Filter Interview Manager,FUNC180-MGR-UTCID05,B,IMPLEMENTED
+FUNC180-MGR,Filter Interview,Filter Interview Manager,FUNC180-MGR-UTCID06,N,IMPLEMENTED
+FUNC181-MGR,View Payment List,View Payment List Manager,FUNC181-MGR-UTCID01,N,IMPLEMENTED
+FUNC181-MGR,View Payment List,View Payment List Manager,FUNC181-MGR-UTCID02,N,IMPLEMENTED
+FUNC181-MGR,View Payment List,View Payment List Manager,FUNC181-MGR-UTCID03,N,IMPLEMENTED
+FUNC181-MGR,View Payment List,View Payment List Manager,FUNC181-MGR-UTCID04,A,IMPLEMENTED
+FUNC181-MGR,View Payment List,View Payment List Manager,FUNC181-MGR-UTCID05,B,IMPLEMENTED
+FUNC181-MGR,View Payment List,View Payment List Manager,FUNC181-MGR-UTCID06,N,IMPLEMENTED
+FUNC182-MGR,View Payment Details,View Payment Details Manager,FUNC182-MGR-UTCID01,N,IMPLEMENTED
+FUNC182-MGR,View Payment Details,View Payment Details Manager,FUNC182-MGR-UTCID02,N,IMPLEMENTED
+FUNC182-MGR,View Payment Details,View Payment Details Manager,FUNC182-MGR-UTCID03,N,IMPLEMENTED
+FUNC182-MGR,View Payment Details,View Payment Details Manager,FUNC182-MGR-UTCID04,A,IMPLEMENTED
+FUNC182-MGR,View Payment Details,View Payment Details Manager,FUNC182-MGR-UTCID05,B,IMPLEMENTED
+FUNC182-MGR,View Payment Details,View Payment Details Manager,FUNC182-MGR-UTCID06,N,IMPLEMENTED
+FUNC183-MGR,Filter Payment,Filter Payment Manager,FUNC183-MGR-UTCID01,N,IMPLEMENTED
+FUNC183-MGR,Filter Payment,Filter Payment Manager,FUNC183-MGR-UTCID02,N,IMPLEMENTED
+FUNC183-MGR,Filter Payment,Filter Payment Manager,FUNC183-MGR-UTCID03,N,IMPLEMENTED
+FUNC183-MGR,Filter Payment,Filter Payment Manager,FUNC183-MGR-UTCID04,A,IMPLEMENTED
+FUNC183-MGR,Filter Payment,Filter Payment Manager,FUNC183-MGR-UTCID05,B,IMPLEMENTED
+FUNC183-MGR,Filter Payment,Filter Payment Manager,FUNC183-MGR-UTCID06,N,IMPLEMENTED
+FUNC184-MGR,View Tech Stack List,View Tech Stack List Manager,FUNC184-MGR-UTCID01,N,IMPLEMENTED
+FUNC184-MGR,View Tech Stack List,View Tech Stack List Manager,FUNC184-MGR-UTCID02,N,IMPLEMENTED
+FUNC184-MGR,View Tech Stack List,View Tech Stack List Manager,FUNC184-MGR-UTCID03,N,IMPLEMENTED
+FUNC184-MGR,View Tech Stack List,View Tech Stack List Manager,FUNC184-MGR-UTCID04,A,IMPLEMENTED
+FUNC184-MGR,View Tech Stack List,View Tech Stack List Manager,FUNC184-MGR-UTCID05,B,IMPLEMENTED
+FUNC184-MGR,View Tech Stack List,View Tech Stack List Manager,FUNC184-MGR-UTCID06,N,IMPLEMENTED
+FUNC185-MGR,Search Tech Stack,Search Tech Stack Manager,FUNC185-MGR-UTCID01,N,IMPLEMENTED
+FUNC185-MGR,Search Tech Stack,Search Tech Stack Manager,FUNC185-MGR-UTCID02,N,IMPLEMENTED
+FUNC185-MGR,Search Tech Stack,Search Tech Stack Manager,FUNC185-MGR-UTCID03,N,IMPLEMENTED
+FUNC185-MGR,Search Tech Stack,Search Tech Stack Manager,FUNC185-MGR-UTCID04,A,IMPLEMENTED
+FUNC185-MGR,Search Tech Stack,Search Tech Stack Manager,FUNC185-MGR-UTCID05,B,IMPLEMENTED
+FUNC185-MGR,Search Tech Stack,Search Tech Stack Manager,FUNC185-MGR-UTCID06,N,IMPLEMENTED
+FUNC186-MGR,Filter Tech Stack,Filter Tech Stack Manager,FUNC186-MGR-UTCID01,N,IMPLEMENTED
+FUNC186-MGR,Filter Tech Stack,Filter Tech Stack Manager,FUNC186-MGR-UTCID02,N,IMPLEMENTED
+FUNC186-MGR,Filter Tech Stack,Filter Tech Stack Manager,FUNC186-MGR-UTCID03,N,IMPLEMENTED
+FUNC186-MGR,Filter Tech Stack,Filter Tech Stack Manager,FUNC186-MGR-UTCID04,A,IMPLEMENTED
+FUNC186-MGR,Filter Tech Stack,Filter Tech Stack Manager,FUNC186-MGR-UTCID05,B,IMPLEMENTED
+FUNC186-MGR,Filter Tech Stack,Filter Tech Stack Manager,FUNC186-MGR-UTCID06,N,IMPLEMENTED
+FUNC187-MGR,View Position,View Position Manager,FUNC187-MGR-UTCID01,N,IMPLEMENTED
+FUNC187-MGR,View Position,View Position Manager,FUNC187-MGR-UTCID02,N,IMPLEMENTED
+FUNC187-MGR,View Position,View Position Manager,FUNC187-MGR-UTCID03,N,IMPLEMENTED
+FUNC187-MGR,View Position,View Position Manager,FUNC187-MGR-UTCID04,A,IMPLEMENTED
+FUNC187-MGR,View Position,View Position Manager,FUNC187-MGR-UTCID05,B,IMPLEMENTED
+FUNC187-MGR,View Position,View Position Manager,FUNC187-MGR-UTCID06,N,IMPLEMENTED
+FUNC188-MGR,Search Position,Search Position Manager,FUNC188-MGR-UTCID01,N,IMPLEMENTED
+FUNC188-MGR,Search Position,Search Position Manager,FUNC188-MGR-UTCID02,N,IMPLEMENTED
+FUNC188-MGR,Search Position,Search Position Manager,FUNC188-MGR-UTCID03,N,IMPLEMENTED
+FUNC188-MGR,Search Position,Search Position Manager,FUNC188-MGR-UTCID04,A,IMPLEMENTED
+FUNC188-MGR,Search Position,Search Position Manager,FUNC188-MGR-UTCID05,B,IMPLEMENTED
+FUNC188-MGR,Search Position,Search Position Manager,FUNC188-MGR-UTCID06,N,IMPLEMENTED
+FUNC189-MGR,View Credit Package List,View Credit Package List Manage,FUNC189-MGR-UTCID01,N,IMPLEMENTED
+FUNC189-MGR,View Credit Package List,View Credit Package List Manage,FUNC189-MGR-UTCID02,N,IMPLEMENTED
+FUNC189-MGR,View Credit Package List,View Credit Package List Manage,FUNC189-MGR-UTCID03,N,IMPLEMENTED
+FUNC189-MGR,View Credit Package List,View Credit Package List Manage,FUNC189-MGR-UTCID04,A,IMPLEMENTED
+FUNC189-MGR,View Credit Package List,View Credit Package List Manage,FUNC189-MGR-UTCID05,B,IMPLEMENTED
+FUNC189-MGR,View Credit Package List,View Credit Package List Manage,FUNC189-MGR-UTCID06,N,IMPLEMENTED
+FUNC190-MGR,View Credit Package Details,View Credit Package Details Man,FUNC190-MGR-UTCID01,N,IMPLEMENTED
+FUNC190-MGR,View Credit Package Details,View Credit Package Details Man,FUNC190-MGR-UTCID02,N,IMPLEMENTED
+FUNC190-MGR,View Credit Package Details,View Credit Package Details Man,FUNC190-MGR-UTCID03,N,IMPLEMENTED
+FUNC190-MGR,View Credit Package Details,View Credit Package Details Man,FUNC190-MGR-UTCID04,A,IMPLEMENTED
+FUNC190-MGR,View Credit Package Details,View Credit Package Details Man,FUNC190-MGR-UTCID05,B,IMPLEMENTED
+FUNC190-MGR,View Credit Package Details,View Credit Package Details Man,FUNC190-MGR-UTCID06,N,IMPLEMENTED
+FUNC191-MGR,Search Credit Package,Search Credit Package Manager,FUNC191-MGR-UTCID01,N,IMPLEMENTED
+FUNC191-MGR,Search Credit Package,Search Credit Package Manager,FUNC191-MGR-UTCID02,N,IMPLEMENTED
+FUNC191-MGR,Search Credit Package,Search Credit Package Manager,FUNC191-MGR-UTCID03,N,IMPLEMENTED
+FUNC191-MGR,Search Credit Package,Search Credit Package Manager,FUNC191-MGR-UTCID04,A,IMPLEMENTED
+FUNC191-MGR,Search Credit Package,Search Credit Package Manager,FUNC191-MGR-UTCID05,B,IMPLEMENTED
+FUNC191-MGR,Search Credit Package,Search Credit Package Manager,FUNC191-MGR-UTCID06,N,IMPLEMENTED
+FUNC192-MGR,Filter Credit Package,Filter Credit Package Manager,FUNC192-MGR-UTCID01,N,IMPLEMENTED
+FUNC192-MGR,Filter Credit Package,Filter Credit Package Manager,FUNC192-MGR-UTCID02,N,IMPLEMENTED
+FUNC192-MGR,Filter Credit Package,Filter Credit Package Manager,FUNC192-MGR-UTCID03,N,IMPLEMENTED
+FUNC192-MGR,Filter Credit Package,Filter Credit Package Manager,FUNC192-MGR-UTCID04,A,IMPLEMENTED
+FUNC192-MGR,Filter Credit Package,Filter Credit Package Manager,FUNC192-MGR-UTCID05,B,IMPLEMENTED
+FUNC192-MGR,Filter Credit Package,Filter Credit Package Manager,FUNC192-MGR-UTCID06,N,IMPLEMENTED
+FUNC193-USR,Filter News,Filter News Candidate Use,FUNC193-USR-UTCID01,N,IMPLEMENTED
+FUNC193-USR,Filter News,Filter News Candidate Use,FUNC193-USR-UTCID02,N,IMPLEMENTED
+FUNC193-USR,Filter News,Filter News Candidate Use,FUNC193-USR-UTCID03,N,IMPLEMENTED
+FUNC193-USR,Filter News,Filter News Candidate Use,FUNC193-USR-UTCID04,A,IMPLEMENTED
+FUNC193-USR,Filter News,Filter News Candidate Use,FUNC193-USR-UTCID05,B,IMPLEMENTED
+FUNC193-USR,Filter News,Filter News Candidate Use,FUNC193-USR-UTCID06,N,IMPLEMENTED
+FUNC194-USR,Search News,Search News Candidate Use,FUNC194-USR-UTCID01,N,IMPLEMENTED
+FUNC194-USR,Search News,Search News Candidate Use,FUNC194-USR-UTCID02,N,IMPLEMENTED
+FUNC194-USR,Search News,Search News Candidate Use,FUNC194-USR-UTCID03,N,IMPLEMENTED
+FUNC194-USR,Search News,Search News Candidate Use,FUNC194-USR-UTCID04,A,IMPLEMENTED
+FUNC194-USR,Search News,Search News Candidate Use,FUNC194-USR-UTCID05,B,IMPLEMENTED
+FUNC194-USR,Search News,Search News Candidate Use,FUNC194-USR-UTCID06,N,IMPLEMENTED
+FUNC195-USR,Get Integrity Policy Status,Get Integrity Policy Status,FUNC195-USR-UTCID01,N,IMPLEMENTED
+FUNC195-USR,Get Integrity Policy Status,Get Integrity Policy Status,FUNC195-USR-UTCID02,N,IMPLEMENTED
+FUNC195-USR,Get Integrity Policy Status,Get Integrity Policy Status,FUNC195-USR-UTCID03,N,IMPLEMENTED
+FUNC195-USR,Get Integrity Policy Status,Get Integrity Policy Status,FUNC195-USR-UTCID04,A,IMPLEMENTED
+FUNC195-USR,Get Integrity Policy Status,Get Integrity Policy Status,FUNC195-USR-UTCID05,B,IMPLEMENTED
+FUNC195-USR,Get Integrity Policy Status,Get Integrity Policy Status,FUNC195-USR-UTCID06,N,IMPLEMENTED
+FUNC196-USR,Accept Interview Integrity Policy,Accept Interview Integrity Poli,FUNC196-USR-UTCID01,N,IMPLEMENTED
+FUNC196-USR,Accept Interview Integrity Policy,Accept Interview Integrity Poli,FUNC196-USR-UTCID02,N,IMPLEMENTED
+FUNC196-USR,Accept Interview Integrity Policy,Accept Interview Integrity Poli,FUNC196-USR-UTCID03,N,IMPLEMENTED
+FUNC196-USR,Accept Interview Integrity Policy,Accept Interview Integrity Poli,FUNC196-USR-UTCID04,A,IMPLEMENTED
+FUNC196-USR,Accept Interview Integrity Policy,Accept Interview Integrity Poli,FUNC196-USR-UTCID05,B,IMPLEMENTED
+FUNC196-USR,Accept Interview Integrity Policy,Accept Interview Integrity Poli,FUNC196-USR-UTCID06,N,IMPLEMENTED
+FUNC197-USR,Get Active Interview Session,Get Active Interview Session,FUNC197-USR-UTCID01,N,IMPLEMENTED
+FUNC197-USR,Get Active Interview Session,Get Active Interview Session,FUNC197-USR-UTCID02,N,IMPLEMENTED
+FUNC197-USR,Get Active Interview Session,Get Active Interview Session,FUNC197-USR-UTCID03,N,IMPLEMENTED
+FUNC197-USR,Get Active Interview Session,Get Active Interview Session,FUNC197-USR-UTCID04,A,IMPLEMENTED
+FUNC197-USR,Get Active Interview Session,Get Active Interview Session,FUNC197-USR-UTCID05,B,IMPLEMENTED
+FUNC197-USR,Get Active Interview Session,Get Active Interview Session,FUNC197-USR-UTCID06,N,IMPLEMENTED
+FUNC198-USR,Issue In-Session Verification Challenge,Issue In-Session Verification C,FUNC198-USR-UTCID01,N,IMPLEMENTED
+FUNC198-USR,Issue In-Session Verification Challenge,Issue In-Session Verification C,FUNC198-USR-UTCID02,N,IMPLEMENTED
+FUNC198-USR,Issue In-Session Verification Challenge,Issue In-Session Verification C,FUNC198-USR-UTCID03,N,IMPLEMENTED
+FUNC198-USR,Issue In-Session Verification Challenge,Issue In-Session Verification C,FUNC198-USR-UTCID04,A,IMPLEMENTED
+FUNC198-USR,Issue In-Session Verification Challenge,Issue In-Session Verification C,FUNC198-USR-UTCID05,B,IMPLEMENTED
+FUNC198-USR,Issue In-Session Verification Challenge,Issue In-Session Verification C,FUNC198-USR-UTCID06,N,IMPLEMENTED
+FUNC199-USR,Verify Voice Identity In Session,Verify Voice Identity In Sessio,FUNC199-USR-UTCID01,N,IMPLEMENTED
+FUNC199-USR,Verify Voice Identity In Session,Verify Voice Identity In Sessio,FUNC199-USR-UTCID02,N,IMPLEMENTED
+FUNC199-USR,Verify Voice Identity In Session,Verify Voice Identity In Sessio,FUNC199-USR-UTCID03,N,IMPLEMENTED
+FUNC199-USR,Verify Voice Identity In Session,Verify Voice Identity In Sessio,FUNC199-USR-UTCID04,A,IMPLEMENTED
+FUNC199-USR,Verify Voice Identity In Session,Verify Voice Identity In Sessio,FUNC199-USR-UTCID05,B,IMPLEMENTED
+FUNC199-USR,Verify Voice Identity In Session,Verify Voice Identity In Sessio,FUNC199-USR-UTCID06,N,IMPLEMENTED
+FUNC200-USR,Check Report Eligibility,Check Report Eligibility,FUNC200-USR-UTCID01,N,IMPLEMENTED
+FUNC200-USR,Check Report Eligibility,Check Report Eligibility,FUNC200-USR-UTCID02,N,IMPLEMENTED
+FUNC200-USR,Check Report Eligibility,Check Report Eligibility,FUNC200-USR-UTCID03,N,IMPLEMENTED
+FUNC200-USR,Check Report Eligibility,Check Report Eligibility,FUNC200-USR-UTCID04,A,IMPLEMENTED
+FUNC200-USR,Check Report Eligibility,Check Report Eligibility,FUNC200-USR-UTCID05,B,IMPLEMENTED
+FUNC200-USR,Check Report Eligibility,Check Report Eligibility,FUNC200-USR-UTCID06,N,IMPLEMENTED
+FUNC201-USR,Check Session Report Eligibility,Check Session Report Eligibilit,FUNC201-USR-UTCID01,N,IMPLEMENTED
+FUNC201-USR,Check Session Report Eligibility,Check Session Report Eligibilit,FUNC201-USR-UTCID02,N,IMPLEMENTED
+FUNC201-USR,Check Session Report Eligibility,Check Session Report Eligibilit,FUNC201-USR-UTCID03,N,IMPLEMENTED
+FUNC201-USR,Check Session Report Eligibility,Check Session Report Eligibilit,FUNC201-USR-UTCID04,A,IMPLEMENTED
+FUNC201-USR,Check Session Report Eligibility,Check Session Report Eligibilit,FUNC201-USR-UTCID05,B,IMPLEMENTED
+FUNC201-USR,Check Session Report Eligibility,Check Session Report Eligibilit,FUNC201-USR-UTCID06,N,IMPLEMENTED
+FUNC202-USR,Verify Session Ownership (internal),Verify Session Ownership (inter,FUNC202-USR-UTCID01,N,IMPLEMENTED
+FUNC202-USR,Verify Session Ownership (internal),Verify Session Ownership (inter,FUNC202-USR-UTCID02,N,IMPLEMENTED
+FUNC202-USR,Verify Session Ownership (internal),Verify Session Ownership (inter,FUNC202-USR-UTCID03,N,IMPLEMENTED
+FUNC202-USR,Verify Session Ownership (internal),Verify Session Ownership (inter,FUNC202-USR-UTCID04,A,IMPLEMENTED
+FUNC202-USR,Verify Session Ownership (internal),Verify Session Ownership (inter,FUNC202-USR-UTCID05,B,IMPLEMENTED
+FUNC202-USR,Verify Session Ownership (internal),Verify Session Ownership (inter,FUNC202-USR-UTCID06,N,IMPLEMENTED
+FUNC203-USR,Get User Sessions (internal),Get User Sessions (internal),FUNC203-USR-UTCID01,N,IMPLEMENTED
+FUNC203-USR,Get User Sessions (internal),Get User Sessions (internal),FUNC203-USR-UTCID02,N,IMPLEMENTED
+FUNC203-USR,Get User Sessions (internal),Get User Sessions (internal),FUNC203-USR-UTCID03,N,IMPLEMENTED
+FUNC203-USR,Get User Sessions (internal),Get User Sessions (internal),FUNC203-USR-UTCID04,A,IMPLEMENTED
+FUNC203-USR,Get User Sessions (internal),Get User Sessions (internal),FUNC203-USR-UTCID05,B,IMPLEMENTED
+FUNC203-USR,Get User Sessions (internal),Get User Sessions (internal),FUNC203-USR-UTCID06,N,IMPLEMENTED
+FUNC204-USR,Get Last Interview Activity (internal),Get Last Interview Activity (in,FUNC204-USR-UTCID01,N,IMPLEMENTED
+FUNC204-USR,Get Last Interview Activity (internal),Get Last Interview Activity (in,FUNC204-USR-UTCID02,N,IMPLEMENTED
+FUNC204-USR,Get Last Interview Activity (internal),Get Last Interview Activity (in,FUNC204-USR-UTCID03,N,IMPLEMENTED
+FUNC204-USR,Get Last Interview Activity (internal),Get Last Interview Activity (in,FUNC204-USR-UTCID04,A,IMPLEMENTED
+FUNC204-USR,Get Last Interview Activity (internal),Get Last Interview Activity (in,FUNC204-USR-UTCID05,B,IMPLEMENTED
+FUNC204-USR,Get Last Interview Activity (internal),Get Last Interview Activity (in,FUNC204-USR-UTCID06,N,IMPLEMENTED
+FUNC205-USR,Get Answer Evaluations,Get Answer Evaluations,FUNC205-USR-UTCID01,N,IMPLEMENTED
+FUNC205-USR,Get Answer Evaluations,Get Answer Evaluations,FUNC205-USR-UTCID02,N,IMPLEMENTED
+FUNC205-USR,Get Answer Evaluations,Get Answer Evaluations,FUNC205-USR-UTCID03,N,IMPLEMENTED
+FUNC205-USR,Get Answer Evaluations,Get Answer Evaluations,FUNC205-USR-UTCID04,A,IMPLEMENTED
+FUNC205-USR,Get Answer Evaluations,Get Answer Evaluations,FUNC205-USR-UTCID05,B,IMPLEMENTED
+FUNC205-USR,Get Answer Evaluations,Get Answer Evaluations,FUNC205-USR-UTCID06,N,IMPLEMENTED
+FUNC206-USR,Get Existing Evaluation Report,Get Existing Evaluation Report,FUNC206-USR-UTCID01,N,IMPLEMENTED
+FUNC206-USR,Get Existing Evaluation Report,Get Existing Evaluation Report,FUNC206-USR-UTCID02,N,IMPLEMENTED
+FUNC206-USR,Get Existing Evaluation Report,Get Existing Evaluation Report,FUNC206-USR-UTCID03,N,IMPLEMENTED
+FUNC206-USR,Get Existing Evaluation Report,Get Existing Evaluation Report,FUNC206-USR-UTCID04,A,IMPLEMENTED
+FUNC206-USR,Get Existing Evaluation Report,Get Existing Evaluation Report,FUNC206-USR-UTCID05,B,IMPLEMENTED
+FUNC206-USR,Get Existing Evaluation Report,Get Existing Evaluation Report,FUNC206-USR-UTCID06,N,IMPLEMENTED
+FUNC207-USR,Pause / Resume Interview Session,Pause Resume Interview Sess 2,FUNC207-USR-UTCID01,N,IMPLEMENTED
+FUNC207-USR,Pause / Resume Interview Session,Pause Resume Interview Sess 2,FUNC207-USR-UTCID02,N,IMPLEMENTED
+FUNC207-USR,Pause / Resume Interview Session,Pause Resume Interview Sess 2,FUNC207-USR-UTCID03,N,IMPLEMENTED
+FUNC207-USR,Pause / Resume Interview Session,Pause Resume Interview Sess 2,FUNC207-USR-UTCID04,A,IMPLEMENTED
+FUNC207-USR,Pause / Resume Interview Session,Pause Resume Interview Sess 2,FUNC207-USR-UTCID05,B,IMPLEMENTED
+FUNC207-USR,Pause / Resume Interview Session,Pause Resume Interview Sess 2,FUNC207-USR-UTCID06,N,IMPLEMENTED
+FUNC208-USR,Monitor In-Session Face Verification,Monitor Face Verification POST,FUNC208-USR-UTCID01,N,IMPLEMENTED
+FUNC208-USR,Monitor In-Session Face Verification,Monitor Face Verification POST,FUNC208-USR-UTCID02,N,IMPLEMENTED
+FUNC208-USR,Monitor In-Session Face Verification,Monitor Face Verification POST,FUNC208-USR-UTCID03,N,IMPLEMENTED
+FUNC208-USR,Monitor In-Session Face Verification,Monitor Face Verification POST,FUNC208-USR-UTCID04,A,IMPLEMENTED
+FUNC208-USR,Monitor In-Session Face Verification,Monitor Face Verification POST,FUNC208-USR-UTCID05,B,IMPLEMENTED
+FUNC208-USR,Monitor In-Session Face Verification,Monitor Face Verification POST,FUNC208-USR-UTCID06,N,IMPLEMENTED
+FUNC209-MGR,Search Payment,Search Payment Manager,FUNC209-MGR-UTCID01,N,IMPLEMENTED
+FUNC209-MGR,Search Payment,Search Payment Manager,FUNC209-MGR-UTCID02,N,IMPLEMENTED
+FUNC209-MGR,Search Payment,Search Payment Manager,FUNC209-MGR-UTCID03,N,IMPLEMENTED
+FUNC209-MGR,Search Payment,Search Payment Manager,FUNC209-MGR-UTCID04,A,IMPLEMENTED
+FUNC209-MGR,Search Payment,Search Payment Manager,FUNC209-MGR-UTCID05,B,IMPLEMENTED
+FUNC209-MGR,Search Payment,Search Payment Manager,FUNC209-MGR-UTCID06,N,IMPLEMENTED

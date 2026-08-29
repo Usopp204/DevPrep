@@ -22,8 +22,13 @@ public static class VnPayEndpoints
 
     public static void MapVnPayEndpoints(this WebApplication app)
     {
-        app.MapPost("/vnpay/order", async (HttpContext ctx, IVnPayService vnPay) =>
-        {
+        app.MapPost("/vnpay/order", CreateOrderAsync);
+        app.MapGet("/vnpay/return", ProcessReturnAsync);
+        app.MapGet("/vnpay/ipn", ProcessIpnAsync);
+    }
+
+    public static async Task<IResult> CreateOrderAsync(HttpContext ctx, IVnPayService vnPay)
+    {
             // ApiGateway puts the caller's id here after validating the JWT; the service never
             // reads an id out of the request body, which a caller could set to anyone.
             var userIdStr = ctx.Request.Headers["X-User-Id"].FirstOrDefault();
@@ -57,23 +62,20 @@ public static class VnPayEndpoints
                 log.LogError(ex, "CreateOrder failed for user {UserId} package {PackageId}", userId, body.PackageId);
                 return Results.Problem(ex.Message);
             }
-        });
+    }
 
-        // Browser redirect after payment. Returns a redirect, never a body.
-        app.MapGet("/vnpay/return", async (HttpRequest req, IVnPayService vnPay) =>
-        {
-            var query       = req.Query.ToDictionary(kv => kv.Key, kv => kv.Value.ToString());
-            var redirectUrl = await vnPay.ProcessReturnAsync(query);
-            return Results.Redirect(redirectUrl);
-        });
+    public static async Task<IResult> ProcessReturnAsync(HttpRequest req, IVnPayService vnPay)
+    {
+        var query = req.Query.ToDictionary(kv => kv.Key, kv => kv.Value.ToString());
+        var redirectUrl = await vnPay.ProcessReturnAsync(query);
+        return Results.Redirect(redirectUrl);
+    }
 
-        // VNPay server-to-server callback. The RspCode/Message shape is VNPay's contract.
-        app.MapGet("/vnpay/ipn", async (HttpRequest req, IVnPayService vnPay) =>
-        {
-            var query  = req.Query.ToDictionary(kv => kv.Key, kv => kv.Value.ToString());
-            var result = await vnPay.ProcessIpnAsync(query);
-            return Results.Json(new { RspCode = result.RspCode, Message = result.Message });
-        });
+    public static async Task<IResult> ProcessIpnAsync(HttpRequest req, IVnPayService vnPay)
+    {
+        var query = req.Query.ToDictionary(kv => kv.Key, kv => kv.Value.ToString());
+        var result = await vnPay.ProcessIpnAsync(query);
+        return Results.Json(new { RspCode = result.RspCode, Message = result.Message });
     }
 
     /// <summary>Category for the logger above; a static class cannot be a generic type argument.</summary>

@@ -31,6 +31,13 @@ public class ManagerUsersController : ControllerBase
         if (page < 1) page = 1;
         if (pageSize < 1 || pageSize > 100) pageSize = 10;
 
+        return await GetListCoreAsync(page, pageSize, keyword, role, status, createdFrom, createdTo);
+    }
+
+    protected virtual async Task<IActionResult> GetListCoreAsync(int page, int pageSize, string? keyword,
+        string? role, string? status, DateTime? createdFrom, DateTime? createdTo)
+    {
+
         var connString = _context.Database.GetDbConnection().ConnectionString;
         
         var items = new List<ManagerUserListItemDto>();
@@ -144,6 +151,11 @@ public class ManagerUsersController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse<ManagerUserDetailsDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetDetails(Guid id)
+    {
+        return await GetDetailsCoreAsync(id);
+    }
+
+    protected virtual async Task<IActionResult> GetDetailsCoreAsync(Guid id)
     {
         var connString = _context.Database.GetDbConnection().ConnectionString;
         ManagerUserDetailsDto? details = null;
