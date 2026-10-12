@@ -4,6 +4,10 @@ DevPrep is an AI mock-interview platform for IT candidates: you configure a tech
 
 SEP490 capstone project, FPT University. .NET 8 microservices, a FastAPI AI service, SQL Server.
 
+<img src=".github/assets/readme/architecture.png" alt="DevPrep architecture: a candidate's browser reaches WebClient and the YARP API Gateway, which routes to .NET 8 microservices (account and billing, interview core, content), each with its own SQL Server database. Interview-core services call the FastAPI AI service, which uses Gemini, Deepgram and a local ChromaDB." width="100%">
+
+*Services are grouped by function for readability; some internal calls are omitted — see the text version for the full list.*
+
 <!-- No license file and no CI workflow exist in this repository, so no badges. -->
 
 ## Screenshots
@@ -14,10 +18,9 @@ Add the screenshots, then remove this comment. File names are fixed:
 ![Interview room](.github/assets/readme/room.png)
 ![Evaluation report](.github/assets/readme/report.png)
 ![Biometric entry gate](.github/assets/readme/biometric-gate.png)
-![Architecture](.github/assets/readme/architecture.png)
 -->
 
-Screenshots are pending. Expected files: `.github/assets/readme/room.png`, `report.png`, `biometric-gate.png`, `architecture.png`.
+Screenshots are pending. Expected files: `.github/assets/readme/room.png`, `report.png`, `biometric-gate.png`.
 
 ## Features
 
@@ -32,58 +35,94 @@ Screenshots are pending. Expected files: `.github/assets/readme/room.png`, `repo
 
 ## Architecture
 
+<details><summary>Text version</summary>
+
 ```mermaid
 flowchart LR
-    Browser
+    Browser["Candidate<br/>web browser"]
 
     subgraph Host["Published to host"]
         WebClient["WebClient<br/>ASP.NET Core MVC<br/>:5130"]
-        Gateway["ApiGateway (YARP)<br/>:7000"]
+        Gateway["API Gateway (YARP)<br/>:7000"]
     end
 
     subgraph Internal["devprep-internal-net (no host ports)"]
-        Auth[AuthAPI]
-        User[UserAPI]
-        CvJd[CvJdAPI]
-        Question[QuestionAPI]
-        Interview[InterviewAPI]
-        Evaluation[EvaluationAPI]
-        Feedback[FeedbackAPI]
-        Payment[PaymentAPI]
-        News[NewsAPI]
-        Notification[NotificationAPI]
-        AI["ai-service<br/>FastAPI + GPU<br/>:8000"]
+        subgraph Account["Account and billing"]
+            Auth[AuthAPI]
+            User[UserAPI]
+            Payment[PaymentAPI]
+        end
+        subgraph Core["Interview core"]
+            Question[QuestionAPI]
+            Evaluation[EvaluationAPI]
+            Interview[InterviewAPI]
+            CvJd[CvJdAPI]
+        end
+        subgraph Content["Content and engagement"]
+            News[NewsAPI]
+            Feedback[FeedbackAPI]
+            Notification[NotificationAPI]
+        end
+        AI["ai-service<br/>FastAPI + GPU<br/>speech, biometrics, CV/JD parser,<br/>grading + RAG, question planning"]
         Chroma[("ChromaDB<br/>embedded in ai-service")]
         SQL[("SQL Server 2022<br/>10 databases, one per API")]
     end
 
-    subgraph External["External providers"]
+    subgraph External["External APIs"]
         Gemini["Google Gemini<br/>grading, summary, hints"]
         Deepgram["Deepgram<br/>speech-to-text"]
-        VNPay["VNPay<br/>payments"]
         HF["Hugging Face<br/>model download"]
+        VNPay["VNPay<br/>payments"]
+        OAuth["GitHub OAuth / Firebase<br/>sign-in"]
+        SMTP["SMTP server<br/>e-mail delivery"]
+        Eleven["ElevenLabs<br/>optional TTS"]
     end
 
+    %% HTTP via gateway
     Browser --> WebClient
     Browser --> Gateway
     WebClient --> Gateway
-    Gateway --> Auth & User & CvJd & Question & Interview & Evaluation & Feedback & Payment & News & Notification
+    Gateway --> Account
+    Gateway --> Core
+    Gateway --> Content
 
+    %% Internal service calls (all calls found in HttpClient registrations)
+    Auth <--> User
+    User --> Payment
+    User --> Interview
+    Interview <--> Evaluation
+    Interview --> Payment
+    Interview --> Auth
+    Interview --> User
+    Payment --> Auth
+    Auth --> Notification
+    Feedback --> User
+    Feedback --> Auth
+    Feedback --> Interview
+
+    %% Calls to the AI service
     Interview --> AI
     Evaluation --> AI
     Question --> AI
     CvJd --> AI
-    Interview --> Payment
-    Interview --> User
-    Interview --> Auth
-    Evaluation --> Interview
-    AI --> Chroma
+
+    %% External APIs
     AI --> Gemini
     AI --> Deepgram
     AI -.-> HF
+    AI -.->|only if TTS_PROVIDER=elevenlabs| Eleven
     Payment --> VNPay
-    Auth & User & CvJd & Question & Interview & Evaluation & Feedback & Payment & News & Notification -.-> SQL
+    Auth --> OAuth
+    Notification --> SMTP
+
+    %% Data access
+    AI -.-> Chroma
+    Account -.-> SQL
+    Core -.-> SQL
+    Content -.-> SQL
 ```
+
+</details>
 
 - **Host ports.** `docker-compose.yml` publishes only `7000` (gateway) and `5130` (WebClient). `docker-compose.override.yml` adds `1433` (SQL Server) and `8080` to `8000` (ai-service) for local development. Use `-f docker-compose.yml` to exclude it.
 - **Piper TTS** runs inside ai-service and needs no external call. ElevenLabs is implemented but only used if `TTS_PROVIDER=elevenlabs`.
